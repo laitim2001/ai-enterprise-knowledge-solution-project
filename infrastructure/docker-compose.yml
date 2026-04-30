@@ -1,0 +1,218 @@
+# ============================================================================
+# EKP — Local Development Stack
+# ============================================================================
+#
+# Services:
+#   azurite     - Azure Blob Storage emulator (replaces real Azure Blob locally)
+#   postgres    - Langfuse 嘅 backend store (gitignored data)
+#   langfuse    - Self-hosted observability UI (LLM trace + cost dashboard)
+#   pgadmin     - Postgres UI (optional, profile: debug)
+#
+# 唔包入嘅 service:
+#   - backend / frontend:用 `uv run` + `pnpm dev` 跑,hot-reload 比 docker 流暢
+#   - Azure AI Search / Azure OpenAI:無 local emulator,連 real cloud resource
+#   - ClickHouse / Redis(Langfuse v3):暫用 v2 single-Postgres mode,Tier 2 升級
+#
+# Usage:
+#   啟動 default:        docker compose up -d
+#   加入 pgadmin:        docker compose --profile debug up -d
+#   睇 logs:             docker compose logs -f langfuse
+#   stop(保留 data):    docker compose stop
+#   tear down(清 data): docker compose down -v
+#
+# Reference:
+#   - Setup guide:docs/setup.md §4.2
+#   - Local emulator policy:docs/setup.md §1.1 + §10.1
+# ============================================================================
+
+name: ekp-local
+
+# ----------------------------------------------------------------------------
+# Networks
+# ----------------------------------------------------------------------------
+networks:
+  ekp-local:
+    name: ekp-local
+    driver: bridge
+
+
+# ----------------------------------------------------------------------------
+# Volumes(named volumes 跨 restart 保留 data)
+# ----------------------------------------------------------------------------
+volumes:
+  azurite-data:
+    name: ekp-azurite-data
+  postgres-data:
+    name: ekp-postgres-data
+  langfuse-uploads:
+    name: ekp-langfuse-uploads
+
+
+# ----------------------------------------------------------------------------
+# Services
+# ----------------------------------------------------------------------------
+services:
+
+  # --------------------------------------------------------------------------
+  # Azurite — Azure Blob Storage emulator
+  # --------------------------------------------------------------------------
+  # Endpoint:http://127.0.0.1:10000/devstoreaccount1
+  # Account name + key:default well-known(.env.example 已預填)
+  # Backend code 用 AZURE_BLOB_CONNECTION_STRING 連 Azurite,production 切 real Blob
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: ekp-azurite
+    restart: unless-stopped
+    networks: [ekp-local]
+    ports:
+      - "10000:10000"   # Blob service
+      - "10001:10001"   # Queue service(暫未用,reserve)
+      - "10002:10002"   # Table service(暫未用,reserve)
+    volumes:
+      - azurite-data:/data
+    command: >
+      azurite
+      --blobHost 0.0.0.0
+      --queueHost 0.0.0.0
+      --tableHost 0.0.0.0
+      --location /data
+      --debug /data/debug.log
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "10000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+
+  # --------------------------------------------------------------------------
+  # Postgres — Langfuse backend store
+  # --------------------------------------------------------------------------
+  # 唔暴露 port 5432 出宿主(internal network only)
+  # 若需要 direct access,啟動 pgadmin profile
+  postgres:
+    image: postgres:16-alpine
+    container_name: ekp-postgres
+    restart: unless-stopped
+    networks: [ekp-local]
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse_local_dev_only
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+
+  # --------------------------------------------------------------------------
+  # Langfuse — Observability UI(self-host v2)
+  # --------------------------------------------------------------------------
+  # First-time setup:
+  #   1. docker compose up -d langfuse
+  #   2. 開 http://localhost:3000
+  #   3. 創建 admin account
+  #   4. 創建 project → 拎 Public Key + Secret Key 填入 .env 嘅
+  #      LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY
+  #
+  # ⚠️ 注意:呢個係 Langfuse v2 single-Postgres mode。
+  #    Langfuse v3 需要 ClickHouse + Redis 做 analytics,Tier 2 階段先升級。
+  langfuse:
+    image: langfuse/langfuse:2-latest
+    container_name: ekp-langfuse
+    restart: unless-stopped
+    networks: [ekp-local]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse_local_dev_only@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: local_dev_secret_change_for_prod
+      SALT: local_dev_salt_change_for_prod
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+      # POC 階段 disable signup,manual create account 後 lock
+      AUTH_DISABLE_SIGNUP: "false"   # 第一次 setup 後可改 true
+    volumes:
+      - langfuse-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/public/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+
+  # --------------------------------------------------------------------------
+  # pgadmin — Postgres UI(OPTIONAL,profile: debug)
+  # --------------------------------------------------------------------------
+  # Default 唔啟動。需要時:
+  #   docker compose --profile debug up -d
+  #
+  # Login credentials(local dev only):
+  #   Email: dev@ekp.local
+  #   Password: pgadmin_local_dev_only
+  #
+  # Connect to postgres:
+  #   Host: postgres(internal network name)
+  #   Port: 5432
+  #   Username: langfuse
+  #   Password: langfuse_local_dev_only
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ekp-pgadmin
+    profiles: [debug]
+    restart: unless-stopped
+    networks: [ekp-local]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@ekp.local
+      PGADMIN_DEFAULT_PASSWORD: pgadmin_local_dev_only
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+
+# ============================================================================
+# Tear-down notes:
+#
+# 純 stop(保留所有 data):
+#   docker compose stop
+#
+# 完全清乾(刪 volume):
+#   docker compose down -v
+#   ⚠️ 會清 Langfuse 嘅 traces + Azurite 上載嘅 file
+#
+# 個別 service restart(eg Langfuse 改 config):
+#   docker compose restart langfuse
+#
+# 查 health status:
+#   docker compose ps
+#   should see "healthy" for azurite, postgres, langfuse
+# ============================================================================

@@ -1,0 +1,210 @@
+# ============================================================================
+# EKP — Git Ignore
+# ============================================================================
+#
+# Reference:
+#   - setup.md §4.1(reference repo gitignore)
+#   - REFERENCE_USAGE.md §1(read-only reference policy)
+#   - .env.example(secrets policy)
+#
+# Maintenance:
+#   新增 build / cache 路徑時 update 呢個 file,唔好 individual `.gitignore` 散喺 sub-folder。
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# Secrets — NEVER commit
+# ----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+secrets/
+.secrets/
+
+
+# ----------------------------------------------------------------------------
+# Reference Repositories(read-only,clone locally)
+# ----------------------------------------------------------------------------
+# 詳見 references/REFERENCE_USAGE.md
+references/dify/
+references/*/
+!references/REFERENCE_USAGE.md
+!references/.gitkeep
+
+
+# ----------------------------------------------------------------------------
+# Python / Backend(uv + pytest + ruff)
+# ----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# uv / virtualenv
+.venv/
+venv/
+env/
+.python-version
+
+# Build / Distribution
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+.eggs/
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# Linter / Formatter / Type checker cache
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.dmypy.json
+
+
+# ----------------------------------------------------------------------------
+# Node / Frontend(Next.js 14 + pnpm + shadcn/ui)
+# ----------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# Build artifacts
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# pnpm / npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+
+# ----------------------------------------------------------------------------
+# Docker / Local Dev Stack
+# ----------------------------------------------------------------------------
+# Azurite emulator local data(infrastructure/docker-compose.yml volumes)
+infrastructure/azurite-data/
+
+# Postgres / Langfuse local data(若用 bind mount instead of named volume)
+infrastructure/postgres-data/
+infrastructure/langfuse-uploads/
+
+# Docker compose override(local dev experiments)
+docker-compose.override.yml
+docker-compose.*.local.yml
+
+
+# ----------------------------------------------------------------------------
+# Eval / Reports / Generated Artifacts
+# ----------------------------------------------------------------------------
+# Per-run eval reports(eval-methodology.md §6.1)
+reports/
+!reports/.gitkeep
+
+# Reranker shootout artifacts
+reports/reranker_shootout_*.yaml
+reports/reranker_shootout_*.json
+
+# LLM trace dumps(若 dev export Langfuse traces 落 local)
+traces/
+*.langfuse-export.json
+
+# Local screenshots cache(若 dev download Tango screenshots 暫存)
+data/screenshots/
+data/uploads/
+data/temp/
+
+
+# ----------------------------------------------------------------------------
+# IDE / Editor
+# ----------------------------------------------------------------------------
+# VS Code(team-shared config 例外)
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+
+# JetBrains(PyCharm / WebStorm / IntelliJ)
+.idea/
+*.iml
+*.iws
+
+# Vim / Emacs / Sublime
+*.swp
+*.swo
+*~
+.*.swp
+*.sublime-workspace
+
+# Cursor / Zed
+.cursor/
+.zed/
+
+
+# ----------------------------------------------------------------------------
+# OS-specific
+# ----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+
+# Linux
+.directory
+.Trash-*
+
+
+# ----------------------------------------------------------------------------
+# Misc
+# ----------------------------------------------------------------------------
+# Backup / temp
+*.bak
+*.tmp
+*.orig
+*~
+
+# Logs
+*.log
+logs/
+
+# Local sandbox / experiments
+sandbox/
+scratch/
+playground/
+
+# Pinned commit reference for Dify(每次 update 重新 generate)
+references/DIFY_PINNED_COMMIT.txt
+
+
+# ============================================================================
+# End of .gitignore
+# ============================================================================

@@ -1,0 +1,922 @@
+# EKP Tier 1 — Eval Set v0(W1 Placeholder)
+# 
+# ⚠️ CRITICAL WARNING — READ BEFORE USE ⚠️
+# ============================================================================
+# 呢份 file 係 W1 Day 1 嘅 PLACEHOLDER,並非 production-ready ground truth。
+# 
+# 1. 所有 query 由 architect 基於 generic「Ricoh MFP user manual」假設 synthesize
+#    出嚟,並未對應實際 100 份 manual 內容。
+# 
+# 2. 所有 chunk_id 都係 placeholder(`kb-drive_doc-M{NNN}_chunk-{IIII}`),
+#    Ricoh 實際 KB 嘅 chunk_id 一定唔同。SME 標註時必須 replace。
+# 
+# 3. 所有 `annotation.validated` 設為 `false`。SME 完成標註 + sanity check
+#    後方可改為 `true`。
+# 
+# 4. SME W1 Day 2 必須做以下:
+#    a. Review 每條 query 係咪 makes sense for 真實 Ricoh manual corpus
+#    b. 用 EKP Admin Console 嘅 chunk inspector 搵真正 chunk_id
+#    c. 修正 / 刪除 / 新增 query(若 generic assumption 偏離真實 corpus)
+#    d. 每條標完設 `annotation.validated: true` + 填 annotator name + date
+#    e. 跑 `python -m scripts.validate_eval_set docs/eval-set-v0.yaml` sanity check
+#    f. Rename 呢個 file 為 `eval-set-v1.yaml`(v1 = SME-validated)
+# 
+# 5. POC W4 加入 20 條 real user query 後,file 升級為 `eval-set-v2.yaml`。
+# 
+# Reference:annotation guideline 詳見 [`eval-methodology.md` §4](./eval-methodology.md)
+# ============================================================================
+
+metadata:
+  version: "0.1-placeholder"
+  created_at: "2026-04-27"
+  created_by: "EKP Architect (synthetic, pre-SME)"
+  intended_use: "W1 Day 1 baseline scaffold; SME must replace with real ground truth W1 Day 2"
+  
+  total_queries: 35
+  composition:
+    synthetic_main: 30
+    synthetic_oos: 5
+    user_collected: 0      # to be added W4 (target +20)
+  
+  difficulty_distribution:
+    easy: 15
+    medium: 11
+    hard: 4
+    n_a_oos: 5             # OOS queries don't have difficulty
+  
+  query_type_distribution:
+    single_step_lookup: 18
+    multi_step_synthesis: 9
+    troubleshooting: 3
+    oos: 5
+  
+  domain_assumption:
+    primary: "Ricoh MFP (Multi-Function Printer) — print/copy/scan/fax operations"
+    secondary: "Device admin — network, user management, firmware"
+    tertiary: "Maintenance & troubleshooting — paper jam, toner, error codes"
+    quaternary: "RMA / service workflow (inferred from sample filename)"
+    confidence: "low — based on generic Ricoh product family,not actual corpus inspection"
+
+  validation_status: "UNVALIDATED — all queries are placeholders awaiting SME review"
+
+# ============================================================================
+# SECTION 1: Single-Step Lookup Queries (18 queries)
+# 用戶問一個明確嘅 single procedure,答案應該喺單一 chunk 內
+# ============================================================================
+
+queries:
+
+  - query_id: Q001
+    query_text: "How do I clear a paper jam in the rear cover area?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M042_chunk-0007"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M042_chunk-0007"
+        - "kb-drive_doc-M042_chunk-0008"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M042_chunk-0007"
+      expected_answer_keywords:
+        - "rear cover"
+        - "lever"
+        - "jam"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — SME confirm chunk_id;adjacent step 8 acceptable if step 8 covers post-clear procedure"
+
+  - query_id: Q002
+    query_text: "How to replace the toner cartridge?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M015_chunk-0003"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M015_chunk-0003"
+        - "kb-drive_doc-M015_chunk-0004"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M015_chunk-0003"
+      expected_answer_keywords:
+        - "toner"
+        - "cartridge"
+        - "replace"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — assume toner replacement covered in maintenance manual"
+
+  - query_id: Q003
+    query_text: "How can I cancel a print job that is stuck in the queue?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0012"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0012"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M008_chunk-0012"
+      expected_answer_keywords:
+        - "cancel"
+        - "queue"
+        - "print job"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q004
+    query_text: "How do I scan a document to email?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0005"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0005"
+        - "kb-drive_doc-M021_chunk-0006"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M021_chunk-0005"
+      expected_answer_keywords:
+        - "scan"
+        - "email"
+        - "destination"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q005
+    query_text: "Where do I find the device serial number?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0002"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0002"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0002"
+      expected_answer_keywords:
+        - "serial number"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — likely in setup or quick-start section"
+
+  - query_id: Q006
+    query_text: "How to make double-sided copies?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M013_chunk-0009"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M013_chunk-0009"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M013_chunk-0009"
+      expected_answer_keywords:
+        - "double-sided"
+        - "duplex"
+        - "copy"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — duplex 同 double-sided 同義,SME 確認 manual 用邊個術語"
+
+  - query_id: Q007
+    query_text: "How do I change the language of the operation panel?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0014"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0014"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0014"
+      expected_answer_keywords:
+        - "language"
+        - "operation panel"
+        - "settings"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q008
+    query_text: "How to load paper into Tray 2?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M005_chunk-0006"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M005_chunk-0006"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M005_chunk-0006"
+      expected_answer_keywords:
+        - "Tray 2"
+        - "paper"
+        - "load"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q009
+    query_text: "How to print from a USB drive?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0021"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0021"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M008_chunk-0021"
+      expected_answer_keywords:
+        - "USB"
+        - "print"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q010
+    query_text: "How do I reset the device to factory defaults?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M030_chunk-0017"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M030_chunk-0017"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M030_chunk-0017"
+      expected_answer_keywords:
+        - "reset"
+        - "factory default"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 注意有 admin warning 嘅 step 通常單獨 chunk"
+
+  - query_id: Q011
+    query_text: "How to check the toner level?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M015_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M015_chunk-0001"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M015_chunk-0001"
+      expected_answer_keywords:
+        - "toner"
+        - "level"
+        - "remaining"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q012
+    query_text: "How to enable Wi-Fi on the printer?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0004"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0004"
+        - "kb-drive_doc-M027_chunk-0005"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M027_chunk-0004"
+      expected_answer_keywords:
+        - "Wi-Fi"
+        - "wireless"
+        - "enable"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — SSID config 可能喺隔離 chunk"
+
+  - query_id: Q013
+    query_text: "How to find the IP address of my MFP?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0010"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0010"
+        - "kb-drive_doc-M027_chunk-0011"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M027_chunk-0010"
+      expected_answer_keywords:
+        - "IP address"
+        - "network"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 兩種方式查 IP(operation panel + admin web),acceptable 兩個 chunk"
+
+  - query_id: Q014
+    query_text: "How to set up an authentication PIN for users?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M032_chunk-0008"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M032_chunk-0008"
+        - "kb-drive_doc-M032_chunk-0009"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M032_chunk-0008"
+      expected_answer_keywords:
+        - "PIN"
+        - "authentication"
+        - "user"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 涉及 user mgmt manual"
+
+  - query_id: Q015
+    query_text: "How can I configure SMTP settings for scan-to-email?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0023"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M027_chunk-0023"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M027_chunk-0023"
+      expected_answer_keywords:
+        - "SMTP"
+        - "email"
+        - "server"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q016
+    query_text: "How do I update the firmware?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M035_chunk-0005"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M035_chunk-0005"
+        - "kb-drive_doc-M035_chunk-0006"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M035_chunk-0005"
+      expected_answer_keywords:
+        - "firmware"
+        - "update"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — admin task,可能要 cite 多 chunk(prerequisite + procedure)"
+
+  - query_id: Q017
+    query_text: "How to add a new fax destination to the address book?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M019_chunk-0011"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M019_chunk-0011"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M019_chunk-0011"
+      expected_answer_keywords:
+        - "fax"
+        - "address book"
+        - "destination"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER"
+
+  - query_id: Q018
+    query_text: "How to print a configuration report?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0027"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0027"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0027"
+      expected_answer_keywords:
+        - "configuration"
+        - "report"
+        - "print"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — admin / diagnostic task"
+
+# ============================================================================
+# SECTION 2: Multi-Step Synthesis Queries (9 queries)
+# 答案需要從多個 chunks synthesize,通常涉及 prerequisite + procedure
+# ============================================================================
+
+  - query_id: Q019
+    query_text: "What do I need to do to set up scan-to-email from scratch?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0001"
+        - "kb-drive_doc-M027_chunk-0023"
+        - "kb-drive_doc-M021_chunk-0005"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M027_chunk-0023"
+        - "kb-drive_doc-M021_chunk-0005"
+      expected_answer_keywords:
+        - "SMTP"
+        - "address book"
+        - "scan to email"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 跨 manual M021 (scan) + M027 (network/SMTP)。SME 注意 'from scratch' implies prerequisite chain"
+
+  - query_id: Q020
+    query_text: "How to install a new MFP on my company network?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M027_chunk-0001"
+        - "kb-drive_doc-M027_chunk-0010"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M027_chunk-0001"
+      expected_answer_keywords:
+        - "install"
+        - "network"
+        - "IP"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — physical setup + network config 兩 manual cross-ref"
+
+  - query_id: Q021
+    query_text: "How do I configure the device for energy-saving mode?"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M030_chunk-0009"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M030_chunk-0009"
+        - "kb-drive_doc-M030_chunk-0010"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M030_chunk-0009"
+      expected_answer_keywords:
+        - "energy"
+        - "sleep"
+        - "saving"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 通常涉及 sleep timer + auto-off + power LED 等 setting,合 2 chunk"
+
+  - query_id: Q022
+    query_text: "I need to set up secure printing with user authentication. What are the steps?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M032_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M032_chunk-0001"
+        - "kb-drive_doc-M032_chunk-0008"
+        - "kb-drive_doc-M008_chunk-0034"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M032_chunk-0008"
+        - "kb-drive_doc-M008_chunk-0034"
+      expected_answer_keywords:
+        - "secure print"
+        - "authentication"
+        - "PIN"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 涉及 user mgmt + secure print job submission"
+
+  - query_id: Q023
+    query_text: "How to migrate address book entries to a new device?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M019_chunk-0024"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M019_chunk-0024"
+        - "kb-drive_doc-M019_chunk-0025"
+        - "kb-drive_doc-M035_chunk-0019"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M019_chunk-0024"
+        - "kb-drive_doc-M019_chunk-0025"
+      expected_answer_keywords:
+        - "address book"
+        - "export"
+        - "import"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — backup + restore workflow"
+
+  - query_id: Q024
+    query_text: "What's the procedure for first-time setup including network and admin password?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M001_chunk-0009"
+        - "kb-drive_doc-M027_chunk-0010"
+        - "kb-drive_doc-M032_chunk-0003"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M032_chunk-0003"
+      expected_answer_keywords:
+        - "first-time"
+        - "setup"
+        - "admin password"
+        - "network"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — 4-chunk synthesis 經典 case"
+
+  - query_id: Q025
+    query_text: "How to set up scheduled scanning to a network folder?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0019"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M021_chunk-0019"
+        - "kb-drive_doc-M021_chunk-0020"
+        - "kb-drive_doc-M027_chunk-0028"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M021_chunk-0019"
+        - "kb-drive_doc-M027_chunk-0028"
+      expected_answer_keywords:
+        - "scan"
+        - "scheduled"
+        - "network folder"
+        - "SMB"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — SMB folder config + scan profile"
+
+  - query_id: Q026
+    query_text: "How to create a custom print preset for our marketing department's poster printing?"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0042"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M008_chunk-0042"
+        - "kb-drive_doc-M008_chunk-0043"
+        - "kb-drive_doc-M005_chunk-0011"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M008_chunk-0042"
+      expected_answer_keywords:
+        - "preset"
+        - "print"
+        - "paper size"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — driver preset + paper size config 跨 chunk"
+
+  - query_id: Q027
+    query_text: "I need to setup the device for first-time use with network configuration, user authentication, scan-to-email, and admin password. Walk me through the complete process."
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M027_chunk-0010"
+        - "kb-drive_doc-M032_chunk-0003"
+        - "kb-drive_doc-M032_chunk-0008"
+        - "kb-drive_doc-M027_chunk-0023"
+        - "kb-drive_doc-M021_chunk-0005"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M001_chunk-0001"
+        - "kb-drive_doc-M032_chunk-0008"
+        - "kb-drive_doc-M027_chunk-0023"
+      expected_answer_keywords:
+        - "first-time"
+        - "network"
+        - "authentication"
+        - "scan to email"
+        - "admin password"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — HARD: 6-chunk synthesis,跨 4 manual。SME confirm 答案唔會過長 / 唔超出 LLM context"
+
+# ============================================================================
+# SECTION 3: Troubleshooting Queries (3 queries)
+# 用戶描述 symptom 或 error,系統需 reverse-lookup procedure
+# ============================================================================
+
+  - query_id: Q028
+    query_text: "My printer shows error code SC541 — what should I do?"
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0023"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0023"
+        - "kb-drive_doc-M048_chunk-0024"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M048_chunk-0023"
+      expected_answer_keywords:
+        - "SC541"
+        - "error"
+        - "service"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — SC541 係 Ricoh fuser temperature error,SME 確認 manual 有 cover。若無,改 query 為實際存在嘅 error code"
+
+  - query_id: Q029
+    query_text: "The device is making strange noises and prints come out smudged. What's wrong?"
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0007"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0007"
+        - "kb-drive_doc-M048_chunk-0014"
+        - "kb-drive_doc-M015_chunk-0011"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M048_chunk-0007"
+        - "kb-drive_doc-M048_chunk-0014"
+      expected_answer_keywords:
+        - "noise"
+        - "smudge"
+        - "print quality"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — symptom-based,multiple causes(toner / drum / fuser),expect multi-cause answer"
+
+  - query_id: Q030
+    query_text: "Users complain they can't scan to email anymore but printing still works. How to diagnose?"
+    query_phrasing_source: synthetic
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0031"
+      acceptable_chunk_ids:
+        - "kb-drive_doc-M048_chunk-0031"
+        - "kb-drive_doc-M027_chunk-0023"
+        - "kb-drive_doc-M021_chunk-0027"
+      expected_screenshot_chunks:
+        - "kb-drive_doc-M048_chunk-0031"
+      expected_answer_keywords:
+        - "scan to email"
+        - "SMTP"
+        - "diagnose"
+        - "test"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — partial outage diagnosis,要 reference SMTP test procedure + scan-specific log"
+
+# ============================================================================
+# SECTION 4: Out-of-Scope Queries (5 queries)
+# 系統應該拒答(refusal),測試 LLM 唔會 hallucinate / leak training data
+# 唔計入 Recall@5 metric,獨立追蹤 refusal rate
+# ============================================================================
+
+  - query_id: Q-OOS-001
+    query_text: "What's the weather in Tokyo today?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "搵唔到"          # 或英文 "couldn't find" / "not in"
+        - "manual"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — classic non-domain OOS。系統應拒答而非 fall back to general knowledge"
+
+  - query_id: Q-OOS-002
+    query_text: "What's the latest stock price of Ricoh Co Ltd?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "搵唔到"
+        - "manual"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — corporate-related but not in manual。Test LLM 唔 hallucinate stock data"
+
+  - query_id: Q-OOS-003
+    query_text: "List all Ricoh employees in the Hong Kong office."
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "搵唔到"
+        - "manual"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — privacy probe / data leak test"
+
+  - query_id: Q-OOS-004
+    query_text: "Write me a Python script to scrape competitor websites."
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "搵唔到"
+        - "manual"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — off-task probe。EKP 唔係 generic LLM,應拒答 coding task"
+
+  - query_id: Q-OOS-005
+    query_text: "How to disassemble the laser unit for cleaning?"
+    query_phrasing_source: synthetic
+    difficulty: null
+    query_type: oos
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "搵唔到"
+        - "service technician"      # 或 "認證技術員"
+      expected_refusal: true
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — TRICKY OOS:question 似 in-domain 但實際係 service-only procedure,end-user manual 唔會 cover。SME confirm 呢類 query 嘅 refusal pattern"
+
+# ============================================================================
+# END OF EVAL SET v0
+# 
+# Next steps:
+# 1. SME W1 Day 2:replace placeholder chunk_ids with real ones,validate=true
+# 2. Dev W1 Day 5:run `python -m scripts.validate_eval_set` 做 sanity check
+# 3. Dev W2:跑 baseline measurement,得出 Gate 1 數字
+# 4. Chris W4:加 20 條 user-collected query,升級為 v2
+# 5. SME W4:re-validate v2(20 條 user query 標 ground truth)
+# 6. Dev W4:跑 Gate 2 measurement on full 50-query v2 set
+# 7. Dev W6:跑 Final Gate measurement,出 stakeholder demo report
+# ============================================================================
