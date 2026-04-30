@@ -56,10 +56,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 100 份 Drive Project manual 喺 .docx / .pdf / .pptx 嘅實際比例係? |
 | **Why it matters** | W1 priority:邊個 parser 做先(Docling .docx 先做,定 PDF 先做)。比例極不均(e.g. 95% Word)會 simplify W1–W2 work。 |
 | **Default if unanswered** | 假設 ~80% Word + 15% PDF + 5% PPT,W1 主力做 Docling .docx parser |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **40% Word + 30% PPT + 30% PDF**。Implication:W1 主力 Docling `.docx` parser(最大 single format),但 W2 PDF + PPT 同等 priority,**唔可以推到 W3**(PPT + PDF 合 60%,delay 即 60% corpus 唔 indexable)。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` |
 
 ---
 
@@ -70,10 +70,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 100 份 manual 嘅實際 access path?(SharePoint URL? Google Drive folder? OneDrive? Network share? 個別下載?) |
 | **Why it matters** | Ingestion pipeline Day 1 要 connect 到 source。手動 download zip 同 SharePoint API connector 係 2 種不同 effort。 |
 | **Default if unanswered** | 假設 Chris 提供 zip / folder 包 100 份 manual,W1 用 manual upload。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | Stakeholder 提供文件原檔。Upload path **三選一**:(1) 直接上傳(POC default、Admin Console drag-drop)、(2) 共享 folder(network share pickup)、(3) SharePoint site。POC 階段 **(1) manual upload 即可**;**(3) SharePoint connector 屬 Tier 2 auto-sync trigger**(spec §11)。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` |
 
 ---
 
@@ -84,10 +84,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 公司 Azure tenant 已有 Azure AI Search resource 未?如有,resource name + region + tier 係?如冇,邊個 owner 負責 provision? |
 | **Why it matters** | Standard S1 base price ~USD 75/月。需 Service quota 同 RBAC 配置,新 provision 通常 1–3 工作日。 |
 | **Default if unanswered** | 假設要新 provision,W1 Day 1 dev 自己用 `az search service create` 跑 setup.md §3.2 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Azure AI Search service 已 provisioned**(POC stage)。**Pending implementation detail**:resource name + region + tier(Standard S1 expected)+ admin credential。**W2 D1 ingestion start 之前** 需要 Chris 透過 `.env`(see §3.4)提供 `AZURE_SEARCH_ENDPOINT` + `AZURE_SEARCH_ADMIN_KEY`(或 Managed Identity 配置)。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` (pending implementation detail by W2 D1) |
 
 ---
 
@@ -98,10 +98,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 公司 Azure OpenAI resource 有 GPT-5.5 deployment 未?Deployment name 係咩(e.g. `gpt-5-5`)?Quota 配置?<br>同樣問:`text-embedding-3-large` 同 `gpt-5.4-mini`(CRAG judge) deployment 名? |
 | **Why it matters** | W3 critical path:LLM synthesis 唔 deploy = 答案生成做唔到。Deployment quota 太細(< 50 TPM)Beta 階段會 rate limit。 |
 | **Default if unanswered** | 假設 dev 自行 deploy(setup.md §3.3)。Deployment name 用 `gpt-5-5`、`text-embedding-3-large`、`gpt-5-4-mini`。Quota 50–100 TPM。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Azure OpenAI 完整 deployment 已 ready**:`gpt-5.5`、`gpt-5.4`、`gpt-5.4-mini`、`gpt-5.4-nano`、`text-embedding-3-small`、`text-embedding-3-large`。**Pending implementation detail**:exact deployment names(可能 differ from canonical model names)+ endpoint URL + API key + per-deployment quota TPM。**W2 D1 ingestion / W3 D1 synthesis 之前** 需要 Chris 透過 `.env` 提供:`AZURE_OPENAI_ENDPOINT`、`AZURE_OPENAI_KEY`、`AZURE_OPENAI_DEPLOYMENT_GPT55`、`AZURE_OPENAI_DEPLOYMENT_GPT54_MINI`、`AZURE_OPENAI_DEPLOYMENT_EMBEDDING_LARGE`。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` (pending implementation detail by W2 D1) |
 
 ---
 
@@ -224,10 +224,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Stakeholder 同意 dedicate 一個 SME 負責 W1–W4 嘅 eval set ground truth 標註?Estimated 2–3 工作日 effort across 4 週。 |
 | **Why it matters** | 無 ground truth = 無 4 metric measurement = POC W4 / W6 Gate 數字唔可信 = POC 結論 disputable。R2 risk(architecture.md §8.1)直接 cover 呢點。 |
 | **Default if unanswered** | 假設 yes,W1 Day 2 confirm 具體 SME(Q14)。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Yes** — stakeholder 同意 dedicate SME 負責 W1–W4 ground truth 標註(estimated 2–3 工作日 across 4 週)。Specific labeler 詳見 Q14。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` |
 
 ---
 
@@ -242,10 +242,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Q13 已 confirm by stakeholder,**具體邊位 SME** 做標註?Email + 工時可用度? |
 | **Why it matters** | Ownership clear 後 W1 Day 2 即啟動標註 workflow,避免 W4 Gate 撞死線。 |
 | **Default if unanswered** | Block W1 Day 2 後 deliverable(eval set v0)。 |
-| **Decision** | 🟡 To be filled by domain expert |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Yes** — domain expert allocation confirmed by Chris。**Pending implementation detail**:specific labeler name + email + 工時可用度。**W1 末** 之前 confirm specific person(W2 起 ground truth labeling 啟動)。中期 fallback:Chris 自己 review LLM-judge first pass 並 verify(R2 risk mitigation per architecture.md §8.1)。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
+| **Date** | 2026-04-30 |
+| **Status** | `Resolved` (pending specific labeler by W1 末) |
 
 ---
 
@@ -357,20 +357,20 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 
 | Q# | 簡述 | Owner | Critical? | Status | Decided On |
 |---|---|---|---|---|---|
-| Q1 | Format ratio | Stakeholder + SME | 🔴 | Open | — |
-| Q2 | Source access | Stakeholder | 🔴 | Open | — |
-| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | Open | — |
-| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | Open | — |
+| Q1 | Format ratio | Stakeholder + SME | 🔴 | `Resolved` | 2026-04-30 |
+| Q2 | Source access | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
+| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | `Resolved` (pending detail) | 2026-04-30 |
+| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | `Resolved` (pending detail) | 2026-04-30 |
 | Q5 | Cohere procurement | Stakeholder | | Open | — |
 | Q6 | Real query collection | Stakeholder | | Open | — |
 | Q7 | Beta user source | Stakeholder | | Open | — |
 | Q8 | 4-metric replacement | Stakeholder | | Open | — |
 | Q9 | Sensitivity / CMK | Stakeholder | | Open | — |
-| Q10 | Visual identity | Stakeholder | | Open | — |
+| Q10 | Visual identity | Stakeholder | | Open (using default neutral tokens) | — |
 | Q11 | Entra ID tenant | Stakeholder | | Open | — |
 | Q12 | Tier 2 owner = Chris | Stakeholder | | Open | — |
-| Q13 | Ground truth allocation | Stakeholder | 🔴 | Open | — |
-| Q14 | Specific labeler | Domain Expert | 🔴 | Open | — |
+| Q13 | Ground truth allocation | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
+| Q14 | Specific labeler | Domain Expert | 🔴 | `Resolved` (pending name by W1 末) | 2026-04-30 |
 | Q15 | Update frequency | Domain Expert | | Open | — |
 | Q16 | Status quo baseline | Domain Expert | | Open | — |
 | Q17 | Sample structure | Dev | | Open | W1D1 |
@@ -379,7 +379,12 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q20 | LLM pick | Dev | | Open | W3 |
 | Q21 | Reranker pick | Dev | | Open | W4 |
 
-**Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)。**呢 6 條全 Resolved 之前唔啟動 W1**。
+**Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
+
+**Pending implementation detail**(by W1 末 / W2 D1):
+- Q3 — Azure AI Search resource name + region + tier + credential(`AZURE_SEARCH_*` env var)
+- Q4 — Azure OpenAI exact deployment names + endpoint + API key(`AZURE_OPENAI_*` env var)
+- Q14 — Specific SME labeler name + email + 工時
 
 ---
 
