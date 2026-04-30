@@ -130,7 +130,7 @@ services:
   # ⚠️ 注意:呢個係 Langfuse v2 single-Postgres mode。
   #    Langfuse v3 需要 ClickHouse + Redis 做 analytics,Tier 2 階段先升級。
   langfuse:
-    image: langfuse/langfuse:2-latest
+    image: langfuse/langfuse:2
     container_name: ekp-langfuse
     restart: unless-stopped
     networks: [ekp-local]
