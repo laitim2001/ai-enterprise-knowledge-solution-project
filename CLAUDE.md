@@ -106,6 +106,8 @@ Multi-step task 要先講 plan:
 | 情況 | 必讀文件 | 補充 |
 |---|---|---|
 | **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / journal — 詳見 §10 |
+| **改 / 新加 component**(明確涉及 EKP 12 modules 之一)| [`docs/02-architecture/COMPONENT_CATALOG.md`](./docs/02-architecture/COMPONENT_CATALOG.md) + 對應 `components/Cn-{kebab}.md`(若已存在)| 識別 component → spec ref + dep + tech + status,再跳去 architecture.md 對應 section 落實作 |
+| **Risk-related decision / mitigation update** | [`docs/01-planning/RISK_REGISTER.md`](./docs/01-planning/RISK_REGISTER.md)(living)+ `docs/architecture.md §8`(frozen baseline)| 新 risk / status update 入 living register,§8 不動 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
 | 寫 / 改 backend feature | `docs/architecture.md` §3 + §4 | RAG core + application architecture |
 | 寫 / 改 frontend feature | `docs/architecture.md` §5 + Dify ref(see §7) | UI specifications + visual identity policy |

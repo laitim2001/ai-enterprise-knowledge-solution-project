@@ -355,29 +355,29 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 
 每次 update 同步維護呢個 table 嘅 status:
 
-| Q# | 簡述 | Owner | Critical? | Status | Decided On |
-|---|---|---|---|---|---|
-| Q1 | Format ratio | Stakeholder + SME | 🔴 | `Resolved` | 2026-04-30 |
-| Q2 | Source access | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
-| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | `Resolved` (pending tier+region W2 D1) | 2026-05-01 |
-| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | `Resolved` (full) | 2026-05-01 |
-| Q5 | Cohere procurement | Stakeholder | | Open | — |
-| Q6 | Real query collection | Stakeholder | | Open | — |
-| Q7 | Beta user source | Stakeholder | | Open | — |
-| Q8 | 4-metric replacement | Stakeholder | | Open | — |
-| Q9 | Sensitivity / CMK | Stakeholder | | Open | — |
-| Q10 | Visual identity | Stakeholder | | Open (using default neutral tokens) | — |
-| Q11 | Entra ID tenant | Stakeholder | | Open | — |
-| Q12 | Tier 2 owner = Chris | Stakeholder | | Open | — |
-| Q13 | Ground truth allocation | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
-| Q14 | Specific labeler | Domain Expert | 🔴 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |
-| Q15 | Update frequency | Domain Expert | | Open | — |
-| Q16 | Status quo baseline | Domain Expert | | Open | — |
-| Q17 | Sample structure | Dev | | Open | W1D1 |
-| Q18 | Image format | Dev | | Open | W1D1 |
-| Q19 | Embedding dim | Dev | | Open | W2 |
-| Q20 | LLM pick | Dev | | Open | W3 |
-| Q21 | Reranker pick | Dev | | Open | W4 |
+| Q# | 簡述 | Owner | Critical? | Component(s) | Status | Decided On |
+|---|---|---|---|---|---|---|
+| Q1 | Format ratio | Stakeholder + SME | 🔴 | C01 | `Resolved` | 2026-04-30 |
+| Q2 | Source access | Stakeholder | 🔴 | C01 + C06 | `Resolved` | 2026-04-30 |
+| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (pending tier+region W2 D1) | 2026-05-01 |
+| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | C05 + C01 | `Resolved` (full) | 2026-05-01 |
+| Q5 | Cohere procurement | Stakeholder | | C04 | Open | — |
+| Q6 | Real query collection | Stakeholder | | C06 | Open | — |
+| Q7 | Beta user source | Stakeholder | | C09 + C10 + C11 | Open | — |
+| Q8 | 4-metric replacement | Stakeholder | | C06 | Open | — |
+| Q9 | Sensitivity / CMK | Stakeholder | | C03 + C12 | Open | — |
+| Q10 | Visual identity | Stakeholder | | C09 + C10 | Open (using default neutral tokens) | — |
+| Q11 | Entra ID tenant | Stakeholder | | C11 | Open | — |
+| Q12 | Tier 2 owner = Chris | Stakeholder | | (cross-cutting governance) | Open | — |
+| Q13 | Ground truth allocation | Stakeholder | 🔴 | C06 | `Resolved` | 2026-04-30 |
+| Q14 | Specific labeler | Domain Expert | 🔴 | C06 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |
+| Q15 | Update frequency | Domain Expert | | C01 | Open | — |
+| Q16 | Status quo baseline | Domain Expert | | C06 | Open | — |
+| Q17 | Sample structure | Dev | | C01 | Open | W1D1 |
+| Q18 | Image format | Dev | | C01 | Open | W1D1 |
+| Q19 | Embedding dim | Dev | | C01 + C03 | Open | W2 |
+| Q20 | LLM pick | Dev | | C05 | Open | W3 |
+| Q21 | Reranker pick | Dev | | C04 | Open | W4 |
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
 

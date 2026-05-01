@@ -30,6 +30,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 ## 2. Deliverables
 
 ### F1 — Repo hygiene + Dify reference clone
+- **Component(s)**:**C12** DevOps & Infra(repo + Dify reference setup)
 - **Spec ref**:`architecture.md §12.1`,`CLAUDE.md §7`
 - **OQ deps**:none
 - **Acceptance criteria**:
@@ -42,6 +43,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F2 — Backend FastAPI skeleton(18 endpoint stubs)
+- **Component(s)**:**C08** API Gateway(scaffold);secondary touch **C07** Observability(structlog + Langfuse stub init)
 - **Spec ref**:`architecture.md §4.1, §4.4, §4.5`,`CLAUDE.md §3.1, §5.6`
 - **OQ deps**:none
 - **Acceptance criteria**:
@@ -58,6 +60,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F3 — Frontend Next.js 14 skeleton(6 routes)
+- **Component(s)**:**C09** Admin Console UI(primary 5/6 routes)+ **C10** Chat Interface UI(`/` placeholder pre-W3)
 - **Spec ref**:`architecture.md §4.1, §5.1-§5.7`,`CLAUDE.md §3.2`
 - **OQ deps**:Q10(default = neutral tokens)
 - **Acceptance criteria**:
@@ -71,6 +74,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F4 — Local dev stack(Azurite + Langfuse + Postgres)
+- **Component(s)**:**C12** DevOps & Infra(primary,docker-compose + Azurite)+ **C07** Observability(Langfuse + Postgres backing)
 - **Spec ref**:`architecture.md §4.3`,`docs/setup.md §4.2`
 - **OQ deps**:none
 - **Acceptance criteria**:
@@ -82,6 +86,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI + Chris(start Docker Desktop)
 
 ### F5 — Eval set v0 schema validator
+- **Component(s)**:**C06** Eval Framework
 - **Spec ref**:`architecture.md §6.1 W1`,`docs/eval-set-v0.yaml` step 5e,`docs/eval-methodology.md`
 - **OQ deps**:Q14(SME labeler — pending W1 末 specific name,但 schema validator 唔依賴)
 - **Acceptance criteria**:
@@ -93,6 +98,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F6 — Sample manual structure inspector
+- **Component(s)**:**C01** Ingestion Pipeline(exploratory tool to inform parser design)
 - **Spec ref**:`decision-form.md §3 Q17 + Q18`
 - **OQ deps**:Q2(sample manual access — execution blocked,script self 可寫)
 - **Acceptance criteria**:
@@ -104,6 +110,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F7 — KB management CRUD impl(replace 501 stubs)
+- **Component(s)**:**C02** Knowledge Base Manager(primary);wired through **C08** API Gateway routes
 - **Spec ref**:`architecture.md §3.4, §4.4 #4-8`
 - **OQ deps**:Q3(Azure AI Search resource — pending implementation detail,可先做 in-memory mock service for unit test)
 - **Acceptance criteria**:
@@ -117,6 +124,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI
 
 ### F8 — Docling `.docx` parser PoC on 5 sample manuals
+- **Component(s)**:**C01** Ingestion Pipeline(parser sub-step)
 - **Spec ref**:`architecture.md §3.3`
 - **OQ deps**:Q1(format ratio,Resolved 40W/30PPT/30PDF),Q2(sample access — pending you 提供 zip / folder)
 - **Acceptance criteria**:
@@ -127,6 +135,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI(等 Q2 sample)
 
 ### F9 — Azure AI Search index `ekp-kb-drive-v1` 創建
+- **Component(s)**:**C03** Indexing Service(first-touch heavy work)
 - **Spec ref**:`architecture.md §3.6`
 - **OQ deps**:Q3(Azure resource — pending you 提供 endpoint + key 入 `.env`)
 - **Acceptance criteria**:
@@ -138,6 +147,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI(等 Q3)
 
 ### F10 — Embedding pipeline first-pass(Azure OpenAI text-embedding-3-large)
+- **Component(s)**:**C01** Ingestion Pipeline(embedding sub-step)
 - **Spec ref**:`architecture.md §3.2`
 - **OQ deps**:Q4(deployment names — pending you 提供 入 `.env`)
 - **Acceptance criteria**:
@@ -148,6 +158,7 @@ W01 係 EKP Tier 1 嘅 foundation phase。建立 repo + Dify reference + backend
 - **Owner**:AI(等 Q4)
 
 ### F11 — 30 條 synthetic eval set ground truth fill
+- **Component(s)**:**C06** Eval Framework(ground truth artifact)
 - **Spec ref**:`architecture.md §6.1 W1`,`docs/eval-set-v0.yaml`
 - **OQ deps**:Q14(specific SME labeler — Resolved pending name by W1 末)+ Q2(sample access for chunk_id discovery)
 - **Acceptance criteria**:
