@@ -80,13 +80,22 @@ last_updated: 2026-04-30
 
 ## F7 — KB management CRUD impl
 
-- [ ] In-memory KB service(`backend/kb_management/kb_service.py`)
-- [ ] `POST /kb` create
-- [ ] `GET /kb` list
-- [ ] `GET /kb/{kb_id}` detail
-- [ ] `DELETE /kb/{kb_id}` delete + cleanup
-- [ ] `PATCH /kb/{kb_id}/settings` update
-- [ ] Unit tests for CRUD(mock storage backend)
+- [x] **KB management package**(`backend/kb_management/`)
+  - `storage.py`:`KBStorageBackend` Protocol + `InMemoryKBBackend`(W1)+ `KBNotFoundError` / `KBAlreadyExistsError`
+  - `service.py`:`KBService` + `get_kb_service()` lru_cache singleton
+  - `__init__.py`:public re-exports
+  - **Note**:plan §2 寫 `kb_service.py` 單檔,實作改為 3-file package(Protocol-based,W2 swap to Azure AI Search 唔需改 call site)。`§1.3` surgical:scope unchanged
+- [x] **Schema**:`KbCreate` input(`backend/api/schemas/kb.py`)
+- [x] `POST /kb` create — 201 Created;409 Conflict 若 `kb_id` 已存在
+- [x] `GET /kb` list
+- [x] `GET /kb/{kb_id}` detail — 404 if not found
+- [x] `DELETE /kb/{kb_id}` delete + cleanup(W1 in-memory only;W2 D1 真 cleanup index + Blob container)
+- [x] `PATCH /kb/{kb_id}/settings` update — full-replace KbConfig(partial PATCH 留 W2+ 如需)
+- [x] **Routes refactor**:`Annotated[KBService, Depends(get_kb_service)]` modern FastAPI pattern(ruff B008 clean)
+- [x] **pyproject**:`kb_management*` 加入 setuptools.packages.find include
+- [x] **Verification**:ruff check ✅,ruff format ✅,`python -m compileall` ✅
+- [ ] **DEFERRED to post-pip-install window** — Unit tests for CRUD(mock storage backend)
+  - Reason:pytest 未裝(corp proxy block);verification path 同 F2 deferred,共用同一 ops window 解
 
 ## F8 — Docling `.docx` parser PoC
 

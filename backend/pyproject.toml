@@ -29,7 +29,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["api*", "storage*", "observability*"]
+include = ["api*", "storage*", "observability*", "kb_management*"]
 exclude = ["tests*", ".venv*", "*.egg-info"]
 
 [tool.ruff]

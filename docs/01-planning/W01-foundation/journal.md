@@ -155,9 +155,16 @@ status: in-progress
 
 | Hash | Subject |
 |---|---|
-| `(this commit)` | chore(security): gitignore env-resources folder + W1 D2 mid-day journal |
-| `(planned)` | feat(kb): impl KB CRUD with in-memory backend (P3: no unit tests today) |
-| `(planned EOD)` | docs(planning): W1 D2 journal closeout |
+| `09138d4` | chore(security): gitignore env-resources folder + W1 D2 H5 closure |
+| `(this commit)` | feat(kb): impl KB CRUD with in-memory backend (P3: tests deferred) |
+| `(planned EOD)` | docs(planning): W1 D2 journal closeout(decision-form Q3+Q4+Q14 sync etc.)|
+
+### F7 implementation note(this commit)
+
+- New package `backend/kb_management/` 3-file(plan §2 寫 `kb_service.py` 單檔,implementation 升級為 Protocol-based package)
+- 5 endpoints replace 501 stubs;ruff lint + format + compileall ✅
+- Unit tests deferred 與 F2 共用 post-pip-install window
+- **R3 plan changelog 唔需要新加 entry**:scope unchanged(in-memory KB CRUD per plan F7),只係 file layout 由 1 file 升級為 3-file package(implementation detail,non-architectural)
 
 ---
 
