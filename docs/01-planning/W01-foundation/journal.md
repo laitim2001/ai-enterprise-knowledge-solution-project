@@ -159,14 +159,84 @@ status: in-progress
 |---|---|
 | `09138d4` | chore(security): gitignore env-resources folder + W1 D2 H5 closure |
 | `c6ca6e3` | feat(kb): impl KB CRUD with in-memory backend (P3: tests deferred) |
-| `(this commit)` | docs(planning): W1 D2 closeout — sync decision-form Q3+Q4+Q14 + journal EOD |
+| `dfcafbf` | docs(planning): W1 D2 closeout — sync decision-form Q3+Q4+Q14 + journal EOD |
 
-### F7 implementation note(this commit)
+### F7 implementation note
 
 - New package `backend/kb_management/` 3-file(plan §2 寫 `kb_service.py` 單檔,implementation 升級為 Protocol-based package)
 - 5 endpoints replace 501 stubs;ruff lint + format + compileall ✅
 - Unit tests deferred 與 F2 共用 post-pip-install window
 - **R3 plan changelog 唔需要新加 entry**:scope unchanged(in-memory KB CRUD per plan F7),只係 file layout 由 1 file 升級為 3-file package(implementation detail,non-architectural)
+
+---
+
+## Day 3 — 2026-05-01
+
+> Status: **structural pivot day** — D3 從原 plan 嘅 F8/F9 implementation pivoted 到 **component spine introduction**(per Chris W1 D3 strategic call)。F8 + F9 仍 BLOCKED(Q2 + corp proxy);利用 blocker window 完成 EKP 12-component decomposition + 3 個 doc 入主流(catalog / risk register / planning artifact tags)。
+
+### Done
+
+**Block A — Component Catalog spine**(commit `220f75a`):
+- `docs/02-architecture/COMPONENT_CATALOG.md`(530 lines)創建,12 components(C01-C12)
+- 3-layer doc 分工 lock:`architecture.md`(spec what+why)/ `PROCESS.md`(lifecycle how)/ catalog(structure)
+- 7 cross-cutting conventions CC-1..CC-7(future plan / ADR / OQ / risk / design note binding rules)
+- 8 個 Tier 2 features 對應 Cn slot(future-proof)
+- `docs/02-architecture/components/README.md` rolling JIT design note convention(per CC-5)
+
+**Block B — Existing artifact refactor**(commit `2dc0948`):
+- `W01-foundation/plan.md` F1-F11 加 `**Component(s)**` field(per CC-1)
+- `decision-form.md` 21 OQ dashboard 加 `Component(s)` column(per CC-3)
+- `RISK_REGISTER.md` NEW(per CC-4):living register,extends frozen `architecture.md §8` R1-R7 + 加 component tag + 3 net-new W1 incident risk(R8 corp proxy / R9 MCR DNS / R10 Q2 delay)
+- `CLAUDE.md §2` Document Routing 加 2 row(component catalog + risk register routing)
+
+### Decisions
+
+- **Strategic decomposition adopted**:Chris W1 D3 strategic call → introduce 12-component spine(agent-harness analogy)before W2 kickoff;unblock cross-phase / cross-domain visibility(原問題:「閉起雙眼走路」)
+- **3-layer doc 分工 lock**:`architecture.md`(spec)/ `PROCESS.md`(lifecycle)/ `COMPONENT_CATALOG.md`(structure)— 三者單一 source-of-truth,zero duplication;component design note(`components/Cn-*.md`)係 catalog row 嘅 expansion
+- **Per-component design note rolling JIT**(CC-5):no speculative pre-write,first heavy-touch phase 寫 stub。**Tier 1 內 11/12 component design note 待 W2-W7 first-touch 時補**
+- **`architecture.md` frozen invariant 維持**:living evolution(risk + status)入 `RISK_REGISTER.md` 而非編輯 `§8`(per CC-4)
+- **Component tagging 強制**(CC-1 / CC-3):W2+ 起所有 phase plan deliverable / OQ / ADR 必須 tag 對應 Cn
+
+### Blockers(unchanged from D2 EOD)
+
+- 🔴 **Ricoh corp proxy on PyPI/TUNA**:仍 active,F2 + F7 unit tests 仍 deferred → R8 living entry
+- 🚫 **Q2 sample manual**:仍 pending,F8 + F11 仍 BLOCKED → R10 living entry
+- 新增 W1 D3 risk register 補:R8 / R9 / R10 全部入 RISK_REGISTER.md
+
+### Component-lens retrospective on W1 D1-D3 work(per CC-1 retroactive view)
+
+| Deliverable | Status | Component(s) touched |
+|---|---|---|
+| F1 Repo + Dify(D1)| ✅ | C12 |
+| F2 FastAPI skeleton(D1)| ✅(pytest defer) | C08 + C07 |
+| F3 Next.js skeleton(D1)| ✅ | C09 + C10 |
+| F4 Local dev stack(D1)| ✅ | C12 + C07 |
+| F5 Eval validator(D1)| ✅ | C06 |
+| F6 docx inspector(D1)| ✅(execution blocked Q2)| C01 |
+| F7 KB CRUD impl(D2)| ✅(unit tests defer) | C02 + C08 |
+| H5 remediation(D2)| ✅ | C12(infra/secrets governance) |
+| Python 3.12 install(D2)| ✅ | C12 |
+| OQ Q3+Q4+Q14 sync(D2)| ✅ | (governance,unblocks C03 / C05 / C01 / C06) |
+| Component spine introduction(D3)| ✅ | (cross-cutting structural foundation) |
+
+**Component-touch coverage W1 D1-D3**:**8/12 components**(C01 partial, C02 ✅ in-memory, C06 ✅ scaffold, C07 ✅ init, C08 ✅ scaffold, C09 ✅ scaffold, C10 partial scaffold, C12 ✅)。剩 **4 個 component**(C03 / C04 / C05 / C11)需 W2+ first-touch — 跟 catalog phase × component heatmap 一致。
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| Block A Component Catalog + components/README | 3 | 2.5 | -0.5h | Structure clear,12 entries 一氣呵成 |
+| Block B Refactor existing artifacts | 2 | 1.5 | -0.5h | 14 parallel edits 一輪過 |
+| Block C Journal Day 3 + checklist tick(this commit)| 1 | 0.5 | -0.5h | Closure simple |
+| **Total D3** | **6** | **4.5** | **-1.5h** | Spine introduction 比預期 efficient |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `220f75a` | feat(planning): introduce 12-component catalog (EKP module spine) |
+| `2dc0948` | refactor(planning): tag W01 plan + decision-form OQ + add RISK_REGISTER.md |
+| `(this commit)` | docs(planning): W1 D3 journal + checklist tick — component spine done |
 
 ---
 

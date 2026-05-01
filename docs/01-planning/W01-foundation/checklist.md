@@ -138,8 +138,16 @@ last_updated: 2026-04-30
 - [x] **W1 D2 H5 remediation** — gitignore `docs/11-env-resources-detail/` + relocate Q3+Q4 plaintext secrets to root `.env` + sanitize markdown 為 reference table — commit pending(this batch)
 - [x] **W1 D2 Python 3.12.10 install** — winget per-user,resolve W1 D1 R5 risk(cp314 wheel supply)— covered in journal Day 2
 - [ ] All deliverables(F7-F11)committed by W1 D5(2026-05-04)
-- [x] **W1 D2 OQ sync to `decision-form.md`**:Q3 → `Resolved (pending tier+region W2 D1)`,Q4 → `Resolved (full)`,Q14 → `Resolved (full — Chris Lai self-assigned)`;dashboard table + pending implementation list 同步更新 — commit pending(this batch)
+- [x] **W1 D2 OQ sync to `decision-form.md`**:Q3 → `Resolved (pending tier+region W2 D1)`,Q4 → `Resolved (full)`,Q14 → `Resolved (full — Chris Lai self-assigned)`;dashboard table + pending implementation list 同步更新 — commit `dfcafbf`
+- [x] **W1 D3 Component Catalog spine**(per Chris strategic call)— commits `220f75a` + `2dc0948`
+  - `docs/02-architecture/COMPONENT_CATALOG.md` 12-component spine(C01-C12)+ dependency graph + phase × component heatmap + 7 cross-cutting conventions CC-1..CC-7 + 8 Tier 2 future-slot mapping
+  - `docs/02-architecture/components/README.md` rolling JIT design note convention(per CC-5)
+  - `RISK_REGISTER.md` living register extends frozen `architecture.md §8` + adds R8 (corp proxy) + R9 (MCR DNS) + R10 (Q2 delay)
+  - `W01-foundation/plan.md` F1-F11 component-tagged(per CC-1)
+  - `decision-form.md` 21 OQ dashboard component-tagged(per CC-3)
+  - `CLAUDE.md §2` routing 加 catalog + risk register row
 - [ ] (Ongoing)Future OQ status changes synced to `decision-form.md` — W2+ Q5/Q11/Q15-21 之 resolution
+- [ ] (Ongoing)Future ADR / phase plan / risk update 必 component-tag(per CC-1/2/3/4)
 - [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— W1 暫無
 - [ ] `journal.md` retro section written W1 D5 末
 - [ ] `journal.md` frontmatter status flipped to `closed`
