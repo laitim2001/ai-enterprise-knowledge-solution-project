@@ -84,10 +84,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 公司 Azure tenant 已有 Azure AI Search resource 未?如有,resource name + region + tier 係?如冇,邊個 owner 負責 provision? |
 | **Why it matters** | Standard S1 base price ~USD 75/月。需 Service quota 同 RBAC 配置,新 provision 通常 1–3 工作日。 |
 | **Default if unanswered** | 假設要新 provision,W1 Day 1 dev 自己用 `az search service create` 跑 setup.md §3.2 |
-| **Decision** | **Azure AI Search service 已 provisioned**(POC stage)。**Pending implementation detail**:resource name + region + tier(Standard S1 expected)+ admin credential。**W2 D1 ingestion start 之前** 需要 Chris 透過 `.env`(see §3.4)提供 `AZURE_SEARCH_ENDPOINT` + `AZURE_SEARCH_ADMIN_KEY`(或 Managed Identity 配置)。 |
-| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
-| **Date** | 2026-04-30 |
-| **Status** | `Resolved` (pending implementation detail by W2 D1) |
+| **Decision** | **Azure AI Search service 已 provisioned**(POC stage)。**W1 D2 (2026-05-01) implementation detail delivered**:endpoint = `https://azureaisearchtesting.search.windows.net`(service name `azureaisearchtesting`),region = `eastus2`(inferred),admin key 由 plaintext markdown 遷移至 root `.env`(gitignored,H5 remediation commit `09138d4`)。**Outstanding minor**:tier(Standard S1 expected per architecture.md §3.2)+ region 確認 by W2 D1。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;detail delivered 2026-05-01) |
+| **Date** | 2026-04-30(initial)/ 2026-05-01(detail) |
+| **Status** | `Resolved` (pending tier + region confirm by W2 D1) |
 
 ---
 
@@ -98,10 +98,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 公司 Azure OpenAI resource 有 GPT-5.5 deployment 未?Deployment name 係咩(e.g. `gpt-5-5`)?Quota 配置?<br>同樣問:`text-embedding-3-large` 同 `gpt-5.4-mini`(CRAG judge) deployment 名? |
 | **Why it matters** | W3 critical path:LLM synthesis 唔 deploy = 答案生成做唔到。Deployment quota 太細(< 50 TPM)Beta 階段會 rate limit。 |
 | **Default if unanswered** | 假設 dev 自行 deploy(setup.md §3.3)。Deployment name 用 `gpt-5-5`、`text-embedding-3-large`、`gpt-5-4-mini`。Quota 50–100 TPM。 |
-| **Decision** | **Azure OpenAI 完整 deployment 已 ready**:`gpt-5.5`、`gpt-5.4`、`gpt-5.4-mini`、`gpt-5.4-nano`、`text-embedding-3-small`、`text-embedding-3-large`。**Pending implementation detail**:exact deployment names(可能 differ from canonical model names)+ endpoint URL + API key + per-deployment quota TPM。**W2 D1 ingestion / W3 D1 synthesis 之前** 需要 Chris 透過 `.env` 提供:`AZURE_OPENAI_ENDPOINT`、`AZURE_OPENAI_KEY`、`AZURE_OPENAI_DEPLOYMENT_GPT55`、`AZURE_OPENAI_DEPLOYMENT_GPT54_MINI`、`AZURE_OPENAI_DEPLOYMENT_EMBEDDING_LARGE`。 |
-| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
-| **Date** | 2026-04-30 |
-| **Status** | `Resolved` (pending implementation detail by W2 D1) |
+| **Decision** | **Azure OpenAI 完整 deployment 已 ready**。**W1 D2 (2026-05-01) implementation detail delivered**:endpoint = `https://chris-mj48nnoz-eastus2.cognitiveservices.azure.com/`,region = `eastus2`,api version = `2024-12-01-preview`,6 deployments(`gpt-5.5` / `gpt-5.4` / `gpt-5.4-mini` / `gpt-5.4-nano` / `text-embedding-3-small` / `text-embedding-3-large`,exact name 用 dot 而非 dash),api key 由 plaintext markdown 遷移至 root `.env`(H5 remediation commit `09138d4`)。**Note**:`gpt-5.5-pro`(per CLAUDE.md §5.2 H2 alternative eval judge)未 deploy POC stage,eval judge default 用 `gpt-5.4-mini`(spec-compliant)。**Outstanding minor**:per-deployment quota TPM(operational planning only,non-blocking)。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;detail delivered 2026-05-01) |
+| **Date** | 2026-04-30(initial)/ 2026-05-01(detail) |
+| **Status** | `Resolved` (full) |
 
 ---
 
@@ -242,10 +242,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Q13 已 confirm by stakeholder,**具體邊位 SME** 做標註?Email + 工時可用度? |
 | **Why it matters** | Ownership clear 後 W1 Day 2 即啟動標註 workflow,避免 W4 Gate 撞死線。 |
 | **Default if unanswered** | Block W1 Day 2 後 deliverable(eval set v0)。 |
-| **Decision** | **Yes** — domain expert allocation confirmed by Chris。**Pending implementation detail**:specific labeler name + email + 工時可用度。**W1 末** 之前 confirm specific person(W2 起 ground truth labeling 啟動)。中期 fallback:Chris 自己 review LLM-judge first pass 並 verify(R2 risk mitigation per architecture.md §8.1)。 |
-| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session) |
-| **Date** | 2026-04-30 |
-| **Status** | `Resolved` (pending specific labeler by W1 末) |
+| **Decision** | **Yes** — domain expert allocation confirmed by Chris。**W1 D2 (2026-05-01) specific labeler delivered**:Chris Lai(`chris.lai@rapo.com.hk`)親自擔任 SME labeler。中期 fallback unchanged:LLM-judge first pass + Chris verify(R2 risk mitigation per architecture.md §8.1)。**工時可用度**:Chris 自決,W1–W4 spread。 |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;specific labeler self-assigned 2026-05-01) |
+| **Date** | 2026-04-30(initial)/ 2026-05-01(labeler) |
+| **Status** | `Resolved` (full) |
 
 ---
 
@@ -359,8 +359,8 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 |---|---|---|---|---|---|
 | Q1 | Format ratio | Stakeholder + SME | 🔴 | `Resolved` | 2026-04-30 |
 | Q2 | Source access | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
-| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | `Resolved` (pending detail) | 2026-04-30 |
-| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | `Resolved` (pending detail) | 2026-04-30 |
+| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | `Resolved` (pending tier+region W2 D1) | 2026-05-01 |
+| Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | `Resolved` (full) | 2026-05-01 |
 | Q5 | Cohere procurement | Stakeholder | | Open | — |
 | Q6 | Real query collection | Stakeholder | | Open | — |
 | Q7 | Beta user source | Stakeholder | | Open | — |
@@ -370,7 +370,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q11 | Entra ID tenant | Stakeholder | | Open | — |
 | Q12 | Tier 2 owner = Chris | Stakeholder | | Open | — |
 | Q13 | Ground truth allocation | Stakeholder | 🔴 | `Resolved` | 2026-04-30 |
-| Q14 | Specific labeler | Domain Expert | 🔴 | `Resolved` (pending name by W1 末) | 2026-04-30 |
+| Q14 | Specific labeler | Domain Expert | 🔴 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |
 | Q15 | Update frequency | Domain Expert | | Open | — |
 | Q16 | Status quo baseline | Domain Expert | | Open | — |
 | Q17 | Sample structure | Dev | | Open | W1D1 |
@@ -381,10 +381,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
 
-**Pending implementation detail**(by W1 末 / W2 D1):
-- Q3 — Azure AI Search resource name + region + tier + credential(`AZURE_SEARCH_*` env var)
-- Q4 — Azure OpenAI exact deployment names + endpoint + API key(`AZURE_OPENAI_*` env var)
-- Q14 — Specific SME labeler name + email + 工時
+**Pending implementation detail**(by W2 D1,reduced after W1 D2 delivery):
+- Q3 — Azure AI Search **tier confirmation**(Standard S1 expected per architecture.md §3.2)+ **region confirmation**(eastus2 inferred from endpoint hostname)。Endpoint + admin key already delivered W1 D2 → root `.env`(H5 commit `09138d4`)
+- ~~Q4~~ — ✅ Fully resolved W1 D2:endpoint + API key + 6 deployment names + api version `2024-12-01-preview` → root `.env`
+- ~~Q14~~ — ✅ Fully resolved W1 D2:Chris Lai(`chris.lai@rapo.com.hk`)self-assigned SME labeler
 
 ---
 

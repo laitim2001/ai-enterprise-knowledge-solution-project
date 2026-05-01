@@ -95,7 +95,7 @@ status: in-progress
 
 ## Day 2 — 2026-05-01
 
-> Status: **partial mid-day update** — H5 remediation + Python 3.12 install done;F7 implementation pending(start after this commit);F2/F7 pytest verification deferred to post-pip-install window per P3 pivot。
+> Status: **EOD update** — H5 remediation + Python 3.12 install + F7 KB CRUD + decision-form Q3/Q4/Q14 sync 全部 committed;F2 pytest retry + F7 unit tests 仍 deferred 到 post-pip-install window(corp proxy block)。3 commits 覆蓋 D2 work。
 
 ### Pre-flight checks(D1 末 carry-over,confirmed D2 早段)
 
@@ -142,22 +142,24 @@ status: in-progress
 - ⚠️ **F2 pytest retry**:cp312 wheel(mypy / pyyaml / 其他大檔)同樣 corp proxy block。Re-defer 到 post-pip-install window
 - ⚠️ **F7 unit tests**:同上原因,defer。F7 implementation code 仍按計劃推進
 
-### Actual vs Planned Effort(partial,EOD update follow)
+### Actual vs Planned Effort(EOD final)
 
 | Item | Planned (h) | Actual (h) | Variance | Note |
 |---|---|---|---|---|
 | H5 remediation(unplanned)| 0 | 1 | +1h | Q3+Q4 secret 提供方式撞 H5 |
 | Python 3.12 install | 0.2 | 0.3 | +0.1h | msstore cert retry |
-| `.venv` recreate + pip attempts | 0.2 | 1+ | +0.8h | Corp proxy block, P3 pivot |
-| F7(在跑緊)| 4 | TBD | TBD | Code-only,no unit test 今日 |
+| `.venv` recreate + pip attempts | 0.2 | 1 | +0.8h | Corp proxy block, P3 pivot |
+| F7 KB CRUD impl | 4 | 2.5 | -1.5h | Protocol abstraction + Annotated DI 一次過寫直,unit tests deferred 慳半 |
+| Decision-form Q3+Q4+Q14 sync(R4)| 0.3 | 0.3 | 0 | 6 cell edits batch |
+| **Total D2** | **4.7** | **5.1** | **+0.4h** | H5 + corp proxy 食咗 ~2h,F7 implementation 慳返 |
 
 ### Commits
 
 | Hash | Subject |
 |---|---|
 | `09138d4` | chore(security): gitignore env-resources folder + W1 D2 H5 closure |
-| `(this commit)` | feat(kb): impl KB CRUD with in-memory backend (P3: tests deferred) |
-| `(planned EOD)` | docs(planning): W1 D2 journal closeout(decision-form Q3+Q4+Q14 sync etc.)|
+| `c6ca6e3` | feat(kb): impl KB CRUD with in-memory backend (P3: tests deferred) |
+| `(this commit)` | docs(planning): W1 D2 closeout — sync decision-form Q3+Q4+Q14 + journal EOD |
 
 ### F7 implementation note(this commit)
 
