@@ -227,16 +227,53 @@ status: in-progress
 |---|---|---|---|---|
 | Block A Component Catalog + components/README | 3 | 2.5 | -0.5h | Structure clear,12 entries 一氣呵成 |
 | Block B Refactor existing artifacts | 2 | 1.5 | -0.5h | 14 parallel edits 一輪過 |
-| Block C Journal Day 3 + checklist tick(this commit)| 1 | 0.5 | -0.5h | Closure simple |
-| **Total D3** | **6** | **4.5** | **-1.5h** | Spine introduction 比預期 efficient |
+| Block C Journal Day 3(noon)| 1 | 0.5 | -0.5h | Closure simple |
+| **Design Note Batch 1**(CC-5 update + 5 backend notes) | 5 | 3.5 | -1.5h | Maturity-first ordering helped;clear spec sections speed |
+| **Design Note Batch 2**(6 forward-looking notes) | 8 | 5 | -3h | Spec ref 完整,template-driven |
+| **Final Closeout**(this commit) | 0.5 | 0.5 | 0 | — |
+| **Total D3 (revised)** | **19.5** | **13.5** | **-6h** | Massive structural day,11/12 design notes shipped |
 
-### Commits
+### Done(afternoon — Design Note Batch per Chris W1 D3 update)
+
+**CC-5 convention update**:從 `rolling JIT` → `design-first with v0-draft marker`(per Chris call to upfront design 11 components 作為 implementation reference contract)。`COMPONENT_CATALOG.md` 同 `components/README.md` 同步更新。
+
+**11/12 component design notes 一日內完成**(C11 Beta+ defer 到 W6 末 / W7 kickoff):
+
+| Batch | Cn | Status | Lines |
+|---|---|---|---|
+| **Batch 1**(commit `7737069`,backend mature)| C12 DevOps & Infra | v1-active | ~210 |
+| | C02 KB Manager | v1-active | ~180 |
+| | C08 API Gateway | v0-draft | ~190 |
+| | C06 Eval Framework | v0-draft | ~180 |
+| | C07 Observability Stack | v0-draft | ~180 |
+| **Batch 2**(commit `6b5660a`,forward-looking)| C09 Admin Console UI | v0-draft | ~200 |
+| | C10 Chat Interface UI | v0-draft | ~200 |
+| | C03 Indexing Service | v0-draft | ~190 |
+| | C01 Ingestion Pipeline | v0-draft | ~210 |
+| | C04 Retrieval Engine | v0-draft | ~190 |
+| | C05 Generation Pipeline | v0-draft | ~200 |
+| **Total** | 11 notes | — | **~2128 lines** |
+
+每份 design note 跟 `components/README.md` 嘅 8-section template:
+1. Internal Architecture — sub-modules / file structure / pipeline flow
+2. Key Interfaces — input / output / side effects(type signatures)
+3. Critical Design Decisions — 為何 choose this approach(rationale linking spec / ADR)
+4. Edge Cases & Error Handling
+5. Performance Characteristics — latency / throughput / cost
+6. Test Strategy
+7. Future Evolution / Tier 2 Hooks
+8. Open Items / TODO
+
+### Commits(updated)
 
 | Hash | Subject |
 |---|---|
 | `220f75a` | feat(planning): introduce 12-component catalog (EKP module spine) |
 | `2dc0948` | refactor(planning): tag W01 plan + decision-form OQ + add RISK_REGISTER.md |
-| `(this commit)` | docs(planning): W1 D3 journal + checklist tick — component spine done |
+| `99ebf0c` | docs(planning): W1 D3 journal + checklist tick — component spine |
+| `7737069` | docs(catalog): batch 1 — 5 backend component design notes (v0-draft) |
+| `6b5660a` | docs(catalog): batch 2 — 6 forward-looking design notes (v0-draft) |
+| `(this commit)` | docs(planning): W1 D3 final closeout — 11/12 design notes complete |
 
 ---
 
