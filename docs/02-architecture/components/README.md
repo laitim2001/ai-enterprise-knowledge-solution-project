@@ -19,24 +19,34 @@ C11-identity.md
 C12-devops.md
 ```
 
-## Rolling JIT 原則(per CC-5)
+## Design-first with v0-draft marker(per CC-5 v1.1)
 
-**唔可以 speculative pre-write**。每份 design note 喺對應 component 嘅 **first heavy-touch phase kickoff** 寫 stub,implementation 過程 enrich,phase 結束 stable。
+**W1 D3-D5 batch 寫齊 11 個 v0-draft note**(C11 Beta+ defer)作為 implementation 嘅 reference contract。Implementation 過程中發現 design 偏差 → update note + bump `status` field。
 
-| Component | First heavy-touch | Design note write trigger |
+### Status semantics
+
+| Status | Meaning |
+|---|---|
+| `v0-draft` | Pre-implementation,may evolve when impl hits reality |
+| `v1-active` | Implementation in progress,design validated by partial impl |
+| `v2-stable` | Implementation 完成,design final |
+
+### Write schedule
+
+| Component | First heavy-touch | v0-draft write |
 |---|---|---|
-| C02 KB Manager | W1 D2(F7) | ✅ already implemented;design note 可 W2 D1 補(時序 retroactive)|
-| C12 DevOps & Infra | W1 D1 | ✅ already in setup.md;design note 可選 |
-| C06 Eval Framework | W1 D1(F5)| Cite eval-methodology.md;design note 可 W2 補 |
-| C07 Observability | W1 D1 | Lightweight,可 W3 stage tracing 時補 |
-| C08 API Gateway | W1 D1 | Lightweight,可 W2 wire 時補 |
-| C09 Admin UI | W1 D1 | Lightweight,可 W2 KB views 時補 |
-| C03 Indexing | W2 D1 | **W2 kickoff 寫** |
-| C01 Ingestion | W2 D2 | **W2 kickoff 寫**(Q2 sample 到位後)|
-| C04 Retrieval | W2 D5 | **W2 kickoff 寫**(prep Gate 1) |
-| C05 Generation | W3 D1 | **W3 kickoff 寫** |
-| C10 Chat UI | W3 D2 | **W3 kickoff 寫** |
-| C11 Identity | W7 D1 | **W7 kickoff(Beta phase)寫** |
+| C12 DevOps & Infra | W1 D1 ✅ implemented | W1 D3(this batch) |
+| C02 KB Manager | W1 D2 ✅ implemented | W1 D3(this batch) |
+| C08 API Gateway | W1 D1 ✅ scaffold | W1 D3(this batch) |
+| C06 Eval Framework | W1 D1 ✅ validator scaffold | W1 D3(this batch) |
+| C07 Observability | W1 D1 ✅ init | W1 D3(this batch) |
+| C09 Admin UI | W1 D1 ✅ 6 routes scaffold | W1 D4 |
+| C10 Chat UI | W3 D2(future) | W1 D4 |
+| C03 Indexing | W2 D1(future) | W1 D4 |
+| C01 Ingestion | W2 D2(future,blocked Q2) | W1 D5 |
+| C04 Retrieval | W2 D5(future) | W1 D5 |
+| C05 Generation | W3 D1(future) | W1 D5 |
+| C11 Identity | W7 D1(Beta+) | **DEFER to W6 末 / W7 kickoff** |
 
 ## Template
 

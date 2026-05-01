@@ -378,7 +378,8 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 | **CC-2** | 每個 ADR **必須 tag** affected component(s) | ADR template 加 `Affects:` field |
 | **CC-3** | `decision-form.md` 21 OQ **必須 tag** affected component(s),作為 OQ resolution 加速 routing | Decision-form 加 column |
 | **CC-4** | `architecture.md §8` Risk Register entries 入 catalog 之 component-tagged living version `docs/01-planning/RISK_REGISTER.md`(`§8` frozen 不動)| Per-component status field link |
-| **CC-5** | 每 component design note(`components/Cn-{kebab}.md`)係 **rolling JIT** —— first heavy-touch phase 寫 stub,implementation 過程 enrich,**唔可以 speculative pre-write** | Per-component status track first-touch date |
+| **CC-5** ✱ | 每 component design note(`components/Cn-{kebab}.md`)係 **design-first with v0-draft marker** —— W1 D3-D5 batch 寫齊 11 個 v0-draft note(C11 Beta+ defer 到 W6 末 / W7 kickoff),作為 implementation 嘅 reference contract。Implementation 過程中發現 design 偏差 → update note + bump status `v0-draft → v1-active → v2-stable`。每 note `status` field 必標 | Per-component status field track v-stage |
+| **CC-5 status semantics** | `v0-draft` = pre-implementation,may evolve;`v1-active` = implementation in progress,design 已驗 part;`v2-stable` = implementation 完成,design final | Note frontmatter `status` |
 | **CC-6** | Catalog 嘅 Tech 列必對齊 `architecture.md §3.2` 嘅 H2 vendor lock。任何 catalog tech 改動 = H2 violation = STOP + ADR | CLAUDE.md §5.2 enforce |
 | **CC-7** | Catalog 自身 versioned via frontmatter `version` field;structural change(加 / 刪 component,改 dependency)需 ADR | This file `version: 1.0` |
 
