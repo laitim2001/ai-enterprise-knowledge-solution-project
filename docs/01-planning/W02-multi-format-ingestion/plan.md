@@ -4,7 +4,7 @@ name: "Multi-Format Ingestion + Hybrid Retrieval Baseline"
 sprint_week: W2
 start_date: 2026-05-05
 end_date: 2026-05-11          # planned, 5 工作日 (D1=Mon ... D5=Fri)
-status: draft                  # draft | active | closed
+status: active                 # draft | active | closed
 spec_refs:
   - architecture.md §6.1 W2 row
   - architecture.md §3.3       # multi-format ingestion
@@ -21,9 +21,9 @@ prior_phase: W01-foundation
 
 # Phase W02 — Multi-Format Ingestion + Hybrid Retrieval Baseline
 
-> **Plan version**:1.0(initial draft 2026-05-02 — D5 末 W1 retro sign-off 之後 status flips draft → active)
+> **Plan version**:1.0(initial draft 2026-05-02 W1 D4 末 → flipped active 2026-05-02 W1 D5 early closeout)
 > **Owner**:Chris(Tech Lead)
-> **Approved by**:_(Chris when status flips draft → active per PROCESS.md §2.3 R1.phase)_
+> **Approved by**:Chris(2026-05-02 evening session,W1 D5 early closeout sign-off)
 
 ## 1. Scope
 
@@ -231,7 +231,8 @@ Carry-over from `W01-foundation/progress.md` retro(D4 draft):
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-02 | Initial draft(W1 D4 prep)| Per Chris W1 D4 strategic call to prepare W2 kickoff during W1 D4-D5 capacity;status=draft pending W1 D5 retro sign-off | Chris(pending approve to flip active) |
+| 2026-05-02 | Status flipped `draft → active`(W1 D5 early closeout)| Chris W1 D5 early closeout session 同日 sign-off W1 retro + approve W02 plan;W2 D1 仍按 plan 2026-05-05 Tue 啟動 | Chris(approved) |
 
 ---
 
-**Lifecycle reminder**:呢份 plan 而家 `status=draft`。W1 D5 末 Chris review retro 之後 sign-off + flip status `draft → active`,然後 W2 D1(2026-05-05)正式 start implementation per `PROCESS.md §2.3` daily execution lifecycle。
+**Lifecycle reminder**:呢份 plan `status=active`(2026-05-02 起,W1 D5 early closeout sign-off)。W2 D1(2026-05-05 Tue)正式 start implementation per `PROCESS.md §2.3` daily execution lifecycle。重大 deviation 入第 7 節 changelog。

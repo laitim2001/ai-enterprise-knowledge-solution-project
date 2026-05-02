@@ -84,10 +84,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | 公司 Azure tenant 已有 Azure AI Search resource 未?如有,resource name + region + tier 係?如冇,邊個 owner 負責 provision? |
 | **Why it matters** | Standard S1 base price ~USD 75/月。需 Service quota 同 RBAC 配置,新 provision 通常 1–3 工作日。 |
 | **Default if unanswered** | 假設要新 provision,W1 Day 1 dev 自己用 `az search service create` 跑 setup.md §3.2 |
-| **Decision** | **Azure AI Search service 已 provisioned**(POC stage)。**W1 D2 (2026-05-01) implementation detail delivered**:endpoint = `https://azureaisearchtesting.search.windows.net`(service name `azureaisearchtesting`),region = `eastus2`(inferred),admin key 由 plaintext markdown 遷移至 root `.env`(gitignored,H5 remediation commit `09138d4`)。**Outstanding minor**:tier(Standard S1 expected per architecture.md §3.2)+ region 確認 by W2 D1。 |
-| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;detail delivered 2026-05-01) |
-| **Date** | 2026-04-30(initial)/ 2026-05-01(detail) |
-| **Status** | `Resolved` (pending tier + region confirm by W2 D1) |
+| **Decision** | **Azure AI Search service 已 provisioned**(POC stage)。**W1 D2 (2026-05-01) implementation detail delivered**:endpoint = `https://azureaisearchtesting.search.windows.net`(service name `azureaisearchtesting`),admin key 由 plaintext markdown 遷移至 root `.env`(gitignored,H5 remediation commit `09138d4`)。**W1 D5 (2026-05-02) full Resolution**:**tier = Standard S1**(per architecture.md §3.2 spec default,confirmed by Chris W1 D5 closeout session);**region = eastus2**(confirmed by Chris W1 D5 closeout session,matches endpoint hostname inference);F9 index `ekp-kb-drive-v1` already created HTTP 201 W1 D4 (commit `349c33e`). |
+| **Decided By** | Chris(acting as Stakeholder per 2026-04-30 session;detail delivered 2026-05-01;tier+region full resolution 2026-05-02) |
+| **Date** | 2026-04-30(initial)/ 2026-05-01(detail)/ 2026-05-02(tier+region) |
+| **Status** | `Resolved` (full) |
 
 ---
 
@@ -359,7 +359,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 |---|---|---|---|---|---|---|
 | Q1 | Format ratio | Stakeholder + SME | 🔴 | C01 | `Resolved` | 2026-04-30 |
 | Q2 | Source access | Stakeholder | 🔴 | C01 + C06 | `Resolved` | 2026-04-30 |
-| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (full — index ekp-kb-drive-v1 created) | 2026-05-02 |
+| Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (full — Standard S1 + eastus2 + index ekp-kb-drive-v1 created) | 2026-05-02 |
 | Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | C05 + C01 | `Resolved` (full) | 2026-05-01 |
 | Q5 | Cohere procurement | Stakeholder | | C04 | Open | — |
 | Q6 | Real query collection | Stakeholder | | C06 | Open | — |
@@ -381,8 +381,8 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
 
-**Pending implementation detail**(by W2 D1,reduced after W1 D2 delivery):
-- Q3 — Azure AI Search **tier confirmation**(Standard S1 expected per architecture.md §3.2)+ **region confirmation**(eastus2 inferred from endpoint hostname)。Endpoint + admin key already delivered W1 D2 → root `.env`(H5 commit `09138d4`)
+**Pending implementation detail**(W1 D5 closeout 2026-05-02:全部 6 critical OQ full Resolved,zero outstanding minor):
+- ~~Q3~~ — ✅ Fully resolved W1 D5(2026-05-02):tier Standard S1 + region eastus2 confirmed by Chris;endpoint + admin key root `.env`(H5 commit `09138d4`);F9 index `ekp-kb-drive-v1` HTTP 201 created W1 D4(commit `349c33e`)
 - ~~Q4~~ — ✅ Fully resolved W1 D2:endpoint + API key + 6 deployment names + api version `2024-12-01-preview` → root `.env`
 - ~~Q14~~ — ✅ Fully resolved W1 D2:Chris Lai(`chris.lai@rapo.com.hk`)self-assigned SME labeler
 

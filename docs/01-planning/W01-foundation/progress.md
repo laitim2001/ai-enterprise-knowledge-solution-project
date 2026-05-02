@@ -2,7 +2,7 @@
 phase: W01-foundation
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: in-progress
+status: closed
 ---
 
 # Phase W01 — Progress
@@ -277,6 +277,72 @@ status: in-progress
 
 ---
 
+## Day 5 — 2026-05-02 (early closeout per Chris call)
+
+> Status: **W1 phase closeout** — D5 work 因 Chris 2026-05-02 evening session decision compress 入 D4 末日同日執行(原 plan D5 = 2026-05-04 Mon,early closeout 後 W2 D1 仍按 plan = 2026-05-05 Tue)。
+
+### Done
+
+**Pre-flight verification(closeout gate check)**:
+- G3 Local stack:🟡 **2/3 healthy** — Postgres ✅(2 days uptime,healthy)+ Azurite ✅(npm fallback,blob endpoint 400 = service alive auth-rejected as expected)+ **Langfuse 🔴 unhealthy**(container Up 2 days but `/api/public/health` connection-reset;`docker compose restart` + `up -d --force-recreate` 同樣 hang 唔生效)。NEW finding 今日 surface,W1 D2 last-verified healthy,degradation 過去 2 日內出現
+- G4 Backend ruff:✅ All checks passed
+- G4 Backend compileall:✅ Exit 0
+- G4 Frontend pnpm lint:✅ No ESLint warnings or errors
+- G4 Frontend pnpm type-check:✅ Clean
+
+**Q3 outstanding minor closeout**(per Chris 2026-05-02 confirm):
+- Tier:**Standard S1** confirmed(per architecture.md §3.2 default)
+- Region:**eastus2** confirmed(matches endpoint hostname inferred W1 D2)
+- decision-form.md Q3 status:`Resolved (pending tier+region)` → `Resolved (full)`(R4 sync,this session)
+
+**R8 P1 ops window check**(per Chris confirm yes opportunity):
+- Attempted `pip install -e backend[dev]` 2026-05-02 evening
+- Result:**Confirmed still blocked** — `IncompleteRead(0 bytes read, 10911340 more expected)` 同 W1 D2 完全相同 pattern。Chris 仍喺 corp network(no VPN/hotspot active 此 session)
+- Decision:R8 status unchanged,F2 pytest + F7 unit tests carry to W2 F10(per W02 plan)
+- R8 mitigation P1 / P2 仍 pending Chris ops decision in W2
+
+**Phase artifact closeout**:
+- W01 progress.md retro section finalized(this entry)
+- W01 progress.md frontmatter `status: in-progress → closed`
+- W01 checklist.md cross-cutting items tick'd
+- RISK_REGISTER.md R8 entry retest result + Langfuse new finding documented
+- W02 plan.md flip `status: draft → active`(Chris 2026-05-02 evening sign-off)
+- W02 progress.md Day 0 entry updated with sign-off mention
+
+### Decisions / OQ Resolved
+
+- **OQ-Q3 Resolved (full)**:tier Standard S1 + region eastus2 confirmed by Chris 2026-05-02 evening session;decision-form synced(R4)
+- **Decision** — early closeout(D5 work compressed into D4 末日同日 2026-05-02):per Chris session decision,non-architectural,plan changelog 唔需要 entry(scope unchanged,只係 timing compress)。原 plan §5 day breakdown D5 date 2026-05-04 改為 effective 2026-05-02;W2 D1 仍按 plan = 2026-05-05 Tue 開始
+- **Decision** — Langfuse unhealthy 暫時唔 file BUG-001(per PROCESS.md §1.4 R1.bugfix Bug-fix workflow 需要 Chris 確認 severity)。先 document 為 D5 finding + W2 carry-over,Chris W2 D1 早段 triage:若 reproduce → BUG-001 instance(候選 Sev3 minor degraded);若一次性 → close
+- **Decision** — R8 confirmed unchanged after retest;F8 / F10 / F11 carry-overs 仍按 W02 plan 執行,P1 ops window 等 Chris 安排
+
+### Blockers
+
+- 🔴 **R8 Ricoh corp proxy**:retest 確認仍 active,W2 D1 Chris ops decision required(P1 VPN/hotspot OR P2 IT whitelist)
+- 🟡 **Langfuse health degradation**(NEW)— W2 D1 早段 Chris triage,若 reproduce 開 BUG-001
+- 🟡 **R10 Q2 sample**:partial unblock W1 D4(F6/Q17/Q18 cleared);F8 Docling 仍 W2 D2 plan
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| Pre-flight G3+G4 verify | 0.3 | 0.5 | +0.2h | Langfuse unhealthy investigation surface |
+| R8 P1 retest attempt | 0.2 | 0.3 | +0.1h | Same `IncompleteRead` pattern,no progress |
+| Q3 confirm + decision-form sync(R4) | 0.2 | 0.2 | 0 | 1 cell + dashboard update |
+| W01 retro finalize + status flip | 0.5 | 0.5 | 0 | D4 draft already 80% complete |
+| W02 plan flip draft→active + progress sign-off | 0.3 | 0.3 | 0 | 1-line edit each |
+| RISK_REGISTER R8 retest + Langfuse note | 0.3 | 0.3 | 0 | 2 small entries |
+| Closeout commit | 0.2 | 0.2 | 0 | Single commit batch |
+| **Total D5 (compressed)** | **2.0** | **2.3** | **+0.3h** | Langfuse surprise added 0.2h investigation |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `(this commit)` | docs(planning): W1 closeout retro + W02 plan status=active |
+
+---
+
 ## Day 4 — 2026-05-02
 
 > Status: **F9 Path A executed** — Q2 sample manuals 到位 + F9 Azure AI Search index 創建 success(C03 first-touch shifted from W2 D1 → W1 D4 because Q3 unblocked early)。
@@ -333,9 +399,9 @@ status: in-progress
 
 ---
 
-## Retro(D4 draft 2026-05-02 — D5 final fill 2026-05-04)
+## Retro(W1 final — early closeout 2026-05-02)
 
-> **Note**:此 retro 係 W1 D4 早期 draft,D5 末會 update 加入 D5 嘅 work + final phase gate verdict + sign-off。Status fields 留 placeholder。
+> **Note**:本 retro 原計劃 D5 末(2026-05-04)final fill,因 Chris 2026-05-02 evening session decision early closeout,D5 work compressed 同 D4 末日同日。Status fields 已 final fill。
 
 ### What worked
 
@@ -348,10 +414,11 @@ status: in-progress
 
 ### What didn't work / unexpected friction
 
-- **Ricoh corp infra ecosystem**:cp314 wheel supply(W1 D1)→ MCR DNS intercept(W1 D1)→ corp proxy on PyPI for cp312 wheels too(W1 D2)+ msstore winget cert mismatch(W1 D2)。每個都需要 5-30 min workaround 嘅 R&D。Total D1+D2 ~3h friction
+- **Ricoh corp infra ecosystem**:cp314 wheel supply(W1 D1)→ MCR DNS intercept(W1 D1)→ corp proxy on PyPI for cp312 wheels too(W1 D2)+ msstore winget cert mismatch(W1 D2)。每個都需要 5-30 min workaround 嘅 R&D。Total D1+D2 ~3h friction。**D5 retest confirmed R8 仍 active**(同樣 `IncompleteRead(0 bytes)` pattern)
 - **Spec frozen vs evolving understanding tension**:`journal.md → progress.md` rename 需要 cross-doc reference update(W1 D3 batch 2)— 妥善處理但證明 naming choice 上線後 reverse 有 cost
 - **planning artifact chronological vs structural ordering 嘅 tension**:per-phase folder(W01-foundation/)同 per-component folder(components/)兩個 axis,initially 唔清楚邊個 own 邊個 lifecycle event。後期 CC-1 to CC-7 conventions 鎖死(每個 commit / OQ / risk component-tag),但 W1 早期 commits 缺 component tag 屬於 retroactive cleanup work
 - **F8 + F11 hard-blocked Q2 / R8** 持續:F8 Docling install 仲撞 R8(Docling Python lib > 500KB total deps),W2 D2 必須先解 R8 P1/P2
+- **Langfuse silent health degradation(D5 surface)**:容器 Up 2 days but `/api/public/health` 在 D2 to D5 期間 silently 變 connection-reset。`docker restart` + `docker compose restart` + `docker compose up -d --force-recreate` 全部 hang 唔生效。冇 alerting → 累積 2 日先發現。**Lesson**:G3 health verification 應該 daily morning gate,non end-of-phase gate
 
 ### Surprises / discoveries
 
@@ -360,19 +427,22 @@ status: in-progress
 - **Catalog convention CC-1..CC-7 over-engineered initially?**— 7 conventions 初看似多,但 D3 末 14 parallel edits(plan F-tag + decision-form OQ + RISK_REGISTER component tag + CLAUDE.md routing)非常 mechanical,證明 conventions 確實 pay off。No regret
 - **`architecture.md` v5 frozen 嘅實際 cost very low**:全部 W1 work cite spec section,zero edit needed to spec body;living evolution 入 RISK_REGISTER + design notes + decision-form。Convention 啱 working
 - **Python 3.12 vs 3.14 ABI tag 教訓**:Python 3.14 backward-compat at source-code level 唔等於 binary wheel ecosystem ready。CLAUDE.md §3.1 「Python 3.12+」應該收緊為「Python 3.12 LTS」,W1 D2 update 過程已記錄
+- **Early closeout viable when D5 work compresses**(D5 surprise):W1 D4 末 Chris 評估 D5 work mostly governance(retro fill + status flip + R4 sync + verification),冇 implementation work,可以 compress 入 D4 末日同日 commit。W2 D1 仍按 plan 2026-05-05 Tue 啟動,timeline 不變。**Pattern**:phase 末 D-final 純 governance 嘅 phase 將來可以 evaluate same-day closeout(non hardcoded calendar)
+- **Langfuse silent degradation(D5 surface)**:G3 D2/D3/D4 都 verified PASS,但 D5 retest 顯示 unhealthy 2 days uptime — degradation 喺 D2 之後 silent 出現冇 alert。**Pattern**:future sprint 應該 daily morning quick health check(curl health endpoint × 3 services)而非依靠 phase-end gate verification
 
 ### Carry-overs to W02-multi-format-ingestion
 
 | Item | Reason | W2 owner |
 |---|---|---|
-| **F8 Docling parser PoC**(was W1 D2 plan) | R10 Q2 sample arrived D4 + R8 corp proxy still blocks Docling install | C01 W2 D2 |
-| **F10 embedding pipeline first-pass**(was W1 D5 plan) | R8 blocks Azure SDK install | C01 W2 D5 / W3 D1 |
-| **F11 30 條 ground truth fill**(was W1 D5 plan) | Q2 chunk_id discovery 需要 F8 chunker output 先有 chunk_id | C06 W2-W4 spread |
-| **F2 pytest verification**(was W1 D1 deferred) | R8 corp proxy blocks pip install | C08 post-pip-unblock window |
-| **F7 unit tests**(was W1 D2 deferred) | 同上 | C02 同上 |
-| **R8 mitigation P1/P2 ops decision** | Affects all above | Chris ops |
-| **Q3 outstanding minor**(tier confirm + region confirm) | Index created so non-blocking but cleanup | Chris W2 D1 |
+| **F8 Docling parser PoC**(was W1 D2 plan) | R10 Q2 sample arrived D4 + R8 corp proxy still blocks Docling install | C01 W2 D2(W02 F1)|
+| **F10 embedding pipeline first-pass**(was W1 D5 plan) | R8 blocks Azure SDK install(HTTP REST fallback path ready) | C01 W2 D5(W02 F4)|
+| **F11 30 條 ground truth fill**(was W1 D5 plan) | Q2 chunk_id discovery 需要 F8 chunker output 先有 chunk_id | C06 W2 D3-D5 spread(W02 F8)|
+| **F2 pytest verification**(was W1 D1 deferred) | R8 corp proxy blocks pip install(D5 retest confirmed) | C08 post-R8-unblock window(W02 F10) |
+| **F7 unit tests**(was W1 D2 deferred) | 同上 | C02 同上(W02 F10) |
+| **R8 mitigation P1/P2 ops decision** | Affects all above;D5 retest 仍 blocked,Chris ops decision required | Chris ops W2 D1 |
+| **Q3 outstanding minor**(tier confirm + region confirm) | ✅ **Closed D5**:tier Standard S1 + region eastus2 confirmed by Chris 2026-05-02;decision-form synced | — |
 | **R10 full unblock**(F11 chunk_id discovery 嘅 prerequisite — F8 must run first) | Cascade dependency Q2→F8→F11 | C01 → C06 cascade |
+| **Langfuse health degradation**(NEW D5 finding) | Container Up 2 days but health endpoint connection-reset;docker restart hang。W2 D1 早段 Chris triage:reproduce → BUG-001(候選 Sev3);若一次性 → close | Chris W2 D1 morning |
 
 ### ADR triggers
 
@@ -381,24 +451,27 @@ status: in-progress
 - **ADR pending trigger**:`backend/kb_management/` 3-file package(non single-file per F7 plan)— implementation detail per CLAUDE.md §1.3 surgical。**Verdict**:no ADR
 - **W1 全 phase NO ADR triggered**;all decisions either spec-aligned or implementation-detail-only
 
-### Phase Gate result(D4 verdict — D5 may update if F8/F11 work happens D5)
+### Phase Gate result(W1 final verdict 2026-05-02 early closeout)
 
-| # | Target | D4 verdict | D5 final |
-|---|---|---|---|
-| **G1** | 11/11 deliverables done OR explicit defer | 🟡 **5 done(F1/F3/F4/F5/F6)+ 1 done with sub-defer(F7 impl ✅ unit tests defer)+ 1 done with sub-defer(F2 impl ✅ pytest defer)+ 1 done D4(F9)= 8 done with explicit defers** | _(D5 update if F8 / F10 / F11 progress)_ |
-| **G2** | 6/6 critical OQ Resolved | ✅ **PASS 6/6**(Q1/Q2 W1 D1,Q3/Q4/Q14 W1 D2 + W1 D4)| Same |
-| **G3** | Local dev stack 3/3 up | ✅ **PASS** | Same(verify D5)|
-| **G4** | Backend ruff + frontend lint + type-check 0 errors | ✅ **PASS**(verified D2 + D4)| Same(verify D5)|
-| **G5** | F8 Docling parses 5 sample without unrecoverable error | 🔴 **FAIL — explicit defer**(R8 + sequence) | _(D5 if R8 unblocks could change)_ |
-| **G6** | F11 ground truth ≥ 30 queries validated | 🔴 **FAIL — explicit defer**(R10 cascade after F8) | _(D5 update)_ |
+| # | Target | Final verdict |
+|---|---|---|
+| **G1** | 11/11 deliverables done OR explicit defer | 🟡 **8 done + 3 explicit defer**:F1 ✅ / F2 ✅(pytest defer)/ F3 ✅ / F4 ✅(Langfuse health degraded D5,新 finding)/ F5 ✅ / F6 ✅(execution unblocked D4)/ F7 ✅(unit tests defer)/ F9 ✅(D4 Path A)/ F8 / F10 / F11 explicit deferred to W02。**Pass-with-deferrals** |
+| **G2** | 6/6 critical OQ Resolved | ✅ **PASS 6/6**(Q1/Q2 W1 D1 + Q3/Q4/Q14 W1 D2 + Q3 full D5 with tier+region confirm) |
+| **G3** | Local dev stack 3/3 up | 🟡 **2/3** — Postgres ✅ + Azurite ✅ + **Langfuse 🔴 unhealthy**(NEW D5 finding,health endpoint connection-reset 2 days,docker compose restart hang)。**Pass-with-finding**;W2 D1 早段 triage 是否 file BUG-001 |
+| **G4** | Backend ruff + frontend lint + type-check 0 errors | ✅ **PASS**(verified D2 + D4 + D5) |
+| **G5** | F8 Docling parses 5 sample without unrecoverable error | 🔴 **FAIL — explicit defer to W02 F1**(R8 corp proxy + R10 cascade)|
+| **G6** | F11 ground truth ≥ 30 queries validated | 🔴 **FAIL — explicit defer to W02 F8**(cascade after F1+F2+F5 chunk_id discovery)|
 
-**Net W2 kickoff readiness**:**Pass-with-deferrals**(G5/G6 explicit deferred to W2,documented in carry-overs)。
+**Net W2 kickoff readiness**:**Pass-with-deferrals + 1 new finding**。
+- 3 explicit defers(F8/F10/F11 → W02)及對應 carry-over 已寫入 W02 plan §6
+- 1 new finding(Langfuse health)→ W02 D1 早段 Chris triage,候選 BUG-001
+- W2 D1 仍按 plan 2026-05-05 Tue 啟動,early closeout 唔影響 sprint timeline
 
-### Phase status(填於 D5 末)
+### Phase status(2026-05-02 early closeout)
 
-- Closeout commit:_(D5 末 fill)_
-- Frontmatter status flipped to `closed`:_(D5 末)_
-- Phase W02 kickoff trigger:**already prepared as draft W1 D4(this commit batch)**;status flips draft → active 喺 D5 末 retro sign-off + Chris approve 之後
+- Closeout commit:`(this commit)` `docs(planning): W1 closeout retro + W02 plan status=active`
+- Frontmatter status flipped to `closed`:✅ `status: in-progress → closed`
+- Phase W02 kickoff trigger:✅ W02 plan flipped `status: draft → active`(Chris 2026-05-02 evening sign-off);W2 D1 = 2026-05-05 Tue 按 plan 啟動 implementation per PROCESS.md §2.3 daily execution lifecycle
 
 
 

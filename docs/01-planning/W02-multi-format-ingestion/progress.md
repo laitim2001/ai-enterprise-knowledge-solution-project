@@ -29,10 +29,13 @@ status: in-progress    # in-progress | closed (set on retro signoff)
   - Q3 outstanding minor cleanup(tier + region confirm)
   - R8 mitigation P1/P2 ops decision
 
-**Status pending**:Chris W1 D5 末 retro sign-off → flip `plan.md` status `draft → active` → W2 D1 implementation start。
+**Status update 2026-05-02**(W1 D5 early closeout):Chris evening session sign-off W1 retro + approve W02 plan → `plan.md` status flipped `draft → active`(per Plan Changelog 2026-05-02 entry)。W2 D1 implementation start 仍按 plan 2026-05-05 Tue,early closeout 唔影響 sprint timeline。
+
+**W1 carry-overs confirmed in W02 plan §6**:F8(W02 F1)/ F10(W02 F4)/ F11(W02 F8)/ F2 pytest(W02 F10)/ F7 unit tests(W02 F10)/ R8 P1/P2 ops decision(Chris W2 D1 morning)/ Q3 outstanding minor ✅ closed D5 / Langfuse health(W2 D1 morning Chris triage,候選 BUG-001)。
 
 **Commits relevant**:
-- `(this commit)` — `chore(planning): kickoff W02 multi-format-ingestion (status=draft)`
+- `0468040` — `chore(planning): W1 D5 prep — retro draft + W02 kickoff (status=draft)`
+- `(this commit)` — `docs(planning): W1 closeout retro + W02 plan status=active`
 
 ---
 

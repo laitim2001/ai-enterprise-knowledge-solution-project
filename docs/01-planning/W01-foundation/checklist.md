@@ -1,8 +1,8 @@
 ---
 phase: W01-foundation
 plan_ref: ./plan.md
-status: in-progress
-last_updated: 2026-04-30
+status: closed
+last_updated: 2026-05-02
 ---
 
 # Phase W01 — Checklist
@@ -158,10 +158,16 @@ last_updated: 2026-04-30
 - [ ] (Ongoing)Future OQ status changes synced to `decision-form.md` — W2+ Q5/Q11/Q15-21 之 resolution
 - [ ] (Ongoing)Future ADR / phase plan / risk update 必 component-tag(per CC-1/2/3/4)
 - [ ] (Ongoing)Per-component design note status bumps(v0-draft → v1-active → v2-stable)隨 implementation 進行
-- [ ] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— W1 暫無
-- [ ] `progress.md` retro section written W1 D5 末
-- [ ] `progress.md` frontmatter status flipped to `closed`
-- [ ] Phase W02 kickoff trigger noted in retro
+- [x] All architectural-adjacent decisions documented as ADR(per CLAUDE.md §5.1 H1)— **W1 全 phase NO ADR triggered**(per retro D4 verdict;all decisions either spec-aligned or implementation-detail-only)
+- [x] `progress.md` retro section written **W1 D5 early closeout 2026-05-02**(D4 draft → D5 final fill compressed same-day per Chris session decision)
+- [x] `progress.md` frontmatter status flipped to `closed`(D5 closeout commit)
+- [x] Phase W02 kickoff trigger noted in retro(W02 plan flipped status `draft → active` D5 closeout commit)
+- [x] **D5 early closeout cross-cutting**(this commit):
+  - Q3 full Resolved(tier Standard S1 + region eastus2 confirmed by Chris)→ R4 sync `decision-form.md`
+  - R8 P1 retest 2026-05-02 → confirmed still blocked,同 W1 D2 同樣 `IncompleteRead(0 bytes read)` pattern → carry to W2 F10
+  - G3 Langfuse health degradation NEW finding → W2 carry-over for Chris triage(候選 BUG-001 Sev3)
+  - W01 checklist.md frontmatter status closed
+  - W02 plan.md / progress.md sign-off mention
 
 ---
 

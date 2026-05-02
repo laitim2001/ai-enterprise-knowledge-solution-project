@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-01
+last_updated: 2026-05-02
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -26,9 +26,10 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R5** | Azure OpenAI quota insufficient at peak | §8.2 | 🟠 High | C05 + C01 | ⚠️ Open(W1 同 MS account team pre-negotiate;quota TPM 為 Q4 outstanding minor)|
 | **R6** | Cohere outage during demo / Beta | §8.3 | 🟡 Lower | C04 | 🟢 Hot fallback(Azure built-in semantic ranker)config flag ready |
 | **R7** | Document source format edge case | §8.3 | 🟡 Lower | C01 | 🟡 Designed(parser fail-graceful + Admin Console flag)|
-| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🔴 Open — pending P1(VPN/hotspot ops window)or P2(IT whitelist long-term)|
+| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident;D5 retest confirmed | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🔴 Open — D5 retest 2026-05-02 confirmed same `IncompleteRead(0 bytes read, 10911340 more expected)` pattern,no progress;pending P1(VPN/hotspot ops window)or P2(IT whitelist long-term)|
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
-| **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(F8 + F11 仍 BLOCKED;Chris direct upload pending)|
+| **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
+| **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium pending triage | C07 + C12 | 🔴 Open(pending W2 D1 Chris triage)— container Up 2 days but `/api/public/health` connection-reset;`docker compose restart` + `up -d --force-recreate` hang。**Triage path**:reproduce → BUG-001 instance(候選 Sev3 minor degraded);若一次性 → close。**Lesson learned**:G3 daily morning health check 應 added to W2+ daily routine(non-end-of-phase only)|
 
 ★ = net-new from W1 implementation,not in `architecture.md §8`
 
@@ -150,11 +151,28 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Component(s)** | **C01** Ingestion Pipeline(primary)+ **C06** Eval Framework(chunk_id discovery for ground truth fill)|
 | **Severity** | 🟠 High(Medium × High — F8 + F11 entire blocked)|
 | **First observed** | 2026-04-30(W1 D1 OQ-Q2 partial Resolved:path confirmed = direct upload, but specific delivery pending)|
-| **Mitigation in place** | 🟡 F6 docx structure inspector script pre-built without sample(stdlib only,等 sample 即可 run)。F7 KB CRUD pre-built without sample。F8 Docling parser implementation 待 sample arrival |
-| **Active blockers** | F8 Docling .docx parser PoC、F11 30 條 ground truth chunk_id replacement、Q17 / Q18 finding execution |
-| **Escalation** | Chris direct upload 5 份 sample manual(`.docx`)入 project folder OR shared link |
-| **Backup plan** | Worst case use Ricoh public-domain manual sample 暫代(per W01-foundation/plan.md §4 R1 mitigation)|
-| **Decay date / review** | W2 D2(F8 start latest);若 W2 D2 仍 missing → trigger backup plan |
+| **Mitigation in place** | 🟡 W1 D4 partial unblock:6 .docx Drive Finance modules uploaded `docs/06-reference/01-sample-doc/`(AR/AP/FA/CB/GL/BM,~36MB total)— F6/Q17/Q18 cleared,890 images aggregate(868 PNG + 18 SVG + 4 EMF)|
+| **Active blockers(remaining)** | F8 Docling .docx parser PoC(W2 D2 plan)+ F11 30 條 ground truth chunk_id replacement(W2 D3-D5 cascade after F1+F2+F5)|
+| **Escalation** | ✅ Already arrived W1 D4(6 sample uploaded local) |
+| **Backup plan** | (no longer needed — sample arrived)|
+| **Decay date / review** | W2 D2(F8 start);F8 success → R10 close after sanity report on 6 sample |
+
+---
+
+### R11 ★ — Langfuse Health Endpoint Degradation(NEW W1 D5 Finding)
+
+| Field | Value |
+|---|---|
+| **Component(s)** | **C07** Observability Stack(primary)+ **C12** DevOps & Infra(container)|
+| **Severity** | 🟡 Medium pending triage(if confirmed Sev3 minor degraded → BUG-001 instance)|
+| **First observed** | 2026-05-02(W1 D5 closeout pre-flight G3 verification)|
+| **Symptom** | Container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `curl http://localhost:3000/api/public/health` 連接 reset(exit code 56 `Recv failure: Connection was reset`)|
+| **Last verified healthy** | W1 D2 EOD(per `09138d4` commit context;F4 acceptance criteria initial pass)|
+| **Recovery attempts** | `docker restart ekp-langfuse`(silent hang)/ `docker compose restart langfuse`(silent hang)/ `docker compose up -d --force-recreate langfuse`(silent hang)— 3 attempts 全部 docker daemon 唔 respond,container 仲係 reports `Up 2 days` uptime |
+| **Mitigation in place** | 🔴 None yet — recovery 嘗試全 hang。Postgres healthy + Azurite healthy unaffected,只係 Langfuse trace ingest 影響(POC 階段觀測性 degraded,not critical for W1 implementation work which 已 done) |
+| **Triage path** | W2 D1 Chris morning triage:(a) reproduce + 確認 root cause → file BUG-001 instance(候選 Sev3 minor degraded:trace ingest down,non production user-facing);(b) 若一次性 → close R11,document recovery procedure in C07 design note。**Per PROCESS.md §1.4 R1.bugfix**:bugfix workflow 開 instance 必有 `report.md` + Chris confirm severity |
+| **Lesson learned** | G3 health check 喺 phase end gate 屬 too late;W2+ daily morning quick health 3-services curl check 應加入 daily routine(non end-of-phase only)|
+| **Decay date / review** | W2 D1 morning Chris triage(blocking — if unresolved,W2 implementation traces 將無 Langfuse capture)|
 
 ---
 
