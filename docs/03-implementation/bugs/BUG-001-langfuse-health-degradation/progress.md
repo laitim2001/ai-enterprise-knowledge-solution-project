@@ -215,6 +215,21 @@ curl -s -o /dev/null -w "Langfuse: %{http_code}\n" --max-time 5 http://localhost
 
 ---
 
+### Closeout addendum — 2026-05-02 evening final verify
+
+**Observation(non-reopening)**:Final state check 發現 Docker container healthcheck 仍 reports `Up 6 minutes (unhealthy)` 但 application endpoint `/api/public/health` 從外部 returns HTTP 200 + `{"status":"OK","version":"2.95.11"}`。
+
+**Analysis**:`docker-compose.yml` Langfuse service healthcheck command 用 `wget --spider http://localhost:3000/api/public/health` 喺 container 內部。可能性:
+1. `wget` binary 喺 langfuse:2 image 內部唔 available(image 可能用 `curl` 或冇 HTTP client)— 用 `docker exec ekp-langfuse wget --version` 可確認
+2. Container 內 localhost binding 同 host loopback 唔通(unlikely,Langfuse 自身 listen on 0.0.0.0)
+3. Healthcheck timing race(`start_period: 30s` + `interval: 15s` 但 wget command 自身 fail 即 stuck unhealthy)
+
+**Decision**:**唔 reopen BUG-001**(原 symptom HTTP connection-reset 已 fix,application healthy);呢個 healthcheck command quirk 係 secondary cosmetic issue,不 affect functionality。**W2 D1 morning carry-over**:investigate healthcheck command via `docker exec` 同時 update C12 design note recommend 改用 `wget` 或 `curl` 視乎 image binary availability。
+
+**Impact assessment**:Low — Langfuse trace ingest functional via external HTTP,W2+ implementation traces uncompromised。Docker `restart: unless-stopped` policy 對 unhealthy state 唔 trigger restart(only on exit),所以 container 維持 unhealthy 但 functional state OK。
+
+---
+
 ## Closeout(填於 status=closed)
 
 ### Root Cause(final)
