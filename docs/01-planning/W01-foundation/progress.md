@@ -333,35 +333,74 @@ status: in-progress
 
 ---
 
-## Retro(寫於 phase 結束 W1 D5 / 2026-05-04)
+## Retro(D4 draft 2026-05-02 — D5 final fill 2026-05-04)
+
+> **Note**:此 retro 係 W1 D4 早期 draft,D5 末會 update 加入 D5 嘅 work + final phase gate verdict + sign-off。Status fields 留 placeholder。
 
 ### What worked
 
-_(填於 phase 結束)_
+- **3-layer doc decomposition**(spec / lifecycle / structure)— `architecture.md` v5 frozen + `PROCESS.md v2.0` 3-workflow + `COMPONENT_CATALOG.md` 12-component spine + 11 design notes,zero source-of-truth duplication,reader navigation 3-step
+- **Component spine introduction(D3)**:解決 Chris 「閉眼走路」嘅 visibility pain;agent-harness style decomposition 12 components 立即令 W2-W12 forward planning more concrete
+- **CC-5 design-first with v0-draft marker**(W1 D3 update from rolling JIT)— 11 component design notes 一次寫齊 implementation reference contract,W2 D1 起每個 first-touch component 有現成 design 可依
+- **3-workflow framework**(phase / change / bugfix)+ AI auto-classification + R1-R5 binding rules — workflow ambiguity 從此明確,future任何 task 都有 routing
+- **Pivot agility**:D2 H5 incident → P3 pivot path → F7 不 block → D4 F9 unblocked early 從 W2 D1 → W1 D4(節省 W2 capacity)
+- **Stdlib-first ops paths**:`scripts/inspect_docx_structure.py`(F6 W1 D1)+ `scripts/create_index.py`(F9 W1 D4)用 pure stdlib 喺 R8 corp proxy block PyPI 嘅環境下持續 deliver value
 
 ### What didn't work / unexpected friction
 
-_(填於 phase 結束)_
+- **Ricoh corp infra ecosystem**:cp314 wheel supply(W1 D1)→ MCR DNS intercept(W1 D1)→ corp proxy on PyPI for cp312 wheels too(W1 D2)+ msstore winget cert mismatch(W1 D2)。每個都需要 5-30 min workaround 嘅 R&D。Total D1+D2 ~3h friction
+- **Spec frozen vs evolving understanding tension**:`journal.md → progress.md` rename 需要 cross-doc reference update(W1 D3 batch 2)— 妥善處理但證明 naming choice 上線後 reverse 有 cost
+- **planning artifact chronological vs structural ordering 嘅 tension**:per-phase folder(W01-foundation/)同 per-component folder(components/)兩個 axis,initially 唔清楚邊個 own 邊個 lifecycle event。後期 CC-1 to CC-7 conventions 鎖死(每個 commit / OQ / risk component-tag),但 W1 早期 commits 缺 component tag 屬於 retroactive cleanup work
+- **F8 + F11 hard-blocked Q2 / R8** 持續:F8 Docling install 仲撞 R8(Docling Python lib > 500KB total deps),W2 D2 必須先解 R8 P1/P2
 
 ### Surprises / discoveries
 
-_(填於 phase 結束)_
+- **Drive manuals heading style coverage ~3% only**(W1 D4 F6 finding on 6 sample)— spec §3.3 "heading-aware chunking" 假設 Heading style 覆蓋好,但 Drive 文件實際上用 hardcoded font size 多。W2 D2 chunker design 必須加 font-size heuristic fallback,or visual layout detection。Direct implication:C01 design note `v0-draft` §3 Decisions 需要 update reflect this finding when status v0→v1
+- **890 embedded images aggregate(868 PNG + 18 SVG + 4 EMF)**— EMF presence 確認 Pillow conversion path 必要(per C01 design §4 edge case)。比預期密集(~150 images per doc avg)— W2 D3 screenshot dedup design 嘅 SHA256 path 將大幅省 Blob storage
+- **Catalog convention CC-1..CC-7 over-engineered initially?**— 7 conventions 初看似多,但 D3 末 14 parallel edits(plan F-tag + decision-form OQ + RISK_REGISTER component tag + CLAUDE.md routing)非常 mechanical,證明 conventions 確實 pay off。No regret
+- **`architecture.md` v5 frozen 嘅實際 cost very low**:全部 W1 work cite spec section,zero edit needed to spec body;living evolution 入 RISK_REGISTER + design notes + decision-form。Convention 啱 working
+- **Python 3.12 vs 3.14 ABI tag 教訓**:Python 3.14 backward-compat at source-code level 唔等於 binary wheel ecosystem ready。CLAUDE.md §3.1 「Python 3.12+」應該收緊為「Python 3.12 LTS」,W1 D2 update 過程已記錄
 
 ### Carry-overs to W02-multi-format-ingestion
 
-_(填於 phase 結束)_
+| Item | Reason | W2 owner |
+|---|---|---|
+| **F8 Docling parser PoC**(was W1 D2 plan) | R10 Q2 sample arrived D4 + R8 corp proxy still blocks Docling install | C01 W2 D2 |
+| **F10 embedding pipeline first-pass**(was W1 D5 plan) | R8 blocks Azure SDK install | C01 W2 D5 / W3 D1 |
+| **F11 30 條 ground truth fill**(was W1 D5 plan) | Q2 chunk_id discovery 需要 F8 chunker output 先有 chunk_id | C06 W2-W4 spread |
+| **F2 pytest verification**(was W1 D1 deferred) | R8 corp proxy blocks pip install | C08 post-pip-unblock window |
+| **F7 unit tests**(was W1 D2 deferred) | 同上 | C02 同上 |
+| **R8 mitigation P1/P2 ops decision** | Affects all above | Chris ops |
+| **Q3 outstanding minor**(tier confirm + region confirm) | Index created so non-blocking but cleanup | Chris W2 D1 |
+| **R10 full unblock**(F11 chunk_id discovery 嘅 prerequisite — F8 must run first) | Cascade dependency Q2→F8→F11 | C01 → C06 cascade |
 
 ### ADR triggers
 
-_(填於 phase 結束 — W1 暫無 architectural-adjacent decision triggering ADR)_
+- **ADR pending trigger**:F9 stdlib REST CLI(non-SDK)approach in `scripts/create_index.py` — implementation choice driven by R8 corp proxy(non-architectural,per CLAUDE.md §5.1 H1 boundary)。**Verdict**:no ADR(implementation detail,interface stable)
+- **ADR pending trigger**:CC-5 convention update(rolling JIT → design-first with v0-draft marker)— process convention,not architectural。**Verdict**:no ADR(PROCESS.md self-evolves per its own §10)
+- **ADR pending trigger**:`backend/kb_management/` 3-file package(non single-file per F7 plan)— implementation detail per CLAUDE.md §1.3 surgical。**Verdict**:no ADR
+- **W1 全 phase NO ADR triggered**;all decisions either spec-aligned or implementation-detail-only
 
-### Phase Gate result
+### Phase Gate result(D4 verdict — D5 may update if F8/F11 work happens D5)
 
-_(填於 phase 結束 — G1-G6 per plan §3)_
+| # | Target | D4 verdict | D5 final |
+|---|---|---|---|
+| **G1** | 11/11 deliverables done OR explicit defer | 🟡 **5 done(F1/F3/F4/F5/F6)+ 1 done with sub-defer(F7 impl ✅ unit tests defer)+ 1 done with sub-defer(F2 impl ✅ pytest defer)+ 1 done D4(F9)= 8 done with explicit defers** | _(D5 update if F8 / F10 / F11 progress)_ |
+| **G2** | 6/6 critical OQ Resolved | ✅ **PASS 6/6**(Q1/Q2 W1 D1,Q3/Q4/Q14 W1 D2 + W1 D4)| Same |
+| **G3** | Local dev stack 3/3 up | ✅ **PASS** | Same(verify D5)|
+| **G4** | Backend ruff + frontend lint + type-check 0 errors | ✅ **PASS**(verified D2 + D4)| Same(verify D5)|
+| **G5** | F8 Docling parses 5 sample without unrecoverable error | 🔴 **FAIL — explicit defer**(R8 + sequence) | _(D5 if R8 unblocks could change)_ |
+| **G6** | F11 ground truth ≥ 30 queries validated | 🔴 **FAIL — explicit defer**(R10 cascade after F8) | _(D5 update)_ |
 
-### Phase status
+**Net W2 kickoff readiness**:**Pass-with-deferrals**(G5/G6 explicit deferred to W2,documented in carry-overs)。
 
-_(填於 phase 結束 — closeout commit hash + status flip + W2 kickoff trigger)_
+### Phase status(填於 D5 末)
+
+- Closeout commit:_(D5 末 fill)_
+- Frontmatter status flipped to `closed`:_(D5 末)_
+- Phase W02 kickoff trigger:**already prepared as draft W1 D4(this commit batch)**;status flips draft → active 喺 D5 末 retro sign-off + Chris approve 之後
+
+
 
 ---
 
