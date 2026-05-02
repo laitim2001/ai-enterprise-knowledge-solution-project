@@ -2,7 +2,7 @@
 bug_id: BUG-001
 title: "Langfuse health endpoint connection-reset; recovery commands hang silently"
 severity: Sev3
-status: investigating   # triaged | investigating | fixing | verifying | done | wont-fix
+status: fixing          # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-05-02
 reporter: "AI (W1 D5 closeout pre-flight G3 verification)"
 affects_components: [C07, C12]
@@ -84,6 +84,17 @@ Langfuse Docker container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `/a
 - 結果:雙 container deadlock state — old zombie 仍 bound name + port 3000,new orphan 永遠 stuck Created
 
 **Why container-level recovery commands hang**:Docker 28.5.1 daemon-to-container IPC 對 dead-PID-1 container 嘅 timeout behavior 喺 Windows Docker Desktop 環境下變 "infinite wait"(known issue pattern),需要 daemon-level recycle 或 force `--time 0` removal bypass IPC。
+
+**(Path A fix attempts 2026-05-02 evening — partial success)**:
+- ✅ **A.1** `docker rm -f 935ba7f473df_ekp-langfuse`(orphan)→ exit 0,orphan removed cleanly
+- ❌ **A.2** `docker rm -f ekp-langfuse`(zombie)→ timeout 90s exit 124
+- ❌ **A.2 retry** `docker stop -t 1 ekp-langfuse` → timeout 30s exit 124
+- ❌ **A.2 retry** `docker rm ekp-langfuse`(after stop attempt)→ timeout 30s exit 124
+- ❌ **A.2 retry** `docker kill -s KILL ekp-langfuse`(direct SIGKILL)→ timeout 30s exit 124
+
+**Confirmed deeper finding**:Even SIGKILL via `docker kill` 都 hang — daemon-side container state for `ekp-langfuse` 完全 corrupt,**任何** docker CLI 對該 container 嘅 operation 都 infinite wait。Orphan removal working confirms daemon overall responsive,呢個 specific container record 鎖死。
+
+**Required**:Path B(Docker Desktop daemon-level recycle via GUI restart)— **唯一可行 fix path**,需要 Chris manually action(GUI restart 我做唔到 autonomously)。
 
 ## 7. Acceptance for Fix(checklist preview)
 

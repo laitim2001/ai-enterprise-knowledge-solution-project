@@ -87,9 +87,50 @@ status: in-progress     # in-progress | closed
 
 ---
 
-## Day 2 — TBD (fix phase)
+## Day 1 evening cont — 2026-05-02 (Path A executed — partial success,escalate Path B)
 
-_(Path A execution + verify,or Path B fallback — 待 Chris approval)_
+### Done
+- Status flip:`investigating → fixing`
+- **Path A.1** `docker rm -f 935ba7f473df_ekp-langfuse` → ✅ exit 0,orphan removed cleanly
+- **Path A.2** 3 個 variant 嘗試:
+  - `docker rm -f ekp-langfuse` → timeout 90s exit 124
+  - `docker stop -t 1 + docker rm` → both timeout exit 124
+  - `docker kill -s KILL` → timeout exit 124
+- ✅ **Confirmed orphan deadlock theory**:A.1 success(orphan IPC OK)+ A.2 全 fail 證明 zombie 個 daemon-side record 完全 corrupt;orphan 唔 share 同樣 IPC stuck state
+- ❌ Path A definitively cannot remove zombie ekp-langfuse via CLI
+- Update report.md §6 + checklist Investigation/Fix sections with Path A result
+- Status pause:**Path B requires Chris GUI action(Docker Desktop restart),AI 做唔到**
+
+### Diagnosis update
+- Initial Path A premise(SIGKILL via `rm -f` bypass IPC)被 disproved by `docker kill -s KILL` test
+- Real conclusion:**daemon-side container record corruption 比預期更深** — daemon process 維持該 record 嘅 reference 但無法接受任何 mutation operation;只有 daemon-level recycle(restart Docker Desktop)可以 force daemon flush stale records
+- Postgres + Azurite 不受影響(non-corrupt records)— Path B 重啟 daemon 對佢哋只係 transient outage,不 lose data(volumes intact)
+
+### Decisions
+- **Escalate Path B** via Chris manual GUI action(Settings → Restart Docker Desktop)— per CLAUDE.md "Executing actions with care",我等 Chris confirm 再 walk through B.1-B.5 sequence
+- **Path A.1 partial success kept**(orphan gone)— 不需 reverse,B 之後 fresh init 唔再衝突
+- **No status flip to verifying yet**(Path B 仲未 execute,fix incomplete)— `report.md` status remains `fixing`
+
+### Blockers
+- 🟡 **Awaiting Chris GUI action**:Docker Desktop Settings → Restart(我 walk-through Path B steps after Chris ready)
+- 🟡 R8 + R10 仍 unchanged(orthogonal to BUG-001)
+
+### Effort
+- Path A planned:5min;actual:6min(3 variants tested + state verify)
+- Variance:+1min(額外 attempt `docker kill -s KILL` 確認 SIGKILL 都 hang)
+
+### Commits
+| Hash | Subject |
+|---|---|
+| `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
+| `9f20236` | chore(bugfix): BUG-001 investigation — root cause confirmed |
+| `(this commit pending)` | chore(bugfix): BUG-001 Path A executed — orphan removed, zombie escalates Path B |
+
+---
+
+## Day 2 — TBD (Path B execution after Chris GUI restart)
+
+_(Walk-through B.1-B.5 + verify + post-fix improvement)_
 
 ---
 

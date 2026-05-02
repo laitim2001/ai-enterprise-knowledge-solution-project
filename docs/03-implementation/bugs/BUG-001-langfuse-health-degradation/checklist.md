@@ -25,14 +25,15 @@ last_updated: 2026-05-02
 
 ## Fix(updated post-investigation 2026-05-02 evening)
 
-### Path A — Try `docker rm -f --time 0` first(low cost,5min total)
+### Path A — `docker rm -f` attempts(EXECUTED 2026-05-02 evening — A.1 ✅ / A.2 ❌)
 
-- [ ] **Pre-fix safety check**:Postgres backing volume `langfuse-postgres-data` 不會被 affected(volume 獨立於 container lifecycle,trace history preserved if any)
-- [ ] **A.1**:`docker rm -f --time 0 935ba7f473df_ekp-langfuse`(orphan container,Created state,non-blocking expected)
-- [ ] **A.2**:`docker rm -f --time 0 ekp-langfuse`(zombie container — `--time 0` skips graceful stop,bypass IPC hang)
-- [ ] **A.3**:`docker compose -f infrastructure/docker-compose.yml up -d langfuse`(clean re-init from scratch)
-- [ ] **A.4**:Wait 30s startup grace period
-- [ ] **A.5**:`curl http://localhost:3000/api/public/health` → expect HTTP 200
+- [x] **Pre-fix safety check**:Postgres backing volume `langfuse-postgres-data` 不會被 affected(volume 獨立於 container lifecycle)
+- [x] **A.1**:`docker rm -f 935ba7f473df_ekp-langfuse` → ✅ exit 0,orphan removed(note:`--time` flag 實際只屬 `docker stop`,non `docker rm`;原 plan 寫錯)
+- [x] **A.2 attempt 1**:`docker rm -f ekp-langfuse` → ❌ timeout 90s exit 124
+- [x] **A.2 attempt 2**:`docker stop -t 1 ekp-langfuse` + `docker rm` → ❌ both timeout exit 124
+- [x] **A.2 attempt 3**:`docker kill -s KILL ekp-langfuse` → ❌ timeout exit 124
+- [N/A] **A.3-A.5** skipped — A.2 fail = zombie 仲 bound name + port 3000,clean re-init 唔可能 from compose up(name conflict)
+- [x] **Conclusion**:Path A failed at A.2;daemon-side IPC for ekp-langfuse 完全 corrupt(SIGKILL 都 hang)→ escalate Path B
 
 ### Path B — If Path A fails(Docker Desktop daemon restart)
 
