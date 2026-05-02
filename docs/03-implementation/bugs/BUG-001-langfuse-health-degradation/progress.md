@@ -2,7 +2,7 @@
 bug_id: BUG-001
 report_ref: ./report.md
 checklist_ref: ./checklist.md
-status: in-progress     # in-progress | closed
+status: closed          # in-progress | closed
 ---
 
 # BUG-001 — Progress
@@ -128,9 +128,90 @@ status: in-progress     # in-progress | closed
 
 ---
 
-## Day 2 — TBD (Path B execution after Chris GUI restart)
+## Day 1 final — 2026-05-02 (Path B executed,VERIFIED FIXED,closeout same-day)
 
-_(Walk-through B.1-B.5 + verify + post-fix improvement)_
+### Done
+- Chris GUI restart Docker Desktop ✅(daemon recycle)
+- B.1 verify post-restart:`docker ps -a` 顯示 ekp-langfuse + ekp-postgres `Exited (255) 2 min ago`(zombie cleared)
+- B.2 attempt 1:`docker compose up -d`(full)→ ❌ Azurite MCR pull 503(R9 pattern resurfaced)
+- B.2 attempt 2:`docker compose up -d postgres langfuse`(skip azurite,npm fallback running)→ ✅ Postgres Healthy + Langfuse Started
+- B.3 poll-and-wait Langfuse boot:`until curl -sf ...; do sleep 3; done`(~60s actual)
+- B.4 verify HTTP 200:`{"status":"OK","version":"2.95.11"}` returned cleanly
+- B.5 sustained 30s re-verify:still HTTP 200
+- Status flips:`fixing → done`(report.md frontmatter)+ `in-progress → closed`(checklist + progress frontmatter)
+- RISK_REGISTER R11 entry status:🔴 Open → 🟢 Closed 2026-05-02
+
+### Diagnosis update(final)
+- **Root cause confirmed final**:Daemon-side container record corruption + Langfuse Node.js zombie process state(non-exit,bypasses Docker `restart: unless-stopped` policy detection)+ orphan container deadlock from previous failed force-recreate
+- **`restart: unless-stopped` already-set finding**:docker-compose.yml Langfuse service 早已 set restart policy(per W1 D1)。但 Docker restart policy 只 trigger on **exit code**,zombie process 唔 exit(只 hung)→ 政策 not effective for this failure mode。**Mitigation**:recovery procedure(Path B GUI restart)係實際 mitigation,non architectural fix
+- **R9 MCR pattern confirmed persistent**:即使 daemon restart,MCR (`southeastasia.data.mcr.microsoft.com`)仍係 Ricoh corp DNS intercept blocked → 任何 future `docker compose up -d` 起 azurite Docker image 會 503;workaround = `up -d postgres langfuse`(specific services skip azurite)+ 繼續用 npm Azurite fallback
+
+### Decisions(closeout)
+- **Postmortem.md defer**:Sev3 encouraged not mandatory;defer to W2 末 retro batch 因 R8/R9/R11 共同屬 Ricoh corp infra ecosystem trio,合 post-mortem 一齊寫 surface 共通 pattern + ops mitigation roadmap
+- **C07/C12 design note 更新 deferred to W2 carry-over**(non-blocking for BUG-001 closeout;W2 D1 morning batch update with daily health check ritual + recovery procedure section)
+- **`restart: unless-stopped` 不需新增**(已 set per W1 D1)
+- **Daily morning health check ritual** finalize:W2 D1 morning routine = `docker ps --format "{{.Names}}: {{.Status}}"` + `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/public/health`(2 line check)
+
+### Blockers
+- None at closeout(BUG-001 done,W2 D1 morning carry-over items 屬 non-blocking design note polish)
+
+### Effort
+- Investigation 0.4h + Path A attempts 0.1h + Path B execution 0.2h + closeout 0.3h = **1.0h total**
+- Planned:1h time-box(triage 0.5h + investigation+fix 0.5h);actual:1.4h(triage 0.4h + invest 0.4h + Path A 0.1h + Path B+closeout 0.5h)— +0.4h variance from 額外 Path A.2 retries + Path B MCR retry
+
+### Commits
+| Hash | Subject |
+|---|---|
+| `c4473b2` | chore(bugfix): open BUG-001 langfuse health degradation (Sev3 triaged) |
+| `9f20236` | chore(bugfix): BUG-001 investigation — root cause confirmed |
+| `e815556` | chore(bugfix): BUG-001 Path A executed — orphan removed, zombie escalates Path B |
+| `(this commit pending)` | fix(c07): BUG-001 closed — Path B recovery verified, R11 closed |
+
+---
+
+## Closeout(填於 status=closed)
+
+### Root Cause(final)
+**Two-layer failure**:
+1. **Layer 1**:Langfuse v2 Node.js process inside container 進入 **zombie state**(non-exit,只 hung — daemon healthcheck 標 unhealthy 但 process 唔 exit)。Docker `restart: unless-stopped` policy 只 trigger on **exit code**,zombie process 唔 exit → policy not effective。
+2. **Layer 2**:Daemon-to-zombie-container IPC channel 完全 corrupt(`docker logs` / `inspect` / `restart` / `stop` / `kill -s KILL` 全部 silent hang infinite wait,即使 SIGKILL 都 hang)。Previous user attempt 嘅 `docker compose up -d --force-recreate langfuse` 半成功 created orphan container `935ba7f473df_ekp-langfuse`(Created state)but stuck waiting for zombie removal(which itself hangs)→ 雙 container deadlock state。
+
+### Fix Summary
+**Path B Docker Desktop GUI restart**(daemon-level recycle 唯一可行 path,A.1 orphan rm 成功 but A.2 zombie removal 全部 timeout 124 even with SIGKILL)。Recycle 後 daemon flush stale records,zombie 變 `Exited (255)`(killed by daemon),`docker compose up -d postgres langfuse`(skip Azurite MCR-blocked path)成功 fresh init,Langfuse health endpoint 返 HTTP 200 sustained 30s+ stable。Volumes preserved throughout(Postgres data + Langfuse uploads volumes 獨立於 container lifecycle)。
+
+### Regression Test
+**N/A unit test**(infrastructure bug,不適合 pytest scope)。
+**Substitute mitigation**:Daily morning health check ritual W2+ daily routine —
+```bash
+docker ps --format "{{.Names}}: {{.Status}}"
+curl -s -o /dev/null -w "Langfuse: %{http_code}\n" --max-time 5 http://localhost:3000/api/public/health
+```
+若 Langfuse health 唔 200 → 早期 detect,Path B recovery procedure ready in `components/C12-devops.md`(W2 D1 morning carry-over to add)。
+
+### Lessons
+- **What worked**:
+  - Diagnostic batch in parallel(`docker logs` + `inspect` + `system df` + `version` + `ps -a`)quickly surfaced critical orphan container finding(★ central insight via `docker ps -a`)
+  - PROCESS.md §4 Bug-fix workflow strictly followed:report.md → confirm severity → mkdir BUG-NNN → investigate → fix attempt → escalate → verify。Process governance prevented "blind retry" rabbit hole
+  - **Time-box discipline**:Path A 60-90s timeout per command 防止 infinite hang block AI capacity;TaskStop on stale background tasks recovered context budget
+  - Path A → Path B explicit escalation(non auto-pivot)gave Chris transparent visibility on cost/risk before destructive GUI action
+- **What slowed us down**:
+  - 5 個 stale background docker tasks 喺 W1 D5 期間 stopped 但 belated propagation completion confused initial state assessment 一陣
+  - `--time` flag confusion(屬 `docker stop` non `docker rm`)致 Path A.1 第一次 syntax error retry waste 1 attempt
+  - Initial hypothesis 4 種(Langfuse v2 issue / Postgres pool / Volume corruption / Daemon-wide)全部 disproved during investigation;real cause(zombie + orphan deadlock)冇喺 hypothesis list,reflect investigation should always include 「`docker ps -a`」first(state snapshot)before specific subcommand poking
+- **Patterns to watch for**:
+  - **Zombie process state ≠ exit**:Docker `restart: unless-stopped` policy 對 zombie process 唔 effective;Tier 2 升級 Langfuse v3(ClickHouse + Redis topology)可能改變 process model 解 root cause。Watch list:Beta+ phase plan
+  - **Daemon-to-container IPC corruption recoverable only by daemon recycle**:Future similar zombie pattern → 立即 escalate Path B GUI restart,non waste time on `docker rm -f` which will hang infinitely
+  - **Orphan containers from failed force-recreate**:Always `docker ps -a` after compose up failure to detect orphan stuck Created state
+  - **G3 health check 屬 daily routine non end-of-phase**:W1 D5 retro lesson learned 確認 + 加 W2+ daily morning ritual
+  - **Stale background task TaskStop discipline**:long-running docker commands 應該 explicit timeout + TaskStop on hang(prevent context bloat from belated completions)
+
+### Component design note status updates(W2 carry-over batch)
+- **C07**:no version bump(observability stack design unchanged);**add §4 troubleshooting subsection**:daily morning health check ritual + Path B recovery procedure
+- **C12**:no version bump(infra design unchanged);**add §4 troubleshooting subsection**:zombie container + orphan container deadlock recovery via Path B GUI restart;document `docker compose up -d postgres langfuse`(skip azurite per R9)pattern
+
+---
+
+**End of BUG-001 progress**(closed 2026-05-02)
 
 ---
 

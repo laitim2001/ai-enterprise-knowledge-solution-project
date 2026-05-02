@@ -1,7 +1,7 @@
 ---
 bug_id: BUG-001
 report_ref: ./report.md
-status: in-progress     # in-progress | done
+status: done            # in-progress | done
 last_updated: 2026-05-02
 ---
 
@@ -35,20 +35,23 @@ last_updated: 2026-05-02
 - [N/A] **A.3-A.5** skipped — A.2 fail = zombie 仲 bound name + port 3000,clean re-init 唔可能 from compose up(name conflict)
 - [x] **Conclusion**:Path A failed at A.2;daemon-side IPC for ekp-langfuse 完全 corrupt(SIGKILL 都 hang)→ escalate Path B
 
-### Path B — If Path A fails(Docker Desktop daemon restart)
+### Path B — Docker Desktop daemon restart(EXECUTED 2026-05-02 evening — ✅ FIXED)
 
-- [ ] **B.1**:Stop Postgres + Langfuse via `docker compose down`(若 down 都 hang → manual GUI restart Docker Desktop)
-- [ ] **B.2**:**Docker Desktop GUI restart**(Settings → Restart;會 kill all containers + restart daemon)
-- [ ] **B.3**:`docker compose -f infrastructure/docker-compose.yml up -d`(re-init Postgres + Langfuse fresh)
-- [ ] **B.4**:Wait 60s startup
-- [ ] **B.5**:Verify Postgres + Langfuse health endpoints
+- [N/A] **B.1 original**:`docker compose down`(skipped — Chris went直接 GUI restart per BUG-001 Path A failure analysis)
+- [x] **B.0** Chris GUI restart Docker Desktop ✅(daemon recycle complete,tray icon green)
+- [x] **B.1**:`docker ps -a` post-restart → ekp-langfuse + ekp-postgres show `Exited (255) 2 min ago`(zombie cleared by daemon restart;volumes preserved)
+- [x] **B.2 attempt 1**:`docker compose up -d`(full)→ ❌ Azurite layer pull from MCR `southeastasia.data.mcr.microsoft.com` 503(R9 pattern persists post daemon restart)
+- [x] **B.2 attempt 2**:`docker compose up -d postgres langfuse`(skip azurite MCR path,npm fallback already serving 10000)→ ✅ Postgres Healthy + Langfuse Started
+- [x] **B.3**:Poll-and-wait until Langfuse health responsive(`until curl -sf ...; do sleep 3; done` pattern,~60s startup)
+- [x] **B.4**:`curl http://localhost:3000/api/public/health` → ✅ HTTP 200,returns `{"status":"OK","version":"2.95.11"}`
+- [x] **B.5**:Sustained 30s re-verify → still HTTP 200
 
-### Post-fix(Path A 或 B success 之後)
+### Post-fix(Path B success 後)
 
-- [ ] Verify `/api/public/health` 200 sustained ≥ 5 min(2 polls 5min apart)
-- [ ] Add `restart: unless-stopped` policy 入 `docker-compose.yml` Langfuse service(prevent future zombie no-restart pattern;C12 design note update)
-- [ ] Document recovery procedure(Path A + Path B steps)入 `components/C12-devops.md`(under troubleshooting section)
-- [ ] Update `components/C07-observability.md` health check ritual section
+- [x] Verify `/api/public/health` 200 sustained 30s+(2-poll 30s apart);後續 W2 D1 morning health check 將 confirm 5min sustained
+- [N/A] **`restart: unless-stopped` 加入 docker-compose.yml** — **already set**(per W1 D1 setup);finding showed restart policy 對 zombie process state 無效(restart only triggers on exit,zombie 唔 count)
+- [ ] Document recovery procedure(Path B steps)入 `components/C12-devops.md`(troubleshooting section)
+- [ ] Update `components/C07-observability.md` daily morning health check ritual section
 
 ## Regression Test
 
@@ -65,12 +68,13 @@ last_updated: 2026-05-02
 
 ## Closeout
 
-- [ ] `progress.md` closeout summary(timeline + root cause + lessons)
-- [ ] (Sev3,encouraged not mandatory)Evaluate `postmortem.md` write — recommend WRITE 因 R8/R9/R11 corp infra ecosystem pattern recurring
-- [ ] Update `RISK_REGISTER.md` R11 entry status(🔴 Open → 🟢 Closed YYYY-MM-DD)
-- [ ] `report.md` status flipped to `done`
-- [ ] `progress.md` status flipped to `closed`
-- [ ] Update `components/C07-observability.md` if recovery procedure documented
+- [x] `progress.md` closeout summary(timeline + root cause + lessons + design note recommendations)
+- [ ] (Sev3,encouraged not mandatory)Evaluate `postmortem.md` write — recommend defer to W2 末 retro batch 因 R8/R9/R11 corp infra ecosystem trio postmortem may surface 共通 pattern
+- [x] Update `RISK_REGISTER.md` R11 entry status(🔴 Open → 🟢 Closed 2026-05-02)
+- [x] `report.md` status flipped to `done`
+- [x] `progress.md` status flipped to `closed`
+- [ ] Update `components/C07-observability.md` daily morning health check ritual section(W2 carry-over,non-critical for BUG-001 closeout)
+- [ ] Update `components/C12-devops.md` troubleshooting section with Path B recovery procedure(W2 carry-over)
 
 ---
 

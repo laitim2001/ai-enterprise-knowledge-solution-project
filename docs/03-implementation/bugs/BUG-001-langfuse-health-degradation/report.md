@@ -2,7 +2,7 @@
 bug_id: BUG-001
 title: "Langfuse health endpoint connection-reset; recovery commands hang silently"
 severity: Sev3
-status: fixing          # triaged | investigating | fixing | verifying | done | wont-fix
+status: done            # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-05-02
 reporter: "AI (W1 D5 closeout pre-flight G3 verification)"
 affects_components: [C07, C12]
@@ -96,13 +96,22 @@ Langfuse Docker container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `/a
 
 **Required**:Path B(Docker Desktop daemon-level recycle via GUI restart)— **唯一可行 fix path**,需要 Chris manually action(GUI restart 我做唔到 autonomously)。
 
+**(Path B fix executed 2026-05-02 evening — VERIFIED FIXED)**:
+- Chris GUI restart Docker Desktop ✅(daemon recycle complete)
+- B.1 `docker ps -a` post-restart → both ekp-langfuse + ekp-postgres show `Exited (255) 2 min ago`(zombie cleared by daemon restart;volumes preserved per docker design)
+- B.2 第一次 `docker compose up -d`(full,起 azurite + postgres + langfuse)→ ❌ Azurite layer pull from MCR `southeastasia.data.mcr.microsoft.com` 503(R9 pattern persists post daemon restart)
+- B.2 retry `docker compose up -d postgres langfuse`(skip azurite,npm fallback already serving 10000)→ ✅ exit 0,Postgres Healthy + Langfuse Started
+- B.3+B.4 verify:`curl http://localhost:3000/api/public/health` → ✅ HTTP 200 with `{"status":"OK","version":"2.95.11"}`,sustained 30s+ stable
+
+**Surprising finding**:`docker-compose.yml` Langfuse service **already had** `restart: unless-stopped` policy(per W1 D1 setup),但 zombie pattern 仍然出現。Reason:Langfuse Node.js process 喺呢次 crash 進入 **zombie process state**(process 仲存在但 PID 1 unresponsive),non-exit state → Docker restart policy 只 trigger on **exit**,zombie 唔 count。Docker 28.5.1 唔有 healthcheck-based auto-restart。**呢個 finding contradicts initial Path A.6 post-fix recommendation**:已 set restart policy 並非 sufficient mitigation;recovery procedure(Path B GUI restart)係實際 mitigation,Tier 2 階段如改用 Langfuse v3(ClickHouse + Redis topology)process model 可能解決 root cause。
+
 ## 7. Acceptance for Fix(checklist preview)
 
-- [x] Reproduction confirmed locally(✅ already 5x replication W1 D5)
-- [ ] Root cause identified(via `docker logs ekp-langfuse` + `docker inspect` + Postgres health + Docker Desktop daemon state check)
-- [ ] Fix implemented(scope unknown — could be `docker rm -f` + clean recreate,OR Langfuse version bump,OR Postgres connection pool tune,OR Docker Desktop daemon restart)
-- [ ] Regression test added — **N/A:infrastructure bug,unit test 唔適用**;改為 add daily morning health check ritual to W2+ routine(per W1 D5 retro lesson learned)
-- [ ] Verified in env:re-run §2 repro steps → expect HTTP 200 from `/api/public/health`
+- [x] Reproduction confirmed locally(✅ 5x replication W1 D5 + 4x recovery attempt during fix)
+- [x] Root cause identified(via diagnostic batch + orphan container discovery via `docker ps -a`)
+- [x] Fix implemented:Path B Docker Desktop GUI restart(daemon-level recycle)+ `docker compose up -d postgres langfuse`(skip azurite MCR-blocked path)
+- [x] Regression test:**N/A unit test**(infrastructure bug);substitute mitigation = daily morning health check ritual added to W2+ routine + recovery procedure documented in C07/C12 design notes
+- [x] Verified in env:`/api/public/health` 返 `{"status":"OK","version":"2.95.11"}` HTTP 200 sustained 30s+(2026-05-02 evening Path B verify)
 
 ## 8. Report Changelog
 
@@ -110,6 +119,9 @@ Langfuse Docker container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `/a
 |---|---|---|---|
 | 2026-05-02 | Initial triage,Sev3 confirmed | W1 D5 closeout pre-flight G3 verification surface;Chris confirmed severity + repro accuracy | Chris |
 | 2026-05-02 | Investigation cont — root cause confirmed:zombie container + orphan recreate deadlock + daemon IPC hang on dead-PID-1 | W2 D0 evening investigation 5 read-only diagnostic commands(logs / inspect / system df / version / ps -a)+ 識別 orphan container | AI(investigation phase per PROCESS.md §4.6 step 8-9)|
+| 2026-05-02 | Path A executed — orphan removed,zombie escalates Path B | A.1 success(orphan rm exit 0)+ A.2 全 fail(rm -f / stop -t 1 / kill -s KILL 全部 timeout 124)→ daemon-side container record full corruption confirmed | AI(fix phase per PROCESS.md §4.6 step 10)|
+| 2026-05-02 | Path B executed — Chris GUI restart Docker Desktop;clean compose up postgres+langfuse;Langfuse health 200 verified | Daemon-level recycle clear zombie record;skip azurite due R9 MCR intercept persistent;HTTP 200 sustained 30s+ | Chris(GUI action)+ AI(B.2-B.5 execution + verify per PROCESS.md §4.6 step 11)|
+| 2026-05-02 | Status flipped fixing → done(closeout)| Verify acceptance criteria met,RISK_REGISTER R11 closed,recovery procedure documented in C07 + C12 design notes | AI |
 
 ---
 

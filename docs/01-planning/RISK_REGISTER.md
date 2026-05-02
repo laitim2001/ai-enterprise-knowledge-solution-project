@@ -29,7 +29,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident;D5 retest confirmed | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🔴 Open — D5 retest 2026-05-02 confirmed same `IncompleteRead(0 bytes read, 10911340 more expected)` pattern,no progress;pending P1(VPN/hotspot ops window)or P2(IT whitelist long-term)|
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
-| **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium pending triage | C07 + C12 | 🔴 Open(pending W2 D1 Chris triage)— container Up 2 days but `/api/public/health` connection-reset;`docker compose restart` + `up -d --force-recreate` hang。**Triage path**:reproduce → BUG-001 instance(候選 Sev3 minor degraded);若一次性 → close。**Lesson learned**:G3 daily morning health check 應 added to W2+ daily routine(non-end-of-phase only)|
+| **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
 
 ★ = net-new from W1 implementation,not in `architecture.md §8`
 
@@ -159,20 +159,20 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 
 ---
 
-### R11 ★ — Langfuse Health Endpoint Degradation(NEW W1 D5 Finding)
+### R11 ★ — Langfuse Health Endpoint Degradation(NEW W1 D5 Finding — CLOSED 2026-05-02)
 
 | Field | Value |
 |---|---|
 | **Component(s)** | **C07** Observability Stack(primary)+ **C12** DevOps & Infra(container)|
-| **Severity** | 🟡 Medium pending triage(if confirmed Sev3 minor degraded → BUG-001 instance)|
+| **Severity** | 🟡 Medium(triaged Sev3 → BUG-001 instance per PROCESS.md §4 Bug-fix workflow)|
 | **First observed** | 2026-05-02(W1 D5 closeout pre-flight G3 verification)|
-| **Symptom** | Container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `curl http://localhost:3000/api/public/health` 連接 reset(exit code 56 `Recv failure: Connection was reset`)|
+| **Symptom** | Container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `curl http://localhost:3000/api/public/health` 連接 reset(exit code 56)|
 | **Last verified healthy** | W1 D2 EOD(per `09138d4` commit context;F4 acceptance criteria initial pass)|
-| **Recovery attempts** | `docker restart ekp-langfuse`(silent hang)/ `docker compose restart langfuse`(silent hang)/ `docker compose up -d --force-recreate langfuse`(silent hang)— 3 attempts 全部 docker daemon 唔 respond,container 仲係 reports `Up 2 days` uptime |
-| **Mitigation in place** | 🔴 None yet — recovery 嘗試全 hang。Postgres healthy + Azurite healthy unaffected,只係 Langfuse trace ingest 影響(POC 階段觀測性 degraded,not critical for W1 implementation work which 已 done) |
-| **Triage path** | W2 D1 Chris morning triage:(a) reproduce + 確認 root cause → file BUG-001 instance(候選 Sev3 minor degraded:trace ingest down,non production user-facing);(b) 若一次性 → close R11,document recovery procedure in C07 design note。**Per PROCESS.md §1.4 R1.bugfix**:bugfix workflow 開 instance 必有 `report.md` + Chris confirm severity |
-| **Lesson learned** | G3 health check 喺 phase end gate 屬 too late;W2+ daily morning quick health 3-services curl check 應加入 daily routine(non end-of-phase only)|
-| **Decay date / review** | W2 D1 morning Chris triage(blocking — if unresolved,W2 implementation traces 將無 Langfuse capture)|
+| **Root cause confirmed** | (a)Langfuse Node.js process 進入 zombie state(non-exit,Docker `restart: unless-stopped` policy 唔 trigger because zombie 唔 exit);(b)Daemon-to-zombie-container IPC channel completely corrupt — `docker rm -f` / `docker kill -s KILL` 全部 timeout infinite wait;(c)Previous failed force-recreate 留低 orphan container `935ba7f473df_ekp-langfuse`(Created state)stuck waiting for zombie removal → 雙 container deadlock |
+| **Fix applied** | BUG-001 Path B(Docker Desktop GUI restart by Chris)+ `docker compose up -d postgres langfuse`(skip azurite due R9 MCR intercept)+ verify HTTP 200 sustained;Path A `docker rm -f`(orphan only)成功 but zombie removal 全 fail |
+| **Mitigation in place** | 🟢 **Closed 2026-05-02**:Recovery procedure(Path B)documented in BUG-001 progress.md + W2 D1 morning carry-over to add subsection in C07 + C12 design notes troubleshooting。Daily morning health check ritual added to W2+ daily routine |
+| **Lesson learned** | (1)G3 health check 屬 daily routine non end-of-phase only;(2)`restart: unless-stopped` 對 zombie process state 無效(Docker only triggers on exit);(3)Future similar zombie pattern → 立即 escalate Path B GUI restart,prevent wasted time on `docker rm -f` infinite hang;(4)`docker ps -a` 永遠係 daemon issue 第一個 query(catch orphan containers from failed force-recreate)|
+| **Decay date / review** | ✅ Closed 2026-05-02(BUG-001 closed same-day);R8/R9/R11 corp infra ecosystem trio postmortem 計劃 W2 末 retro batch surface 共通 pattern |
 
 ---
 
