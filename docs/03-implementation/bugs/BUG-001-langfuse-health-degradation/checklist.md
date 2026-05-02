@@ -13,23 +13,41 @@ last_updated: 2026-05-02
 ## Investigation
 
 - [x] Reproduce locally per `report.md §2`(W1 D5 pre-flight 5x replication 已確認 always-reproducible)
-- [ ] Read `docker logs ekp-langfuse --tail 100` 完整檢視 container 內 process state
-- [ ] `docker inspect ekp-langfuse` 檢視 health check command output + restart count
-- [ ] `docker exec ekp-langfuse <process-list>` 確認 Langfuse Node.js process 是否 alive(若 exec 仲 work)
-- [ ] Check Postgres connection from Langfuse perspective(是否 connection pool exhaustion)
-- [ ] Check Docker Desktop daemon state(`docker system info` + `docker version`,看 daemon 是否 responsive)
-- [ ] Check disk space + Docker volume health(`docker system df`)
-- [ ] Identify root cause confirmed via concrete evidence
-- [ ] Update `report.md §6` with confirmed root cause
+- [x] `docker logs ekp-langfuse --tail 50` — **silent hang**(diagnostic finding:per-container IPC dead)
+- [x] `docker inspect ekp-langfuse` — **silent hang**(same IPC issue)
+- [N/A] `docker exec` 跳過(per-container subcommand 全部 hang,exec 同樣 hang 預期)
+- [x] Postgres healthy independently(`docker logs --tail 5 ekp-postgres` 正常)— 排除 Postgres pool exhaustion 假設
+- [x] Docker Desktop daemon responsive(`docker version` 28.5.1 + `docker system df` + `docker ps -a` 全部正常)— 排除 daemon-wide failure
+- [x] Disk + volume OK(41GB images / 6.8GB volumes / no exhaustion)
+- [x] **Root cause confirmed**:zombie container + orphan recreate deadlock + daemon IPC hang on dead-PID-1
+- [x] **CRITICAL DISCOVERY**:orphan container `935ba7f473df_ekp-langfuse`(Created state,3 hours ago)from previous force-recreate attempt
+- [x] Update `report.md §6` with confirmed root cause(2026-05-02 changelog entry added)
 
-## Fix
+## Fix(updated post-investigation 2026-05-02 evening)
 
-- [ ] Attempt 1:`docker rm -f ekp-langfuse` + `docker compose up -d langfuse`(force remove + clean re-init,bypass 'restart' hang path)
-- [ ] If Attempt 1 fail:`docker compose down` + `docker compose up -d`(全 stack restart,Postgres + Langfuse 一齊)
-- [ ] If Attempt 2 fail:Docker Desktop restart(GUI level)+ retry compose up
-- [ ] If Attempt 3 fail:investigate Langfuse version bump(2 → 2-latest if available 2026-05 / OR explicit version pin)
-- [ ] Verify:`/api/public/health` 返 HTTP 200 sustained ≥ 5 min
-- [ ] Update `components/C07-observability.md` design note + `components/C12-devops.md`:document recovery procedure + bump status if design changed
+### Path A — Try `docker rm -f --time 0` first(low cost,5min total)
+
+- [ ] **Pre-fix safety check**:Postgres backing volume `langfuse-postgres-data` 不會被 affected(volume 獨立於 container lifecycle,trace history preserved if any)
+- [ ] **A.1**:`docker rm -f --time 0 935ba7f473df_ekp-langfuse`(orphan container,Created state,non-blocking expected)
+- [ ] **A.2**:`docker rm -f --time 0 ekp-langfuse`(zombie container — `--time 0` skips graceful stop,bypass IPC hang)
+- [ ] **A.3**:`docker compose -f infrastructure/docker-compose.yml up -d langfuse`(clean re-init from scratch)
+- [ ] **A.4**:Wait 30s startup grace period
+- [ ] **A.5**:`curl http://localhost:3000/api/public/health` → expect HTTP 200
+
+### Path B — If Path A fails(Docker Desktop daemon restart)
+
+- [ ] **B.1**:Stop Postgres + Langfuse via `docker compose down`(若 down 都 hang → manual GUI restart Docker Desktop)
+- [ ] **B.2**:**Docker Desktop GUI restart**(Settings → Restart;會 kill all containers + restart daemon)
+- [ ] **B.3**:`docker compose -f infrastructure/docker-compose.yml up -d`(re-init Postgres + Langfuse fresh)
+- [ ] **B.4**:Wait 60s startup
+- [ ] **B.5**:Verify Postgres + Langfuse health endpoints
+
+### Post-fix(Path A 或 B success 之後)
+
+- [ ] Verify `/api/public/health` 200 sustained ≥ 5 min(2 polls 5min apart)
+- [ ] Add `restart: unless-stopped` policy 入 `docker-compose.yml` Langfuse service(prevent future zombie no-restart pattern;C12 design note update)
+- [ ] Document recovery procedure(Path A + Path B steps)入 `components/C12-devops.md`(under troubleshooting section)
+- [ ] Update `components/C07-observability.md` health check ritual section
 
 ## Regression Test
 

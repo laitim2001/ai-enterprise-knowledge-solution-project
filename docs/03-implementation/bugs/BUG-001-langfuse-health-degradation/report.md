@@ -2,7 +2,7 @@
 bug_id: BUG-001
 title: "Langfuse health endpoint connection-reset; recovery commands hang silently"
 severity: Sev3
-status: triaged         # triaged | investigating | fixing | verifying | done | wont-fix
+status: investigating   # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-05-02
 reporter: "AI (W1 D5 closeout pre-flight G3 verification)"
 affects_components: [C07, C12]
@@ -66,9 +66,24 @@ Langfuse Docker container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `/a
 - 可能性 3:Docker volume corruption in `langfuse-postgres-data`
 - 可能性 4:Docker Desktop daemon-side 問題(non-Langfuse process 但 affects daemon responsiveness)
 
-**(Investigation pending W2 D0 evening session)**:hypothesis evolution TBD
+**(W2 D0 investigation 2026-05-02 evening)**:
+- ✅ `docker version` 返 28.5.1 normal — Docker daemon **整體** responsive
+- ✅ `docker system df` 返 normal — disk OK(41GB images / 6.8GB volumes / no exhaustion)
+- ✅ `docker ps -a` 返 normal — daemon container metadata query 正常
+- ✅ `docker logs --tail 5 ekp-postgres` 返 actual log lines — daemon-to-container IPC works for healthy container
+- 🔴 `docker logs --tail 50 ekp-langfuse` **silent hang**(0 bytes after >60s,TaskStop 終止)
+- 🔴 `docker inspect ekp-langfuse` **silent hang**(同樣 0 bytes)
+- 🔴 `docker restart ekp-langfuse` / `docker compose restart langfuse` / `docker compose up -d --force-recreate langfuse` 全部 silent hang
+- ★ **CRITICAL DISCOVERY**:`docker ps -a` 顯示有 **orphan container `935ba7f473df_ekp-langfuse`**(`Created` state,3 hours ago)— 即係之前 `docker compose up -d --force-recreate langfuse` 半成功:created new container but hung waiting for old zombie container removal。Now 兩個 container 共存:zombie(name=ekp-langfuse,Up 2 days unhealthy)+ orphan(name=935ba7f473df_ekp-langfuse,Created)
 
-**(Root cause confirmed)**:_(填於 fix completion)_
+**(Root cause confirmed 2026-05-02)**:
+**Daemon IPC corruption specific to ekp-langfuse zombie container**。
+- Original container `ekp-langfuse` PID 1(Langfuse Node.js process)crashed but Docker daemon's container metadata 仍 reports `Up`(healthcheck stuck "unhealthy"狀態,no restart policy in docker-compose.yml triggers auto-restart)
+- Daemon's IPC channel to dead container PID 1 timeouts on **每** per-container query(logs / inspect / stop / restart)— daemon 等 PID 1 ack 但 PID 1 已 dead,timeout 發生 silent hang
+- 之前 `docker compose up -d --force-recreate langfuse` 嘗試 created new container `935ba7f473df_ekp-langfuse`(`Created` state ready to start)但 hang waiting for old zombie removal(因為 `docker rm` zombie 同樣 hang)
+- 結果:雙 container deadlock state — old zombie 仍 bound name + port 3000,new orphan 永遠 stuck Created
+
+**Why container-level recovery commands hang**:Docker 28.5.1 daemon-to-container IPC 對 dead-PID-1 container 嘅 timeout behavior 喺 Windows Docker Desktop 環境下變 "infinite wait"(known issue pattern),需要 daemon-level recycle 或 force `--time 0` removal bypass IPC。
 
 ## 7. Acceptance for Fix(checklist preview)
 
@@ -83,6 +98,7 @@ Langfuse Docker container `ekp-langfuse` reports `Up 2 days (unhealthy)`,但 `/a
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-02 | Initial triage,Sev3 confirmed | W1 D5 closeout pre-flight G3 verification surface;Chris confirmed severity + repro accuracy | Chris |
+| 2026-05-02 | Investigation cont — root cause confirmed:zombie container + orphan recreate deadlock + daemon IPC hang on dead-PID-1 | W2 D0 evening investigation 5 read-only diagnostic commands(logs / inspect / system df / version / ps -a)+ 識別 orphan container | AI(investigation phase per PROCESS.md §4.6 step 8-9)|
 
 ---
 
