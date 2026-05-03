@@ -628,7 +628,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| TBD this session | feat(c01,c04,c06,c08,c09): F7 eval framework + F8 chunk_id discovery + F9 Admin UI + F11 retro + W3 kickoff prep (W2 D5) |
+| `072b95b` | feat(c01,c04,c06,c08,c09): F7 eval framework + F8 chunk_id discovery + F9 Admin UI + F11 retro + W3 kickoff prep (W2 D5) |
 
 ---
 
