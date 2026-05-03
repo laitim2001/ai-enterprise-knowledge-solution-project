@@ -241,5 +241,5 @@ class ChunkRecord(BaseModel):
 - W2 D1 commit: `f30f13a`(F1 docx_parser delivery)
 - W2 D2 commit: `170e3db`(F2 layout-aware chunker + parser doc_order refactor)
 - W2 D3 commit: `28341b8`(F3 screenshot pipeline + F4 embedder + R12 Azurite risk)
-- W2 D4 commit: TBD(this session — F5 orchestrator + F6 retrieval engine + /query wire)
+- W2 D4 commit: `2b4bb7e`(F5 orchestrator + F6 retrieval engine + /query wire)
 - Cross-component: emits to C03 (index sink);uses C12 (Blob);uses Azure OpenAI (via C12);consumed by C04

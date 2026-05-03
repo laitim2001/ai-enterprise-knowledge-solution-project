@@ -525,7 +525,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| TBD this session | feat(c01,c03,c04,c08): F5 orchestrator + populate + F6 hybrid retrieval + /query wire (W2 D4) |
+| `2b4bb7e` | feat(c01,c03,c04,c08): F5 orchestrator + populate + F6 hybrid retrieval + /query wire (W2 D4) |
 
 ---
 
