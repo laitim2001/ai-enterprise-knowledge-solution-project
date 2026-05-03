@@ -12,12 +12,13 @@ router = APIRouter()
 
 
 @router.post("/query", response_model=QueryResponse)
-async def query(_request: QueryRequest) -> QueryResponse:
+async def query(payload: QueryRequest) -> QueryResponse:
     """Main RAG query.
 
     W1 stub: route registered, returns 501.
     Real impl W3 per architecture.md §3.1 (Hybrid retrieval + Cohere rerank + GPT-5.5 + CRAG).
     """
+    _ = payload
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="W3 implementation per architecture.md §3.1",
@@ -25,11 +26,12 @@ async def query(_request: QueryRequest) -> QueryResponse:
 
 
 @router.post("/query/stream")
-async def query_stream(_request: QueryRequest) -> StreamingResponse:
+async def query_stream(payload: QueryRequest) -> StreamingResponse:
     """SSE streaming variant of /query.
 
     W1 stub: 501. Real impl W3 with Vercel AI SDK SSE protocol.
     """
+    _ = payload
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="W3 streaming implementation per architecture.md §3.1",

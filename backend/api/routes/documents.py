@@ -16,12 +16,12 @@ async def list_documents(kb_id: str) -> list[dict]:
 
 
 @router.post("/kb/{kb_id}/documents", status_code=status.HTTP_202_ACCEPTED)
-async def upload_document(kb_id: str, _file: UploadFile) -> dict:
+async def upload_document(kb_id: str, file: UploadFile) -> dict:
     """Upload + ingest doc (W1 .docx Docling parser; W2 PDF + PPT per OQ-Q1).
 
     Per OQ-Q1 resolved: format ratio 40% Word + 30% PPT + 30% PDF — all 3 needed by W2.
     """
-    _ = kb_id
+    _ = kb_id, file
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="W1-W2 implementation per architecture.md §3.3 (multi-format ingestion)",

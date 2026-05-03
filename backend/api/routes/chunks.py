@@ -24,9 +24,9 @@ async def list_chunks(kb_id: str, doc_id: str) -> list[dict]:
 
 
 @router.patch("/kb/{kb_id}/chunks/{chunk_id}")
-async def patch_chunk(kb_id: str, chunk_id: str, _patch: ChunkPatch) -> dict:
+async def patch_chunk(kb_id: str, chunk_id: str, payload: ChunkPatch) -> dict:
     """Toggle chunk enabled / edit metadata (W2 implementation, F13 acceptance)."""
-    _ = kb_id, chunk_id
+    _ = kb_id, chunk_id, payload
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="W2 implementation per architecture.md §3.5 + §7.1 F13",

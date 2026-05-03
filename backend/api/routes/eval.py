@@ -16,8 +16,9 @@ class EvalRunRequest(BaseModel):
 
 
 @router.post("/eval/run", response_model=EvalReport)
-async def run_eval(_request: EvalRunRequest) -> EvalReport:
+async def run_eval(payload: EvalRunRequest) -> EvalReport:
     """Run eval set (W4 implementation per docs/eval-methodology.md)."""
+    _ = payload
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="W4 implementation per docs/eval-methodology.md",
