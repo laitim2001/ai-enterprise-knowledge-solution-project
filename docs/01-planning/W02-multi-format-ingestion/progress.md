@@ -315,7 +315,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| TBD this session | feat(c01): F2 layout-aware chunker + parser doc_order refactor (W2 D2) |
+| `170e3db` | feat(c01): F2 layout-aware chunker + parser doc_order refactor (W2 D2) |
 
 ---
 
