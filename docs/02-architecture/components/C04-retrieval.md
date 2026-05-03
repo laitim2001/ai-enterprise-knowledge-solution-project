@@ -3,13 +3,13 @@ component: C04
 name: Retrieval Engine
 catalog_ref: ../COMPONENT_CATALOG.md#c04--retrieval-engine
 spec_refs: [architecture.md §3.1, architecture.md §3.2, eval-methodology.md §7]
-status: v0-draft
-last_updated: 2026-05-01
+status: v1-active
+last_updated: 2026-05-06
 ---
 
 # C04 — Retrieval Engine Design Note
 
-> **Status**:`v0-draft`(W2 D5 first-touch:hybrid baseline for Gate 1 R@5 ≥ 80%;W3 Cohere wired;W4 4-way reranker shootout)
+> **Status**:`v1-active`(W2 D4 2026-05-06:`backend/retrieval/{__init__,hybrid,retrieval_engine}.py` delivered + wired to `/query` endpoint + 10 mocked unit tests pass。Hybrid baseline ready for W2 D5 F7 Gate 1 R@5 ≥ 80% measurement post-VPN-disconnect。W3 will insert Cohere Rerank;W4 4-way shootout)
 >
 > **Owner**:AI
 
@@ -181,8 +181,9 @@ class Reranker(Protocol):
 
 ## 8. Open Items / TODO
 
-- [ ] **W2 D5 hybrid baseline impl** — Azure AI Search REST query
-- [ ] **W2 D5 Gate 1 evaluation** — R@5 ≥ 80% target on synthetic eval set
+- [x] **W2 D4 hybrid baseline impl** ✅ delivered 2026-05-06(`backend/retrieval/{hybrid, retrieval_engine}.py` async REST + payload shape per spec §3.1;10 mocked tests pass)
+- [x] **W2 D4 wire to `/query` endpoint** ✅ delivered 2026-05-06(replaced 501 stub;lifespan-managed RetrievalEngine via app.state)
+- [ ] **W2 D5 Gate 1 evaluation** — R@5 ≥ 80% target on synthetic eval set(blocked R8 active VPN until disconnect)
 - [ ] **W3 D1 Cohere wire** — `reranker/cohere.py`
 - [ ] **Q5 Cohere procurement Path A vs B** decision before W3 D1
 - [ ] **W4 D2-D5 shootout harness**(per eval-methodology.md §7)

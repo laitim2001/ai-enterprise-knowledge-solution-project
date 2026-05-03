@@ -4,12 +4,12 @@ name: Indexing Service
 catalog_ref: ../COMPONENT_CATALOG.md#c03--indexing-service
 spec_refs: [architecture.md §3.6, architecture.md §3.4]
 status: v1-active
-last_updated: 2026-05-02
+last_updated: 2026-05-06
 ---
 
 # C03 — Indexing Service Design Note
 
-> **Status**:`v1-active`(W1 D4 2026-05-02:F9 `ekp-kb-drive-v1` index created via REST CLI,GET verified — 18 fields + ekp-vector-profile + ekp-semantic-config match spec §3.6;C03 design contract validated by reality)
+> **Status**:`v1-active`(W2 D4 2026-05-06:`backend/indexing/{schemas, populate}.py` delivered — ChunkRecord Pydantic v2 model per spec §3.5 + IndexPopulator REST batch via httpx + Azure AI Search /docs/index API + 7 mocked unit tests pass。W1 D4 `ekp-kb-drive-v1` index already created;populate ready for E2E run post-R8-disconnect)
 >
 > **Owner**:AI(SDK / REST script)+ Chris(Q3 tier+region confirmation)
 
@@ -169,9 +169,11 @@ with urllib.request.urlopen(req) as resp:
 - [x] **W1 D4** `backend/indexing/schema.json` match `architecture.md §3.6` JSON literal ✅
 - [x] **W1 D4** First index `ekp-kb-drive-v1` created on POC instance via `python -m scripts.create_index create` → HTTP 201 ✅;verified via `get` → 18 fields + ekp-vector-profile + ekp-semantic-config ✅
 - [ ] **Q3 outstanding minor**:tier confirm(Standard S1 default per spec,assumed in service config)+ region confirm(eastus2 inferred from hostname `azureaisearchtesting`)
-- [ ] **W2 D2 `backend/indexing/index_service.py`** wrap REST as `IndexService` class(future SDK swap)
-- [ ] **W2 D2 schema diff check**(detect drift between in-code schema.json vs spec §3.6 JSON literal)
-- [ ] **W2+ Azure SDK swap**(`azure-search-documents`) when R8 corp proxy unblocks pip install
+- [x] **W2 D4 `backend/indexing/schemas.py`** ✅ ChunkRecord Pydantic v2 model + ImageRef + make_chunk_id factory delivered per spec §3.5
+- [x] **W2 D4 `backend/indexing/populate.py`** ✅ IndexPopulator REST batch via httpx async + tenacity retry + 1000-doc batch limit + Azure /docs/index "mergeOrUpload" action(7 unit tests pass)
+- [ ] **W2 D2 `backend/indexing/index_service.py`** wrap REST as `IndexService` class(future SDK swap)— deferred(populate.py + create_index.py covers W2 needs)
+- [ ] **W2 D2 schema diff check**(detect drift between in-code schema.json vs spec §3.6 JSON literal)— deferred to W4 if scope permits
+- [ ] **W2+ Azure SDK swap**(`azure-search-documents`) when R8 corp proxy unblocks pip install — `httpx` async + REST is sufficient,SDK swap optional
 - [ ] **Q9 CMK decision** before W7 production deploy
 - [ ] **W2 D5 versioning regression**(create v2 alongside v1 → switch → drop v1)— deferred to post-Gate-1 if needed
 

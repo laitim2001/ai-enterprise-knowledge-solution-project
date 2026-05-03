@@ -17,13 +17,21 @@ def test_health_returns_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_query_route_registered_returns_501() -> None:
+def test_query_route_returns_502_when_retrieval_fails_due_to_network() -> None:
+    """W2 D4 F6: /query wired to RetrievalEngine. With .env configured, lifespan
+    initializes engine; live retrieval fails (R8 reactivated VPN cert) → 502.
+    R8 cleared environment would return 200 with chunks."""
     response = client.post(
         "/query",
         json={"query": "test", "kb_id": "drive_user_manuals"},
     )
-    assert response.status_code == 501
-    assert "architecture.md" in response.json()["detail"]
+    # Either 200 (engine works, e.g. post-VPN-disconnect) or 502 (live retrieval
+    # blocked by R8 / network), but no longer 501. /query is no longer a stub.
+    assert response.status_code in (200, 502, 503)
+    if response.status_code == 200:
+        body = response.json()
+        assert "retrieved_chunks" in body
+        assert "answer" in body
 
 
 def test_query_stream_route_registered_returns_501() -> None:

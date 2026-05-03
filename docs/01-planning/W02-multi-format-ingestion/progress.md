@@ -418,7 +418,114 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ## Day 4 — 2026-05-06 (Wed)
 
-_(同上)_
+> Note:呢個 entry 喺 2026-05-03 Sun 晚 D3 完工後 same-session 完成 D4 work。D4 calendar date 仍 2026-05-06 per Option A shifted plan。
+
+### Done
+
+**F5 Index Population orchestrator + F6 Hybrid Retrieval baseline + /query wire delivered(F5.a–F5.e + F6.a–F6.d all closed)**:
+
+#### F5 — Index population orchestrator
+
+- F5.a — `backend/indexing/schemas.py`:
+  - `ChunkRecord` Pydantic v2 model 全 21 fields per architecture.md §3.5(chunk_id, kb_id, doc_id, doc_title, doc_format, chunk_index, chunk_total, chunk_title, chunk_text, chunk_token_count, section_path, embedded_images, prev/next_chunk_id, tags, low_value_flag, enabled, source_url, ingested_at, embedding[1024d])
+  - `ImageRef` model(blob_url, alt_text, checksum_sha256, width, height)
+  - `make_chunk_id(kb_id, doc_id, idx)` factory:`kb-{kb_id}_doc-{doc_id}_chunk-{idx:04d}` per spec example
+  - `to_search_doc()` serialization adapter:embedding → content_vector,embedded_images → embedded_images_json string per architecture.md §3.6 index field config
+- F5.b — `backend/ingestion/orchestrator.py`:
+  - `IngestionOrchestrator(parser, chunker, embedder, uploader)` end-to-end coordinator
+  - `ingest(source, kb_id, doc_id, source_url) → IngestionResult` async API
+  - Pipeline:parse → chunk → upload screenshots(if uploader provided)→ build sha256→blob_url map → embed chunk_texts batch → assemble ChunkRecord with chunk_id factory + prev/next links + image resolution
+  - Atomic per-doc:parse_failed/chunker empty → FailureRecord("parse");embed batch failure → FailureRecord("embed");image upload failure = non-fatal(best-effort,Gate 1 retrieval text-only per architecture.md §3.5 design intent)
+  - `IngestionResult(chunks, failure, images_uploaded, images_deduped)` + `FailureRecord(doc_id, stage, error)` dataclasses
+  - structlog `doc_ingested` event(doc_id + kb_id + chunks + images_uploaded + images_deduped + total_input_tokens)
+- F5.c — `backend/indexing/populate.py`:
+  - `IndexPopulator(endpoint, admin_key, index_name, api_version)` async REST batch uploader
+  - httpx.AsyncClient context-managed lifecycle
+  - Batches at 1000 docs / request(Azure /docs/index hard cap)
+  - `@search.action: "mergeOrUpload"` idempotent
+  - Per-doc status from response.value(`statusCode` 2xx = ok,else fail with errorMessage logged via structlog warning)
+  - tenacity retry on httpx.HTTPStatusError(429/5xx)+ TransportError(3 attempts,exponential 1-10s)
+  - `IndexUploadResult(succeeded, failed, failed_keys)`
+- F5.d — `scripts/run_populate_sanity.py`:
+  - End-to-end orchestration:parse all 6 samples → IngestionOrchestrator(uploader=None per R12 deferral)→ IndexPopulator → GET /docs/$count verify
+  - Emits `reports/w02_d4_populate_sanity.yaml` with per-doc + aggregate breakdown + cost estimate
+  - **DEFERRED live run**:R8 reactivated VPN blocks Azure OpenAI embedding;script ready for post-VPN-disconnect E2E
+- F5.e — `backend/tests/test_orchestrator.py` 11 tests pass + `backend/tests/test_populate.py` 7 tests pass = **18 F5 tests**:
+  - orchestrator:chunk_id pattern / prev-next links / parse_failed propagates / empty chunks → failure / embed failure → failure / image upload resolves to blob_url / uploader=None skips images / image batch failure non-fatal / chunk_total field / embedding order preserved / concurrent gather
+  - populate:empty input no-call / single-doc success / mergeOrUpload action shape / to_search_doc serialization / partial failure counts / 1000-batch limit chunking / 5xx retry then succeed
+
+#### F6 — Hybrid Retrieval baseline
+
+- F6.a — `backend/retrieval/__init__.py` + `hybrid.py`:
+  - `HybridSearcher(endpoint, admin_key, index_name)` async REST client
+  - `search(query_text, query_vector, top_k, filter_clause)` POST /docs/search per architecture.md §3.1
+  - Payload shape:search + vectorQueries (kind=vector, k, fields="content_vector") + top + queryType="semantic" + semanticConfiguration="ekp-semantic-config" + filter
+  - tenacity retry on 5xx/429 + TransportError(3 attempts,exponential 1-8s)
+  - `HybridSearchHit(score, fields)` strips `@search.*` system fields keeps schema fields
+- F6.b — `backend/retrieval/retrieval_engine.py`:
+  - `RetrievalEngine(embedder, searcher)` coordinator
+  - `retrieve(query, top_k, filter_clause)` async API
+  - Empty/whitespace query → empty result no API calls(cost guard)
+  - Default filter clause `enabled eq true and low_value_flag eq false` per architecture.md §3.6
+  - `RetrievalResult(chunks, embed_latency_ms, search_latency_ms, total_latency_ms)` + structlog `retrieval_complete` event
+- F6.c — `backend/api/routes/query.py` + `server.py` lifespan integration:
+  - `POST /query` no longer 501 stub — calls RetrievalEngine,returns QueryResponse with placeholder answer + retrieved_chunks + latency_ms
+  - FastAPI lifespan instantiates AzureOpenAIEmbedder + HybridSearcher + RetrievalEngine(via `__aenter__`/`__aexit__` manual lifecycle to span request lifetime)
+  - 503 if engine missing(missing .env keys);502 if retrieval fails(R8 reactive / R12)
+  - Updated `test_query_route_returns_502_when_retrieval_fails_due_to_network` test to accept 200/502/503(no longer stub)
+  - `POST /query/stream` stays 501 until W3 streaming
+- F6.d — `backend/tests/test_retrieval.py` 10 tests pass:
+  - hybrid:payload shape per spec / response→hits mapping with score / custom filter clause / no-filter when None / 5xx retry then succeed
+  - engine:empty query no calls / embedder→searcher orchestration / default filter applied / custom filter pass-through / latency timings recorded
+
+#### Test suite + component status
+
+- **Full test suite 64/64 pass**(8 API + 12 chunker + 7 embedder + 11 orchestrator + 7 populate + 10 retrieval + 9 screenshots)
+- `components/C01-ingestion.md` status `v1-active → v2-stable`(per CC-5)+ W2 D2-D4 commit hashes added
+- `components/C03-indexing.md` status `v1-active`(unchanged tier),last_updated bump,§8 schemas+populate items closed
+- `components/C04-retrieval.md` status `v0-draft → v1-active`,§8 hybrid + /query items closed
+- `docs/01-planning/W02-multi-format-ingestion/checklist.md` F5 + F6 items全部 ticked except deferred-R8 live runs
+
+### Decisions / OQ Resolved
+
+- **Decision** — `ChunkRecord` 用 Pydantic v2 (vs ChunkSpec 用 @dataclass)。理由:此 ChunkRecord 屬 storage / API boundary(直接 serialize to Azure AI Search /docs/index payload),validation matters。Per CLAUDE.md §3.1 explicit「Pydantic v2 for all schemas」for boundary types
+- **Decision** — `to_search_doc()` 內部處理 schema mismatch:Pydantic field `embedding` → JSON `content_vector` + `embedded_images` list → `embedded_images_json` string。理由:architecture.md §3.5 ChunkRecord schema 用 Python 自然 names,§3.6 Azure AI Search index 用不同 field names(content_vector,embedded_images_json Edm.String)。Adapter pattern 喺 schema 內部 keeps callers simple(orchestrator emits ChunkRecord,populate.py 自動 serialize)
+- **Decision** — orchestrator `uploader` parameter 接受 None 表 R12 deferred mode(disable Blob upload)。Image position resolution gracefully drops unresolvable references。`scripts/run_populate_sanity.py` 用 None during W2 baseline,W7+ cloud passes real uploader
+- **Decision** — orchestrator atomic-per-doc semantics:**parse + embed = fatal**(返 FailureRecord),**image upload = best-effort**(non-fatal,chunks 仍 emit)。理由:Gate 1 R@5 ≥ 80% retrieval 完全 text + vector dependent,images 只係 citation render metadata(per architecture.md §3.5 design)。Image 失敗強制 fail doc 唔 worth it
+- **Decision** — populate.py 用 httpx async + REST(non azure-search-documents SDK)即使 R8 已 mitigated。理由:create_index.py 已 stdlib REST(W1 D4 commit `349c33e`)— consistent pattern;httpx async cleaner than urllib for batching;SDK swap "deferred indefinitely"(C03 §8 updated to reflect)
+- **Decision** — `/query` W2 baseline 返 QueryResponse with `answer="[W2 baseline retrieval-only]"` placeholder。理由:keep schema stable per architecture.md §4.5 QueryResponse,frontend 唔需要 W2 vs W3 分流;W3 接 synthesis 時 only changes answer string + populate citations,non breaking change
+- **Decision** — FastAPI lifespan 用 manual `__aenter__`/`__aexit__` 管理 embedder + searcher lifecycle(non `async with` block)。理由:lifespan 需要 request-scoped fans-in-fans-out semantics,manual enter/exit allows app.state.engine 跨 multiple requests;clean shutdown via finally
+- **No new OQ resolved this entry**(Q19 already W2 D3;Q5/Q11/Q15-21 仍 Open per W2 spread)
+
+### Blockers
+
+- 🟡 **R8 reactivated**(VPN online)— still gates F5 live populate + F6 live `/query` smoke + W2 D5 F7 Gate 1 evaluation。**User action needed**:disconnect GlobalProtect VPN before W2 D5 implementation start
+- 🟡 **R12 Azurite SDK signature** — F3 Blob upload deferred to W7+ cloud;orchestrator gracefully runs with `uploader=None`;non-fatal for retrieval-only Gate 1 path
+- 🟡 **F2 chunker low_value 67.2% rate** — Gate 1 W2 D5 watch
+- ✅ R10 cleared / F1+F2+F3+F4+F5+F6 code complete + 64/64 tests pass
+- 🟡 R10/Q5/Q11/Q15-21 unchanged
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F5.a ChunkRecord schema | 1.0 | 0.6 | -0.4h | Pydantic v2 + spec literal mapping clean |
+| F5.b orchestrator | 2.5 | 1.5 | -1.0h | Per-doc atomic + image best-effort design clean |
+| F5.c populate REST batch | 2.0 | 1.0 | -1.0h | httpx async pattern reuse from W2 D3 |
+| F5.d sanity script | 1.0 | 0.8 | -0.2h | Wired E2E,deferred live run per R8 |
+| F5.e orchestrator + populate tests | 1.5 | 1.5 | 0 | 18 tests covering multi-stage paths |
+| F6.a hybrid.py | 1.5 | 0.8 | -0.7h | REST payload spec well-defined |
+| F6.b retrieval_engine.py | 1.0 | 0.6 | -0.4h | Coordinator simple |
+| F6.c /query wire + lifespan | 1.0 | 1.0 | 0 | Manual aenter/aexit + W1 test update |
+| F6.d retrieval tests | 1.0 | 0.8 | -0.2h | 10 tests covering payload + engine |
+| F5+F6.g component bumps + checklist + Day 4 entry + commit | 0 | 1.0 | +1.0h | Plan'd as part of D4 close |
+| **Total D4** | **11.5** | **9.6** | **-1.9h** | F5 atomic-per-doc + image best-effort design proved cleaner than initial plan |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| TBD this session | feat(c01,c03,c04,c08): F5 orchestrator + populate + F6 hybrid retrieval + /query wire (W2 D4) |
 
 ---
 

@@ -56,22 +56,23 @@ last_updated: 2026-05-03
 
 ## F5 — Index population orchestrator
 
-- [ ] `backend/ingestion/orchestrator.py` end-to-end pipeline:parse → chunk → screenshot → embed → emit ChunkRecord
-- [ ] `backend/indexing/populate.py` batch upload to `ekp-kb-drive-v1` via REST `/docs/index`
-- [ ] Run on 6 sample → ~2000-3000 chunks indexed
-- [ ] `python -m scripts.create_index get` → verify doc count
-- [ ] Atomic per-doc transaction:if any chunk fail in a doc → rollback all chunks of that doc
-- [ ] Update `components/C01-ingestion.md` and `C03-indexing.md` status v1-active → v2-stable post W2 D5
+- [x] `backend/indexing/schemas.py` ✅ ChunkRecord Pydantic v2 + ImageRef + make_chunk_id factory(per architecture.md §3.5)
+- [x] `backend/ingestion/orchestrator.py` ✅ end-to-end pipeline `IngestionOrchestrator`:parse → chunk → screenshot upload (optional;none if R12 deferred)→ embed → emit ChunkRecord with chunk_id factory + prev/next links + image resolution by sha256
+- [x] `backend/indexing/populate.py` ✅ `IndexPopulator` async batch via httpx + Azure /docs/index "mergeOrUpload" + 1000-doc batch limit + tenacity retry on 429/5xx
+- [x] Atomic per-doc transaction:parse_failed → FailureRecord("parse");chunker empty → FailureRecord("parse");embed batch fail → FailureRecord("embed");image upload fail = non-fatal(best-effort)per design rationale Gate 1 retrieval text-only
+- [ ] **DEFERRED** Run on 6 sample → expected ~329 chunks indexed(R8 active VPN blocks live Azure OpenAI embedding;`scripts/run_populate_sanity.py` ready)
+- [ ] **DEFERRED** `python -m scripts.create_index get` → verify doc count post-populate(R8 dependency)
+- [x] Update `components/C01-ingestion.md` v1-active → v2-stable + `C03-indexing.md` last_updated bump(per CC-5)
 
 ## F6 — Hybrid retrieval baseline(C04 first-touch)
 
-- [ ] `backend/retrieval/__init__.py`
-- [ ] `backend/retrieval/hybrid.py` Azure AI Search hybrid query via REST(BM25 + vector + RRF)
-- [ ] Filter clause:`enabled eq true and low_value_flag eq false`
-- [ ] `backend/retrieval/retrieval_engine.py` public `retrieve(query, kb_id, top_k)` API
-- [ ] Wire to `/query` endpoint(replace 501 stub in C08)— top-50 chunks return
-- [ ] Unit test:known query → assert non-empty + ranked output
-- [ ] Update `components/C04-retrieval.md` status `v0-draft → v1-active`(per CC-5)
+- [x] `backend/retrieval/__init__.py`
+- [x] `backend/retrieval/hybrid.py` ✅ `HybridSearcher` async REST POST /docs/search(BM25 + vectorQueries + queryType=semantic + ekp-semantic-config)+ tenacity retry on 5xx/429
+- [x] Filter clause:`enabled eq true and low_value_flag eq false` default(per architecture.md §3.6 spec)
+- [x] `backend/retrieval/retrieval_engine.py` ✅ `RetrievalEngine.retrieve(query, top_k, filter_clause)` public API + embed query → hybrid search → RetrievalResult with timings
+- [x] Wire to `/query` endpoint ✅ replaced 501 stub;FastAPI lifespan instantiates RetrievalEngine via app.state;503 if engine missing,502 on retrieval failure(R8/R12)
+- [x] Unit test:10 retrieval tests pass(payload shape per spec / response mapping with score / custom filter / no-filter / 5xx retry / engine empty-query / engine calls / default filter / custom filter pass / latency tracking)
+- [x] Update `components/C04-retrieval.md` status `v0-draft → v1-active`(per CC-5)
 
 ## F7 — Gate 1 evaluation(Recall@5 ≥ 80%)★ HARD GATE
 

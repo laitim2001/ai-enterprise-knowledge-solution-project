@@ -3,8 +3,8 @@ component: C01
 name: Ingestion Pipeline
 catalog_ref: ../COMPONENT_CATALOG.md#c01--ingestion-pipeline
 spec_refs: [architecture.md §3.3, architecture.md §3.5]
-status: v1-active
-last_updated: 2026-05-03
+status: v2-stable
+last_updated: 2026-05-06
 ---
 
 # C01 — Ingestion Pipeline Design Note
@@ -238,5 +238,8 @@ class ChunkRecord(BaseModel):
 - Spec: `architecture.md §3.3`(multi-format ingestion)+ `§3.5`(ChunkRecord schema)
 - Risks: R7(format edge case),R10(Q2 delay — critical),R5(Azure OpenAI quota for embedding)
 - W1 commit: `cc0b90b`(F6 inspector script)
-- W2 D1 commit: TBD(this session — F1 docx_parser delivery)
+- W2 D1 commit: `f30f13a`(F1 docx_parser delivery)
+- W2 D2 commit: `170e3db`(F2 layout-aware chunker + parser doc_order refactor)
+- W2 D3 commit: `28341b8`(F3 screenshot pipeline + F4 embedder + R12 Azurite risk)
+- W2 D4 commit: TBD(this session — F5 orchestrator + F6 retrieval engine + /query wire)
 - Cross-component: emits to C03 (index sink);uses C12 (Blob);uses Azure OpenAI (via C12);consumed by C04
