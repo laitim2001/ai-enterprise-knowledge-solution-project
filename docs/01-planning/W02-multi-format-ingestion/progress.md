@@ -215,7 +215,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| TBD this session | feat(c01): F1 Docling-based docx_parser PoC + 6-sample sanity report (W2 D1) |
+| `f30f13a` | feat(c01): F1 Docling-based docx_parser PoC + 6-sample sanity report (W2 D1) |
 
 ---
 
