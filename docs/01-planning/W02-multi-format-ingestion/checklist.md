@@ -2,14 +2,14 @@
 phase: W02-multi-format-ingestion
 plan_ref: ./plan.md
 status: in-progress
-last_updated: 2026-05-02
+last_updated: 2026-05-03
 ---
 
 # Phase W02 — Checklist
 
 > Atomic checkbox(每 item ≤ 1–2 hour effort)。
 > AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 progress Day-N entry 寫原因。
-> Status:`in-progress` 由 W2 D1(2026-05-05)起;W1 D4 draft 階段全 unchecked。
+> Status:`in-progress` 由 W2 D1(2026-05-03 Sun,shifted earlier per plan changelog 2026-05-03)起;W1 D4 draft 階段全 unchecked。
 
 ## F1 — Docling .docx parser PoC(carry-over from W1)
 

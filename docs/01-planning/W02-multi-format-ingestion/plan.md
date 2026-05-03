@@ -2,8 +2,8 @@
 phase: W02-multi-format-ingestion
 name: "Multi-Format Ingestion + Hybrid Retrieval Baseline"
 sprint_week: W2
-start_date: 2026-05-05
-end_date: 2026-05-11          # planned, 5 工作日 (D1=Mon ... D5=Fri)
+start_date: 2026-05-03
+end_date: 2026-05-07          # planned, 5 工作日 (D1=Sun ... D5=Thu) — shifted 2 days earlier per 2026-05-03 Chris call (originally D1=2026-05-05 Mon ... D5=2026-05-09 Fri)
 status: active                 # draft | active | closed
 spec_refs:
   - architecture.md §6.1 W2 row
@@ -206,11 +206,11 @@ W02 係 EKP Tier 1 嘅 ingestion + retrieval baseline phase。建立 .docx inges
 
 | Day | Date | Focus | Deliverables targeted |
 |---|---|---|---|
-| D1 | 2026-05-05 (Mon) | F1 Docling parser PoC start + Q3 tier/region cleanup | F1 |
-| D2 | 2026-05-06 (Tue) | F1 cont + F2 chunker + F3 screenshot extractor | F1, F2, F3 |
-| D3 | 2026-05-07 (Wed) | F2 cont + F4 embedding + F8 ground truth start | F2, F4, F8 |
-| D4 | 2026-05-08 (Thu) | F5 populate + F6 hybrid baseline + F8 cont | F5, F6, F8 |
-| D5 | 2026-05-09 (Fri) | F7 Gate 1 eval + F8 close + F9 Admin UI + F11 retro | F7, F8, F9, F11 |
+| D1 | 2026-05-03 (Sun) | F1 Docling parser PoC start(Q3 tier/region 已 D5 closed) | F1 |
+| D2 | 2026-05-04 (Mon) | F1 cont + F2 chunker + F3 screenshot extractor | F1, F2, F3 |
+| D3 | 2026-05-05 (Tue) | F2 cont + F4 embedding + F8 ground truth start | F2, F4, F8 |
+| D4 | 2026-05-06 (Wed) | F5 populate + F6 hybrid baseline + F8 cont | F5, F6, F8 |
+| D5 | 2026-05-07 (Thu) | F7 Gate 1 eval + F8 close + F9 Admin UI + F11 retro | F7, F8, F9, F11 |
 
 (F10 F2/F7 pytest retry — opportunistic if R8 unblocks any time during W2)
 
@@ -232,7 +232,8 @@ Carry-over from `W01-foundation/progress.md` retro(D4 draft):
 |---|---|---|---|
 | 2026-05-02 | Initial draft(W1 D4 prep)| Per Chris W1 D4 strategic call to prepare W2 kickoff during W1 D4-D5 capacity;status=draft pending W1 D5 retro sign-off | Chris(pending approve to flip active) |
 | 2026-05-02 | Status flipped `draft → active`(W1 D5 early closeout)| Chris W1 D5 early closeout session 同日 sign-off W1 retro + approve W02 plan;W2 D1 仍按 plan 2026-05-05 Tue 啟動 | Chris(approved) |
+| 2026-05-03 | D1-D5 shift earlier by 2 days(D1 2026-05-05 Mon → 2026-05-03 Sun;D5 2026-05-09 Fri → 2026-05-07 Thu)| Chris call to start immediately given W2 D0 prerequisites all unblocked(R8 mitigated home network,Docling pip installed,F2 W1 deferred pytest 8/8 verified,BUG-001 closed,Q3 minor closed D5)。Maintain 5-working-day strict shift(Option A,non buffer-keep)。Frontmatter start/end_date + §5 Day-by-Day table sync updated。 | Chris(approved) |
 
 ---
 
-**Lifecycle reminder**:呢份 plan `status=active`(2026-05-02 起,W1 D5 early closeout sign-off)。W2 D1(2026-05-05 Tue)正式 start implementation per `PROCESS.md §2.3` daily execution lifecycle。重大 deviation 入第 7 節 changelog。
+**Lifecycle reminder**:呢份 plan `status=active`(2026-05-02 起,W1 D5 early closeout sign-off)。W2 D1(**2026-05-03 Sun,shifted earlier per 2026-05-03 changelog entry**)正式 start implementation per `PROCESS.md §2.3` daily execution lifecycle。重大 deviation 入第 7 節 changelog。

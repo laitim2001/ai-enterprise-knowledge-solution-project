@@ -147,9 +147,25 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ---
 
-## Day 1 — 2026-05-05 (Mon)
+### Day 0 cont — 2026-05-03 evening: Option A date-shift approved + W2 D1 immediate kick-off
 
-_(待 W2 D1 起填)_
+**Context**:Chris call to start W2 D1 immediately — W2 D0 prerequisites all clear(R8 mitigated,Docling installed,F2 W1 verified,BUG-001 closed,Q3 minor closed)。Option A 揀(嚴格 5-working-day shift):D1-D5 整體提早 2 日,D1=2026-05-03 Sun → D5=2026-05-07 Thu。
+
+**Plan artifact updates**(per CLAUDE.md §10 R3 no silent drift):
+- `plan.md` frontmatter `start_date: 2026-05-05 → 2026-05-03`,`end_date: 2026-05-11 → 2026-05-07`
+- `plan.md` §5 Day-by-Day Breakdown table 同步更新(D1 Sun ... D5 Thu)
+- `plan.md` §7 Plan Changelog 加 2026-05-03 entry(Chris approved)
+- `plan.md` lifecycle reminder 更新提及 D1 = 2026-05-03 Sun
+- `progress.md` Day 1-5 entry headers 同步更新
+- `progress.md` retro section header 改 W2 D5 末 / 2026-05-07
+
+**Implementation start**:呢條 entry commit 後,即時 transition 入 Day 1 entry,start F1 Docling parser PoC implementation。
+
+---
+
+## Day 1 — 2026-05-03 (Sun)
+
+_(待 W2 D1 起填 — date shifted 2 days earlier per plan changelog 2026-05-03)_
 
 ### Done
 ### Decisions / OQ Resolved
@@ -159,31 +175,31 @@ _(待 W2 D1 起填)_
 
 ---
 
-## Day 2 — 2026-05-06 (Tue)
+## Day 2 — 2026-05-04 (Mon)
 
 _(同上)_
 
 ---
 
-## Day 3 — 2026-05-07 (Wed)
+## Day 3 — 2026-05-05 (Tue)
 
 _(同上)_
 
 ---
 
-## Day 4 — 2026-05-08 (Thu)
+## Day 4 — 2026-05-06 (Wed)
 
 _(同上)_
 
 ---
 
-## Day 5 — 2026-05-09 (Fri)
+## Day 5 — 2026-05-07 (Thu)
 
 _(同上 + retro draft 開始)_
 
 ---
 
-## Retro(填於 W2 D5 末 / 2026-05-09)
+## Retro(填於 W2 D5 末 / 2026-05-07)
 
 ### What worked
 _(W2 D5 末 fill)_
