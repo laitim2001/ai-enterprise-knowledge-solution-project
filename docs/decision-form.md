@@ -316,10 +316,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Embedding 用 1024d(MRL truncate from 3072)、1536d、定 full 3072d 喺 EKP corpus 上嘅 Recall@5 差異?Storage cost trade-off? |
 | **Why it matters** | 3072d storage 同 search latency 約係 1024d 嘅 3×。Quality 差距 1024 vs 3072 通常 < 2pp,但需 measure。 |
 | **Resolution method** | W2 用同一 30 條 eval set 跑 3 個 dim baseline,出 comparison table。 |
-| **Decision / Finding** | _(W2 末填)_ |
-| **Decided By** | Dev(self) |
-| **Date** | _(W2 末)_ |
-| **Status** | `Open` |
+| **Decision / Finding** | **W2 baseline:keep 1024d**(stick with default per architecture §3.6 + Settings)。Rationale:(a)text-embedding-3-large MRL truncate 設計 < 2pp quality loss at 1/3 dim per OpenAI benchmark;(b)Azure AI Search index `ekp-kb-drive-v1` 已 created at 1024d(W1 D4 commit `349c33e`)— change to 3072 需要 re-index;(c)3-way shootout 需要 populate 3 indexes + 跑 eval 3 次,超出 W2 D3 scope;(d)W4 已有 reranker shootout(4-way),加 embedding dim 4-way 會 crowd W4 capacity;(e)若 W2 D5 F7 Gate 1 R@5 < 80%,W3 retro 重訪;low_value_flag tuning(W2 D2 67.2% rate)higher prior。Formal 3-way comparison 暫 defer post-Gate 1。 |
+| **Decided By** | Dev(self,W2 D3 2026-05-05) |
+| **Date** | 2026-05-05(W2 D3 implementation start) |
+| **Status** | `Resolved`(baseline 1024d locked;3-way shootout deferred to Gate 1 retro if needed) |
 
 ---
 
@@ -375,7 +375,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q16 | Status quo baseline | Domain Expert | | C06 | Open | — |
 | Q17 | Sample structure | Dev | | C01 | Open | W1D1 |
 | Q18 | Image format | Dev | | C01 | Open | W1D1 |
-| Q19 | Embedding dim | Dev | | C01 + C03 | Open | W2 |
+| Q19 | Embedding dim | Dev | 2026-05-05 | C01 + C03 | Resolved(1024d baseline)| W2 D3 |
 | Q20 | LLM pick | Dev | | C05 | Open | W3 |
 | Q21 | Reranker pick | Dev | | C04 | Open | W4 |
 

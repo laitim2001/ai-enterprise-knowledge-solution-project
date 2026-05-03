@@ -35,23 +35,24 @@ last_updated: 2026-05-03
 
 ## F3 — Screenshot extractor + Blob upload
 
-- [ ] `backend/ingestion/screenshots/__init__.py`
-- [ ] `backend/ingestion/screenshots/extractor.py` extract embedded images → PIL Image
-- [ ] **EMF / WMF conversion via Pillow**(4 EMF found in W1 D4 inspector run)
-- [ ] `backend/ingestion/screenshots/uploader.py` async Blob upload to per-KB container
-- [ ] SHA256 dedup logic(same image multiple docs → 1 Blob upload)
-- [ ] Verify Azurite container `ekp-kb-drive-screenshots` create + populated
-- [ ] Update `components/C12-devops.md` Blob container provision section if changed
+- [x] `backend/ingestion/screenshots/__init__.py`
+- [x] `backend/ingestion/screenshots/extractor.py` — `ScreenshotExtractor` augments F1 EmbeddedImage(已 PIL→PNG by Docling parser)with kb_id+doc_id+blob_path+content_type
+- [x] **EMF / WMF conversion via Pillow** — F1 parser 內已用 Docling/PIL normalize all images to PNG(no separate EMF path needed at F3)
+- [x] `backend/ingestion/screenshots/uploader.py` — `ScreenshotUploader` async via `azure.storage.blob.aio` + tenacity retry on Conn/Timeout
+- [x] SHA256 dedup logic(blob_path = `{sha256}.{ext}` flat per-KB-container layout → cross-doc dedup;`get_blob_properties` HEAD-check before upload)
+- [ ] **DEFERRED** Verify Azurite container populated — R12 Azurite SDK signature mismatch blocks live local verification;mocked unit tests 9/9 pass instead;real cloud Azure Blob W7+ will verify
+- [ ] Update `components/C12-devops.md` Blob container provision section — defer to W7+ when cloud deploy lands
 
 ## F4 — Embedding pipeline first-pass(carry-over from W1 F10)
 
-- [ ] `backend/ingestion/embedding/__init__.py`
-- [ ] `backend/ingestion/embedding/azure_openai_embedder.py` async(SDK if R8 unblocks,HTTP REST fallback)
-- [ ] text-embedding-3-large + MRL truncate to 1024d
-- [ ] Cost log via structlog per chunk(input tokens + output dim)
-- [ ] Smoke test:1 sample text → 1024d vector
-- [ ] Parallel batch on 100 chunks → < 5s benchmark
-- [ ] Q19 decision logged(1024 vs 3072)— W2 D3
+- [x] `backend/ingestion/embedding/__init__.py`
+- [x] `backend/ingestion/embedding/base.py` — `EmbeddingResult` dataclass + `Embedder` Protocol
+- [x] `backend/ingestion/embedding/azure_openai_embedder.py` async via openai SDK `AsyncAzureOpenAI`(R8 mitigated W2 D0 home network → SDK path,non HTTP REST fallback needed)
+- [x] text-embedding-3-large + MRL truncate via `dimensions=1024` parameter
+- [x] Cost log via structlog event `embedding_call`(batch_size + input_tokens + output_dim + latency_ms + deployment)
+- [ ] **DEFERRED** Smoke test 1 sample → 1024d vector — R8 reactivated(GlobalProtect VPN metric 1 over home WiFi metric 60;TLS revocation check fails for Azure OpenAI cert)。Mocked test verifies request shape + 1024d response handling
+- [ ] **DEFERRED** Parallel batch 100 chunks < 5s benchmark — same R8 cause as smoke;runnable post VPN disconnect via `backend/.venv/Scripts/python.exe -m scripts.run_embedder_smoke`
+- [x] Q19 decision logged ✅ Resolved(`docs/decision-form.md` Q19 entry):**W2 baseline 1024d**(per text-embedding-3-large MRL spec retains majority quality at 1/3 cost;index `ekp-kb-drive-v1` already 1024d per W1 D4 commit `349c33e`;3-way shootout deferred to Gate 1 retro if R@5 < 80%)
 
 ## F5 — Index population orchestrator
 

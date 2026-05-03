@@ -321,7 +321,98 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 ## Day 3 — 2026-05-05 (Tue)
 
-_(同上)_
+> Note:呢個 entry 喺 2026-05-03 Sun 晚 D2 完工後 same-session 完成 D3 work。D3 calendar date 仍 2026-05-05 per Option A shifted plan。
+
+### Done
+
+**F3 Screenshot pipeline + F4 Embedding pipeline delivered(F3.a–F3.e + F4.a–F4.f all closed)**:
+
+#### F3 — Screenshot extractor + Blob uploader
+
+- F3.a — Pyproject hygiene:added `azure-storage-blob>=12.28` + `azure-identity>=1.20` + `openai>=1.50` to direct deps(已 install via R8 mitigation evening 2026-05-03)
+- F3.b — `backend/ingestion/screenshots/{__init__.py, extractor.py}`:
+  - `ScreenshotRecord` frozen dataclass(image_bytes,sha256,blob_path,content_type,alt_text,doc_order,kb_id,doc_id,width/height optional)
+  - `ScreenshotExtractor.extract(images, kb_id, doc_id)` static mapper produces records with deterministic blob_path = `{sha256}.{ext}`
+  - **Path convention deviation from architecture.md §4.6**:spec template `{kb_id}/{doc_id}/{img_id}.{ext}` collapsed to `{sha256}.{ext}` 內 container — 因為 architecture §3 design decision「Same logo / diagram across docs:upload once,reference many」要求 cross-doc dedup,per-doc path 會 break 呢個 semantic。`{doc_id}` 關聯 preserved in chunk record metadata,non blob path layer
+- F3.c — `backend/ingestion/screenshots/uploader.py`:
+  - `ScreenshotUploader` async via `azure.storage.blob.aio.BlobServiceClient`,context-manager managed lifecycle
+  - SHA256 dedup via `get_blob_properties` HEAD-check(cheaper than GET);match → `UploadResult(deduped=True, bytes_uploaded=0)`
+  - Container ensure idempotent(`ResourceExistsError` swallowed)
+  - tenacity retry on `ConnectionError`/`TimeoutError` (3 attempts,exponential 0.5-4s)
+  - `upload_many(records)` parallel via `asyncio.gather` preserving caller order
+- F3.d — **DEFERRED to W7+ cloud deploy**:R12 Azurite SDK signature mismatch blocks local sanity verification(see Decisions §)。Code-complete + mock-verified
+- F3.e — `backend/tests/test_screenshots.py` 9 tests pass:
+  - extractor:per-image record / content_type mapping(png/jpg/jpeg/octet-stream fallback)/ alt_text + doc_order preservation
+  - uploader:upload when blob absent / dedup-skip when blob exists / container-ensure idempotent / upload_many order preservation / frozen dataclass immutability
+
+#### F4 — Embedding pipeline
+
+- F4.a — `backend/ingestion/embedding/{__init__.py, base.py, azure_openai_embedder.py}`:
+  - `EmbeddingResult` frozen dataclass(vector + input_tokens)
+  - `Embedder` Protocol(embed / embed_batch)
+  - `AzureOpenAIEmbedder` via openai SDK `AsyncAzureOpenAI`(R8 mitigated → SDK path,non HTTP REST fallback)
+  - MRL truncate via `dimensions=1024` parameter(text-embedding-3-large native support)
+  - tenacity retry on `RateLimitError`/`APITimeoutError`(3 attempts,exponential 1-10s)
+  - Pro-rated per-input token estimate(`total_tokens // batch_size`)since Azure batch billing
+- F4.b — Cost log via structlog event `embedding_call`(batch_size + input_tokens + output_dim + latency_ms + deployment)
+- F4.c/d — **DEFERRED to VPN disconnect**:R8 reactivated(GlobalProtect VPN metric 1 over home WiFi metric 60;TLS revocation check fails for Azure OpenAI cert)。`scripts/run_embedder_smoke.py` 已寫,smoke + 100-chunk benchmark runnable any time post-VPN-disconnect
+- F4.e — Q19 1024 vs 3072 ✅ **Resolved**:keep 1024d baseline(see Decisions §);docs/decision-form.md updated;Q19 Q-summary table updated to `Resolved`
+- F4.f — `backend/tests/test_embedder.py` 7 tests pass:
+  - 1024d vector returned / dimensions=1024 in SDK call shape / empty input no-call / token pro-rating / RateLimitError retry then succeed / non-retryable error propagates / Embedder Protocol implementation
+
+#### Test suite + sanity scripts
+
+- **Full test suite 36/36 pass**(8 API + 12 chunker + 9 screenshots + 7 embedder)
+- **F1 sanity** still 6/6 docs clean(`reports/w02_d1_docx_parser_sanity.yaml`)
+- **F2 sanity** still 329 chunks(`reports/w02_d2_chunker_sanity.yaml`)
+- **F3 sanity** deferred(R12)
+- **F4 smoke** deferred(R8 active again)
+
+#### Risk register update
+
+- **R12 NEW**:Azurite SDK Signature Mismatch(W2 D3 finding)— Severity Medium,Mitigation 🟡 Active(mock-tested + cloud deferral);RISK_REGISTER.md §1 + §3 entries added,frontmatter `last_updated: 2026-05-05`
+- **R8 status note**:still 🟢 mitigated for pip install path(home network direct works for downloads),but **active for any HTTPS to corp-monitored Azure cloud endpoints when GlobalProtect VPN reconnects**;route metric 1 vs 60 means VPN preferred when both interfaces up — operationally need to disconnect VPN for cloud-touching work
+
+### Decisions / OQ Resolved
+
+- **Decision** — F3 blob path = `{sha256}.{ext}`(flat per-KB-container)而非 architecture.md §4.6 template `{kb_id}/{doc_id}/{img_id}.{ext}`。Rationale:architecture §3 design decision 強調 cross-doc dedup,per-doc path 破壞呢個 semantic;{doc_id} 關聯仍 preserved at chunk record metadata layer。Spec §4.6 template 視為 directional non hard rule,§3 dedup intent 為 stronger constraint
+- **Decision** — F3.d Azurite live sanity **deferred to W7+ cloud deploy**(R12 newly logged)。Azurite 3.35 npm latest + azure-storage-blob 12.20-12.28 SharedKey signature canonicalized-resource path mismatch — Azurite computes `/devstoreaccount1/devstoreaccount1/`,SDK computes `/devstoreaccount1/`,HMAC mismatch → 403 AuthorizationFailure。多 SDK version + `--skipApiVersionCheck` + `--loose` 全 ineffective。Per Karpathy §1.3 surgical changes,呢個 emulator infra-level bug 唔影響 spec-correct code,deferred to real cloud verification 係 right call(non Tier 1 implementation work)
+- **Decision** — F4.c/d smoke + benchmark **deferred until VPN disconnect**。R8 reactivated since W2 D0 evening home network session — GlobalProtect VPN connected with metric 1 default route preferred over home WiFi metric 60。SSL inspection breaks Azure OpenAI cert revocation check(CRYPT_E_NO_REVOCATION_CHECK)。Same R8 root cause,not a new bug;script ready,user runs post VPN-off any time
+- **Decision** — **Q19 Resolved → 1024d baseline**(W2 D3 2026-05-05)。`docs/decision-form.md` Q19 entry + summary table updated。Rationale:(a)text-embedding-3-large MRL spec retains majority quality at 1/3 cost;(b)index `ekp-kb-drive-v1` 已 1024d per W1 D4 commit `349c33e` — change to 3072 需要 re-index;(c)3-way shootout 超出 W2 D3 scope;(d)W4 已有 reranker 4-way shootout 佔 capacity;(e)Gate 1 retro 重訪 if R@5 < 80%(low_value tuning higher prior)。Formal 3-way comparison **deferred post-Gate 1**
+- **Decision** — F3 EMF/WMF conversion 唔需要 separate pipeline:F1 docx_parser 用 Docling + PIL 已 normalize all images to PNG。F3 acceptance「EMF / WMF conversion via Pillow」structurally satisfied at F1 layer(W1 D4 inspector 4 EMF found in samples → all became PNG bytes by F1 stage)
+- **Decision** — Single-KB container naming use `settings.azure_blob_container_screenshots` default(`ekp-kb-drive-screenshots`)for W2 baseline。Per-KB container Tier 2 multi-tenancy posture preserved at architecture level;Tier 1 single-Drive-KB 用 single container 簡化(per Karpathy §1.2 simplicity first)
+
+### Blockers
+
+- 🟡 **R8 reactivated**(GlobalProtect VPN online)— blocks F4.c/d live smoke,F5 orchestrator end-to-end run,future Gate 1 eval。**User action needed**:disconnect VPN to run live verification scripts。R8 mitigation P1 path validated 2026-05-03 morning(home network direct);same procedure applies
+- 🟡 **R12 Azurite SDK signature mismatch**(NEW)— blocks F3 local sanity,F5 orchestrator end-to-end run if requiring live blob upload。Cloud deploy W7+ verification path acceptable per architecture R5 implication
+- 🟡 **F2 chunker low_value 67.2% rate** carry-over — Gate 1 W2 D5 watch
+- 🟡 **R7 DrawingML / SmartArt** carry-over — unchanged
+- ✅ R10 cleared / F1+F2+F3+F4 code complete
+- 🟡 R10/Q5/Q11/Q15-21 unchanged(unrelated to current work)
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F3.a pyproject + Azurite check | 0.3 | 0.4 | +0.1h | Azurite startup + version dance |
+| F3.b extractor | 1.0 | 0.5 | -0.5h | Clean static mapper;F1 already pre-PNG |
+| F3.c uploader async + dedup | 2.0 | 1.0 | -1.0h | Azure SDK API maturity helps |
+| F3.d Azurite live sanity | 1.5 | 1.5 | 0 | Spent debugging Azurite sig issue → **deferred** + R12 logged(time well-spent on diagnosis even if outcome = defer) |
+| F3.e mocked unit tests | 1.5 | 1.0 | -0.5h | AsyncMock + MagicMock idiom for sync get_blob_client got tricky;9 tests pass |
+| F4.a embedder via SDK | 2.0 | 0.8 | -1.2h | openai SDK AsyncAzureOpenAI clean MRL via dimensions= |
+| F4.b cost log structlog | 0.5 | 0.1 | -0.4h | Inline emit |
+| F4.c/d smoke + benchmark | 1.5 | 1.0 | -0.5h | Wrote script + diagnosed R8 reactivation → **deferred** |
+| F4.e Q19 decision | 0.5 | 0.4 | -0.1h | Spec-aligned decision rationale |
+| F4.f embedder unit tests | 1.5 | 1.2 | -0.3h | Mock RateLimitError ctor took 1 retry to get right |
+| F4.g this entry + RISK_REGISTER R12 + checklist + commit | 0 | 1.0 | +1.0h | Plan'd as part of D3 close;R12 risk entry careful framing |
+| **Total D3** | **10.8** | **7.9** | **-2.9h** | F3.d + F4.c/d deferral saved actual coding time but consumed equivalent diagnosis time |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| TBD this session | feat(c01): F3 screenshot pipeline + F4 embedder + R12 Azurite risk (W2 D3) |
 
 ---
 

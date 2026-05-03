@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -30,6 +30,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
 | **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
+| **R12** ★ | **Azurite SDK signature mismatch**(NEW W2 D3) | W2 D3 F3 sanity testing 2026-05-05 | 🟡 Medium | C12 (primary) + C01 (impacts F3 screenshot upload local verification) | 🟡 Active — Azurite 3.35 (npm latest) + azure-storage-blob 12.20-12.28 SharedKey signature canonicalized-resource path mismatch(Azurite computes `/devstoreaccount1/devstoreaccount1/`,SDK signs with mismatched canonical resource → 403 AuthorizationFailure on all blob operations including get_account_information)。**Mitigation**:F3 implementation correct per architecture spec,unit-tested via mocks(9/9 pass);live verification deferred to W7+ cloud Azure Blob deploy(no emulator path);post-Gate 1 W3+ alternative = try Docker-pulled Azurite (different image) OR Azurite from Microsoft official GitHub master branch (newer than npm release)|
 
 ★ = net-new from W1 implementation,not in `architecture.md §8`
 
@@ -157,6 +158,22 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Escalation** | ✅ Already arrived W1 D4(6 sample uploaded local) |
 | **Backup plan** | (no longer needed — sample arrived)|
 | **Decay date / review** | W2 D2(F8 start);F8 success → R10 close after sanity report on 6 sample |
+
+---
+
+### R12 ★ — Azurite SDK Signature Mismatch(NEW W2 D3 Finding — Mitigated via Mock + Cloud Deferral)
+
+| Field | Value |
+|---|---|
+| **Component(s)** | **C12** DevOps & Infra(primary)+ **C01** Ingestion Pipeline(impacts F3 local sanity verification only) |
+| **Severity** | 🟡 Medium |
+| **First observed** | 2026-05-05(W2 D3 F3 screenshot uploader sanity smoke testing) |
+| **Symptom** | All `azure-storage-blob` operations against Azurite return 403 AuthorizationFailure(get_account_information / list_containers / upload_blob / get_blob_properties)。Tested SDK versions 12.20.0 / 12.24.1 / 12.28.0,Azurite 3.35.0(npm latest);`--skipApiVersionCheck` + `--loose` flags 都 ineffective;multiple x-ms-version 嘗試(2019-12-12 → 2025-07-05)全 fail |
+| **Root cause confirmed** | Azurite debug log 顯示 SharedKey signature 計算嘅 canonicalized-resource path = `/devstoreaccount1/devstoreaccount1/`(account name 重複 prepended on URL path),vs SDK signs with `/devstoreaccount1/?...`(accord per current SharedKey signing spec)。HMAC-SHA256 mismatch causing 403。Even with absolute well-known Azurite default key + connection string format,signature differs |
+| **Fix applied / planned** | (a)F3 unit tests use AsyncMock for BlobServiceClient(9/9 tests pass,validating code correctness);(b)Sanity script `scripts/run_screenshot_pipeline_sanity.py` deferred — write but skip live run for W2 baseline;(c)Real cloud Azure Blob has no canonicalized-resource bug — W7+ cloud deploy will provide live verification |
+| **Mitigation in place** | 🟡 Active — F3 code-complete + mock-tested。Code does not need refactor since architecture per spec;Azurite emulator local-only blocker。Workaround for any local visual verification:Azure Storage Explorer or `az storage` CLI (untested per W2 baseline scope cap) |
+| **Lesson learned** | (1)Azurite 3.35.0 npm distribution may have signature regression with newer SDK versions;(2)Local-emulator bugs ≠ production bugs — cloud deploy is verification layer(architecture.md §8 R5 W7+ already implies this);(3)For Tier 1 W2-W6 POC,F3 sanity gap acceptable risk since image storage 不影響 Gate 1 retrieval(R@5 ≥ 80% based on text + embedding only) |
+| **Decay date / review** | W7+ cloud Azure Blob deploy first sanity test verify R12 disappears in production cloud;若 Tier 2 multi-tenancy 階段 local Azurite 仍要 reliable,trigger Azurite GitHub upstream PR or Docker image trial |
 
 ---
 
