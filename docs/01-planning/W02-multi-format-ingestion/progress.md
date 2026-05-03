@@ -412,7 +412,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | Hash | Subject |
 |---|---|
-| TBD this session | feat(c01): F3 screenshot pipeline + F4 embedder + R12 Azurite risk (W2 D3) |
+| `28341b8` | feat(c01): F3 screenshot pipeline + F4 embedder + R12 Azurite risk (W2 D3) |
 
 ---
 
