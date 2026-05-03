@@ -143,7 +143,7 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 |---|---|
 | `c38710f` | fix(api): rename _<name> → payload in 5 stub routes (Pydantic v2.13 compat) |
 | `0a2673d` | test(api): update kb list test for W1 D2 F7 in-memory impl (no longer 501) |
-| `(this commit pending)` | chore(infra): R8 mitigated via home network — F2 W1 deferred unblocked |
+| `740de4c` | chore(infra): R8 mitigated via home network — F2 W1 deferred unblocked |
 
 ---
 
