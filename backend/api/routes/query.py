@@ -1,16 +1,22 @@
 """Query endpoints (per architecture.md §4.4 #1-2).
 
-W2 baseline: hybrid retrieval only (no rerank, no synthesis).
-- POST /query → 200 with retrieved chunks + timings (synthesis answer = placeholder)
-- POST /query/stream → still 501 until W3 synthesis lands
+W3 D2: full RAG pipeline wired
+- Hybrid retrieval (W2)
+- Optional Cohere Rerank (W3 D1 scaffold + W3 D2 wire)
+- GPT-5.5 synthesis with citation parsing (W3 D2 F2)
+- Citation enrichment with embedded images (W3 D2 F3)
 
-W3 will wire Cohere Rerank + GPT-5.5 synthesis + CRAG loop per architecture.md §3.1.
+If synthesizer is None (missing OpenAI deps), endpoint falls back to
+retrieval-only response with a placeholder answer (W2 behavior preserved
+for tests / local dev). SSE /query/stream remains 501 — F4 W3 D3 scope.
 """
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from api.schemas.query import ChunkPreview, QueryRequest, QueryResponse
+from generation.citation_enrichment import build_citations
+from generation.synthesizer import Synthesizer
 from retrieval.retrieval_engine import RetrievalEngine
 
 router = APIRouter()
@@ -36,17 +42,16 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
 
 @router.post("/query", response_model=QueryResponse)
 async def query(payload: QueryRequest, request: Request) -> QueryResponse:
-    """Main RAG query — W2 baseline returns retrieval-only result.
-
-    Real synthesis + Cohere rerank + CRAG loop wired W3 per architecture.md §3.1.
-    """
+    """Main RAG query — hybrid → (rerank) → synthesis → citations."""
     engine = _engine_or_503(request)
+    synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
+
     try:
         result = await engine.retrieve(
             query=payload.query,
-            top_k=payload.top_k_retrieval,
+            top_k=payload.top_k_rerank,
         )
-    except Exception as exc:  # noqa: BLE001 — surface as 502 for downstream Azure errors
+    except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"retrieval failure: {type(exc).__name__}: {exc}",
@@ -61,18 +66,44 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
         )
         for c in result.chunks
     ]
+    reranker_used = "cohere-v3.5" if result.reranked else "off"
+
+    if synthesizer is None:
+        # Retrieval-only fallback (W2 baseline behavior preserved).
+        return QueryResponse(
+            answer=_W2_PLACEHOLDER_ANSWER,
+            citations=[],
+            retrieved_chunks=chunk_previews,
+            crag_triggered=False,
+            crag_iterations=0,
+            latency_ms=result.total_latency_ms,
+            trace_id="",
+            model_used="(retrieval-only)",
+            reranker_used=reranker_used,
+            refused=False,
+        )
+
+    try:
+        synth = await synthesizer.synthesize(payload.query, result.chunks)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"synthesis failure: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    citations = build_citations(synth.citation_ids, result.chunks)
 
     return QueryResponse(
-        answer=_W2_PLACEHOLDER_ANSWER,
-        citations=[],  # W3 — citation format with image refs
+        answer=synth.answer,
+        citations=citations,
         retrieved_chunks=chunk_previews,
-        crag_triggered=False,
+        crag_triggered=False,  # W4 CRAG loop
         crag_iterations=0,
-        latency_ms=result.total_latency_ms,
+        latency_ms=result.total_latency_ms + synth.latency_ms,
         trace_id="",  # W3 — Langfuse trace id
-        model_used="(retrieval-only)",
-        reranker_used="off",
-        refused=False,
+        model_used=synth.deployment,
+        reranker_used=reranker_used,
+        refused=synth.refused,
     )
 
 

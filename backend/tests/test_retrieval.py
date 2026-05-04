@@ -220,3 +220,49 @@ async def test_retrieval_engine_records_latencies() -> None:
     assert result.embed_latency_ms >= 0
     assert result.search_latency_ms >= 0
     assert result.total_latency_ms >= max(result.embed_latency_ms, result.search_latency_ms)
+    assert result.reranked is False
+    assert result.rerank_latency_ms == 0
+
+
+@pytest.mark.asyncio
+async def test_retrieval_engine_overfetches_when_reranker_present() -> None:
+    """With reranker configured, hybrid fetch_k = max(top_k, hybrid_overfetch)."""
+    from retrieval.reranker.base import RerankedChunk
+
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[
+        HybridSearchHit(score=0.5, fields={"chunk_id": f"c{i}", "chunk_text": "x"})
+        for i in range(50)
+    ])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(return_value=[
+        RerankedChunk(fields={"chunk_id": "c0"}, rerank_score=0.99, hybrid_score=0.5, original_index=0),
+    ])
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker, hybrid_overfetch_for_rerank=50
+    )
+    result = await engine.retrieve(query="q", top_k=5)
+
+    assert searcher.search.await_args.kwargs["top_k"] == 50
+    assert reranker.rerank.await_count == 1
+    assert result.reranked is True
+    assert len(result.chunks) == 1
+    assert result.chunks[0].score == 0.99  # rerank_score replaces hybrid score
+
+
+@pytest.mark.asyncio
+async def test_retrieval_engine_no_rerank_call_when_hits_empty() -> None:
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock()
+
+    engine = RetrievalEngine(embedder=embedder, searcher=searcher, reranker=reranker)
+    result = await engine.retrieve(query="q", top_k=5)
+
+    reranker.rerank.assert_not_awaited()
+    assert result.reranked is False
+    assert result.chunks == []

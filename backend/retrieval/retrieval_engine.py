@@ -1,13 +1,15 @@
 """Retrieval engine public API (per architecture.md §3.1 + components/C04 §1).
 
-W2 baseline pipeline:
+W3 D2 pipeline (rerank wired W3 D1 後段 + D2):
     query string + kb_id + top_k
         → embed query (Azure OpenAI text-embedding-3-large 1024d)
-        → hybrid search (Azure AI Search BM25 + vector RRF)
-        → return list[RetrievedChunk] (top_k)
+        → hybrid search (Azure AI Search BM25 + vector RRF) top hybrid_overfetch
+        → optional Cohere Rerank (Path A Marketplace) → top top_k
+        → return list[RetrievedChunk]
 
-W3 will insert Cohere Rerank between hybrid and final return; W2 baseline returns
-hybrid hits directly to support Gate 1 R@5 ≥ 80% measurement (no rerank yet).
+When reranker is None, engine returns hybrid hits directly (W2 baseline behavior
+preserved for local dev / tests / pre-procurement). Live rerank engages once
+Chris populates `cohere_endpoint` + `cohere_api_key` in `.env`.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import structlog
 
 from ingestion.embedding.base import Embedder
 from retrieval.hybrid import HybridSearcher
+from retrieval.reranker.base import Reranker
 
 logger = structlog.get_logger(__name__)
 
@@ -47,22 +50,28 @@ class RetrievalResult:
     chunks: list[RetrievedChunk]
     embed_latency_ms: int
     search_latency_ms: int
+    rerank_latency_ms: int
     total_latency_ms: int
+    reranked: bool  # True when reranker was invoked, False when hybrid-only
 
 
 class RetrievalEngine:
-    """Coordinator for query embedding + hybrid search.
+    """Coordinator for query embedding + hybrid search + optional Cohere rerank.
 
-    Caller manages embedder + searcher lifecycles (both context-managers).
+    Caller manages embedder + searcher + reranker lifecycles (all context-managers).
     """
 
     def __init__(
         self,
         embedder: Embedder,
         searcher: HybridSearcher,
+        reranker: Reranker | None = None,
+        hybrid_overfetch_for_rerank: int = 50,
     ) -> None:
         self._embedder = embedder
         self._searcher = searcher
+        self._reranker = reranker
+        self._hybrid_overfetch = hybrid_overfetch_for_rerank
 
     async def retrieve(
         self,
@@ -70,13 +79,20 @@ class RetrievalEngine:
         top_k: int = 50,
         filter_clause: str | None = None,
     ) -> RetrievalResult:
-        """Embed query + hybrid search; return ordered chunks + timings.
+        """Embed query + hybrid search + optional rerank; return ordered chunks + timings.
 
         kb_id is implicit via the searcher's index_name (caller wires per-KB
         searcher when multi-KB lands; W2 baseline = single Drive KB).
         """
         if not query or not query.strip():
-            return RetrievalResult(chunks=[], embed_latency_ms=0, search_latency_ms=0, total_latency_ms=0)
+            return RetrievalResult(
+                chunks=[],
+                embed_latency_ms=0,
+                search_latency_ms=0,
+                rerank_latency_ms=0,
+                total_latency_ms=0,
+                reranked=False,
+            )
 
         total_start = time.perf_counter()
 
@@ -84,27 +100,53 @@ class RetrievalEngine:
         query_embedding = await self._embedder.embed(query)
         embed_latency_ms = int((time.perf_counter() - embed_start) * 1000)
 
+        # When reranker present, fetch wider candidate set then rerank to top_k.
+        fetch_k = (
+            max(top_k, self._hybrid_overfetch)
+            if self._reranker is not None
+            else top_k
+        )
         search_start = time.perf_counter()
         hits = await self._searcher.search(
             query_text=query,
             query_vector=query_embedding.vector,
-            top_k=top_k,
+            top_k=fetch_k,
             filter_clause=filter_clause if filter_clause is not None
             else "enabled eq true and low_value_flag eq false",
         )
         search_latency_ms = int((time.perf_counter() - search_start) * 1000)
 
-        total_latency_ms = int((time.perf_counter() - total_start) * 1000)
+        rerank_latency_ms = 0
+        reranked = False
+        if self._reranker is not None and hits:
+            rerank_start = time.perf_counter()
+            reranked_chunks = await self._reranker.rerank(
+                query=query, candidates=hits, top_k=top_k,
+            )
+            rerank_latency_ms = int((time.perf_counter() - rerank_start) * 1000)
+            chunks = [
+                RetrievedChunk(score=r.rerank_score, fields=r.fields)
+                for r in reranked_chunks
+            ]
+            reranked = True
+        else:
+            chunks = [
+                RetrievedChunk(score=h.score, fields=h.fields)
+                for h in hits[:top_k]
+            ]
 
-        chunks = [RetrievedChunk(score=h.score, fields=h.fields) for h in hits]
+        total_latency_ms = int((time.perf_counter() - total_start) * 1000)
 
         logger.info(
             "retrieval_complete",
             query_chars=len(query),
             top_k=top_k,
+            fetch_k=fetch_k,
             chunks_returned=len(chunks),
+            reranked=reranked,
             embed_latency_ms=embed_latency_ms,
             search_latency_ms=search_latency_ms,
+            rerank_latency_ms=rerank_latency_ms,
             total_latency_ms=total_latency_ms,
         )
 
@@ -112,5 +154,7 @@ class RetrievalEngine:
             chunks=chunks,
             embed_latency_ms=embed_latency_ms,
             search_latency_ms=search_latency_ms,
+            rerank_latency_ms=rerank_latency_ms,
             total_latency_ms=total_latency_ms,
+            reranked=reranked,
         )

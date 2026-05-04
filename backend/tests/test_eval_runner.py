@@ -28,7 +28,12 @@ def _hit(chunk_id: str, chunk_text: str, score: float = 0.9) -> RetrievedChunk:
 
 def _retrieval_result(hits: list[RetrievedChunk]) -> RetrievalResult:
     return RetrievalResult(
-        chunks=hits, embed_latency_ms=10, search_latency_ms=20, total_latency_ms=30,
+        chunks=hits,
+        embed_latency_ms=10,
+        search_latency_ms=20,
+        rerank_latency_ms=0,
+        total_latency_ms=30,
+        reranked=False,
     )
 
 

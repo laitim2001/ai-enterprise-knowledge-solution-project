@@ -24,20 +24,22 @@ last_updated: 2026-05-07
 
 ## F2 — GPT-5.5 synthesis pipeline
 
-- [ ] `backend/generation/__init__.py`
-- [ ] `backend/generation/prompt_builder.py` — system + user + chunks-as-context per spec §3.2
-- [ ] `backend/generation/synthesizer.py` — `Synthesizer.synthesize(query, top_chunks)` async via AsyncAzureOpenAI chat.completions
-- [ ] Citation marker parse(`[chunk-{id}]` regex extraction)
-- [ ] tenacity retry on RateLimitError
-- [ ] structlog cost log(input_tokens + output_tokens + deployment + latency)
-- [ ] Unit test:mocked AsyncAzureOpenAI → assert prompt shape + citation parse
+- [x] `backend/generation/__init__.py` ✅ W3 D2
+- [x] `backend/generation/prompt_builder.py` — SYSTEM_PROMPT + build_prompt(query, chunks) ✅ W3 D2
+- [x] `backend/generation/synthesizer.py` — `Synthesizer.synthesize(query, top_chunks) → SynthesisResult` async via AsyncAzureOpenAI chat.completions ✅ W3 D2
+- [x] Citation marker parse(`[chunk-{id}]` regex `\[chunk-([^\]\s]+)\]` ordered + dedup)✅ W3 D2
+- [x] tenacity retry on RateLimitError + APITimeoutError(3 attempts exponential 1-8s)✅ W3 D2
+- [x] structlog cost log(input_tokens + output_tokens + deployment + latency + citations_count + refused)✅ W3 D2
+- [x] 10 unit tests pass(prompt structure / system prompt content / extract_citation_ids / mocked synthesize / refusal detect / temperature passthrough)✅ W3 D2
+- [ ] **DEFERRED W3 D3+** Live verify GPT-5.5 chat call quota / latency baseline against real corpus(post Q4 manual smoke)
 
 ## F3 — Citation enrichment with image refs
 
-- [ ] Citation populate `embedded_images: list[ImageRef]` from cited ChunkRecord
-- [ ] Graceful empty list when R12 deferral applies(uploader=None ingestion)
-- [ ] QueryResponse.citations ordered by appearance in answer
-- [ ] Unit test:synthetic chunks with images → citation has image refs;chunks without images → empty
+- [x] Citation populate `embedded_images: list[ImageRef]` from cited ChunkRecord(parse from index `embedded_images_json`)✅ W3 D2
+- [x] Graceful empty list when R12 deferral applies(`embedded_images_json` empty / `[]` / malformed → [])✅ W3 D2
+- [x] QueryResponse.citations ordered by appearance in answer(preserves Synthesizer emit order)✅ W3 D2
+- [x] 10 unit tests pass(parse_embedded_images empty/valid/malformed;build_citations order/skip-unknown/populates/empty/real-image-json)✅ W3 D2
+- [x] `/query` endpoint full wire:retrieve → synthesize → build_citations → QueryResponse with answer/citations/retrieved_chunks/refused/reranker_used ✅ W3 D2
 
 ## F4 — SSE streaming response
 

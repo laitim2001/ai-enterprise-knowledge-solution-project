@@ -176,6 +176,83 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 ---
 
+## Day 2 — 2026-05-04 (Mon — early start same-day W3 D1 closeout per Chris signoff)
+
+> Per Chris signoff "5. W3 sequencing 確認可以":F1.7 wire + F2 GPT-5.5 synthesis + F3 citation enrichment 三件 W3 D2 plan deliverables 一次過落地。Synthesis path live-ready immediately when /query called(GPT-5.5 deployment Q4 Resolved W1 D1);rerank live verify 等 Cohere Marketplace endpoint + key populate(Chris async procurement)。
+
+### Done
+
+#### F1.7 — Wire `Reranker` into `RetrievalEngine`
+
+- `backend/retrieval/retrieval_engine.py`:`RetrievalEngine` 接 `reranker: Reranker | None`(default None)+ `hybrid_overfetch_for_rerank: int = 50`;`RetrievalResult` 加 `rerank_latency_ms` + `reranked` fields;reranker 設 → fetch_k = max(top_k, hybrid_overfetch),hybrid → reranker → top_k;reranker = None → hybrid 直 truncate(W2 baseline 行為保留)
+- `backend/api/server.py` lifespan:`make_reranker(settings)` 由 W3 D1 factory 帶入 retrieval engine;factory returns None when env unset → graceful hybrid-only fallback。`__aenter__/__aexit__` lifespan 管理
+- 2 new tests pass:overfetches when reranker present(fetch_k=50,score replaced by rerank_score)+ no rerank when hits empty
+- `test_eval_runner.py` `_retrieval_result()` fixture 補 `rerank_latency_ms`+`reranked` 兼容 RetrievalResult signature change
+
+#### F2 — GPT-5.5 synthesis pipeline(C05 NEW package)
+
+- `backend/generation/__init__.py` ✅ NEW
+- `backend/generation/prompt_builder.py` ✅ NEW:
+  - `SYSTEM_PROMPT` enforces:answer-only-from-chunks / cite via `[chunk-{id}]` / refuse with literal `REFUSAL_PHRASE` / match user language / never fabricate chunk_ids
+  - `build_prompt(query, chunks) → PromptMessages` system + user
+- `backend/generation/synthesizer.py` ✅ NEW:
+  - `Synthesizer` wraps `AsyncAzureOpenAI` chat.completions(deployment=`gpt-5-5` per `azure_openai_deployment_llm_primary`)
+  - `tenacity` retry on `RateLimitError` + `APITimeoutError`(3 attempts exponential 1-8s)
+  - `extract_citation_ids(answer_text)` regex `\[chunk-([^\]\s]+)\]` ordered + dedup
+  - `SynthesisResult`:answer / citation_ids / refused / input_tokens / output_tokens / latency_ms / deployment
+  - structlog `synthesizer_call` event for cost trace per architecture.md §7
+  - `temperature=0.1` baseline(deterministic factual)
+  - Refusal detection:`REFUSAL_PHRASE in answer_text` → `refused=True`(R4 hallucination guard)
+- 10 unit tests pass(prompt structure / system prompt content / extract_citation_ids order+dedup / mocked synthesize / refusal detect / temperature passthrough)
+
+#### F3 — Citation enrichment + `/query` end-to-end wire
+
+- `backend/generation/citation_enrichment.py` ✅ NEW:
+  - `parse_embedded_images(json_str) → list[ImageRef]` graceful empty / malformed / non-array
+  - `build_citations(citation_ids, retrieved_chunks) → list[Citation]` order preserved by appearance;hallucinated ids logged via `citation_hallucinated_ids` event(skipped silent,non-blocking)
+  - W2 D3 R12 deferral:`embedded_images_json` 目前全部 `[]` → Citation.embedded_images = []
+- `backend/api/routes/query.py` ✅ rewritten:retrieve → if synthesizer set → synthesize → build_citations → QueryResponse with answer + citations + retrieved_chunks + reranker_used + refused;synthesizer = None → W2 fallback retrieval-only。Synthesis exception → 502 BadGateway(同 retrieval 一致)
+- `backend/api/server.py` lifespan:Synthesizer init from same Azure OpenAI endpoint+key but `azure_openai_deployment_llm_primary`;`app.state.synthesizer` populate when keys present
+- 10 unit tests pass(parse images empty/[]/valid/malformed/non-array;build_citations preserves order/skips unknown/populates fields/empty/real image json)
+
+#### Test suite
+
+- **129/129 backend tests pass**(107 → 129,+22:10 synthesizer + 10 citation_enrichment + 2 retrieval reranker tests)
+- ruff clean
+
+### Decisions / OQ Resolved
+
+- **Decision** — `RetrievedChunk.score` after rerank stores `rerank_score`(non hybrid score);RerankedChunk dataclass 留 hybrid_score 供 trace。UI / Citation 用 single relevance_score
+- **Decision** — `temperature=0.1` baseline(deterministic factual,minor variation 比 0.0 strict 自然)
+- **Decision** — Hallucinated citation_ids logged + silently skipped(non breaking;observability via Langfuse for W4 rate analyze)
+- **Decision** — `build_citations` 保留 appearance order(mirrors answer text reading flow,not relevance-sorted)
+- **No new OQ resolved**
+
+### Blockers cleared / remaining
+
+- ✅ F1.7 / F2 / F3 — code complete + 22 tests pass
+- ⏸ Cohere Marketplace endpoint+key populate(Chris async procurement)— gates rerank live verify only;synthesis path not affected
+- ⏸ Real `/query` end-to-end live call(GPT-5.5 chat completion)— manual test post-deploy / next session
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F1.7 wire reranker into engine + server lifespan | 1.5 | 0.5 | -1.0h | Scaffold from W3 D1 + server lifespan add |
+| F2 prompt_builder + synthesizer + 10 tests | 6.0 | 1.5 | -4.5h | openai SDK + tenacity 已熟 pattern |
+| F3 citation_enrichment + /query wire + 10 tests | 2.0 | 0.7 | -1.3h | Pure data transform |
+| test_retrieval reranker tests + eval fixture compat | 0.3 | 0.2 | -0.1h | Signature cascade |
+| Day 2 progress entry | 0.5 | 0.4 | -0.1h | This entry |
+| **Total D2** | **10.3** | **3.3** | **-7.0h** | Scaffold-first design + Mock pattern reuse + simple data layer |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(c04,c05): F1.7 wire Reranker into RetrievalEngine + F2 Synthesizer + F3 citation_enrichment + /query end-to-end (W3 D2;129/129 tests)` |
+
+---
+
 ## Day 3 — 2026-05-10 (Sun)
 
 _(同上)_
