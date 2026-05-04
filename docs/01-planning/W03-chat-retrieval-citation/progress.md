@@ -399,7 +399,7 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(c10): F6 Chat UI streaming + citation card + F7 Screenshot modal (W3 D4)` |
+| `6af5430` | `feat(c10): F6 Chat UI streaming + citation card + F7 Screenshot modal (W3 D4)` |
 
 ---
 
