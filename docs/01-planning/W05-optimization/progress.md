@@ -283,7 +283,7 @@ Output:`reports/ragas-cohere-subset20.json`
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `docs(planning): W5 D2 Phase 1 + Gate 2 PARTIAL PASS verdict + F1.8/F1.9 close` |
+| `99f9b36` | `docs(planning): W5 D2 Phase 1 + Gate 2 PARTIAL PASS verdict + F1.8/F1.9 close` |
 
 ---
 
