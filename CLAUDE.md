@@ -455,11 +455,16 @@ references/DIFY_PINNED_COMMIT.txt
 
 ### 10.3 AI Session Start Protocol
 
-每個 Claude session 開始(在 §0 quick identity check 之後):
-1. 讀 active phase 嘅 `plan.md`(知 scope)
-2. 讀 `checklist.md`(知 next un-checked item)
-3. 讀 `progress.md` 最近 3 個 Day-N entries(知 context + blockers)
-4. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
+每個 Claude session 開始(在 §0 quick identity check 之後),AI **必須順序執行以下 6 步**,先 reply 用戶第一句訊息:
+
+1. 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md`(SITUATION EKP — 12 components C01–C12 / 21 OQ snapshot / 紀律 9 項 / 權威排序 7-tier / W1–W12 timeline)
+2. 讀 active phase 嘅 `plan.md`(知 scope + acceptance criteria)
+3. 讀 active phase 嘅 `checklist.md`(知 next un-checked item;active phase = `git status` + 最新 W{NN}-{name} folder)
+4. 讀 active phase 嘅 `progress.md` 最近 3 個 Day-N entries(知 context + blockers + carry-overs)
+5. Run `git status --short` + `git log --oneline -5`(知 working tree state)
+6. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
+
+**Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 12 components / §9 OQ snapshot / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
 
 ### 10.4 Phase Folder Naming
 
