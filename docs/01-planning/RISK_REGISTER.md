@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-05
+last_updated: 2026-05-04
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -26,13 +26,14 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R5** | Azure OpenAI quota insufficient at peak | §8.2 | 🟠 High | C05 + C01 | ⚠️ Open(W1 同 MS account team pre-negotiate;quota TPM 為 Q4 outstanding minor)|
 | **R6** | Cohere outage during demo / Beta | §8.3 | 🟡 Lower | C04 | 🟢 Hot fallback(Azure built-in semantic ranker)config flag ready |
 | **R7** | Document source format edge case | §8.3 | 🟡 Lower | C01 | 🟡 Designed(parser fail-graceful + Admin Console flag)|
-| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels** | W1 D1+D2 incident;D5 retest confirmed;**2026-05-03 mitigated** | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🟢 **Mitigated 2026-05-03**(Path P1 home network direct;mypy 10.9MB @ 15.5 MB/s success);root cause refined:**corp proxy SSL inspection / VPN tunneling**(non corp proxy 本身)— GlobalProtect tunnel disconnect + home HKBN ISP direct → R8 disappear;P3 IT whitelist 仍 desirable long-term but non-blocking|
+| **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels + cloud HTTPS SSL inspection** | W1 D1+D2 incident;D5 retest;2026-05-03 partial mitigation;**2026-05-04 permanent fix** | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🟢 **Mitigated 2026-05-04 via `truststore` package**(P2 permanent fix superseding P1 home network);Microsoft enterprise Python pattern,使 Python TLS 用 Windows Cert Store(corp root CA via GPO already trusted there)— Python SDK / urllib / httpx 全 cloud HTTPS work under VPN;P1 home network 仍 fallback if Windows Cert Store somehow misses CA |
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
 | **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
 | **R12** ★ | **Azurite SDK signature mismatch**(NEW W2 D3) | W2 D3 F3 sanity testing 2026-05-05 | 🟡 Medium | C12 (primary) + C01 (impacts F3 screenshot upload local verification) | 🟡 Active — Azurite 3.35 (npm latest) + azure-storage-blob 12.20-12.28 SharedKey signature canonicalized-resource path mismatch(Azurite computes `/devstoreaccount1/devstoreaccount1/`,SDK signs with mismatched canonical resource → 403 AuthorizationFailure on all blob operations including get_account_information)。**Mitigation**:F3 implementation correct per architecture spec,unit-tested via mocks(9/9 pass);live verification deferred to W7+ cloud Azure Blob deploy(no emulator path);post-Gate 1 W3+ alternative = try Docker-pulled Azurite (different image) OR Azurite from Microsoft official GitHub master branch (newer than npm release)|
+| **R13** ★ | **truststore depends on Ricoh corp root CA in Windows Cert Store** | W2 D5 cont 2026-05-04(R8 mitigation side-effect awareness)| 🟢 Low(operational accepted)| C12 (primary) | ⚫ **Accepted 2026-05-04** — `truststore.inject_into_ssl()` 信任 OS trust store 而非 `certifi`。**Dependency chain**:Ricoh IT GPO push corp root CA into Windows Cert Store → Windows updates trigger refresh → `truststore` 即生效。**Failure modes**:(a)Workstation 唔 join Ricoh AD domain → corp CA absent → cloud HTTPS fail(自帶 fallback:disconnect VPN go home network)。(b)Corp CA rotation by Ricoh IT 後 Windows GPO 未推送 → 短暫 fail until Windows update。(c)Linux / macOS dev workstation 唔有 GPO push → 需 manual install corp CA into OS trust store(W7+ cloud deploy worker uses managed identity,no proxy issue)。**Decay**:呢 risk 對 Tier 1 dev workstation 有效,Tier 2 production 用 Azure managed identity bypasses 全部 cert chain |
 
-★ = net-new from W1 implementation,not in `architecture.md §8`
+★ = net-new from W1+ implementation,not in `architecture.md §8`
 
 ---
 
@@ -118,7 +119,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 
 ## 3. Net-New Risks from W1 Implementation Experience(R8+)
 
-### R8 ★ — Ricoh Corp Proxy Blocks PyPI Large Wheels(MITIGATED 2026-05-03)
+### R8 ★ — Ricoh Corp Proxy Blocks PyPI Large Wheels + Cloud HTTPS SSL Inspection(MITIGATED 2026-05-04 via truststore)
 
 | Field | Value |
 |---|---|
@@ -128,11 +129,11 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Pattern** | 任何 wheel >500KB 落 `IncompleteRead(0 bytes read)` connection broken |
 | **Tested workarounds(failed)** | pip default index、`--retries 10 --timeout 120`、TUNA mirror `pypi.tuna.tsinghua.edu.cn`(503),全部斷流 |
 | **Root cause refined 2026-05-03** | 真 root cause **不是 corp proxy 本身**,而係 **corp VPN(GlobalProtect)tunnel SSL inspection layer** — disconnect VPN + 走 home network(HKBN ISP)直接 = R8 完全 disappear。Network diagnostics 確認:home network default gateway `192.168.50.1`、public IP `119.247.237.123`(HKBN consumer range)、mypy 10.9MB download @ 15.5 MB/s success first-try。**Hypothesis update**:corp VPN endpoint security做 stream-level interception(可能 CrowdStrike / Defender for Endpoint / Zscaler-style SSL re-encrypt)stream timeout limit 對 large wheel 嘅 chunked HTTP response 唔友好 |
-| **Mitigation in place** | 🟢 **P1 home network direct(applied 2026-05-03)** — Chris home WiFi(HKBN)+ GlobalProtect disconnect → batch installed:`pip install -e backend[dev]`(mypy + pytest + ruff + 其他 dev deps)+ `pip install docling`(~100MB Docling parser)+ `pip install azure-search-documents azure-identity openai`(W2/W3 cloud SDK)。Wheels cached locally,corp 網絡 future re-install 用 `--no-index --find-links` from cache 可 bypass |
-| **Active blockers** | ✅ Cleared:F2 pytest verification done(commit `0a2673d`);F7 unit tests still pending implementation(W2 D2-D3 implementation 期間補,non R8 blocker);future W2+ pip install 用 home network 或 P1 same approach|
-| **P3 long-term(deferred)** | Open Ricoh IT ticket whitelist `pypi.org` + `files.pythonhosted.org`(同 R9 MCR 一齊 escalate)— W2+ batch install workflow 唔 trigger 緊急,desirable but non-blocking |
-| **Side-effect findings(2026-05-03 R8 unblock)** | (1)Pydantic v2.13.3 strict naming rule rejects `_<name>` body model parameters(W1 D1 stub pattern)→ 5 routes patched commit `c38710f`(rename `_request` / `_file` / `_patch` → `payload` / `file`);(2)W1 D2 F7 KB CRUD impl 將 `/kb` 由 501 stub upgrade 做 200 in-memory backend 但 W1 D1 寫嘅 test 仍 expect 501 → updated commit `0a2673d`;(3)8/8 smoke tests pass post-fix |
-| **Decay date / review** | ✅ Mitigated 2026-05-03;P3 IT ticket TBD(non-blocking)|
+| **Mitigation in place** | 🟢 **P2 truststore permanent fix(applied 2026-05-04 W2 D5 cont)** — `truststore` package + `truststore.inject_into_ssl()` at top of every cloud-touching entry point(`backend/api/server.py` + `scripts/run_populate_sanity.py` + `scripts/run_gate1_eval.py` + `scripts/run_embedder_smoke.py` + `scripts/discover_chunk_ids.py` + `scripts/create_index.py`)。Microsoft enterprise pattern:Python TLS 改用 Windows Cert Store(corp root CA already pushed via GPO)→ Azure HTTPS 全部 cert verify pass。VPN active 都 work。Per CLAUDE.md §5.2 H2 utility-lib 例外。**P1 home network 仍 fallback** if truststore somehow miss CA。Pip install large wheel under VPN仍未 retest — assumption 係 P2 同樣 unblock pip,因 root cause(SSL inspection)同;若 future install 仍 fail,P1 home network 仍 available |
+| **Active blockers** | ✅ All cleared:Live populate(6 docs / 329 chunks) + Gate 1 verdict(R@5=0.9722) ran successfully under VPN with truststore 2026-05-04 |
+| **P3 long-term(deferred)** | (a)Open Ricoh IT ticket whitelist `pypi.org` + `files.pythonhosted.org`(同 R9 MCR 一齊 escalate)— now lower priority post-truststore;(b)Test pip install large wheel under VPN with truststore — 未 verify 嘅 assumption,W3 D1 順手測 |
+| **Side-effect findings** | (W1 D2 / 2026-05-03)(1)Pydantic v2.13.3 strict naming rule rejects `_<name>` body model parameters(W1 D1 stub pattern)→ 5 routes patched commit `c38710f`;(2)W1 D2 F7 KB CRUD impl 將 `/kb` 由 501 stub upgrade 做 200 in-memory backend → 8/8 smoke tests pass post-fix。(W2 D5 cont / 2026-05-04)(3)R13 NEW awareness — truststore depends on Windows Cert Store + Ricoh GPO corp CA push;Linux / macOS dev workstation requires manual CA install |
+| **Decay date / review** | ✅ Mitigated 2026-05-04 via truststore;R13 corp-CA-dependency dimension tracked separately;P3 pip-install retest desirable W3 D1 |
 
 ### R9 ★ — MCR DNS Intercept on Docker Image Pull
 
@@ -174,6 +175,21 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Mitigation in place** | 🟡 Active — F3 code-complete + mock-tested。Code does not need refactor since architecture per spec;Azurite emulator local-only blocker。Workaround for any local visual verification:Azure Storage Explorer or `az storage` CLI (untested per W2 baseline scope cap) |
 | **Lesson learned** | (1)Azurite 3.35.0 npm distribution may have signature regression with newer SDK versions;(2)Local-emulator bugs ≠ production bugs — cloud deploy is verification layer(architecture.md §8 R5 W7+ already implies this);(3)For Tier 1 W2-W6 POC,F3 sanity gap acceptable risk since image storage 不影響 Gate 1 retrieval(R@5 ≥ 80% based on text + embedding only) |
 | **Decay date / review** | W7+ cloud Azure Blob deploy first sanity test verify R12 disappears in production cloud;若 Tier 2 multi-tenancy 階段 local Azurite 仍要 reliable,trigger Azurite GitHub upstream PR or Docker image trial |
+
+---
+
+### R13 ★ — truststore Depends on Ricoh Corp Root CA in Windows Cert Store(NEW W2 D5 cont — ACCEPTED 2026-05-04)
+
+| Field | Value |
+|---|---|
+| **Component(s)** | **C12** DevOps & Infra(primary,cross-cuts every cloud-touching entry point) |
+| **Severity** | 🟢 Low(operational accepted)|
+| **First observed** | 2026-05-04(W2 D5 cont — surfaced as side-effect of R8 mitigation P2 path)|
+| **Mechanism** | `truststore.inject_into_ssl()` 改 Python TLS 用 OS trust store(Windows Cert Store)。**Dependency chain**:Ricoh IT GPO push corp root CA → Windows Cert Store contains corp CA → `truststore`(via Python ssl module)信 corp proxy 簽嘅 cert → cloud HTTPS verify pass。Browser / Office / Outlook 一直行同一條 chain |
+| **Failure modes** | (a)Workstation 唔 join Ricoh AD domain → corp CA absent in Windows Cert Store → cloud HTTPS fail。Fallback:disconnect VPN,go home network direct;(b)Corp CA rotation by Ricoh IT before Windows GPO refresh → 短暫 fail until next Windows update sync;(c)Linux / macOS dev workstation 唔有 Windows GPO push → 需 manual install corp CA into OS trust store(Ubuntu `/etc/ssl/certs/`、macOS Keychain);(d)Container / Azure CA worker pod 唔 join domain → Azure managed identity bypasses cert chain entirely(Tier 2 production scenario,no truststore needed) |
+| **Mitigation in place** | ⚫ Accepted — 文檔化 R13 awareness,non active mitigation。R8 自動 fallback path(home network)remains available as Plan B if truststore broken in any failure mode |
+| **Lesson learned** | (1)Enterprise Python TLS 唔用 `certifi` bundle 是 well-known pattern(同 `pip-system-certs` 等 alternative 同類);(2)truststore 屬 utility-lib per CLAUDE.md §5.2 H2 例外,non vendor change non architectural change;(3)切勿 `verify=False` bypass — 即使 dev workstation 安全,commit 入 codebase leak to其他 dev / CI / Beta+ deploy(已 documented in W2 D5 cont decision section) |
+| **Decay date / review** | W7+ cloud deploy 階段 — production worker pod 用 managed identity,truststore 仍對 dev workstation 有效但 production 不 affected。Tier 2 multi-tenancy / scale-out 階段如果加 Linux dev environment,trigger manual CA install procedure update |
 
 ---
 
