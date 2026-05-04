@@ -48,14 +48,14 @@ last_updated: 2026-05-07
 
 ## F5 — .pptx parser(python-pptx)
 
-- [ ] `pip install python-pptx` + add to backend/pyproject.toml direct deps
-- [ ] `backend/ingestion/parsers/pptx_parser.py` `PptxParser` impl Parser Protocol
-- [ ] Per-slide chunk(slide_based strategy)+ speaker notes 併入 same paragraphs
-- [ ] Embedded images from slide shapes
-- [ ] `chunker/strategies.py` slide_based path → SlideBasedChunker(no longer NotImplementedError)
-- [ ] **PRE-REQUISITE**:Chris provides 1-2 .pptx samples(`docs/06-reference/01-sample-doc/`)
-- [ ] Sanity report on .pptx samples
-- [ ] Unit test:synthetic Presentation → expected chunk count + image extraction
+- [x] python-pptx 1.0.2 already installed via W1 D2 batch(non new install — pyproject deps already)
+- [x] `backend/ingestion/parsers/pptx_parser.py` `PptxParser` impl Parser Protocol(W3 D1 2026-05-04)
+- [x] Per-slide structure mapping:`Slide N` level=1 heading + title placeholder level=2 + body text + speaker notes prefixed `[Notes] ...`
+- [x] Embedded images from slide shapes(`MSO_SHAPE_TYPE.PICTURE` → blob + ext + SHA256 dedup-ready)
+- [ ] **DEFERRED W3 D2-D3** `chunker/strategies.py` slide_based path → SlideBasedChunker(currently NotImplementedError;orchestrator wire post Q5 / F2 sequence)
+- [ ] **DEFERRED Q2** Chris provides 1-2 .pptx samples(`docs/06-reference/01-sample-doc/`)
+- [ ] **DEFERRED W3 D2-D3** Sanity report on .pptx samples(post Q2 sample arrival)
+- [x] Unit test:9 tests pass against synthetic Presentation fixtures(`backend/tests/test_pptx_parser.py`)— title / body / table / picture / notes / doc_order / no-title / malformed / Protocol attr
 
 ## F6 — Chat UI streaming + citation card
 
