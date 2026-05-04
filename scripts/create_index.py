@@ -20,6 +20,13 @@ Refs:
 
 from __future__ import annotations
 
+# Use OS trust store (Windows Cert Store) for TLS verification so Ricoh corp
+# proxy SSL inspection is honoured. Must run before urllib import (urllib uses
+# stdlib ssl module, which truststore patches).
+import truststore
+
+truststore.inject_into_ssl()
+
 import argparse
 import json
 import os
@@ -96,7 +103,9 @@ def cmd_create(args: argparse.Namespace) -> int:
     status, body = request_json("PUT", url, key, schema)
     print(f"PUT {url}")
     print(f"-> {status}")
-    if status in (200, 201):
+    # Azure AI Search returns 201 on create-new, 204 on in-place update;
+    # 200 retained for forward compatibility.
+    if status in (200, 201, 204):
         print(f"OK: index '{name}' created/updated.")
         return 0
     print(f"FAILED:\n{body}")

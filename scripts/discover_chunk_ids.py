@@ -16,6 +16,12 @@ Usage (from project root, post VPN-disconnect + populate):
 
 from __future__ import annotations
 
+# Use OS trust store (Windows Cert Store) for TLS verification so Ricoh corp
+# proxy SSL inspection is honoured. Must run before any ssl/urllib3/httpx import.
+import truststore
+
+truststore.inject_into_ssl()
+
 import asyncio
 import sys
 from pathlib import Path
