@@ -253,9 +253,72 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 ---
 
-## Day 3 — 2026-05-10 (Sun)
+## Day 3 — 2026-05-04 (Mon — early start same-day W3 D2 closeout)
 
-_(同上)_
+> Per Chris signoff "5. W3 sequencing 確認可以"。F5 PPT parser 已 W3 D1 早段 done,F4 SSE streaming 即 W3 D3 唯一 deliverable。
+
+### Done
+
+#### F4 — SSE streaming response(C08 + C05)
+
+- `backend/generation/synthesizer.py`:加 `synthesize_stream(query, chunks) -> AsyncIterator[dict]`
+  - `await self._client.chat.completions.create(stream=True, stream_options={"include_usage": True})`
+  - Yields `{"type": "text-delta", "content": str}` per OpenAI delta chunk
+  - 收 stream 完後 yield single `{"type": "result", "answer", "citation_ids", "refused", "input_tokens", "output_tokens", "latency_ms", "deployment"}`
+  - try / finally 確保 underlying OpenAI stream `.close()` called(client disconnect cancellation graceful)
+  - structlog `synthesizer_stream_complete` event after stream(non per-chunk noise)
+  - **NOT retried by tenacity**(partial output already streamed to client — retry would replay)
+- `backend/generation/stream_composer.py` ✅ NEW pure-data composer:
+  - `compose_query_stream(retrieval_result, synth_stream) → AsyncIterator[dict]`
+  - Passthrough text-delta events;當 synthesizer 發 `result` event:`build_citations(citation_ids, chunks)` → emit one `citation` event per cited chunk + final `done` event(model / total_latency_ms / refused / reranker_used)
+  - Hallucinated citation_ids silently skipped(per F3 design)
+  - Pure data transform — no I/O,unit testable without TestClient
+- `backend/api/routes/query.py` `/query/stream` ✅ rewired:
+  - Vercel AI SDK SSE protocol — `data: {json}\n\n` event frames
+  - Composes:retrieve → synthesize_stream → compose_query_stream → JSON-encoded SSE
+  - 503 when synthesizer 未 init / 502 retrieval failure / asyncio.CancelledError logged + propagated(client disconnect graceful)
+  - W1 stub 501 移除
+- `backend/tests/test_synthesizer.py` 加 4 SSE tests:text-deltas + result event ordering / refusal phrase detect through stream / empty choices passthrough(usage-only frame)/ underlying stream `close()` called via finally
+- `backend/tests/test_stream_composer.py` ✅ NEW 5 tests:passthrough text-deltas + citations + done / reranker_used flag from RetrievalResult.reranked / 1 citation event per unique cited chunk_id / refused flag carried through done / hallucinated chunk_ids silently skipped
+- `backend/tests/test_api_skeleton.py`:`/query/stream` test 從 expect 501 改 expect 200 / 502 / 503(W3 D3 wire-in cascade)
+- `_MockStream` test helper class added(SimpleNamespace 唔 support `__aiter__` instance attr;proper class implements protocol)
+
+#### Test suite
+
+- **138/138 backend tests pass**(129 → 138,+9 F4 tests:4 synthesize_stream + 5 stream_composer)
+- ruff clean
+
+### Decisions / OQ Resolved
+
+- **Decision** — Stream not retried by tenacity。Rationale:partial output已 emitted to client;retry would duplicate text-delta events。Sync `synthesize()` retains 3-attempt retry。Operationally:rate-limit during stream → user sees abrupt cut-off + 502;backoff handled at session level if user re-issues query
+- **Decision** — `compose_query_stream` pure-data design(non I/O coupling)。Rationale:unit tests 100% in-memory async generator,no TestClient / lifespan setup required;route layer remains thin JSON-serialization shell
+- **Decision** — `result` event terminal in synthesizer stream。Rationale:single composition point,non re-yielding;composer 用 `return` after done event,signals consumer terminal
+- **Decision** — Cancellation = best-effort underlying stream close + propagate `CancelledError`(non swallow)。Rationale:asyncio task cancel from FastAPI client disconnect should not be silently absorbed — propagation lets parent task finalize cleanly
+- **No new OQ resolved**(all W3 OQ either resolved or future W4-W7 scope)
+
+### Blockers cleared / remaining
+
+- ✅ F4 SSE streaming code complete + 9 tests pass
+- ⏸ Live verify SSE end-to-end against real Azure OpenAI GPT-5.5 streaming(W3 D4-D5 with Chat UI integration manual smoke)
+- ⏸ Cohere Marketplace endpoint+key populate(Chris async procurement)— gates rerank live verify;non blocking F4
+- W3 D3 plan F5 PPT parser already W3 D1 早段 done
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F4 synthesize_stream(openai stream + result event)| 1.5 | 0.6 | -0.9h | openai SDK stream API straightforward |
+| F4 stream_composer pure-data module | 0.5 | 0.3 | -0.2h | Single async generator function |
+| F4 /query/stream route wire | 0.5 | 0.3 | -0.2h | StreamingResponse + json.dumps + try/except cancel |
+| F4 unit tests(4 stream + 5 composer)+ test_api_skeleton compat | 1.5 | 0.7 | -0.8h | _MockStream helper class + AsyncMock wrapper |
+| F4 W3 progress entry | 0.3 | 0.3 | 0 | This entry |
+| **Total D3** | **4.3** | **2.2** | **-2.1h** | Pure-data composer design + scaffold-first paid off |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(c05,c08): F4 SSE streaming — synthesize_stream + stream_composer + /query/stream wire (W3 D3;138/138 tests)` |
 
 ---
 

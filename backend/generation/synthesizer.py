@@ -1,17 +1,21 @@
-"""GPT-5.5 synthesizer per architecture.md §3.1 + §3.2 (W3 D2 F2).
+"""GPT-5.5 synthesizer per architecture.md §3.1 + §3.2 (W3 D2 F2 + W3 D3 F4).
 
 Wraps Azure OpenAI chat.completions with:
 - Citation-required prompt (prompt_builder.SYSTEM_PROMPT)
 - Citation marker parsing (`[chunk-{id}]` regex, ordered+deduped)
-- tenacity retry on RateLimitError / APITimeoutError
+- tenacity retry on RateLimitError / APITimeoutError (synthesize() only;
+  stream is not retried since partial output already delivered to client)
 - structlog cost log per architecture.md §7 (input_tokens / output_tokens / latency)
 - Refusal detection via REFUSAL_PHRASE substring match
+- W3 D3: synthesize_stream() async generator yielding {text-delta, result}
+  events for SSE consumption (Vercel AI SDK protocol via stream_composer)
 """
 
 from __future__ import annotations
 
 import re
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 import structlog
@@ -136,3 +140,87 @@ class Synthesizer:
             latency_ms=latency_ms,
             deployment=self.deployment,
         )
+
+    async def synthesize_stream(
+        self,
+        query: str,
+        chunks: list[RetrievedChunk],
+    ) -> AsyncIterator[dict]:
+        """Stream chat.completions tokens; yield SSE events for stream_composer.
+
+        Yielded event shapes:
+            {"type": "text-delta", "content": str}
+            {"type": "result", "answer": str, "citation_ids": list[str],
+             "refused": bool, "input_tokens": int, "output_tokens": int,
+             "latency_ms": int, "deployment": str}
+
+        Stream events come during streaming; the single `result` event is
+        emitted after the OpenAI stream completes (citation parse + refusal
+        detection happen on the accumulated answer). Caller (stream_composer)
+        translates `result` into per-citation events + final `done` frame.
+
+        Cancellation: if the consumer aborts (e.g. client disconnect), the
+        underlying OpenAI stream is closed in finally; the `result` event is
+        skipped (no partial citation enrichment on cancel).
+        """
+        assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
+
+        prompt = build_prompt(query, chunks)
+        start = time.perf_counter()
+        accumulated = ""
+        input_tokens = 0
+        output_tokens = 0
+
+        stream = await self._client.chat.completions.create(
+            model=self.deployment,
+            messages=prompt.messages,
+            temperature=self.temperature,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+        try:
+            async for chunk in stream:
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+                    output_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+                if not getattr(chunk, "choices", None):
+                    continue
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None) or ""
+                if content:
+                    accumulated += content
+                    yield {"type": "text-delta", "content": content}
+        finally:
+            close = getattr(stream, "close", None)
+            if close is not None:
+                try:
+                    await close()
+                except Exception:  # noqa: BLE001 — best-effort cleanup
+                    pass
+
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        citation_ids = extract_citation_ids(accumulated)
+        refused = REFUSAL_PHRASE in accumulated
+
+        logger.info(
+            "synthesizer_stream_complete",
+            deployment=self.deployment,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+            citations_count=len(citation_ids),
+            refused=refused,
+            chunks_in=len(chunks),
+        )
+
+        yield {
+            "type": "result",
+            "answer": accumulated,
+            "citation_ids": citation_ids,
+            "refused": refused,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "latency_ms": latency_ms,
+            "deployment": self.deployment,
+        }

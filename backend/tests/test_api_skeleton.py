@@ -34,12 +34,16 @@ def test_query_route_returns_502_when_retrieval_fails_due_to_network() -> None:
         assert "answer" in body
 
 
-def test_query_stream_route_registered_returns_501() -> None:
+def test_query_stream_route_registered_returns_2xx_or_5xx() -> None:
+    """W3 D3 F4 (commit pending) wired SSE; route returns 503 when synthesizer
+    not initialized (TestClient lifespan provides no Azure OpenAI keys),
+    502 if retrieval fails downstream, or 200 with text/event-stream when
+    fully wired. 501 no longer expected."""
     response = client.post(
         "/query/stream",
         json={"query": "test", "kb_id": "drive_user_manuals"},
     )
-    assert response.status_code == 501
+    assert response.status_code in (200, 502, 503)
 
 
 def test_kb_list_route_returns_empty_in_memory() -> None:

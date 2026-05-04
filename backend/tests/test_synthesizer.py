@@ -144,3 +144,152 @@ async def test_synthesize_passes_temperature_and_deployment_to_chat_completions(
     assert captured["model"] == "gpt-5-5"
     assert captured["temperature"] == 0.3
     assert captured["messages"][0]["role"] == "system"
+
+
+# ----- synthesize_stream (W3 D3 F4) -----
+
+
+def _stream_chunk(content: str | None = None, usage: tuple[int, int] | None = None) -> SimpleNamespace:
+    """Mimic openai ChatCompletionChunk shape."""
+    return SimpleNamespace(
+        choices=(
+            [SimpleNamespace(delta=SimpleNamespace(content=content))]
+            if content is not None
+            else []
+        ),
+        usage=(
+            SimpleNamespace(prompt_tokens=usage[0], completion_tokens=usage[1])
+            if usage is not None
+            else None
+        ),
+    )
+
+
+class _MockStream:
+    """Minimal openai AsyncStream stand-in with __aiter__ + close()."""
+
+    def __init__(self, chunks: list[SimpleNamespace]) -> None:
+        self._chunks = chunks
+        self.close = AsyncMock()
+
+    def __aiter__(self):
+        return self._iterate()
+
+    async def _iterate(self):
+        for c in self._chunks:
+            yield c
+
+
+def _make_async_stream(chunks: list[SimpleNamespace]) -> _MockStream:
+    return _MockStream(chunks)
+
+
+@pytest.mark.asyncio
+async def test_synthesize_stream_yields_text_deltas_then_result() -> None:
+    stream_obj = _make_async_stream([
+        _stream_chunk(content="Hello "),
+        _stream_chunk(content="[chunk-c1] world"),
+        _stream_chunk(usage=(120, 30)),
+    ])
+
+    async def _create(**kwargs):
+        return stream_obj
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            events = [e async for e in s.synthesize_stream("q", [_chunk("c1")])]
+
+    types = [e["type"] for e in events]
+    assert types == ["text-delta", "text-delta", "result"]
+    assert events[0]["content"] == "Hello "
+    assert events[1]["content"] == "[chunk-c1] world"
+    result = events[2]
+    assert result["answer"] == "Hello [chunk-c1] world"
+    assert result["citation_ids"] == ["c1"]
+    assert result["input_tokens"] == 120
+    assert result["output_tokens"] == 30
+    assert result["refused"] is False
+    assert result["deployment"] == "gpt-5-5"
+
+
+@pytest.mark.asyncio
+async def test_synthesize_stream_detects_refusal_phrase() -> None:
+    refusal_text = REFUSAL_PHRASE + ". Please add the manual."
+    stream_obj = _make_async_stream([
+        _stream_chunk(content=refusal_text),
+        _stream_chunk(usage=(50, 10)),
+    ])
+
+    async def _create(**kwargs):
+        return stream_obj
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            events = [e async for e in s.synthesize_stream("q", [_chunk()])]
+
+    assert events[-1]["type"] == "result"
+    assert events[-1]["refused"] is True
+    assert events[-1]["citation_ids"] == []
+
+
+@pytest.mark.asyncio
+async def test_synthesize_stream_skips_empty_choices_and_continues() -> None:
+    """Stream chunks with empty choices (e.g. usage-only final) must not break iteration."""
+    stream_obj = _make_async_stream([
+        _stream_chunk(content="A"),
+        _stream_chunk(),  # empty choices, no content
+        _stream_chunk(content="B"),
+        _stream_chunk(usage=(10, 2)),
+    ])
+
+    async def _create(**kwargs):
+        return stream_obj
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            events = [e async for e in s.synthesize_stream("q", [])]
+
+    # Two text-delta + one result; empty-choices and usage-only chunks pass through silently
+    text_deltas = [e for e in events if e["type"] == "text-delta"]
+    assert [e["content"] for e in text_deltas] == ["A", "B"]
+    result = events[-1]
+    assert result["answer"] == "AB"
+
+
+@pytest.mark.asyncio
+async def test_synthesize_stream_closes_underlying_stream_on_finally() -> None:
+    stream_obj = _make_async_stream([_stream_chunk(content="x")])
+
+    async def _create(**kwargs):
+        return stream_obj
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            async for _ in s.synthesize_stream("q", []):
+                pass
+
+    stream_obj.close.assert_awaited()

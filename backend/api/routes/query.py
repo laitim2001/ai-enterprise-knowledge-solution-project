@@ -11,13 +11,20 @@ retrieval-only response with a placeholder answer (W2 behavior preserved
 for tests / local dev). SSE /query/stream remains 501 — F4 W3 D3 scope.
 """
 
+import asyncio
+import json
+
+import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from api.schemas.query import ChunkPreview, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations
+from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
 from retrieval.retrieval_engine import RetrievalEngine
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -108,13 +115,43 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
 
 
 @router.post("/query/stream")
-async def query_stream(payload: QueryRequest) -> StreamingResponse:
-    """SSE streaming variant of /query.
+async def query_stream(payload: QueryRequest, request: Request) -> StreamingResponse:
+    """SSE streaming variant of /query (W3 D3 F4).
 
-    W1 stub: 501. Real impl W3 with Vercel AI SDK SSE protocol.
+    Vercel AI SDK SSE protocol — `data: {json}\\n\\n` event frames:
+        {"type":"text-delta","content":str}  during streaming
+        {"type":"citation","citation":{...}}  one per cited chunk
+        {"type":"done","model","latency_ms","refused","reranker_used"}  final
     """
-    _ = payload
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="W3 streaming implementation per architecture.md §3.1",
-    )
+    engine = _engine_or_503(request)
+    synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
+    if synthesizer is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Synthesizer not initialized — check Azure OpenAI .env config "
+                "(Q4 dependency)."
+            ),
+        )
+
+    try:
+        result = await engine.retrieve(
+            query=payload.query,
+            top_k=payload.top_k_rerank,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"retrieval failure: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    async def event_serializer():
+        try:
+            synth_stream = synthesizer.synthesize_stream(payload.query, result.chunks)
+            async for event in compose_query_stream(result, synth_stream):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        except asyncio.CancelledError:
+            logger.info("query_stream_cancelled", query_chars=len(payload.query))
+            raise
+
+    return StreamingResponse(event_serializer(), media_type="text/event-stream")

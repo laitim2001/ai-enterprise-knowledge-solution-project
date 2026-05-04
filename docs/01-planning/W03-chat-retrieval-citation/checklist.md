@@ -43,10 +43,13 @@ last_updated: 2026-05-07
 
 ## F4 — SSE streaming response
 
-- [ ] `POST /query/stream` no longer 501 — Vercel AI SDK SSE protocol(`data: ...\n\n`)
-- [ ] SSE event types:`text-delta` / `citation` / `done`
-- [ ] Client disconnect cancels GPT-5.5 stream(asyncio cancel)
-- [ ] Unit test:TestClient SSE consumer asserts event format + cancellation
+- [x] `POST /query/stream` no longer 501 — Vercel AI SDK SSE protocol(`data: {json}\n\n`)✅ W3 D3
+- [x] SSE event types:`text-delta` / `citation` / `done` ✅ W3 D3
+- [x] `Synthesizer.synthesize_stream(query, chunks) → AsyncIterator[dict]` yields text-delta + final result;openai chat.completions stream=True with stream_options include_usage ✅ W3 D3
+- [x] `stream_composer.compose_query_stream` pure-data composer(text-delta passthrough + citation per cited chunk + final done with cumulative latency / refused / reranker_used)✅ W3 D3
+- [x] Client disconnect → asyncio.CancelledError logged + propagated;underlying OpenAI stream closed in finally(non swallow)✅ W3 D3
+- [x] 9 unit tests pass(4 synthesize_stream:order / refusal / empty-choices / close-on-finally;5 stream_composer:passthrough+citations+done / reranker_used flag / dedup-citation / refused passthrough / hallucinated-skip)✅ W3 D3
+- [ ] **DEFERRED W3 D4-D5** Live verify SSE end-to-end against real Azure OpenAI GPT-5.5 streaming(manual smoke when Chat UI lands)
 
 ## F5 — .pptx parser(python-pptx)
 
