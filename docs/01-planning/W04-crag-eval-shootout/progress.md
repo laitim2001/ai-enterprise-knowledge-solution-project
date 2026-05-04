@@ -223,7 +223,106 @@ status: in-progress     # draft → in-progress → closed; flipped 2026-05-04 W
 
 ---
 
-## Day 3 — _(pending)_
+## Day 3 — 2026-05-04 (Mon — same-day W4 D2 closeout per "啟動 W4 D3" signal)
+
+> Per plan §5 D3 = F3 4-way reranker shootout(Voyage + ZeroEntropy + Azure semantic impl + factory switch + shootout script)。Procurement carry-overs(Voyage / ZeroEntropy keys + Cohere endpoint populate)remain async — F3 scaffolding lands without keys per W4 plan §4 R1+R2 partial-shootout fallback,live run gated on Chris procurement。
+
+### Done
+
+#### F3 — 4-way reranker shootout(C04 retrieval expansion)
+
+3 NEW reranker implementations sharing W3 D1 `Reranker` Protocol from `backend/retrieval/reranker/base.py`:
+
+- `backend/retrieval/reranker/voyage.py` ✅ NEW(per architecture.md §3.2):
+  - `VoyageReranker` REST client — direct API endpoint `https://api.voyageai.com/v1/rerank`(non-Azure path per Q21 procurement)
+  - Body uses `top_k` + `return_documents: false` + `data` container per Voyage convention(differs from Cohere `top_n` + `results`)— payload-shape divergence covered by dedicated test
+  - tenacity retry on `httpx.HTTPStatusError` + `TransportError`(parity with Cohere W3 D1)
+  - Header `Authorization: Bearer {api_key}` standard direct-API pattern
+  - structlog `voyage_rerank` event(model / candidates_in / results_out)
+
+- `backend/retrieval/reranker/zeroentropy.py` ✅ NEW:
+  - `ZeroEntropyReranker` REST client — direct API endpoint `https://api.zeroentropy.dev/v1/rerank`
+  - Body schema mirrors Cohere(`top_n` + `results` container)— deliberate match keeps Reranker Protocol surface uniform across 3 of 4 vendors;reduces cognitive load for W4 D5 Gate 2 comparison
+  - tenacity retry pattern preserved
+
+- `backend/retrieval/reranker/azure_semantic.py` ✅ NEW(behavioural divergence):
+  - `AzureSemanticReranker` re-issues search with `queryType=semantic` + `semanticConfiguration: ekp-semantic-default` + `search.in(chunk_id, '...')` filter to constrain rerank to the candidate set hybrid surfaced(fair comparison vs Cohere/Voyage/ZeroEntropy)
+  - `@search.rerankerScore` 0-4 scale normalised to [0, 1] via `_AZURE_SCORE_DIVISOR = 4.0` clamp — keeps cross-vendor `rerank_score` comparable for Gate 2 4-metric within-5pp analysis
+  - **Trade-off acknowledged in module docstring**:incurs second AI Search call per query(vs other rerankers post-process hybrid result)。Tier 1 W4 D3 acceptable since Gate 2 focuses on relevance not latency;production-tier consolidation to single hybrid+semantic call deferred W5+ if Azure wins shootout
+  - Reuses S1 SKU semantic ranker — **no extra procurement** beyond existing AI Search resource
+
+- `backend/retrieval/reranker/factory.py` ✅ extended `make_reranker(settings)`:
+  - Switch on `settings.reranker_kind` Literal["cohere", "voyage", "zeroentropy", "azure", "off"]
+  - "off" → None(explicit hybrid-only fallback even when keys populated;test-mode override)
+  - Each backend returns None when its required keys unset → graceful hybrid-only fallback preserved from W3 D1 baseline
+  - Unknown kind → None(fail-safe;Pydantic Literal already prevents invalid values at config-load time)
+
+- `backend/storage/settings.py` ✅ extended:
+  - `reranker_kind` Literal default `"cohere"` (preserves W3 baseline)
+  - `voyage_api_key` / `voyage_rerank_model` / `voyage_request_timeout_s`
+  - `zeroentropy_api_key` / `zeroentropy_rerank_model` / `zeroentropy_request_timeout_s`
+  - `azure_semantic_config_name` / `azure_semantic_request_timeout_s`
+
+- `scripts/run_reranker_shootout.py` ✅ NEW(W4 D3 F3 driver):
+  - CLI args:`--eval-set`(default `docs/eval-set-v1-draft.yaml`)/ `--output`(default `reports/reranker-shootout.json`)/ `--subset N`(cost containment per W4 plan §4 R4)
+  - Iterates `("hybrid-only", "cohere", "voyage", "zeroentropy", "azure")` — skips when required keys unset(emits `SKIPPED — key/endpoint unset` row in stdout table + `skipped: true` in JSON);allows partial shootout per W4 plan §4 R1+R2
+  - Per-kind:builds fresh `RetrievalEngine` via `Settings.model_copy(update={"reranker_kind": kind})` + `make_reranker(settings)` → runs `EvalRunner` from W2 D5 → records `RerankerRunSummary`
+  - Stdout comparison table:`reranker / R@5 / search_ms / embed_ms / status`
+  - JSON output:full `ShootoutReport`(eval_set / subset / started_at / finished_at / runs[])
+  - Subset post-aggregation supports `--subset N` re-aggregation on first-N main-queries prefix(avoids re-running eval)
+  - truststore + sys.path injection per W2 D5 `run_gate1_eval.py` + W4 D2 `run_ragas_eval.py` pattern
+
+- `backend/tests/test_reranker_shootout.py` ✅ NEW — **21 NEW tests pass**:
+  - 5 Voyage(empty short-circuit / desc by score+preserves original_index+hybrid_score / payload shape with `top_k` field name + Bearer auth / top-k clamped / invalid index skipped)
+  - 4 ZeroEntropy(empty short-circuit / desc by score / payload shape with `top_n` field name / invalid index skipped)
+  - 4 Azure semantic(empty short-circuit / 0-4 → 0-1 normalisation / payload shape with `queryType=semantic` + `semanticConfiguration` + `search.in(chunk_id, ...)` filter + `top` field + `select=chunk_id` / unknown chunk_id in response ignored)
+  - 8 factory dispatch(off-returns-None-even-with-keys / cohere parity-W3-D1 / voyage None-when-key-unset / voyage returns Voyage when set / zeroentropy None-when-key-unset / zeroentropy returns ZeroEntropy when set / azure returns Azure when search keys set / azure None-when-search-admin-key-unset)
+
+#### Test suite
+
+- **193/193 backend tests pass**(W4 D2 baseline 172 + 21 NEW reranker;all incl test_parser_factory.py:8 → 193 → 193)
+- ruff clean on all W4 D3 backend files(`voyage.py` / `zeroentropy.py` / `azure_semantic.py` / `factory.py` / `settings.py` / `test_reranker_shootout.py`)
+- `scripts/run_reranker_shootout.py` E402 truststore-injection pattern preserved(intentional convention from `run_gate1_eval.py` + `run_ragas_eval.py`)— driver script not unit-tested per CLAUDE.md §5.6 H6
+
+### Decisions / OQ Resolved
+
+- **Decision** — Azure semantic ranker incurs second AI Search call per query。Rationale:fair comparison demands rerank operate on the same candidate set hybrid surfaced;Azure semantic ranker is invoked at search-time(non post-process)— closest fit for Reranker Protocol uniformity is the dual-call pattern with `search.in(chunk_id, ...)` filter。Tier 1 W4 acceptable;production consolidation deferred W5+ per module docstring trade-off block
+- **Decision** — Score normalisation:Azure 0-4 → 0-1 via `/4.0` clamp。Rationale:Gate 2 4-metric within-5pp comparison requires `rerank_score` on comparable scale across vendors;Cohere/Voyage/ZeroEntropy emit ~[0, 1] natively。Pure constant divisor preserves order;clamp guards against future Azure scale drift
+- **Decision** — Voyage uses `top_k` field name vs Cohere/ZeroEntropy `top_n`。Rationale:respects Voyage's published API spec(non rename to `top_n` for fake-uniformity);test_voyage_payload_shape pins the divergence so a future SDK migration won't silently drift
+- **Decision** — Shootout driver iterates `("hybrid-only", "cohere", "voyage", "zeroentropy", "azure")` order。Rationale:hybrid-only first establishes baseline ROW for stdout table reading flow;Cohere second matches W3 baseline reading expectation;direct-API rerankers next;Azure last reflects "secondary AI Search call cost" mental ordering
+- **Decision** — `reranker_kind="off"` returns None even when all keys populated。Rationale:explicit override useful for test-mode + production CB scenarios("disable rerank for this KB / time window");Pydantic Literal prevents typos
+- **Decision** — F3 4-RAGAs metric overlay deferred from this commit to W4 D5 Gate 2 verdict batch。Rationale:`scripts/run_ragas_eval.py` (W4 D2 F2) already runs 4-metric on a single pipeline-cache JSON;shootout output JSON stores per-reranker pipeline state — Gate 2 verdict re-runs RAGAs against shootout winner output。Eliminates W4 D3 needing to know the winner upfront;keeps F3 narrowly scoped to "land 4 reranker scaffolds + comparison driver"
+- **No new OQ resolved**(Q21 reranker final pick remains W4 D5 critical post-shootout;Q5 Cohere endpoint procurement remains Chris async per existing W3 D1 後段 commit `da0f47f`)
+
+### Blockers cleared / remaining
+
+- ✅ F3 reranker scaffolds(3 NEW + factory + settings)+ shootout driver + 21 tests
+- ⏸ **Cohere Marketplace endpoint+key populate**(Chris async)— gates live shootout cohere row;structurally testable via `scripts/run_reranker_shootout.py` SKIPPED row emission
+- ⏸ **Voyage + ZeroEntropy procurement keys**(Chris async per W4 plan §F3 owner row)— gates live shootout voyage+zeroentropy rows;same SKIPPED row pattern
+- ⏸ Azure semantic ranker — **structurally ready**(no procurement),but requires `semanticConfiguration: ekp-semantic-default` to exist on the Azure AI Search index `ekp-kb-drive-v1`。W2 D5 index schema may not have it。Verify W4 D4 D5 prep
+- ⏸ Live shootout run on real eval-set + winner determination → W4 D4 / D5 dependency chain
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F3 Voyage reranker(REST + tenacity + structlog;mirrors Cohere structure)| 0.5 | 0.3 | -0.2h | W3 D1 cohere.py pattern reuse — VoyageReranker = ~110 lines |
+| F3 ZeroEntropy reranker(deliberately mirrors Cohere shape for consistency) | 0.5 | 0.2 | -0.3h | Body schema match Cohere = trivial after Voyage learning |
+| F3 Azure semantic reranker(divergent dual-call pattern + score normalisation)| 1.0 | 0.5 | -0.5h | Filter clause `search.in(chunk_id, ...)` was the design decision worth mileage;impl thin |
+| F3 factory extension(Literal switch + per-backend None-fallback)| 0.3 | 0.2 | -0.1h | 5-branch switch;Pydantic Literal already validates input |
+| F3 settings extension(8 NEW fields)| 0.2 | 0.1 | -0.1h | Surgical addition |
+| F3 shootout driver script(per-kind RetrievalEngine + Settings.model_copy + EvalRunner reuse + skip-row emission)| 0.5 | 0.4 | -0.1h | EvalRunner reuse from W2 D5 saved write-from-scratch |
+| F3 21 unit tests(per-reranker REST contract + factory dispatch)| 0.5 | 0.4 | -0.1h | W3 D1 cohere test pattern reuse via mock_response helper |
+| W4 D3 progress entry | 0.5 | 0.5 | 0 | This entry |
+| **Total D3** | **4.0** | **2.6** | **-1.4h** | W3 D1 cohere.py scaffold-pattern reuse + W2 D5 EvalRunner reuse + uniform test pattern dominated |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| `e919e0a` | `feat(c04): F3 4-way reranker shootout — Voyage + ZeroEntropy + Azure semantic + factory switch + 21 tests (W4 D3)` |
+| `9380190` | `feat(eval): F3 reranker shootout driver script — 5-way comparison with skip-row fallback (W4 D3)` |
+| _pending_ | `docs(planning): W4 D3 progress + checklist tick (F3)` |
 
 ---
 

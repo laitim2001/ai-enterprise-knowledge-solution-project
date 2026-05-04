@@ -39,15 +39,17 @@ last_updated: 2026-05-04
 
 ## F3 — 4-way reranker shootout
 
-- [ ] `backend/retrieval/reranker/voyage.py` impl(REST `voyage-rerank-2.5`)
-- [ ] `backend/retrieval/reranker/zeroentropy.py` impl(REST `zerank-1`)
-- [ ] `backend/retrieval/reranker/azure_semantic.py` impl(Azure AI Search `@search.semanticConfiguration`)
-- [ ] `factory.py` extended:`make_reranker(settings)` switch on `settings.reranker_kind`
-- [ ] Vendor procurement Voyage key(Chris,non-Azure path)
-- [ ] Vendor procurement ZeroEntropy key(Chris,non-Azure path)
-- [ ] `scripts/run_reranker_shootout.py` runs 4 reranker × eval-set-v1
-- [ ] Comparison table emit:R@5 / R@10 / 4-RAGAs metric per reranker
-- [ ] Unit tests:each new reranker mocked REST(desc by score / top_n clamp / invalid index skip)
+- [x] `backend/retrieval/reranker/voyage.py` ✅ W4 D3 — `VoyageReranker` REST `voyage-rerank-2.5`(direct API endpoint `https://api.voyageai.com/v1/rerank`;body uses `top_k` + `data` container per Voyage convention)
+- [x] `backend/retrieval/reranker/zeroentropy.py` ✅ W4 D3 — `ZeroEntropyReranker` REST `zerank-1`(direct API endpoint `https://api.zeroentropy.dev/v1/rerank`;body uses `top_n` + `results` container mirroring Cohere shape)
+- [x] `backend/retrieval/reranker/azure_semantic.py` ✅ W4 D3 — `AzureSemanticReranker` re-issues search with `queryType=semantic` + `semanticConfiguration` + `search.in(chunk_id, ...)` filter to constrain rerank to candidate set;`@search.rerankerScore` 0-4 scale normalised to [0, 1] for cross-vendor comparability(trade-off:second AI Search call per query — acceptable Tier 1 W4 shootout per module docstring)
+- [x] `factory.py` extended ✅ W4 D3 — `make_reranker(settings)` switch on `settings.reranker_kind` Literal["cohere", "voyage", "zeroentropy", "azure", "off"];each backend returns None when its required keys unset(safe fallback to hybrid-only same as W3 D1 baseline)
+- [x] `Settings` extended ✅ W4 D3 — `reranker_kind` + `voyage_api_key` / `voyage_rerank_model` / `voyage_request_timeout_s` + `zeroentropy_api_key` / `zeroentropy_rerank_model` / `zeroentropy_request_timeout_s` + `azure_semantic_config_name` / `azure_semantic_request_timeout_s`
+- [ ] **DEFERRED Chris async** Vendor procurement Voyage key(non-Azure path per W4 plan §F3 owner row;corp card billing)— gates live shootout run only;scaffold + tests already pass
+- [ ] **DEFERRED Chris async** Vendor procurement ZeroEntropy key(non-Azure path)— gates live shootout run only
+- [x] `scripts/run_reranker_shootout.py` ✅ W4 D3 — runs `hybrid-only + cohere + voyage + zeroentropy + azure` × eval-set-v1;skips per-reranker when its required keys unset (`SKIPPED — key/endpoint unset` row);emits comparison table to stdout + JSON to `--output`(default `reports/reranker-shootout.json`);`--subset N` for cost containment per W4 plan §4 R4
+- [x] Comparison table emit ✅ W4 D3 — R@5 + avg_search_latency_ms + avg_embed_latency_ms + queries_evaluated per reranker(W2 baseline R@5 metric;4-RAGAs metric overlay deferred to W4 D5 Gate 2 verdict via `scripts/run_ragas_eval.py` re-run on shootout winner)
+- [x] Unit tests ✅ W4 D3 — 21 NEW tests pass(5 each Voyage/ZeroEntropy/Azure semantic + 6 factory dispatch);+ 8 W3 D1 cohere tests preserved(29 total reranker tests pass)
+- [ ] **DEFERRED W4 D4-D5** Live shootout run on Cohere Marketplace endpoint(post Chris populate)→ R@5 lift baseline + Gate 2 4-metric overlay via RAGAs runner
 
 ## F4 — Eval set v1 expansion(+ 20 real queries)
 
