@@ -1,14 +1,22 @@
 """Chunk strategy selector (per architecture.md §4.5 KbConfig.chunk_strategy + components/C01-ingestion.md §1).
 
-W2 baseline implements only `layout_aware` (.docx). Other strategies stub
-NotImplementedError until their target sprint:
-- slide_based — W3 D1 (.pptx via python-pptx)
-- heading_aware — W3+ if needed (currently subsumed by layout_aware for .docx)
+Strategy mapping:
+- layout_aware — W2 baseline (.docx / .pdf via Docling) using LayoutAwareChunker
+- slide_based — W4 D1 F9 (.pptx via python-pptx) — also LayoutAwareChunker since
+  PptxParser emits the same heading-paragraph-table-image structure as Docling
+  (per slide: synthetic level=1 "Slide N" heading + level=2 title + body
+  paragraphs + tables + pictures). LayoutAwareChunker walks heading levels
+  generically so a dedicated SlideBasedChunker class would be redundant —
+  per Karpathy §1.2 simplicity-first.
+- heading_aware — W3+ standalone strategy deferred (layout_aware already
+  provides heading-bounded sections; standalone variant only needed if a
+  dedicated heading-merge / cross-heading strategy emerges)
 
 `auto` routing per doc_format (per architecture.md §3.3 Multi-Format Strategy):
 - docx → layout_aware
-- pdf  → layout_aware (W2 D5)
-- pptx → slide_based (W3 D1)
+- pdf  → layout_aware
+- pptx → slide_based (currently same chunker; left distinct in `KbConfig` to
+  preserve forward extensibility if PPT-specific chunking emerges)
 """
 
 from __future__ import annotations
@@ -23,17 +31,12 @@ ChunkStrategy = Literal["heading_aware", "layout_aware", "slide_based", "auto"]
 
 
 def select_chunker(doc_format: DocFormat, strategy: ChunkStrategy = "auto") -> Chunker:
-    """Return a Chunker for the given doc_format + KbConfig strategy.
-
-    Raises NotImplementedError for W3+ strategies (slide_based) — orchestrator
-    catches and records FailureRecord per architecture.md §3.5.
-    """
+    """Return a Chunker for the given doc_format + KbConfig strategy."""
     resolved = _resolve_auto(doc_format, strategy)
 
-    if resolved == "layout_aware":
+    if resolved in ("layout_aware", "slide_based"):
+        # Both delegate to LayoutAwareChunker — see module docstring.
         return LayoutAwareChunker()
-    if resolved == "slide_based":
-        raise NotImplementedError("slide_based chunker is W3 D1 scope (.pptx)")
     if resolved == "heading_aware":
         raise NotImplementedError(
             "heading_aware as a standalone strategy is W3+ scope; "

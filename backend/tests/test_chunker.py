@@ -176,9 +176,12 @@ def test_strategy_selector_routes_pdf_auto_to_layout_aware() -> None:
     assert isinstance(chunker, LayoutAwareChunker)
 
 
-def test_strategy_selector_pptx_auto_raises_for_w3_scope() -> None:
-    with pytest.raises(NotImplementedError, match="slide_based"):
-        select_chunker("pptx", "auto")
+def test_strategy_selector_pptx_auto_returns_layout_aware() -> None:
+    """W4 D1 F9: slide_based now delegates to LayoutAwareChunker since
+    PptxParser emits the same heading-paragraph-table-image structure
+    (per slide synthetic 'Slide N' heading + title + body + tables + pictures)."""
+    chunker = select_chunker("pptx", "auto")
+    assert isinstance(chunker, LayoutAwareChunker)
 
 
 def test_strategy_selector_explicit_layout_aware_returns_layout_aware() -> None:
