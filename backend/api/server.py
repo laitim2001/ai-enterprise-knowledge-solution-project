@@ -17,6 +17,7 @@ from fastapi import FastAPI
 
 from api.routes import chunks, debug, documents, feedback, kb, query, screenshots
 from api.routes import eval as eval_routes
+from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
 from observability.langfuse_tracer import init_tracer
@@ -38,8 +39,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     searcher: HybridSearcher | None = None
     reranker: Reranker | None = None
     synthesizer: Synthesizer | None = None
+    crag_grader: CragGrader | None = None
     app.state.retrieval_engine = None
     app.state.synthesizer = None
+    app.state.crag_loop = None
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -81,9 +84,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await synthesizer.__aenter__()
         app.state.synthesizer = synthesizer
 
+        # CRAG L2 grader uses GPT-5.4-mini (judge deployment) — separate Azure
+        # OpenAI client wrapping the same endpoint+key. CragLoop orchestrates
+        # grade → maybe rewrite + re-fetch + re-synth around the synthesizer.
+        crag_grader = CragGrader(
+            endpoint=settings.azure_openai_endpoint,
+            api_key=settings.azure_openai_api_key,
+            api_version=settings.azure_openai_api_version,
+            deployment=settings.azure_openai_deployment_llm_judge,
+        )
+        await crag_grader.__aenter__()
+        app.state.crag_loop = CragLoop(
+            retrieval_engine=app.state.retrieval_engine,
+            synthesizer=synthesizer,
+            grader=crag_grader,
+            threshold=settings.crag_confidence_threshold,
+            max_corrections=settings.crag_max_reformulations,
+        )
+
     try:
         yield
     finally:
+        if crag_grader is not None:
+            await crag_grader.__aexit__(None, None, None)
         if synthesizer is not None:
             await synthesizer.__aexit__(None, None, None)
         if reranker is not None:

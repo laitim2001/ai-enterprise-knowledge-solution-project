@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 
 from api.schemas.query import ChunkPreview, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations
+from generation.crag import CragLoop
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
 from retrieval.retrieval_engine import RetrievalEngine
@@ -98,19 +99,44 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
             detail=f"synthesis failure: {type(exc).__name__}: {exc}",
         ) from exc
 
-    citations = build_citations(synth.citation_ids, result.chunks)
+    # W4 D1 F1: CRAG L2 correction loop (non-stream path only per architecture.md
+    # §3.5; stream path is L3-only — token-by-token UX precludes mid-stream
+    # rewrite). Skipped when crag_loop unset (test/local) OR caller disables.
+    crag_loop: CragLoop | None = getattr(request.app.state, "crag_loop", None)
+    crag_triggered = False
+    crag_iterations = 0
+    final_synth = synth
+    final_chunks = result.chunks
+    if crag_loop is not None and payload.enable_crag:
+        outcome = await crag_loop.refine(payload.query, result, synth)
+        crag_triggered = outcome.triggered
+        crag_iterations = outcome.iterations
+        final_synth = outcome.synthesis
+        final_chunks = outcome.chunks
+        if crag_triggered and not outcome.fallback_used:
+            chunk_previews = [
+                ChunkPreview(
+                    chunk_id=str(c.fields.get("chunk_id", "")),
+                    chunk_title=str(c.fields.get("chunk_title", "")),
+                    chunk_text=str(c.fields.get("chunk_text", "")),
+                    relevance_score=c.score,
+                )
+                for c in final_chunks
+            ]
+
+    citations = build_citations(final_synth.citation_ids, final_chunks)
 
     return QueryResponse(
-        answer=synth.answer,
+        answer=final_synth.answer,
         citations=citations,
         retrieved_chunks=chunk_previews,
-        crag_triggered=False,  # W4 CRAG loop
-        crag_iterations=0,
-        latency_ms=result.total_latency_ms + synth.latency_ms,
+        crag_triggered=crag_triggered,
+        crag_iterations=crag_iterations,
+        latency_ms=result.total_latency_ms + final_synth.latency_ms,
         trace_id="",  # W3 — Langfuse trace id
-        model_used=synth.deployment,
+        model_used=final_synth.deployment,
         reranker_used=reranker_used,
-        refused=synth.refused,
+        refused=final_synth.refused,
     )
 
 
