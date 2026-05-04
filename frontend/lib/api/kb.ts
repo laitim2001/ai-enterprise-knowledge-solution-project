@@ -1,8 +1,8 @@
 /**
- * Typed KB API methods (per architecture.md §4.4 #6-#11 + §4.5 KbConfig schema).
+ * Typed KB API methods (per architecture.md §4.4 #4-#11 + §4.5 KbConfig schema).
  *
- * W2 D5 F9 baseline: list + get + patch settings + upload doc. Other endpoints
- * (chunks toggle, drop, etc.) deferred to W3+.
+ * W3 D5 F8: + create method for Pipeline wizard sequence
+ * (POST /kb → POST /kb/{id}/documents).
  */
 
 import { ApiClient } from '../api-client';
@@ -15,6 +15,21 @@ export interface KbConfig {
   chunk_strategy: 'heading_aware' | 'layout_aware' | 'slide_based' | 'auto';
   default_top_k: number;
   default_rerank_k: number;
+}
+
+export const DEFAULT_KB_CONFIG: KbConfig = {
+  embedding_model: 'text-embedding-3-large',
+  embedding_dimension: 1024,
+  chunk_strategy: 'auto',
+  default_top_k: 50,
+  default_rerank_k: 5,
+};
+
+export interface KbCreatePayload {
+  kb_id: string;
+  name: string;
+  description?: string;
+  config?: KbConfig;
 }
 
 export interface FailureRecord {
@@ -40,6 +55,9 @@ export const kbApi = {
   list: (): Promise<KbStatus[]> => client.get<KbStatus[]>('/kb'),
 
   get: (kbId: string): Promise<KbStatus> => client.get<KbStatus>(`/kb/${kbId}`),
+
+  create: (payload: KbCreatePayload): Promise<KbStatus> =>
+    client.post<KbStatus>('/kb', payload),
 
   patchSettings: (kbId: string, config: Partial<KbConfig>): Promise<KbStatus> =>
     client.patch<KbStatus>(`/kb/${kbId}/settings`, config),

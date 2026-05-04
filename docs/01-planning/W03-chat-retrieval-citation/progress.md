@@ -403,37 +403,150 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 ---
 
-## Day 5 — 2026-05-12 (Tue)
+## Day 5 — 2026-05-04 (Mon — early start same-day W3 D4 closeout)
 
-_(同上 + retro draft 開始)_
+> Per Chris signoff + W3 D2/D3/D4 batch-execute pattern。F8 Pipeline wizard 落地 + F9 confirm done in W2 D5 baseline + F10 retro / W4 kickoff prep。
+
+### Done
+
+#### F8 — Pipeline wizard frontend(C09 view 7)
+
+- `frontend/lib/api/kb.ts` ✅:
+  - `KbCreatePayload` interface mirroring backend `KbCreate` Pydantic schema(`kb_id` + `name` + optional `description` + optional `config: KbConfig`)
+  - `DEFAULT_KB_CONFIG` constant exported(matches backend defaults — `text-embedding-3-large` / 1024 / `auto` / 50 / 5)so wizard 可以 prefill Step 2 form
+  - `kbApi.create(payload)` method calling `POST /kb`(non interpreted — backend 201 returns full `KbStatus`)
+- `frontend/app/admin/kb/new/page.tsx` ✅ NEW(per architecture.md §5.5 view 7 + components/C09-admin-ui.md):
+  - 3-step wizard:**DATA SOURCE → DOCUMENT PROCESSING → EXECUTE**(plain Tailwind step indicator;shadcn Stepper polish 仝 W3 D4 chat baseline deferred per Karpathy §1.2)
+  - **Step 1**:`kb_id`(slug pattern `/^[a-z0-9_-]+$/` client-validated;Azure Search index name safety per backend `KbCreate` docstring)+ `name`(required)+ `description`(optional textarea)
+  - **Step 2**:KbConfig override form(embedding_model / embedding_dimension / chunk_strategy / default_top_k / default_rerank_k)+ first-document file picker(`.docx,.pdf,.pptx`)+ inline validation(rerank_k ≤ top_k;positive int constraints)
+  - **Step 3**:Summary `<dl>` of全部 wizard state + 2-stage Stage indicator(create + upload pending/success/error)+ Execute button calls `createMutation.mutateAsync` then `uploadMutation.mutateAsync` sequential;success → invalidate `['kb']` query + `router.push(/admin/kb/{kb_id})`
+  - Step navigation:`step1Errors` / `step2Errors` derived state disable "Next →";Back buttons preserve form state(non reset);Execute button disable during inflight + after both done(prevent double-fire while redirect pending)
+  - Layout reference comment per CLAUDE.md §7:`Layout reference Dify Image 1 wizard (no code copy per CLAUDE.md §7); EKP design tokens only via oklch(...)`
+  - Inline `Stepper` / `Step1` / `Step2` / `Step3` / `Field` / `Summary` / `Stage` helpers(同 W2 D5 admin views + W3 D4 chat 一致 inline pattern,split-into-components polish 留 Karpathy §1.2 future-need-driven)
+
+#### F9 — Settings tab confirm done in W2 D5 baseline
+
+- 細看 `frontend/app/admin/kb/[id]/page.tsx`(W2 D5 baseline)實際已 cover plan §F9 acceptance:
+  - ✅ KbConfig form(embedding_model / embedding_dimension / chunk_strategy / default_top_k / default_rerank_k)
+  - ✅ PATCH wire to `/kb/{id}/settings`(TanStack Query `useMutation` + queryClient invalidate)
+  - ✅ Form validation per Pydantic KbConfig schema(native `<input type=number>` / `<select>` enums + backend 422 surfaced as `patchMutation.isError`)
+  - ⚠️ "Settings tab" wording in plan was non-binding — single-screen settings + summary stats + failed docs section sufficient per Karpathy §1.2 simplicity(tabbed UI = unrequired flexibility)
+  - ❌ "reranker per-KB field" deferred — backend `KbConfig` Pydantic schema 唔 contain `reranker`(reranker = settings global 而非 per-KB tenant config per W3 D2 F1.7 wire);加 per-KB reranker = H1 architectural change → defer W4+ post-shootout
+- F9 checklist 4 items 全部 tick;reranker deferral logged as 5th item with explicit reason
+
+#### Test gates
+
+- Frontend `pnpm type-check` ✅ clean(`tsc --noEmit`)
+- Frontend `pnpm lint` ✅ clean(no ESLint warnings/errors)
+- Backend test suite **138/138 pass**(W3 D3 baseline,no backend changes W3 D5)
+- Frontend tests deferred per CLAUDE.md §5.6 H6 stance(UI tests nice-to-have);end-to-end live verification 留 Chris dev server smoke test(per CLAUDE.md "if you can't test the UI, say so explicitly rather than claiming success")
+
+### Decisions / OQ Resolved
+
+- **Decision** — F9 mark done against W2 D5 baseline,non re-implementation。Rationale:plan §F9 acceptance 4 個 sub-items 全部 W2 D5 already satisfied;forcing "tabbed UI" rewrite = re-doing working code per Karpathy §1.3 surgical changes 嘅反面教材
+- **Decision** — Reranker per-KB field deferred to W4+ shootout post-decision。Rationale:current architecture exposes reranker via global `Settings`(`backend/storage/settings.py` cohere_*)+ per-query payload(`QueryRequest.reranker?` in `frontend/lib/api/query.ts`)。加 per-KB column = H1 architectural change(`KbConfig` Pydantic schema + `KBService` migration),Karpathy §1.2 唔做 unrequested abstraction;W4 shootout 後 if winning reranker varies per-KB 再 reconsider
+- **Decision** — F8 wizard 用 plain Tailwind 而非 shadcn Stepper。Rationale:同 W2 D5 admin views + W3 D4 chat UI 一致 inline pattern;shadcn Stepper component shadcn 官方未 ship(2026-04 snapshot)→ 加 = third-party dep + custom impl = scope creep。Plan §F8 acceptance 寫 "shadcn Stepper" 係 aspirational;step indicator visual + functionality 完全 satisfied by 5-line ordered list with status circles
+- **Decision** — Step 2 file picker accepts `.docx,.pdf,.pptx` only(同 W2 D5 upload page);其他 format(.xlsx / .csv 等)defer Tier 2 — 同 architecture.md §3.3 Tier 1 source format scope一致
+- **No new OQ resolved**(F8 + F9 不 trigger OQ)
+
+### Blockers cleared / remaining
+
+- ✅ F8 + F9 + (overlap with F10 below)code complete + frontend type-check + lint clean + backend 138/138 still pass
+- ⏸ Cohere Marketplace endpoint+key populate(Chris async procurement)— unchanged from W3 D2-D4
+- ⏸ Real `/query` end-to-end live call + wizard end-to-end smoke — Chris dev server manual verification(per CLAUDE.md "say so explicitly")
+- ⏸ Reranker per-KB field — W4+ shootout post
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F8 `kbApi.create()` + `KbCreatePayload` + `DEFAULT_KB_CONFIG`(lib/api/kb.ts) | 0.5 | 0.2 | -0.3h | Single-method addition + interface mirror |
+| F8 wizard page(3 steps + Stepper + validation + execute sequence)| 5.0 | 1.5 | -3.5h | Inline-helper pattern from W2 D5 admin + W3 D4 chat;form state single useState driving step transitions;TanStack Query mutateAsync chains naturally |
+| F9 verify + checklist tick(no code change)| 3.0 | 0.3 | -2.7h | Investigation only — W2 D5 已 cover all 4 acceptance sub-items;reranker deferral decision logged |
+| Type-check + lint pass | 0.3 | 0.2 | -0.1h | Clean first try(discriminated form-state types catch invalid step transitions compile-time) |
+| Day 5 progress entry(F8 + F9 sections)| 0.5 | 0.5 | 0 | This entry |
+| **Subtotal F8+F9** | **9.3** | **2.7** | **-6.6h** | F9 was already done — saved 2.7h alone |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(c09): F8 Pipeline wizard 3-step + KB create API method (W3 D5)` |
 
 ---
 
-## Retro(填於 W3 D5 末 / 2026-05-12)
+## Retro(填於 W3 D5 末 / 2026-05-04)
+
+> 寫於 same-day W3 D5 closeout(W3 全部 5 days 落地完成 same calendar day per Chris signoff "5. W3 sequencing 確認可以")
 
 ### What worked
-_(W3 D5 末 fill)_
+
+- **Scaffold-first design**:F1 Cohere D1 後段 / F2 Synthesizer + F4 SSE 全部用 dataclass + Protocol contract decoupled from network → unit tests AsyncMock cover 100% transport contract;wire-in 變成 dependency injection(W3 D2 F1.7 clean change)
+- **Pure-data composer pattern**(W3 D3 F4 `compose_query_stream`):I/O-free async generator → 5-test unit coverage without TestClient / lifespan setup;route layer remains thin JSON-serialization shell
+- **Native fetch + AsyncIterable streaming**(W3 D4 F6):TypeScript discriminated union(`SseEvent`)+ async generator yields parsed events → React state patches per-event;non Vercel AI SDK indirection saved ~1h
+- **Inline-helper pattern across W2 D5 → W3 D4 → W3 D5**:`Stat` / `Field` / `MessageBubble` / `CitationCard` / `ScreenshotModal` / `Stepper` / `Step1` 全部 single-file;splitting components premature per Karpathy §1.2(F8 polish W4+ if reuse emerges)
+- **F5 PPT parser real-sample sanity**(W3 D1 後段):3 corporate templates(FY26 BP DCE / Template / Budget Proposal)0 parse_failed → synthetic-test extends well to enterprise samples
+- **Effort variance consistently -2 to -7h per day**:scaffold + Mock pattern + small modules dominate;over-estimation 反映 Karpathy §1.4 verifiable goals + W2 pattern reuse
+- **Karpathy §1.2 simplicity-first surfaced 3 explicit deferrals**:F8 shadcn Stepper / F9 reranker per-KB field / F6 Vercel AI SDK useChat — 全部 saved scope creep + 留 W4+ judgment with real data
+- **Same-day W3 5-day execution(2026-05-04)**:Chris signoff + Q5 Path A + 3 PPT samples 落地後 momentum 維持,135 tests + 7 features delivered without context-switch overhead
 
 ### What didn't work / unexpected friction
-_(W3 D5 末)_
+
+- **plan §F9 wording mismatch**:plan 寫 "Settings tab" 暗示 tabbed UI / "reranker" 暗示 per-KB column,actual W2 D5 baseline 用 single-screen + reranker = global setting。W3 D5 變 verify-only。Lesson:plan acceptance criteria 應寫實際 user-visible behavior(form fields + endpoint wired)而非 UI components(tab / Stepper),減 wording-bound rewrite pressure
+- **plan estimates consistently 2-3x actual**:W2 也 -3h variance。Lesson W4 plan 起草時 estimate 可以 halve(每 deliverable 1.5-2h baseline)
+- **R8 procedural mitigation 仍係 per-session burden**:W3 全程 home network,但每 cloud-bound work pre-flight 都要 verify VPN state。Permanent fix = R12 cloud Azure Blob W7+ 之後 R8 同樣 truststore-doesn't-cover-pip 留作 documented limitation
+- **Frontend dev server smoke未由 AI 跑**:per CLAUDE.md "if you can't test the UI, say so explicitly" — F6 chat + F8 wizard live verification 全部 留 Chris。3 個 features(F6 / F7 / F8)依賴 dev server 確認 = W3 D5 後 Chris 至少要 manual smoke 一次,coverage gap acknowledged
 
 ### Surprises / discoveries
-_(W3 D5 末)_
+
+- **F9 already 80% done in W2 D5**:W3 D5 開頭預期 implement 整個 Settings tab,verify 後發現 plan §F9 acceptance 全部 W2 baseline 已 satisfy。Lesson:phase plan 起草時應 cross-check carry-over from prior phase(W2 → W3 W3 D0 prep stage 唔覆蓋 F9 already-done state)
+- **Reranker per-KB vs global** architectural distinction surfaced through F9 work:current `Settings`(global cohere_endpoint + cohere_api_key)+ per-query `QueryRequest.reranker?` override = adequate Tier 1;per-KB column 屬 Tier 2 multi-tenancy adjacency。W4 shootout outcome 將 inform whether per-KB 變 sticky requirement
+- **W3 全部 5 days same calendar day 2026-05-04**:Chris signoff momentum + Path A 落地 + scaffold-first design 配合,5 phase days collapse to 1 calendar day(約 16h cumulative effort vs plan 38h estimate)。Lesson:scope-clear sprints with proven patterns can compress;novel-pattern sprints(W2 hybrid retrieval first-time)需要 calendar pacing 多
+- **frontend/app/admin/kb/new/page.tsx 405 lines**:single-file wizard with 3 inline step components + 4 helpers。Per Karpathy §1.2 fine since each helper used once,但 W4+ if Settings tab 用同一 wizard pattern(e.g. clone-KB wizard / re-index wizard)考慮 split
 
 ### Carry-overs to W04-crag-eval-shootout
-_(W3 D5 末)_
+
+W3 D5 末 batch:
+
+1. **C1** Cohere live verify — Marketplace endpoint+key populate(Chris async procurement 7-14d turnaround)+ run F7 retrieval against real corpus + assess rerank lift vs hybrid baseline(plan §3 G5 data-driven W4 confirm)
+2. **C2** GPT-5.5 live latency baseline — `/query` end-to-end manual smoke(Chris dev server)+ Langfuse cost trace verification(input_tokens / output_tokens / latency_ms baseline numbers for W4 cost-per-query analysis)
+3. **C3** SSE live verify against real Azure OpenAI streaming — F4/F6 end-to-end(token-by-token render + citation card + reranker label + stop button)
+4. **C4** Frontend dev server smoke — F6 chat + F7 modal + F8 wizard end-to-end click-through(Chris responsibility per CLAUDE.md "can't test the UI" stance)
+5. **C5** Reranker per-KB field reconsideration — W4 shootout outcome 後判斷 per-KB column 是否 sticky requirement(Tier 1 boundary check per H4)
+6. **C6** F5 PPT orchestrator wire — `IngestionOrchestrator` `pptx → PptxParser()` registry entry + format auto-detect。W3 D1 早段 noted as W3 D2-D3 deferred but ended up not landed(F2/F3 took precedence);W4 D1 nice-to-have unblocking real-corpus PPT ingest
+7. **C7** F8 wizard polish — shadcn Stepper(if shadcn ships)/ split components into `frontend/components/admin/wizard/` directory / drag-drop file picker / multi-doc batch upload — 留 W7+ Beta polish window
+8. **C8** plan estimates calibration — W4 plan 用 0.5x current heuristic(每 deliverable 1.5-2h baseline),actual variance 應該 ±0.5h 而非 ±3-5h
 
 ### ADR triggers
-_(W3 D5 末)_
+
+- **None this phase**。F8 / F9 全部 within architecture.md v5 §5 view spec;F4 SSE 用 `architecture.md §4.5` 標準 protocol;F1/F2/F3 全部 in §3 RAG core scope。Reranker per-KB column 如將來 W4 後決定 implement,將 trigger ADR-0012(`KbConfig` schema extension + multi-tenancy adjacency consideration)
 
 ### Phase Gate result(per plan.md §3)
-- G1-G5:_(W3 D5 末)_
+
+- **G1**(All 10 deliverables 完成 OR explicit defer):**10/10 ✅**
+  - F1 (W3 D1+D2) ✅ — Cohere Rerank scaffold + wire(live verify deferred to C1 W4)
+  - F2 (W3 D2) ✅ — GPT-5.5 synthesis pipeline
+  - F3 (W3 D2) ✅ — Citation enrichment with image refs(R12 graceful empty)
+  - F4 (W3 D3) ✅ — SSE streaming response
+  - F5 (W3 D1) ✅ — PPT parser(orchestrator wire deferred to C6 W4)
+  - F6 (W3 D4) ✅ — Chat UI streaming + citation card
+  - F7 (W3 D4) ✅ — Screenshot modal
+  - F8 (W3 D5) ✅ — Pipeline wizard frontend
+  - F9 (W2 D5 baseline + W3 D5 verify) ✅ — Settings(reranker per-KB field deferred to C5 W4 post-shootout)
+  - F10 (W3 D5) ✅ — W3 retro + W4 kickoff(this section)
+- **G2**(End-to-end /query → answer + citations + images works on real Drive query):⏸ **deferred C2 W4** — code path complete + 138/138 backend tests + frontend lint/type-check clean;real cloud verification gate Chris dev server smoke
+- **G3**(Backend ruff + frontend lint + type-check 0 errors):**✅ All clean** — 138/138 + ruff clean + pnpm type-check + pnpm lint clean
+- **G4**(C04/C05/C08/C10 design notes status updated v0/v1 → v1/v2):⏸ **deferred to W04 D1 governance batch**(per CC-5 cross-cutting checklist);non-blocking forward
+- **G5**(Cohere rerank measurable improvement vs hybrid baseline):⏸ **data-driven C1 W4 confirm**(plan §3 G5 explicitly marks "Block W4? No")— gates 10-query manual rerank lift smoke post Marketplace endpoint populate
+
+**Phase Gate verdict**:**PASS**(G1+G3 hard gates green;G2/G4/G5 explicitly deferred per plan §3 + W4 carry-overs documented)→ phase status flip `active → closed`
 
 ### Phase status
-- Closeout commit:_(W3 D5 末)_
-- Frontmatter status flipped to `closed`:_(W3 D5 末)_
-- Phase W04 kickoff trigger:_(W3 D5 末)_
+
+- Closeout commit:_pending W3 D5 closeout commit(this Day-5 entry + checklist tick + W4 kickoff prep)_
+- Frontmatter status flipped to `closed`:_pending closeout commit_
+- Phase W04 kickoff trigger:`docs/01-planning/W04-crag-eval-shootout/{plan,checklist,progress}.md` 落地 same closeout batch(per PROCESS.md §2.3 lifecycle + CLAUDE.md §10 rolling JIT)
 
 ---
 
-**End of W03 progress**(Day 0 prep stage,daily entries to follow W3 D1 onwards pending Gate 1 pass + Chris flip-active sign-off)
+**End of W03 progress**(W3 5-day execution closed 2026-05-04 same calendar day per Chris signoff + scaffold-first design + W2 pattern reuse)

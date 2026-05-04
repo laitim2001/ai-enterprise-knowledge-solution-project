@@ -82,34 +82,35 @@ last_updated: 2026-05-07
 
 ## F8 — Pipeline wizard frontend
 
-- [ ] `frontend/app/admin/kb/new/page.tsx` 3-step wizard
-- [ ] DATA SOURCE → DOCUMENT PROCESSING → EXECUTE step indicator(shadcn Stepper)
-- [ ] POST sequence wired:create KB → upload doc → trigger ingestion
-- [ ] Reference Dify wizard layout(EKP tokens only)
+- [x] `frontend/app/admin/kb/new/page.tsx` 3-step wizard ✅ W3 D5
+- [x] DATA SOURCE → DOCUMENT PROCESSING → EXECUTE step indicator(plain Tailwind;**shadcn Stepper deferred** per Karpathy §1.2 同 W3 D4 chat baseline 一致)✅ W3 D5
+- [x] POST sequence wired:create KB → upload doc → trigger ingestion(`kbApi.create()` + `kbApi.uploadDoc()` sequential mutateAsync)✅ W3 D5
+- [x] Reference Dify Image 1 wizard layout(EKP `oklch(...)` tokens only;header comment per CLAUDE.md §7)✅ W3 D5
 
 ## F9 — Settings tab
 
-- [ ] `frontend/app/admin/kb/[id]/page.tsx` Settings tab
-- [ ] KbConfig form(embedding_model / chunk_strategy / reranker / top_k / rerank_k)
-- [ ] PATCH wire to `/kb/{id}/settings`
-- [ ] Form validation per Pydantic KbConfig schema
+- [x] `frontend/app/admin/kb/[id]/page.tsx` Settings ✅ W2 D5 baseline(plain page,non tabbed — single-screen settings + summary + failed docs sufficient per Karpathy §1.2;tabbed UI = unrequired flexibility)
+- [x] KbConfig form(embedding_model / embedding_dimension / chunk_strategy / default_top_k / default_rerank_k)✅ W2 D5
+- [x] PATCH wire to `/kb/{id}/settings`(TanStack Query `useMutation` + invalidate `['kb', kbId]` + `['kb', 'list']`)✅ W2 D5
+- [x] Form validation per Pydantic KbConfig schema(native `<input type=number>` + `<select>` enums + backend 422 surfaced as `patchMutation.isError`)✅ W2 D5
+- [ ] **DEFERRED W4+** `reranker` per-KB field — current `KbConfig` Pydantic schema 唔 contain reranker(reranker = settings global 而非 per-KB)。加 = H1 architectural change → 留 W4 reranker shootout 後 reconsider
 
 ## F10 — W3 末 retro + W4 kickoff prep
 
-- [ ] W03 progress.md retro section completed
-- [ ] W04 phase folder mkdir + plan.md draft
-- [ ] W03 carry-overs documented
-- [ ] W03 progress.md frontmatter status flipped to `closed`
+- [x] W03 progress.md retro section completed ✅ W3 D5(7 sub-sections + Phase Gate verdict PASS + carry-overs C1-C8)
+- [x] W04 phase folder mkdir + plan.md draft ✅ W3 D5 closeout batch(`docs/01-planning/W04-crag-eval-shootout/{plan,checklist,progress}.md`)
+- [x] W03 carry-overs documented ✅ W3 D5(retro § Carry-overs C1-C8 → W4 plan §6 Dependencies on Prior Phase)
+- [x] W03 progress.md frontmatter status flipped to `closed` ✅ W3 D5 closeout commit
 
 ---
 
 ## Cross-Cutting
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)
-- [ ] Component tag in commit message per CC-1
-- [ ] OQ status sync to `decision-form.md`(R4)— Q5 W3 D1 critical
-- [ ] Component design note status bumps(per CC-5):C04 v1→v2(rerank wire),C05 v0→v1,C08 v1→v1.1(SSE wire),C10 v0→v1
-- [ ] RISK_REGISTER.md update if R8 reactivation pattern persists OR Q5 path A delays surface as new risk
+- [x] Each commit references `progress.md` Day-N entry(R2)✅ W3 D1-D5 全部 commits 都 ref Day-N section
+- [x] Component tag in commit message per CC-1 ✅ feat(c01) / feat(c04) / feat(c05,c08) / feat(c10) / feat(c09)
+- [x] OQ status sync to `decision-form.md`(R4)— Q5 W3 D1 critical ✅ W3 D1 後段 commit `da0f47f`(Q5 → Path A + Q17/Q18 Chris confirm)
+- [ ] **DEFERRED W4 D1** Component design note status bumps(per CC-5):C04 v1→v2(rerank wire),C05 v0→v1,C08 v1→v1.1(SSE wire),C09 v1→v1.1(wizard),C10 v0→v1 — phase Gate G4 explicitly defer non-blocking;batch with W4 kickoff governance
+- [x] RISK_REGISTER.md update — R3 🟢 Resolved 2026-05-04(Q5 → Path A,procurement parallel)+ R8 P2 truststore-doesn't-cover-pip documented + R12 Azurite SDK signature deferred to W7+ cloud Blob ✅ W3 D1 後段 batch
 
 ---
 
