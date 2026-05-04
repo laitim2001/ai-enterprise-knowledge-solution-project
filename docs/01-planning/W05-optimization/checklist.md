@@ -13,16 +13,17 @@ last_updated: 2026-05-04
 
 ## F1 — Gate 2 LIVE verdict close(blocking gate)
 
-- [ ] **DEFERRED Chris async** F1.1 Cohere `.env` `cohere_endpoint` populate(Path A Marketplace `https://<dep>.<region>.models.ai.azure.com` OR Path B direct API `https://api.cohere.com` + `cohere_procurement_path=B`);`cohere_api_key` 已 populated W3 D1 後段
+- [x] F1.1 Cohere `.env` populate ✅ W5 D1 — Chris populated post user "已經補上"signal;`cohere_endpoint=https://<dep>.<region>.models.ai.azure.com` Path A Marketplace + `cohere_api_key` set;`cohere_rerank_model=Cohere-rerank-v4.0-pro`(spec drift v3.5→v4.0-pro accepted per Path 1 user decision — same-vendor model upgrade,non H1+H2 violation;architecture.md §3.2 amendment ticket reserved for W5 retro)
 - [x] **DROPPED W5 D1 per Karpathy §1.2** F1.2 Voyage api_key procurement — Cohere + Azure semantic 2-way 已 satisfies Gate 2 verdict policy;W4 D3 VoyageReranker class + tests preserved as future-proof scaffold;driver skip-row fallback handles SKIPPED row automatically
 - [x] **DROPPED W5 D1 per Karpathy §1.2** F1.2 ZeroEntropy api_key procurement — same rationale as Voyage drop
-- [ ] **DEFERRED Chris index ops** F1.3 Azure semantic config `ekp-semantic-default` verify on `ekp-kb-drive-v1` index(create if missing)
-- [ ] **DEFERRED Chris SME** F1.4 chunk_id labeling cascade Q001-Q030 + Q036-Q055(target ≥ 45/55 validated;keyword-mode fallback acceptable for 1st-pass Gate 2 verdict if SME cycles slip)
-- [ ] F1.5 `scripts/run_cohere_lift_smoke.py` LIVE run on 10 representative queries → hybrid-only vs hybrid+Cohere R@5 lift output(blocked by F1.1)
-- [ ] F1.6 `scripts/run_reranker_shootout.py` LIVE run on full 55-query eval-set → **3-way comparison**(hybrid-only / cohere / azure)+ R@5;Voyage + ZeroEntropy rows auto-SKIPPED with reason "key/endpoint unset"
-- [ ] F1.7 `scripts/run_ragas_eval.py` LIVE run on winning reranker + Cohere baseline → 4-metric within-5pp 互換 verdict
-- [ ] F1.8 Gate 2 verdict landed:**PASS** = continue F2-F4 / **FAIL** = trigger ADR-0012 + drop L2 CRAG decision
-- [ ] F1.9 Q5 + Q21 + relevant OQ follow-up note in `decision-form.md`(Q21 narrowed to Cohere vs Azure semantic 2-way per W5 D1 Voyage/ZeroEntropy drop)
+- [x] F1.3 Azure semantic config verify ✅ W5 D1 — service-level enabled(Free tier per Chris screenshot),index-level config `ekp-semantic-config` already 落地 W2 D5 schema(NOT `ekp-semantic-default`)。Bug C(Settings typo)+ Bug D(api-version=2024-07-01 deprecated `queryLanguage`)+ Bug E(mojibake)fixed `4c43e96`;F1.6 LIVE 3-way 全 evaluated post-fix
+- [ ] **DEFERRED Chris SME** F1.4 chunk_id labeling cascade Q001-Q030 + Q036-Q055(target ≥ 45/55 validated;keyword-mode fallback acceptable for 1st-pass Gate 2 verdict if SME cycles slip — F1.7 LIVE n=5 RAGAs already used reference fallback `expected_keywords` per W5 D1 evaluator,strict-mode 留 W6+ Chris SME cycle)
+- [x] F1.5 `scripts/run_cohere_lift_smoke.py` LIVE run ✅ W5 D1(--subset 10 keyword-mode):hybrid-only R@5 = 1.0 / cohere R@5 = 1.0 / lift = 0(simple accounting queries 喺 keyword-mode saturate;真實 differential signal 留 F1.7 RAGAs 4-metric)。Pre-fix F1.5 first-pass($2.85 cost overshoot)surfaced Bug B subset cost containment(fixed `5a00bcd`)
+- [x] F1.6 `scripts/run_reranker_shootout.py` LIVE run ✅ W5 D1(--subset 10 keyword-mode):hybrid-only R@5 = 1.0 / cohere R@5 = 1.0 / azure R@5 = 1.0(post Bug C+D+E fix;3-way 全 evaluated)/ voyage + zeroentropy SKIPPED clean。Comparison data 留 F1.7 RAGAs(keyword-mode 對 simple queries saturate 全 1.0,3-way 唔 differentiate)
+- [x] F1.7 `scripts/run_ragas_eval.py` LIVE run ✅ **PARTIAL**(--subset 5 sanity):**Cohere v4.0-pro baseline 4-metric** faithfulness 0.989 / answer_relevancy 0.815 / context_precision 0.978 / context_recall 1.000(全 evaluated 5/5;n=5 sample size underpowered for Gate 2 robust verdict)。Bug F+G(temperature + AsyncAzureOpenAI;`38ea9b1`)+ Bug H Path A(monkey-patch GPT-5 param translation;`8b1c3da`)required 之前先 LIVE-runnable
+- [ ] **DEFERRED W5 D2 per Option 4 user decision** F1.7-extended `--subset 20` for robust statistical baseline(~$15-25 USD judge cost)+ Azure semantic 2-way comparison via `Settings.reranker_kind=azure` swap + re-run RAGAs
+- [ ] **DEFERRED W5 D2** F1.8 Gate 2 verdict landed:**PASS** = continue F2-F4 / **FAIL** = trigger ADR-0012 + drop L2 CRAG decision(等 F1.7-extended subset=20 + Azure 2-way 數據齊先 land verdict)
+- [ ] **DEFERRED W5 D2** F1.9 Q5 + Q21 + relevant OQ follow-up note in `decision-form.md`(Q21 narrowed to Cohere vs Azure semantic 2-way per W5 D1 Voyage/ZeroEntropy drop;W5 D2 verdict 後 finalize)
 
 ## F2 — CRAG threshold empirical fine-tune(W4 R6 close)
 
