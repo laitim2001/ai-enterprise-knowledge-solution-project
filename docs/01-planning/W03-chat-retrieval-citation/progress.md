@@ -322,9 +322,84 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 ---
 
-## Day 4 — 2026-05-11 (Mon)
+## Day 4 — 2026-05-04 (Mon — early start same-day W3 D3 closeout)
 
-_(同上)_
+> Per Chris signoff "5. W3 sequencing 確認可以"。F6 Chat UI streaming + citation card + F7 Screenshot modal 一次過落地。
+
+### Done
+
+#### F6 — Chat UI streaming + citation card(C10)
+
+- `frontend/lib/api/query.ts` ✅ NEW:
+  - TypeScript types mirroring backend Pydantic schemas:`ImageRef` / `Citation` / `QueryRequest` / discriminated `SseEvent` union(`TextDeltaEvent` / `CitationEvent` / `DoneEvent`)
+  - `streamQuery(payload, signal)` async generator using native fetch streaming + `TextDecoder` + `\n\n` SSE-frame split + `JSON.parse(data: ...)`
+  - **Non Vercel AI SDK `useChat`** — backend SSE 用 custom JSON event protocol(citation + done events 唔 standard);wrap useChat 會加 indirection 0 benefit per Karpathy §1.2。Native fetch + small parser cleaner
+  - Aborts via passed `AbortSignal`(client cancellation)
+- `frontend/app/page.tsx` ✅ rewritten:Chat page Client Component
+  - `Message` type:role / content / citations / isStreaming / refused / rerankerUsed / errorText
+  - `handleSubmit` creates user msg + placeholder assistant msg → drives `streamQuery` → per-event React state patches:
+    - `text-delta` → append to assistant content
+    - `citation` → push to assistant citations[]
+    - `done` → set isStreaming=false + refused / rerankerUsed
+  - Stop button uses `AbortController` to cancel streaming
+  - Empty state placeholder prompts user to ask financial-software questions
+  - Cursor blinking ▍ during stream;refused banner when answer = REFUSAL_PHRASE;error banner on stream exception
+  - `MessageBubble` 分 user(primary bg)/ assistant(border + muted bg)`max-w-[88%]`
+  - Reranker label `reranker: cohere-v3.5 / off` shown post-stream
+
+#### F7 — Screenshot modal
+
+- `ScreenshotModal` inline component(per W2 D5 `Stat` / `Field` helper pattern)
+  - Fixed inset-0 backdrop `bg-black/70` z-50
+  - Click backdrop → close;click image area → propagation stopped
+  - Esc key handler in ChatPage `useEffect` window listener
+  - `Close (Esc)` button top-right
+  - Image `max-h-[85vh] w-auto` 自然 fit
+- `CitationCard` thumbnail click → opens modal with `embedded_images[0]`
+- W2 D3 R12 caveat:`embedded_images_json="[]"` baseline → thumbnail conditional render(if `blob_url`),W7+ Cloud Blob populate 後 thumbnail real render
+
+#### Frontend gates
+
+- `pnpm type-check` ✅ clean(`tsc --noEmit`)
+- `pnpm lint` ✅ clean(no ESLint warnings/errors)
+- `<img>` use intentional + flagged `eslint-disable @next/next/no-img-element`(R12 deferral:Blob URLs are dynamic Azure Storage,不適合 Next.js Image optimization domain config until W7+)
+
+#### Test suite
+
+- Backend 138/138 still pass(no backend changes)
+- Frontend tests deferred per CLAUDE.md §5.6 H6 stance(UI tests nice-to-have,非 hard requirement);end-to-end live verification W3 D4-D5 manual smoke when both backend up + Cohere endpoint populate
+
+### Decisions / OQ Resolved
+
+- **Decision** — F6 用 native fetch streaming(non Vercel AI SDK `useChat`)。Rationale:backend SSE 用 custom JSON event protocol(`text-delta` + `citation` + `done`),`useChat` standard protocol(`0:"text"\n` 等)需要 wrap parser;native fetch + 50-line `streamQuery` 直接 type-safe TypeScript types;測試簡單;non additional dep。Per Karpathy §1.2 simplicity-first
+- **Decision** — `<img>` over Next.js `<Image>` for Citation thumbnails / Screenshot modal。Rationale:Citation `blob_url` 係 dynamic Azure Storage signed URLs,Next.js `Image` `domains` config 限制 + 預先 known origins;W2 D3 R12 deferred to W7+ cloud Blob populate when domains stabilized。`eslint-disable @next/next/no-img-element` flagged inline
+- **Decision** — Per Karpathy §1.2 inline `MessageBubble` / `CitationCard` / `ScreenshotModal` 喺 `page.tsx`(同 W2 D5 admin views `Stat` / `Field` pattern)。Rationale:W3 D4 baseline 同 W2 D5 一致;W3 D5 F8 polish 一齊 split into `frontend/components/chat/` directory + shadcn upgrade
+- **Decision** — Single-KB `KB_ID = 'drive_user_manuals'` hardcoded。Rationale:W3 single-KB POC scope;multi-KB selector W7+ Beta(Microsoft Entra ID + tenant context)
+- **Decision** — Stop button cancels stream via `AbortController` + `AbortSignal` propagated through `streamQuery`。Backend `/query/stream` already handles `asyncio.CancelledError` per W3 D3 F4 design
+- **No new OQ resolved**
+
+### Blockers cleared / remaining
+
+- ✅ F6 + F7 code complete + type-check + lint clean
+- ⏸ Live end-to-end:requires Azure OpenAI GPT-5.5 + (optional)Cohere Marketplace endpoint+key — Chris async procurement;manual smoke W3 D5 polish window
+- ⏸ Frontend dev server `pnpm dev` 啟動 manual verification 留 Chris(per CLAUDE.md "if you can't test the UI, say so explicitly rather than claiming success")
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F6 streamQuery async generator + types | 1.0 | 0.4 | -0.6h | Native fetch + TextDecoder + SSE frame split is well-known pattern |
+| F6 ChatPage with state + streaming + Stop | 4.0 | 1.5 | -2.5h | Plain HTML/Tailwind reuse W2 D5 admin pattern;async iteration directly drives setState |
+| F7 ScreenshotModal + CitationCard inline | 2.0 | 0.5 | -1.5h | Inline components(W2 D5 helper pattern);Esc keyboard + click backdrop standard |
+| Type-check + lint pass | 0.3 | 0.2 | -0.1h | Clean first try;TypeScript discriminated union catches event-type errors compile-time |
+| Day 4 progress entry | 0.5 | 0.4 | -0.1h | This entry |
+| **Total D4** | **7.8** | **3.0** | **-4.8h** | Plain-Tailwind + async-iteration design + W2 patterns reuse |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(c10): F6 Chat UI streaming + citation card + F7 Screenshot modal (W3 D4)` |
 
 ---
 

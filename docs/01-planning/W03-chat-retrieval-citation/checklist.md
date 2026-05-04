@@ -64,17 +64,21 @@ last_updated: 2026-05-07
 
 ## F6 — Chat UI streaming + citation card
 
-- [ ] `frontend/app/page.tsx` chat view per architecture.md §5.2
-- [ ] Vercel AI SDK `useChat` wired to `/query/stream`
-- [ ] CitationCard component(shadcn Card)+ image preview
-- [ ] EKP design tokens only(non Dify colors per CLAUDE.md §7)
-- [ ] PR comment standard:`Reference: dify/web/app/components/base/chat/...`(layout reference only)
+- [x] `frontend/app/page.tsx` chat view ✅ W3 D4(Client Component;message state + AbortController + Stop button)
+- [x] **`/query/stream` SSE consumed via native fetch + `streamQuery` async generator**(non Vercel AI SDK `useChat` per Karpathy §1.2 — backend uses custom JSON event protocol;wrap useChat = indirection 0 benefit)✅ W3 D4
+- [x] CitationCard inline component(`embedded_images[0]` thumbnail click → ScreenshotModal)✅ W3 D4
+- [x] `frontend/lib/api/query.ts` ✅ TypeScript types(discriminated SseEvent union)+ `streamQuery` generator
+- [x] EKP design tokens only(`oklch(...)` per `lib/theming/tokens.ts`)— no Dify colors / branding ✅ W3 D4
+- [x] Reference comment per CLAUDE.md §7:`Layout reference Dify Image 5 chat + citation card (no code copy per CLAUDE.md §7); EKP design tokens only` ✅ W3 D4
+- [ ] **DEFERRED W3 D5 F8 polish** shadcn Card / Form swap;split components into `frontend/components/chat/` directory
 
 ## F7 — Screenshot modal
 
-- [ ] Click citation image → shadcn Dialog modal full-resolution
-- [ ] `/screenshots/{kb_id}/{doc_id}/{img_id}` redirect endpoint(replace 501)
-- [ ] W3 baseline:public Azurite/Blob direct URL(SAS expiry W7+)
+- [x] Click citation thumbnail → inline `ScreenshotModal` component opens(fixed inset-0 backdrop;`max-h-[85vh]` image)✅ W3 D4
+- [x] Esc keyboard handler → close modal(window keydown listener in ChatPage useEffect)✅ W3 D4
+- [x] Click backdrop → close;click image area → propagation stopped(intuitive close interaction)✅ W3 D4
+- [ ] **DEFERRED W7+** `/screenshots/{kb_id}/{doc_id}/{img_id}` redirect endpoint(currently `<img src={blob_url}>` direct;public Azurite path 暫 Tier 1 baseline,SAS expiry W7+ Beta+)
+- [ ] **DEFERRED W7+** Real thumbnail render once Cloud Blob populated(W2 D3 R12 deferral — `embedded_images_json="[]"` 暫 baseline)
 
 ## F8 — Pipeline wizard frontend
 
