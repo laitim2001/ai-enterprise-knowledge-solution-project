@@ -471,7 +471,8 @@ Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - 
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `feat(c09): F8 Pipeline wizard 3-step + KB create API method (W3 D5)` |
+| `ecc769c` | `feat(c09): F8 Pipeline wizard 3-step + KB create API method (W3 D5)` |
+| `2463424` | `docs(planning): F10 W3 closeout — flip closed + W4 kickoff folder (CRAG L2 + RAGAs + reranker shootout + Gate 2)` |
 
 ---
 
