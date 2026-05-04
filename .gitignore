@@ -137,6 +137,9 @@ reports/reranker_shootout_*.json
 traces/
 *.langfuse-export.json
 
+# Daily session conversation logs — local only, never push to GitHub
+docs/10-development-log/
+
 # Local screenshots cache(若 dev download Tango screenshots 暫存)
 data/screenshots/
 data/uploads/
