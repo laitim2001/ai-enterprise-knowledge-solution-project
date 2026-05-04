@@ -28,10 +28,10 @@ last_updated: 2026-05-04
 
 ## F2 — CRAG threshold empirical fine-tune(W4 R6 close)
 
-- [ ] **CONDITIONAL F1 PASS** F2.1 Analyse W4 D1 baseline 0.70 vs F1.7 LIVE confidence distribution
-- [ ] **CONDITIONAL F1 PASS** F2.2 Calibrate threshold ∈ {0.65 / 0.70 / 0.75} maximising 4-metric average without false-correction spike
-- [ ] **CONDITIONAL F1 PASS** F2.3 Update `Settings.crag_confidence_threshold` if calibrated value ≠ 0.70
-- [ ] **CONDITIONAL F1 PASS** F2.4 W5 progress entry document threshold rationale + LIVE distribution stats
+- [x] F2.1 LIVE confidence distribution analysed ✅ W5 D3 — `scripts/run_crag_grade_smoke.py` driver + 20-query run:mean 0.970 / median 0.975 / p25 0.960 / p75 1.000 / p95 1.000;0/20 trigger at any candidate threshold {0.65,0.70,0.75,0.80};report `reports/crag-grade-smoke.json`
+- [x] F2.2 Calibration decision ✅ W5 D3 — Path A KEEP 0.70 selected(empirical p25 floor 0.960 → no candidate threshold differentiates sample);Path B(0.95)+ Path C(0.85)data-unsupported;Path D(per-corpus dynamic)defer Tier 2 per H4
+- [x] F2.3 `Settings.crag_confidence_threshold` NO CHANGE ✅ W5 D3 — 維持 W4 D1 baseline 0.70 per Karpathy §1.2 simplicity-first("data say no change → no change");留 wide margin for future Tier 2 GraphRAG / multi-corpus low-quality retrieval cases
+- [x] F2.4 W5 D3 progress entry threshold rationale + LIVE distribution stats ✅ W5 D3 — inline above + W5 retro narrative integration deferred
 
 ## F3 — L3 routing conditional implementation(if Gate 2 全 PASS)
 

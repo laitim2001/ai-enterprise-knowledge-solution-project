@@ -287,7 +287,76 @@ Output:`reports/ragas-cohere-subset20.json`
 
 ---
 
-## Day 3 — _(pending)_
+## Day 3 — 2026-05-04 (Mon — same-session continuation per "執行 W5 D3 priority F2 CRAG threshold tuning" signal)
+
+> Per W5 D2 closeout Gate 2 PARTIAL PASS,W5 D3 user-prioritised **F2 CRAG threshold tuning** — analyse W4 D1 baseline 0.70 vs F1.7 LIVE confidence distribution per W4 plan §F2 + W4 R6;F3 / F4 / F5 conditional / Chris-blocked,defer。
+
+### Done
+
+#### F2.1 — CRAG grader LIVE confidence distribution(per W4 plan §F2.1)
+
+- `scripts/run_crag_grade_smoke.py` ✅ NEW — driver runs `CragGrader` on first N main(non-OOS)eval-set queries:retrieve(Cohere v4.0-pro)+ grader call(GPT-5.4-mini judge per `Settings.azure_openai_deployment_llm_judge`)。Skips synthesize + RAGAs to contain cost(~$1 USD vs F1.7 RAGAs subset=20 ~$15-25)
+- F2.1 LIVE run `--subset 20`(cost ~$0.50,wall clock ~3 min,reports/crag-grade-smoke.json):
+  - **Distribution**:mean 0.970 / median 0.975 / p25 0.960 / p75 1.000 / p95 1.000
+  - **Trigger counts**:0/20 queries trigger correction at thresholds {0.65, 0.70, 0.75, 0.80} — all 20 confidence ≥ 0.96 absolute floor
+  - **Cross-reference F1.7 RAGAs Phase 1**:Faithfulness 0.944 + Context Recall 1.000 + grader 0.970 = 3 個 independent signal 一致 — Cohere v4.0-pro 對 Drive Manual corpus retrieval 質量極高,**CRAG L2 correction loop 喺當前 corpus + retriever combo 實際 dormant**
+
+#### F2.2 — Calibration decision per W4 plan §F2.2
+
+| Path | Threshold | 後果 | Verdict |
+|---|---|---|---|
+| **A — KEEP 0.70**(W4 D1 baseline)| 0.70 | CRAG dormant on current corpus;ready for future low-quality retrieval(Tier 2 multi-corpus / GraphRAG)| **✅ Selected** |
+| B — Lower to 0.95 | 0.95 | 接近 p25 floor 0.960 → 偶爾 trigger near-miss;但 cost ↑ + 對 0.944 faithfulness pipeline 引入 false-correct risk | ✗ Data unsupported |
+| C — Raise to 0.85 | 0.85 | 同 A 一樣 dormant + wider margin | 🟡 marginal — 不比 0.70 好 |
+| D — Per-corpus dynamic | conditional | Tier 2 scope per H4 boundary | ⏸ Defer Tier 2 |
+
+#### F2.3 — Settings update per W4 plan §F2.3
+
+**NO CHANGE** to `Settings.crag_confidence_threshold` — 維持 W4 D1 baseline 0.70。
+
+Rationale per Karpathy §1.2 simplicity-first:
+1. **Empirical data 唔 support 改 threshold**:全 20 queries 均 ≥ 0.96 confidence;0/20 trigger at 0.70。No threshold ∈ {0.65, 0.70, 0.75, 0.80} differentiate sample distribution
+2. **F1.7 + F2.1 三 signal 一致**:retrieval 質量已 high → CRAG 應 dormant,呢個 designed-as-safety-net behaviour 是 correct state for current pipeline
+3. **Tier 2 expansion 留 wide margin**:future GraphRAG / multi-corpus / cross-document synthesis 可能 lower retrieval quality → 0.70 baseline 仍 適用 trigger correction(0.6 plan-draft 已被 W4 D1 bumped 為 too lenient)
+4. **Karpathy §1.2 simplicity-first**:唔 change without empirical justification — 「data say no change」就 no change
+
+#### F2.4 — Documentation rationale + LIVE distribution stats(this entry)
+
+完成 inline above;留 W5 retro 整合 narrative + architecture.md §3.5 amendment 提及 CRAG L2 currently dormant on Drive Manual corpus。
+
+### Surprises / Notes
+
+- **3 個 independent quality signal converge**:F1.7 RAGAs faithfulness 0.944 / context_recall 1.000 + F2.1 grader 0.970 + F1.6 keyword-mode R@5 1.0(saturate)— **Cohere v4.0-pro pipeline 對 Drive Manual corpus 已接近 ceiling**,CRAG L2 correction loop 嘅 marginal value 對當前 use case 低
+- **Per W4 plan §4 R6 baseline 0.70 calibration was conservative** — actually empirical floor 0.96 → 0.70 留 0.26 margin。**Threshold tuning shifts to monitoring rather than aggressive lowering**:add structlog metric for `crag_confidence_distribution` 自動 capture per session(future W5 D4-D5 / W6 polish)
+- **CRAG dormant ≠ CRAG broken**:wired `/query` non-stream path correctly per W4 D1 F1;14 unit tests pass;只係實際 trigger condition 喺 high-quality retrieval pipeline 自然唔 fire。**符合 architecture.md §3.5 design intent**(CRAG = correction safety net for low-confidence cases)
+- **Q014 anomaly 未 surface 喺 grader smoke**:Q014 confidence=0.970(normal range)雖然 F1.7 RAGAs 顯示 faith=0/rel=0(synthesizer answer empty/refusal-like)。意味 anomaly 唔係 retrieval 問題(grader 認為 retrieval 足夠),而係 synthesizer side(prompt edge case / context length / GPT-5.5 refusal trigger)。**W5 D3-D5 deeper investigation 候選**:trace Q014 synthesizer call → 點解 answer empty?
+
+### Defer follow-up to W5 D4-D5 OR W6
+
+- **F3 L3 routing conditional**(per architecture.md §6.1 W5 row "L3 conditional on Gate 2 全 PASS"):當前 Gate 2 = PARTIAL PASS;conservative defer to W6 post Azure 2-way 互換 verify(若 Azure 同 Cohere 4-metric within-5pp 互換 PASS → Gate 2 升級 FULL PASS → trigger L3 conditional implementation)。同時 CRAG dormant 數據 reduce L3 routing 嘅 perceived ROI
+- **F4 reranker per-KB field reconsideration**(per W3 C5 + W4 C9):Cohere LOCKED W3 baseline + Q21 narrowed to Cohere v4.0-pro → per-KB column 屬 NON-STICKY,defer Tier 2 per H4 boundary。決定 inline document W5 retro,no ADR-0012 trigger
+- **F5 W4 carry-overs LIVE smoke remainder**(C7 PPT E2E + C8 GPT-5.5 latency + Chat UI screenshots):Chris dev server bound;non-blocking F2 conclusion;W5 D4-D5 trigger if Chris available
+- **Bug I fix**(ragas judge max_completion_tokens):enhance `_patch_for_gpt5` to set explicit `max_completion_tokens=4096` floor;30 min effort + cost ~$0(no LIVE re-run needed for fix)— W5 D4 candidate
+- **Q014 synthesizer empty-answer investigation**:trace specific synthesizer call;若 prompt edge case → docstring update;若 GPT-5.5 refusal → expected behavior on某類 query。30-60 min effort — W5 D4 candidate
+
+### Actual vs Planned Effort(D3)
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| F2.1 driver scaffold(reuse F1.5+F1.6 pattern + grader call only)| 0.3 | 0.3 | 0 | EvalRunner skip;direct grader.grade per query |
+| F2.1 LIVE run subset=20(~$0.50)| 0.2 | 0.2 | 0 | 3 min wall clock |
+| F2.2 calibration decision tree(4 paths × empirical analysis)| 0.3 | 0.2 | -0.1h | Empirical floor obvious |
+| F2.3 Settings keep-baseline NO-CHANGE rationale | 0.2 | 0.1 | -0.1h | NO-OP |
+| F2.4 W5 D3 progress entry(this entry)+ commit | 0.4 | 0.4 | 0 | This entry + 1 commit |
+| **Total D3(AI-side)** | **1.4** | **1.2** | **-0.2h** | Pre-defined plan §F2 acceptance criteria 順 sequence,empirical signal clear → tight execution |
+
+### Commits
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `feat(eval): F2.1 CRAG grader smoke driver + W5 D3 LIVE distribution analysis (KEEP 0.70 threshold)` |
+
+---
 
 ---
 
