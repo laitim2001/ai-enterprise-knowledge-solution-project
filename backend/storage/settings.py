@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     )
     azure_blob_container_screenshots: str = "ekp-kb-drive-screenshots"
 
+    # Reranker selection — W4 D3 F3 4-way shootout per architecture.md §3.2
+    # cohere = Cohere v3.5 (W3 baseline; Path A Marketplace per Q5 Resolved)
+    # voyage = Voyage rerank-2.5 (direct API)
+    # zeroentropy = ZeroEntropy zerank-1 (direct API)
+    # azure = Azure AI Search built-in semantic ranker (no extra procurement)
+    # off = hybrid-only (W2 baseline behaviour preserved for local dev / CI)
+    reranker_kind: Literal["cohere", "voyage", "zeroentropy", "azure", "off"] = "cohere"
+
     # Cohere — Path A Azure Marketplace per Q5 Resolved 2026-05-04 (Chris signoff)
     # Endpoint format: https://<deployment>.<region>.models.ai.azure.com/v2/rerank
     # Path B fallback (direct API api.cohere.com/v2) selected via cohere_path_b flag
@@ -51,6 +59,24 @@ class Settings(BaseSettings):
     cohere_rerank_model: str = "rerank-v3.5"
     cohere_procurement_path: Literal["A", "B"] = "A"  # A=Marketplace, B=direct API
     cohere_request_timeout_s: float = 10.0
+
+    # Voyage — direct API (W4 D3 F3 reranker shootout candidate)
+    # Endpoint: https://api.voyageai.com/v1/rerank
+    voyage_api_key: str = ""
+    voyage_rerank_model: str = "voyage-rerank-2.5"
+    voyage_request_timeout_s: float = 10.0
+
+    # ZeroEntropy — direct API (W4 D3 F3 reranker shootout candidate)
+    # Endpoint: https://api.zeroentropy.dev/v1/rerank
+    zeroentropy_api_key: str = ""
+    zeroentropy_rerank_model: str = "zerank-1"
+    zeroentropy_request_timeout_s: float = 10.0
+
+    # Azure AI Search built-in semantic ranker (W4 D3 F3 — no extra procurement
+    # since semantic config baked into Standard S1 SKU). Default config name
+    # matches `architecture.md §3.6` index template; override per index variant.
+    azure_semantic_config_name: str = "ekp-semantic-default"
+    azure_semantic_request_timeout_s: float = 10.0
 
     # Langfuse
     langfuse_host: str = "http://localhost:3000"
