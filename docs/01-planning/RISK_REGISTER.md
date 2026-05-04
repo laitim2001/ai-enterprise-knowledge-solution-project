@@ -21,7 +21,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 |---|---|---|---|---|---|
 | **R1** | Shadow AI displacement | §8.1 | 🔴 Critical | C09 + C10 | 🟡 Active(moat strategy + Beta measure) |
 | **R2** | Ground truth labeling slips W4 | §8.1 | 🔴 Critical | C06 | 🟢 Resolved per Q14(Chris Lai self-assigned + LLM-judge fallback) |
-| **R3** | Cohere via Azure Marketplace procurement delay | §8.2 | 🟠 High | C04 | 🟡 Active(W3 fallback = direct API + corp card) |
+| **R3** | Cohere via Azure Marketplace procurement delay | §8.2 | 🟠 High | C04 | 🟢 Resolved 2026-05-04(Q5 Path A Azure Marketplace;7-14d procurement parallel with W3 D1-D2 scaffold) |
 | **R4** | LLM hallucination on tables / structured content | §8.2 | 🟠 High | C05 + C01 | 🟡 Active(citation-required prompt + retrieval threshold + table-heavy eval queries) |
 | **R5** | Azure OpenAI quota insufficient at peak | §8.2 | 🟠 High | C05 + C01 | ⚠️ Open(W1 同 MS account team pre-negotiate;quota TPM 為 Q4 outstanding minor)|
 | **R6** | Cohere outage during demo / Beta | §8.3 | 🟡 Lower | C04 | 🟢 Hot fallback(Azure built-in semantic ranker)config flag ready |
@@ -70,9 +70,9 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Severity** | 🟠 High(Medium × Medium)|
 | **Source** | `architecture.md §8.2` |
 | **Original mitigation**(spec) | W1 Day 1 procurement initiate;fallback = direct API + corp card;W4 mini-shootout 後 production 走 Marketplace |
-| **Living status** | 🟡 Active — Q5 Cohere procurement Path A vs B 仍 Open(`decision-form.md`)。W3 D1 latest fallback decision needed |
-| **Active actions** | W2 末 confirm Q5 path resolution before W3 D1 |
-| **Decay date / review** | W3 D1(Cohere wire,latest)|
+| **Living status** | 🟢 **Resolved 2026-05-04**(Q5 → **Path A Azure Marketplace**)— Chris signoff W3 D1。Procurement 預期 7-14 工作日 turnaround,W3 D1-D2 scaffold(reranker Protocol + CohereReranker REST client + factory + tests)同 procurement 並行;wire-into-RetrievalEngine 等 Chris .env populate post Marketplace deployment ready。Path B(direct API + corp card)保留 fallback config-flag selector。 |
+| **Active actions** | (1)Chris W3 D1 起 initiate Marketplace deployment;(2)AI W3 D1-D2 land scaffold + tests;(3)Chris populate `.env` Marketplace endpoint + key 後 → AI wire RetrievalEngine + live retrieval verification |
+| **Decay date / review** | W3 D2-D3(Cohere wire complete + first live retrieval batch)。W4 reranker shootout 評估 Marketplace vs direct API ergonomics(non blocker for Tier 1) |
 
 ### R4 — LLM Hallucination on Tables / Structured Content
 | Field | Value |

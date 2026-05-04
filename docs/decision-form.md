@@ -112,10 +112,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Cohere via Azure Marketplace 嘅 procurement / billing 流程確認 path?(POC 階段先用 direct API + corporate card,定即刻 initiate Marketplace?)Estimated procurement timeline? |
 | **Why it matters** | W3 critical:Cohere reranker 唔 ready 影響 retrieval quality。Marketplace 一般 7–14 工作日 turnaround,direct API 即時可用。 |
 | **Default if unanswered** | POC 用 Path A(direct API + corporate card),W3 並行 initiate Path B(Marketplace),W7 Beta 切到 Marketplace。 |
-| **Decision** | 🟡 To be filled by stakeholder |
-| **Decided By** | _(name)_ |
-| **Date** | _(YYYY-MM-DD)_ |
-| **Status** | `Open` |
+| **Decision** | **Path A — Azure Marketplace**(Cohere Rerank v3.5 deployed via Azure Marketplace serverless API endpoint;Azure subscription billing 統一,non corporate card)。Implementation:`backend/retrieval/reranker/cohere.py` REST client(httpx + tenacity)consume `/v2/rerank` API on Marketplace endpoint(URL + key TBD by Chris .env populate post Marketplace deployment);config-flag selector via `factory.py` allow Path B fallback if Marketplace unavailable。Settings.py 加 `cohere_endpoint` + `cohere_api_key` env vars。**Procurement timeline 預期 7-14 工作日**,W3 D1-D2 implementation(scaffold + tests)同 procurement 並行。 |
+| **Decided By** | Chris(confirmed 2026-05-04)|
+| **Date** | 2026-05-04(W3 D1 critical signoff)|
+| **Status** | `Resolved`(Path A;procurement initiated by Chris;scaffold landing W3 D1)|
 
 ---
 
@@ -289,7 +289,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Why it matters** | Docling parser 行為依賴 OOXML structure consistency。如果每份 manual heading 用 hardcoded font size 而唔係 style,parser 推斷 section 失效。 |
 | **Resolution method** | W1 Day 1 拎 5 份 sample,跑 `python -m scripts.inspect_docx_structure`,人工 review report。 |
 | **Decision / Finding** | **6 份 sample 收到 W1 D4**(actual 6 not 5,FNA-AR/AP/FA/CB/GL/BM)。Structure consistency confirmed across docs:Word styles 用得 standard(Heading 1-5);Docling SECTION_HEADER level coverage avg ~7-9% 化 chunk count distribution(per W2 D2 sanity report)。Anomalies surfaced:(1)level=10 spurious "Table of Contents" entries(filter via `_HEADING_LEVEL_MAX = 5` per F1 parser);(2)某 docs heading level jump H2 → H4 skip H3,所有 chunk section_path depth=2(W2 D2 surprise)。Parser handles both gracefully。 |
-| **Decided By** | Dev(self,AI inferred from W2 implementation actual data)|
+| **Decided By** | Chris(confirmed 2026-05-04 W2 D5 cont closeout signoff)|
 | **Date** | 2026-05-04(W2 D5 cont closeout based on W2 D2 sanity report actuals)|
 | **Status** | `Resolved`(structure-aware parser handles observed variance;non blocker for downstream chunking) |
 
@@ -303,7 +303,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Why it matters** | WMF / EMF 係 Office legacy vector format,Docling default 唔處理,要 fallback convert。 |
 | **Resolution method** | W1 Day 1 sample 內所有 image 列 format inventory。 |
 | **Decision / Finding** | **W2 D3 actual data inventory**(6 docs / 1018 raw images / 872 unique post-SHA256 dedup):**868 PNG dominant** + **18 SVG**(Office Web vector embedded)+ **4 EMF**(Office legacy vector)— **NO JPEG / NO HEIC / NO WMF**。PNG handling baseline;SVG / EMF 暫 stored as-is(ImageRef with mime_type set);Docling DrawingML warning observed("Found DrawingML elements... no DOCX-to-PDF converters")but non-blocking — text + structured chunk extraction unaffected。Future LibreOffice install enables EMF/SVG → PNG transcode(per architecture.md §3.3 fallback path),W3+ optional polish。 |
-| **Decided By** | Dev(self,AI inferred from W2 D3 actual orchestrator data)|
+| **Decided By** | Chris(confirmed 2026-05-04 W2 D5 cont closeout signoff)|
 | **Date** | 2026-05-04(W2 D5 cont closeout based on W2 D3 sanity report actuals)|
 | **Status** | `Resolved`(PNG dominant covered;SVG / EMF stored-as-is acceptable for Tier 1;LibreOffice transcode optional) |
 
@@ -361,7 +361,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q2 | Source access | Stakeholder | 🔴 | C01 + C06 | `Resolved` | 2026-04-30 |
 | Q3 | Azure AI Search | Stakeholder + IT | 🔴 | C03 | `Resolved` (full — Standard S1 + eastus2 + index ekp-kb-drive-v1 created) | 2026-05-02 |
 | Q4 | Azure OpenAI deployment | Stakeholder + IT | 🔴 | C05 + C01 | `Resolved` (full) | 2026-05-01 |
-| Q5 | Cohere procurement | Stakeholder | | C04 | Open | — |
+| Q5 | Cohere procurement | Chris | 2026-05-04 | C04 | Resolved | W3 D1 critical |
 | Q6 | Real query collection | Stakeholder | | C06 | Open | — |
 | Q7 | Beta user source | Stakeholder | | C09 + C10 + C11 | Open | — |
 | Q8 | 4-metric replacement | Stakeholder | | C06 | Open | — |
