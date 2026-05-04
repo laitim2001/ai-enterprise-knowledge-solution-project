@@ -13,14 +13,14 @@ last_updated: 2026-05-07
 
 ## F1 — Cohere Rerank v3.5 integration
 
-- [ ] **Q5 Cohere procurement Path A vs B decision**(Chris W3 D1 morning critical;Path A=Marketplace,Path B=direct API)
-- [ ] `backend/retrieval/reranker/__init__.py`
-- [ ] `backend/retrieval/reranker/base.py` — `Reranker` Protocol(`async rerank(query, candidates, top_k) → list[ChunkRecord]`)
-- [ ] `backend/retrieval/reranker/cohere.py` — `CohereReranker` via SDK(Path A)or HTTP REST(Path B)
-- [ ] `backend/retrieval/reranker/factory.py` — config-flag based selector(Cohere baseline,W4 swap targets)
-- [ ] tenacity retry on RateLimitError + APITimeoutError
-- [ ] Wire into `RetrievalEngine.retrieve()` post-hybrid → top-50 → Cohere → top-5
-- [ ] Unit test:mocked Cohere → assert order desc by rerank_score + top_k respected
+- [x] **Q5 Cohere procurement Path A vs B decision** ✅ Chris signoff 2026-05-04 → **Path A Azure Marketplace**
+- [x] `backend/retrieval/reranker/__init__.py` ✅ W3 D1 後段
+- [x] `backend/retrieval/reranker/base.py` — `Reranker` Protocol + `RerankedChunk` dataclass ✅ W3 D1 後段
+- [x] `backend/retrieval/reranker/cohere.py` — `CohereReranker` REST(Path A or B same body schema) ✅ W3 D1 後段
+- [x] `backend/retrieval/reranker/factory.py` — config-flag selector returns None when unconfigured ✅ W3 D1 後段
+- [x] tenacity retry on httpx.HTTPStatusError + TransportError ✅ W3 D1 後段
+- [ ] **DEFERRED W3 D2** Wire into `RetrievalEngine.retrieve()` post-hybrid → top-50 → Cohere → top-5(pending Chris .env populate Marketplace endpoint + key post procurement deploy)
+- [x] 8 unit tests pass(empty / desc by score / payload shape / top_n clamp / invalid index skip / factory None × 2 / factory CohereReranker) ✅ W3 D1 後段
 
 ## F2 — GPT-5.5 synthesis pipeline
 

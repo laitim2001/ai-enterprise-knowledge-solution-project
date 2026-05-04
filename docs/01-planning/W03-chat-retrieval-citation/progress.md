@@ -87,9 +87,92 @@ status: draft     # draft → in-progress → closed
 
 ---
 
-## Day 2 — 2026-05-09 (Sat)
+## Day 1 後段 — 2026-05-04 (Mon) — Chris 6-item signoff + F1 Cohere Path A scaffold + F5 real-sample sanity
 
-_(同上)_
+> Same-day continuation after Chris signoff(W2 closeout review)。Chris confirmed:(1)Gate 1 PASS accepted for W3 unblock(SME-strict cascade non-blocking forward);(2)Q17/Q18 AI inference accepted as Chris-confirmed Resolved;(3)Q5 Cohere → Path A Azure Marketplace;(4)3 PPT samples uploaded;(5)W3 sequencing approved;(6)C09 W3 D5 polish bump approved。
+
+### Done
+
+#### Decision / OQ / Risk doc updates(Chris signoff log)
+
+- **Q5 Cohere procurement → Path A Azure Marketplace**(`docs/decision-form.md`)。Procurement timeline 預期 7-14 工作日;W3 D1-D2 scaffold + procurement parallel
+- **Q17 + Q18** Decided By updated `Dev(self,AI inferred)` → `Chris(confirmed 2026-05-04)`(`docs/decision-form.md`)。Status remains Resolved(content unchanged)
+- **OQ Dashboard**:14 Open → **11 Open** post Q5 + Q17 + Q18 close;**12 Resolved**(was 9);Q5 = W3 D1 critical → Resolved
+- **R3 Cohere Marketplace**:🟡 Active → 🟢 **Resolved 2026-05-04**(Path A;procurement parallel with W3 scaffold)。Index row + detail block both updated
+- **Gate 1 PASS treatment**:Chris signoff explicit accepts current keyword-mode + validated=False as W3 unblock signal;SME-strict cascade non-blocking forward(W2 progress § Phase status decision noted in earlier same-day commits)
+
+#### F1 — Cohere Rerank v3.5 scaffold(C04 expansion;W3 D1-D3 spread)
+
+- `backend/retrieval/reranker/__init__.py` ✅ NEW package init
+- `backend/retrieval/reranker/base.py` ✅ NEW — `Reranker` Protocol + `RerankedChunk` dataclass(rerank_score / hybrid_score / original_index preserved for trace)
+- `backend/retrieval/reranker/cohere.py` ✅ NEW — `CohereReranker` REST client:
+  - Async httpx client + tenacity retry on 5xx / TransportError
+  - POST `{endpoint}/v2/rerank` with `{"model","query","documents","top_n"}` body
+  - Response parses `results[].index` + `results[].relevance_score`,clamps invalid index,emits `RerankedChunk` desc by score
+  - structlog event `cohere_rerank` with path / candidates_in / results_out for Langfuse correlation
+  - Path A Marketplace endpoint(default)/ Path B direct API(config-flag selectable)— same body schema
+- `backend/retrieval/reranker/factory.py` ✅ NEW — `make_reranker(settings) → Reranker | None`;returns None when `cohere_endpoint` 或 `cohere_api_key` 未 populate(allows hybrid-only fallback)
+- `backend/storage/settings.py` updated:`cohere_endpoint`(NEW)+ `cohere_procurement_path`(Literal["A","B"],default A)+ `cohere_request_timeout_s`(default 10s)
+- `backend/tests/test_reranker.py` ✅ NEW — 8 tests pass:
+  - empty candidates → empty result + no API call
+  - desc by relevance_score / preserves original_index + hybrid_score
+  - payload shape(URL / model / query / documents / top_n)
+  - top_n clamped to candidate count
+  - invalid index in response skipped
+  - factory returns None when endpoint OR key unset
+  - factory returns CohereReranker when both populated + path arg propagated
+
+**NOT yet wired into RetrievalEngine**(F1.7 deferred to W3 D2 post Chris .env populate Marketplace endpoint + key);wire-in 改 retrieval_engine.py 加 optional reranker dependency,`hybrid_top_k=50 → reranker.rerank → top_k=5`。
+
+#### F5 — Real PPT sample sanity(unblock Q2)
+
+Chris uploaded 3 .pptx samples to `docs/06-reference/01-sample-doc/`:`FY26 BP - DCE...pptx` / `FY26 BP Template V1 (1).pptx` / `FY26_Budget_Proposal_v2.pptx`。Inline sanity output:
+
+| Sample | parse_failed | Slides | Paragraphs(headings/body)| Tables | Images |
+|---|---|---|---|---|---|
+| FY26 BP - DCE | False | 17 | 18 / 219 | 11 | 39 |
+| FY26 BP Template V1 | False | 13 | 14 / 69 | 3 | 7 |
+| FY26 Budget Proposal | False | 9 | 9 / 139 | 2 | 12 |
+
+3/3 parse success;table + image extraction works on real corporate templates;synthetic-test corpus extends well to enterprise samples。Slide title coverage 2/3 samples(samples 1+2)— sample 3 has no title placeholders so only synthetic Slide-N headings emit(as designed)。
+
+#### Test suite
+
+- **Full backend test suite 107/107 pass**(99 → 107,+8 reranker tests);ruff clean
+
+### Decisions / OQ Resolved
+
+- **Q5 Resolved 2026-05-04 → Path A Azure Marketplace**(Chris signoff)— see decision-form + RISK_REGISTER R3 update
+- **Q17 + Q18 Resolved 2026-05-04**(Chris confirm AI inference)— see decision-form
+- **Decision** — F1 wire-into-RetrievalEngine deferred W3 D2 post .env populate。Rationale:scaffold + tests prove transport contract;wire 是 1-line dependency injection through RetrievalEngine constructor + 1 conditional in retrieve() — clean change once Marketplace endpoint + key available。Procurement async parallel keeps W3 D1 surgical
+- **Decision** — Reranker factory returns `None` when not configured(non raise / warning)— allows hybrid-only baseline fallback for local dev / CI / unit tests not exercising rerank。RetrievalEngine W3 D2 wire 同樣 use `Optional[Reranker]` pattern
+- **No new OQ resolved beyond the 3 closed today**
+
+### Blockers cleared / remaining
+
+- ✅ **Q5** Resolved Path A → F1 scaffold landed;wire-in pending Chris .env populate post Marketplace deploy
+- ✅ **Q2 PPT-share** — 3 samples uploaded;F5 real-sample sanity outcome documented above
+- ✅ **Gate 1 PASS treatment** — Chris explicit accepts W3 unblock
+- ⏸ **Cohere Marketplace deploy** procurement(7-14d turnaround per Q5 timeline) — Chris async;F1 wire-in cascade post deploy
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| Decision / OQ / Risk doc updates(Q5 + Q17/Q18 + R3) | 0.5 | 0.4 | -0.1h | Surgical edits |
+| F1 Cohere reranker scaffold(Protocol + REST + factory + settings) | 3.0 | 1.5 | -1.5h | Cohere REST API straightforward;httpx + tenacity 已熟 pattern from W2 |
+| F1 unit tests(8 tests + factory tests) | 1.5 | 0.7 | -0.8h | AsyncMock + MagicMock pattern reuse from W2 populate test |
+| F5 real-sample sanity(3 samples) | 0.3 | 0.2 | -0.1h | Inline command;parser robust |
+| W3 D1 後段 progress.md entry | 0.5 | 0.5 | 0 | This entry + table |
+| **Total D1 後段** | **5.8** | **3.3** | **-2.5h** | F1 isolation + scaffold-only scope kept session focused |
+
+### Commits(D1 後段 batch)
+
+| Hash | Subject |
+|---|---|
+| _pending_ | `docs(decision,risk): Q5 → Path A + Q17/Q18 Chris confirm + R3 Resolved (Chris signoff log)` |
+| _pending_ | `feat(c04): F1 Cohere Rerank v3.5 scaffold + Reranker Protocol + factory + 8 tests (W3 D1 — Path A,wire deferred)` |
+| _pending_ | `docs(planning): W3 D1 後段 progress entry + F5 real-sample sanity outcome (107/107 tests)` |
 
 ---
 
