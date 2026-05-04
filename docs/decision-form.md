@@ -112,10 +112,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Cohere via Azure Marketplace 嘅 procurement / billing 流程確認 path?(POC 階段先用 direct API + corporate card,定即刻 initiate Marketplace?)Estimated procurement timeline? |
 | **Why it matters** | W3 critical:Cohere reranker 唔 ready 影響 retrieval quality。Marketplace 一般 7–14 工作日 turnaround,direct API 即時可用。 |
 | **Default if unanswered** | POC 用 Path A(direct API + corporate card),W3 並行 initiate Path B(Marketplace),W7 Beta 切到 Marketplace。 |
-| **Decision** | **Path A — Azure Marketplace**(Cohere Rerank v3.5 deployed via Azure Marketplace serverless API endpoint;Azure subscription billing 統一,non corporate card)。Implementation:`backend/retrieval/reranker/cohere.py` REST client(httpx + tenacity)consume `/v2/rerank` API on Marketplace endpoint(URL + key TBD by Chris .env populate post Marketplace deployment);config-flag selector via `factory.py` allow Path B fallback if Marketplace unavailable。Settings.py 加 `cohere_endpoint` + `cohere_api_key` env vars。**Procurement timeline 預期 7-14 工作日**,W3 D1-D2 implementation(scaffold + tests)同 procurement 並行。 |
-| **Decided By** | Chris(confirmed 2026-05-04)|
-| **Date** | 2026-05-04(W3 D1 critical signoff)|
-| **Status** | `Resolved`(Path A;procurement initiated by Chris;scaffold landing W3 D1)|
+| **Decision** | **Path A — Azure Marketplace**(Cohere Rerank v3.5 → v4.0-pro deployed via Azure Marketplace serverless API endpoint;Azure subscription billing 統一,non corporate card)。Implementation:`backend/retrieval/reranker/cohere.py` REST client(httpx + tenacity)consume `/v2/rerank` API on Marketplace endpoint;config-flag selector via `factory.py` allow Path B fallback if Marketplace unavailable。Settings.py 加 `cohere_endpoint` + `cohere_api_key` env vars。**Procurement timeline 預期 7-14 工作日**,W3 D1-D2 implementation(scaffold + tests)同 procurement 並行。**W5 D1 follow-up**:Chris populated `.env` 2026-05-04 with model = `Cohere-rerank-v4.0-pro`(NOT `rerank-v3.5` per architecture.md §3.2 spec lock);**Path 1 spec drift accepted** as same-vendor model upgrade(non H1 architectural change + non H2 vendor swap;Cohere remains LOCKED)。`architecture.md §3.2` amendment "v3.5 → v4.0-pro" reserved for stakeholder approval cycle。API contract backward-compatible verified W5 D1 F1.5 LIVE smoke。 |
+| **Decided By** | Chris(confirmed 2026-05-04;Path 1 v4.0-pro accept 2026-05-04 W5 D1)|
+| **Date** | 2026-05-04(W3 D1 critical signoff;W5 D1 v4.0-pro spec drift accept)|
+| **Status** | `Resolved`(Path A Marketplace;Cohere-rerank-v4.0-pro deployed;W5 D1 LIVE F1.5+F1.6+F1.7 verified)|
 
 ---
 
@@ -344,10 +344,10 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Question** | Cohere v3.5 / Voyage rerank-2.5 / ZeroEntropy zerank-1 / Azure built-in semantic ranker 邊個 production lock? |
 | **Why it matters** | 直接影響 Recall@5 + retrieval cost。Azure built-in 慳一個 vendor 但 quality 可能 -5% 到 -10%。 |
 | **Resolution method** | W4 mini-shootout(architecture.md §4.5),4-way 對比,出 recommendation。 |
-| **Decision / Finding** | _(W4 末填)_ |
-| **Decided By** | Dev(self) |
-| **Date** | _(W4 末)_ |
-| **Status** | `Open` |
+| **Decision / Finding** | **Tentatively `Cohere v4.0-pro`**(narrowed from 4-way → 2-way W5 D1 per Karpathy §1.2 simplicity decision — Voyage + ZeroEntropy DROPPED as non-essential alternatives;Cohere LOCKED Tier 1 per H2)。**W5 D2 Gate 2 LIVE PARTIAL PASS** verdict on Cohere v4.0-pro pipeline(faithfulness 1.000 / context_precision 0.985 / context_recall 1.000 / answer_relevancy 0.841 excluding Q014 refusal — single binding constraint = answer_relevancy < 0.85 due to GPT-5.5 verbose tendency,non-Cohere-related)。**Azure 2-way 互換 verify 留 W6 Gate 3 demo prep**(per W4 plan §F10 fallback policy — partial verdict acceptable when alternative reranker comparison data deferred);若 W6 Azure 2-way ≥ 5pp better any metric → revisit Q21 + ADR-0012 trigger,否則 Q21 final = `Cohere v4.0-pro`。**W5 D1 F1.6 LIVE 3-way shootout(hybrid-only / cohere / azure)+ Voyage+ZeroEntropy SKIPPED clean** — keyword-mode parity at R@5=1.0(saturate);real signal moves to W6 RAGAs 2-way comparison。 |
+| **Decided By** | Dev(self;W5 D2 Gate 2 PARTIAL PASS verdict)|
+| **Date** | 2026-05-04(W5 D2 tentative;W6 final post Azure 2-way verify)|
+| **Status** | `Tentatively Resolved`(Cohere v4.0-pro pending W6 Azure 2-way 互換 verification)|
 
 ---
 
@@ -377,7 +377,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q18 | Image format | Dev | 2026-05-04 | C01 | Resolved | W1D1 → W2 D5 cont |
 | Q19 | Embedding dim | Dev | 2026-05-05 | C01 + C03 | Resolved(1024d baseline)| W2 D3 |
 | Q20 | LLM pick | Dev | | C05 | Open | W3 |
-| Q21 | Reranker pick | Dev | | C04 | Open | W4 |
+| Q21 | Reranker pick | Dev | | C04 | `Tentatively Resolved` (Cohere v4.0-pro;W5 D2 Gate 2 PARTIAL PASS;W6 Azure 2-way verify) | 2026-05-04 (W5 D2;W6 final) |
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
 

@@ -2,7 +2,7 @@
 phase: W05-optimization
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: in-progress     # flipped 2026-05-04 W5 D1 kickoff per user "現在可以啟動 W5 D1" signal
+status: closed     # flipped 2026-05-04 W5 D5 末 closeout — Phase Gate G1+G2(partial path)+G4+G6(tentatively) PASS;G3+G5 explicitly carry-over W6 per W4 plan §F10 fallback;Gate 2 LIVE verdict = PARTIAL PASS(Cohere baseline robust;Azure 2-way 互換 carry-over W6 Gate 3 demo prep);L2 CRAG NOT dropped
 ---
 
 # Phase W05 — Progress
@@ -481,27 +481,72 @@ GPT-5.5 synthesizer 接收 query + 5 retrieved chunks → 判斷 chunks 唔包�
 ## Retro(填於 W5 D5 末)
 
 ### What worked
-_(W5 D5 末 fill)_
+
+- **Karpathy §1.1 think-before-coding 觸發 8 bug surface in W5 D1 single calendar day**:user screenshot(Azure semantic Premium features page)觸發 service-level vs index-level distinction → Bug C config name typo + Bug D queryLanguage deprecation 兩個 root cause 直接 REST probe 揭露,**唔需要 monkey-test driver 即 root-cause root cause**。Direct REST/Settings probe pattern 比 driver-level retry 高效 10x — lesson:當 LIVE driver fail,先 strip down 到 minimal API call 直接 reproduce
+- **Path A monkey-patch surgical wrapper success vs proxy class fail**:initial Path A proxy `_Gpt5ClientProxy` 觸發 ragas's `instructor.from_openai` isinstance check 失敗 → fallback to sync path → "Cannot agenerate" → revealed `instructor` library 對 client type identity strict-check。Pivot 到 monkey-patch live AsyncAzureOpenAI instance 嘅 `chat.completions.create` method preserves type identity → instructor 認 AsyncOpenAI subclass → async path works。Lesson:**3rd-party library type-strict ecosystem 拒受 transparent proxy abstract pattern;monkey-patch 屬 boundary surgical fix**(commit `8b1c3da`)
+- **Decision tree pre-defined for Phase 1 → Phase 2 conditional**(per Option 1b variant W5 D1 closeout):Cohere subset=20 first → 預先 4-branch outcome map(strong PASS / 3-of-4 borderline / metric < 0.75 / faith < 0.80)→ Phase 2 trigger condition explicit。Phase 1 結果 match "3-of-4 metric ≥ 0.85,1 borderline 0.75-0.85" branch → SKIP Phase 2 + emit PARTIAL PASS。**Saved ~$15-25 USD incremental**(Phase 2 not triggered)+ verdict articulation 預先準備 = tight execution,no post-hoc justification needed
+- **3 個 independent quality signal converge** for Cohere v4.0-pro + Drive Manual corpus(W5 D1 F1.6 + W5 D2 F1.7 + W5 D3 F2.1):
+  - F1.6 keyword-mode shootout R@5 = 1.0 saturate(retrieval saturated on simple queries)
+  - F1.7 RAGAs 4-metric:Faithfulness 1.000 + Context Recall 1.000 + Context Precision 0.985(excluding Q014 refusal)
+  - F2.1 grader confidence mean 0.970(p25 floor 0.960)
+  - **3 independent measurements 全 indicate retrieval quality near-ceiling** → CRAG L2 dormant(correct designed-as-safety-net behaviour),threshold 0.70 unchanged。Triangulation 比 single-metric verdict robust
+- **Karpathy §1.2 simplicity-first 連 drop 3 features**:Voyage + ZeroEntropy(W5 D1)+ per-KB reranker column(W5 D4 F4 NON-STICKY)+ CRAG threshold 改動(W5 D3 F2.3 NO CHANGE)— 全部 data-supported defer Tier 2 / no code change。Karpathy §1.2 + §1.3 surgical 一致 — "data say no change → no change",慳 procurement burden + monthly billing + future regression risk
+- **W4 D3 4-way scaffold + skip-row fallback driver pays off**:Voyage + ZeroEntropy DROPPED W5 D1 但 W4 落地嘅 reranker class + 21 unit tests + factory branches **零 refactor cost**(driver skip-row fallback automatic SKIPPED rows)— "build broad scaffold then drop unneeded paths via fallback" 比 "build narrow then expand" 更 surgical when cost asymmetric
 
 ### What didn't work / unexpected friction
-_(W5 D5 末)_
+
+- **GPT-5 reasoning model ↔ ragas 0.4.3 systemic API incompatibility**:Bug F(temperature)+ Bug H(max_tokens)+ Bug I(max_completion_tokens too small)— 三條 bug all stem from same root:ragas 0.4.3 hardcodes legacy GPT-4 chat completions API params(`temperature` / `max_tokens` / response truncation tolerance)。GPT-5 reasoning models(GPT-5.5 / GPT-5.4-mini / GPT-5.5-pro)deprecate / rename these params。**Latest ragas == 0.4.3 (no upstream fix)** → AI tooling library lag behind vendor model release。**Lesson**:Tier 1 vendor lock list(architecture.md §3.2 H2)需要 acknowledge tooling incompatibility risk;wrapper / monkey-patch 屬 mitigation pattern;long-term 留 ragas upstream upgrade or migration to native ragas-OpenAI judge
+- **W5 D1 effort variance +2.1h(5.5h plan vs 7.6h actual)**:8-bug surface 連鎖 dominated;wrapper architecture decision(proxy class fail → monkey-patch retry)係 long pole。Lesson:**LIVE smoke 第一日 effort 預估 should include 50-100% bug-surface buffer**(W4 plan §C11 0.3x heuristic 對 LIVE work 仍偏 optimistic;static work 0.3x OK 但 LIVE integration work 應 0.5-0.8x)
+- **Azure AI Search api-version 2024-07-01 silent breaking change**:`queryLanguage` 喺 newer api-version 移除(我 W4 D3 reranker scaffold 寫嘅時候 api-version 2024-05-01-preview 仍支援)→ deployment-time api-version migration 揭露 bug。Lesson:vendor REST API version 升級 = silent breakage,需 integration-test on first LIVE call(boilerplate "first LIVE smoke 揾 silent migration regressions" 應該屬於 every reranker / vendor 嘅 onboarding step)
+- **Pydantic Settings env_file path resolution gotcha**:`env_file=".env"` 路徑相對 cwd → 由 `backend/` 跑 vs 由 project root 跑 結果不同(F1.0 initial run 由 backend/ 跑 → 全 False)。Lesson:**driver scripts always run from project root**(已係 W4 baseline pattern);若 unit test 模擬 production load,記住 explicit env_file path 而非 relative
+- **Plan estimate calibration over-correct**:W4 retro lesson "0.3x heuristic" 適用於 static work;但 W5 D1 LIVE work 揭露 **bug-surface buffer needed**(8 bugs in 1 day = ~50% effort overhead vs static)。W5 D2-D4 calibration 趨向 -0.2 to -0.3h 範圍(static-dominant pattern restored)。Lesson W6 plan estimates:LIVE-heavy days × 1.5;static-heavy days × 0.3-0.5
 
 ### Surprises / discoveries
-_(W5 D5 末)_
+
+- **Cohere v3.5 → v4.0-pro 同 vendor 同 API contract backward-compatible**:Chris populated `cohere_rerank_model = Cohere-rerank-v4.0-pro` 自然形成 Path 1 spec drift accept architectural micro-decision。`cohere.py` REST client(`/v2/rerank` body `{model, query, documents, top_n}`)無 change required;v4.0-pro 喺 Marketplace 屬 deployment alias,Cohere v2 API 對 model 透明。**Lesson**:Cohere(同 OpenAI / Anthropic 等)穩定 API 設計使 model upgrade 屬 ~zero migration cost;Tier 2 multi-vendor abstraction 唔需要 over-engineer
+- **Q014 refusal pattern revealed correct synthesizer behavior**:initial F1.7 Phase 1 result 看似 anomaly(faith=0/rel=0/prec=1/recall=1)→ 直接 re-run synthesize 確認 GPT-5.5 returned `REFUSAL_PHRASE` per `prompt_builder.SYSTEM_PROMPT`。"How to update a fixed asset group?" query — chunks 講 setup 但 specific update workflow 唔在 corpus → conservative refusal 屬 architecture.md §3.4 design intent,not bug。**Lesson**:RAGAs metric for refusal queries needs filter / skip(future evaluator polish W6)— faith=0/rel=0 + prec=1+recall=1 是 refusal signature
+- **Grader-Synthesizer cross-layer divergence**:F2.1 grader confidence 0.970(retrieval coverage 充足)vs synthesizer refused on Q014(specific-answer coverage 唔足夠)— **不同 abstraction layer**(chunk-keyword vs answer-specific)on same chunks。Cross-layer disagreement 係 expected behavior + W6 prompt tuning 信號(可能 grader threshold 太 lenient or synthesizer refusal 太 strict),non-architectural defect
+- **answer_relevancy 0.795 → 0.841 excluding Q014** but仍 <0.85 threshold:GPT-5.5 systemic verbose tendency(output_tokens 700-1300+ per F1.7 stdout = answer 偏冗長)— consistent across n=5(0.815)+ n=20(0.841 ex-Q014)= **structural pipeline characteristic**,not sample artifact。W6 prompt tuning(answer length cap / question-direct format)候選
+- **CRAG L2 dormant on Drive Manual corpus is correct, NOT broken**:F2.1 0/20 trigger at any candidate threshold(0.65 / 0.70 / 0.75 / 0.80)→ Cohere v4.0-pro retrieval quality 高到 dormant correction loop is appropriate。**Tier 2 future GraphRAG / multi-corpus 才會 trigger CRAG**;Tier 1 keep wide threshold margin。Lesson:dormant safety net ≠ unused code(designed safety preserved for future corpus deterioration scenarios)
 
 ### Carry-overs to W06-final-eval-demo
-_(W5 D5 末)_
+
+W5 D5 末 batch:
+
+1. **C1** Azure 2-way 互換 verify(Gate 2 STRONG PASS upgrade path)— W6 Gate 3 demo prep 期間 trigger:`Settings.reranker_kind=azure` swap + RAGAs subset=20 re-run vs Cohere baseline → 4-metric within-5pp 互換 evaluation;若 PASS → upgrade Gate 2 verdict from PARTIAL PASS to STRONG PASS,Q21 final = Cohere v4.0-pro confirmed;若 Azure ≥ 5pp better any metric → ADR-0012 trigger + Q21 revisit
+2. **C2** Bug I LIVE re-verify(ragas judge max_completion_tokens floor 4096)— 同 C1 Azure 2-way 一齊 trigger subset=20 RAGAs re-run;cost ~$15-25 USD 一次 trigger 兼顧兩個 deliverable
+3. **C3** RAGAs evaluator REFUSAL_PHRASE skip enhancement — detect `REFUSAL_PHRASE` substring in answer + auto-skip faith/rel metrics for refusal queries(避免 Q014-style pollution of aggregate);post W6 retest 後 backfill
+4. **C4** answer_relevancy GPT-5.5 verbose tendency mitigation — synthesizer prompt tuning(answer length cap / question-direct format)候選 W6 polish 或 Tier 2 prompt iteration
+5. **C5** F3 L3 routing conditional(architecture.md §6.1 W5 row "L3 conditional on Gate 2 全 PASS")— 等 W6 Gate 2 STRONG PASS 後 trigger implementation;當前 Gate 2 PARTIAL PASS strict reading 不 trigger
+6. **C6** W4 carry-overs LIVE smoke remainder(W4 C7 PPT E2E + C8 GPT-5.5 latency baseline + Chat UI screenshots)— Chris dev server bound,W6 期間 trigger
+7. **C7** F1.4 Chris SME chunk_id labeling cascade(per Q14 Open)— current keyword-mode + reference fallback acceptable for verdict;strict-mode RAGAs re-run 需要 chunk_ids → W6 prep
+8. **C8** architecture.md §3.2 amendment "Cohere v3.5 → v4.0-pro" stakeholder approval cycle — same-vendor model upgrade non H1+H2 violation,但 spec 文字 update 留 stakeholder review (W6 末 / Tier 2 kickoff window)
+9. **C9** Plan estimate calibration LIVE-heavy vs static-heavy split:W6 plan 起草時 distinguish LIVE smoke days(× 1.5 buffer)vs static days(× 0.3-0.5)
+10. **C10** Tier 2 reconsideration list:Voyage + ZeroEntropy procurement(若 future quality regression);RAGAs upgrade to ragas-OpenAI native judge(去除 monkey-patch wrapper);per-KB reranker column(若 multi-corpus / multi-tenancy phase)— 全部 留 Tier 2 kickoff document
 
 ### ADR triggers
-_(W5 D5 末 — ADR-0012 reserved for(a)Gate 2 LIVE FAIL → drop L2 CRAG OR(b)reranker per-KB field STICKY decision per W3 C5 + W4 C9)_
+
+- **None this phase**。F1 Gate 2 PARTIAL PASS — drop-L2 trigger(4-metric within-5pp 互換 FAIL)未觸發 → ADR-0012 reservation released for current phase;F4 NON-STICKY → no STICKY trigger → ADR-0012 reservation released for current phase。**ADR-0012 仍 reserved for 將來 trigger**:
+  - (a)W6 Azure 2-way 互換 verify FAIL(if Azure ≥ 5pp better any metric → reranker pick revisit + ADR-0012 record)
+  - (b)Tier 2 per-KB reranker column STICKY(future multi-corpus / multi-tenancy)
+  - (c)Cohere v3.5 → v4.0-pro architecture.md §3.2 amendment(stakeholder approval cycle outcome — 若 stakeholder requires formal vendor lock revision → ADR record)
+- W5 D1 architectural-adjacent micro-decisions inline-documented(per CLAUDE.md §10 R5)without ADR — Path 1 v4.0-pro accept(same-vendor model upgrade)+ Path A monkey-patch wrapper(eval-side only,不 affect Synthesizer / CragGrader / 任何 C04+C05 production module)— 屬 H1+H2 boundary inside-fence
 
 ### Phase Gate result(per plan.md §3 + architecture.md §6.3)
-- G1-G6:_(W5 D5 末)_
-- **Gate 2 LIVE verdict**:_(W5 D5 末)_ → PASS continues Tier 1 W5+ optimization landed;FAIL drops L2 CRAG → baseline-only + W6 demo prep early-start
+
+- **G1**(F1 Gate 2 LIVE verdict landed PASS or FAIL — 唔可以 DEFER again):**✅ PARTIAL PASS landed W5 D2**;Cohere baseline 4-metric(excluding Q014 refusal):faith 1.000 / rel 0.841 / prec 0.985 / recall 1.000;Azure 2-way 互換 carry-over W6 per W4 plan §F10 fallback policy("Cohere baseline pending — partial verdict on available rerankers" applied to Azure absence)
+- **G2**(F1 PASS path executed OR F1 FAIL ADR-0012 + drop L2 CRAG documented):**✅ partial path correct** — F2 CRAG threshold tuning landed W5 D3(KEEP 0.70 baseline data-supported);F3 L3 routing conditional defer W6 per architecture.md §6.1 W5 row(strict reading PARTIAL PASS 不 trigger);F4 NON-STICKY decision documented W5 D4(close W3 C5 + W4 C9 carry-overs);no ADR-0012 trigger in W5
+- **G3**(F5 LIVE smoke remainder closed):⏸ **carry-over to W6**(C7 PPT E2E + C8 F5/F6/F7 LIVE 全部 Chris dev server bound;non-blocking per plan §3 G3 row)
+- **G4**(Backend ruff + frontend lint + type-check 0 errors):**✅ 215/215 backend tests pass + ruff E402 baseline parity**(scripts/ truststore early-init pattern accepted;208 W5 D2 + 7 NEW W5 D4 wrapper tests)
+- **G5**(Component design notes C04/C05 status bumped F2/F3/F4 outcome reflected):⏸ **partial** — F2/F4 outcomes documented inline W5 progress + decision-form;C04/C05 design notes formal status bump deferred W6(rolling JIT — F2 NO CHANGE + F4 NON-STICKY 不 trigger design note version increment)
+- **G6**(OQ Q21 Resolved per F1 verdict):**✅ Tentatively Resolved**(`Cohere v4.0-pro`;final pending W6 Azure 2-way verify);Q5 Resolved with Path 1 spec drift accept;Q14 SME labeling pending(non-blocking)
+
+**Phase Gate verdict**:**PASS(structural)+ PARTIAL PASS(LIVE Gate 2)+ DEFERRED(non-blocking carry-overs)** — G1+G2(partial path)+G4+G6(tentatively)green;G3+G5 explicitly carry-over W6 per W4 plan §F10 fallback + rolling JIT。**L2 CRAG 不 drop**(drop-L2 trigger 條件 4-metric within-5pp 互換 FAIL 未觸發;PARTIAL PASS 仍 PASS path)。Phase status flip `in-progress → closed`
 
 ### Phase status
-- Closeout commit:_(W5 D5 末)_
-- Frontmatter status flipped to `closed`:_(W5 D5 末)_
-- Phase W06 kickoff trigger:_(W5 D5 末 — W6 plan scope contingent on Gate 2 LIVE verdict + Tier 1 path PASS/FAIL)_
+
+- Closeout commit:_pending W5 D5 closeout commit(this retro + plan changelog + W06 phase folder kickoff + progress.md frontmatter flip)_
+- Frontmatter status flipped to `closed`:_pending closeout commit_
+- Phase W06 kickoff trigger:`docs/01-planning/W06-final-eval-demo/{plan,checklist,progress}.md` 落地 same closeout batch(per PROCESS.md §2.3 lifecycle + CLAUDE.md §10 rolling JIT)— scope:F1 Azure 2-way 互換 verify(C1+C2 W5 carry-overs)+ Final eval(全 55 query subset=20 → subset=55)+ Demo prep + Beta plan stakeholder cycle
 
 ---

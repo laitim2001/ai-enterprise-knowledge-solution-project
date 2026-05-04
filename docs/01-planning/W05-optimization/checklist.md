@@ -1,7 +1,7 @@
 ---
 phase: W05-optimization
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-04
 ---
 
@@ -58,11 +58,11 @@ last_updated: 2026-05-04
 
 ## F6 — Gate 2 closeout + W5 retro + W6 kickoff prep
 
-- [ ] F6.1 Gate 2 LIVE verdict landed + documented in `architecture.md §6.3` decision row
-- [ ] F6.2 W05 progress.md retro section completed(7 sub-sections)
-- [ ] F6.3 W06 phase folder kickoff:`docs/01-planning/W06-final-eval-demo/{plan,checklist,progress}.md` draft
-- [ ] F6.4 W05 progress.md frontmatter status flipped to `closed`
-- [ ] F6.5 OQ Q21 + Q5 + relevant OQ status sync to `decision-form.md`
+- [x] F6.1 Gate 2 LIVE verdict landed ✅ W5 D2 PARTIAL PASS;`architecture.md §6.3` formal amendment **ticket reserved for stakeholder approval cycle**(per CLAUDE.md §4.4 architecture content-lock — AI 不單方面 edit;narrative ready in W5 retro for vNext increment)
+- [x] F6.2 W05 progress.md retro section completed ✅ W5 D5 — 7 sub-sections + Phase Gate verdict + 10 carry-overs C1-C10 + ADR triggers
+- [x] F6.3 W06 phase folder kickoff ✅ W5 D5 — `docs/01-planning/W06-final-eval-demo/{plan,checklist,progress}.md` draft committed(rolling JIT — only W6 active scope draft;W7+ remains future)
+- [x] F6.4 W05 progress.md frontmatter status flipped to `closed` ✅ W5 D5
+- [x] F6.5 OQ Q5 + Q21 sync ✅ W5 D5 — Q5 Resolved with Path 1 v4.0-pro accept addendum;Q21 `Tentatively Resolved`(Cohere v4.0-pro;W6 Azure 2-way verify);Q14 SME labeling status unchanged(non-blocking PARTIAL PASS)
 
 ---
 

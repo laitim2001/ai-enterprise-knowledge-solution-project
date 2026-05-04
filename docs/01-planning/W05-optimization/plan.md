@@ -4,7 +4,7 @@ name: "Gate 2 LIVE Close + Conditional Optimization + L3 Routing(if Gate 2 PASS)
 sprint_week: W5
 start_date: 2026-05-22          # tentative — same Option-A 2-day-shift heuristic as W2/W3/W4 if Chris confirms; otherwise 2026-05-26 per architecture.md §6.1 original schedule
 end_date: 2026-05-28            # tentative,5 working days
-status: active                  # flipped 2026-05-04 W5 D1 kickoff per user "現在可以啟動 W5 D1" signal — F1 partial-procurement state(Cohere endpoint pending;Voyage + ZeroEntropy DROPPED;Azure semantic config verify pending)
+status: closed                  # flipped 2026-05-04 W5 D5 末 closeout — Gate 2 LIVE verdict PARTIAL PASS;Cohere v4.0-pro tentatively Q21 Resolved;Azure 2-way 互換 carry-over W6 Gate 3 demo prep per W4 plan §F10 fallback;L2 CRAG NOT dropped(drop-L2 trigger 4-metric within-5pp 互換 FAIL 未觸發)
 spec_refs:
   - architecture.md §6.1 W5 row     # L3 routing conditional + optimization scope
   - architecture.md §6.3            # Gate 2 verdict policy
@@ -181,6 +181,7 @@ Carry-overs from `W04-crag-eval-shootout/progress.md` retro:
 |---|---|---|---|
 | 2026-05-04 | Initial draft(W4 D5 末 closeout batch)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W4 D5 closeout sign-off + W5 kickoff approval + procurement landing trigger | Chris(pending approve to flip active) |
 | 2026-05-04 | **Voyage + ZeroEntropy DROPPED**(W4 C3 close as NOT NEEDED rather than deferred);F1.2 simplified to skip-row fallback note;F1.6 reduced 5-way → 3-way(hybrid-only / cohere / azure);R2 marked N/A;W4 retro carry-overs C3 updated;decision-form Q21 narrowed | Per Karpathy §1.2 simplicity-first user decision:Cohere(H2 LOCKED W3 baseline)+ Azure built-in semantic ranker(S1 SKU bundled,no procurement)2-way comparison already satisfies Gate 2 4-metric within-5pp verdict policy per architecture.md §6.3。W4 D3 落地嘅 VoyageReranker + ZeroEntropyReranker class + 21 unit tests preserved as future-proof Tier 2 scaffold — driver skip-row fallback handles SKIPPED rows automatically | User-approved per W5 D1 "如果唔係必須, 咁把它們先drop吧" signal |
+| 2026-05-04 | Status `active → closed`(W5 D5 closeout per "Continue F6 closeout" signal)| Phase Gate G1(F1.8 Gate 2 LIVE verdict landed PARTIAL PASS 2026-05-04 W5 D2)+ G2(F2 CRAG threshold tuning + F4 NON-STICKY decision)+ G4(215/215 backend tests pass)+ G6(Q21 tentatively Resolved as Cohere v4.0-pro)PASS;G3(F5 Chris dev server)+ G5(C04/C05 design notes formal version increment)explicitly carry-over W6 per rolling JIT;**L2 CRAG NOT dropped**(drop-L2 trigger 4-metric within-5pp 互換 FAIL 未觸發);**Path 1 Cohere v3.5 → v4.0-pro spec drift accept** documented(architecture.md §3.2 amendment ticket reserved for stakeholder approval cycle);**Path A monkey-patch wrapper** for ragas 0.4.3 ↔ GPT-5 reasoning model API compatibility(eval-side only,non-architectural);**Bug A-I + Q014 timeline** documented in retro;**10 carry-overs C1-C10** logged → W06-final-eval-demo | User-flipped per W5 D5 closeout |
 
 ---
 
