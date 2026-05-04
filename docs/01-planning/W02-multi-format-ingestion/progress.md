@@ -695,24 +695,97 @@ status: in-progress    # in-progress | closed (set on retro signoff)
 
 | # | Gate | Status | Note |
 |---|---|---|---|
-| **G1** | **R@5 ≥ 80% on 30-query eval set ★ HARD GATE** | ⚠️ **PENDING live run post-VPN-disconnect**(framework + scripts ready;keyword-mode fallback designed for placeholder chunk_ids) | If pass → W3 active flip;if fail → HALT POC per architecture.md §6.3 |
+| **G1** | **R@5 ≥ 80% on 30-query eval set ★ HARD GATE** | ❌ **FAIL — R@5 = 0.2278**(see Day 5 cont entry 2026-05-04)。**Structural caveat**:eval-set-v0 placeholder queries 係 MFP printer topics(paper jam / toner / scan email),actual corpus 係 Ricoh financial software manuals(FNA-AR/AP/FA/CB/GL/BM)— 14/30 queries 拿 0 因為 keyword 唔喺 corpus 出現。**Not a retrieval defect** — `eval-set-v0.yaml` header line 1 已 disclaim placeholder mismatch。**HALT trigger NOT activated**;HALT meant for valid-eval-set retrieval defect。Action:rebuild eval-set against real financial corpus before re-Gate 1 attempt | Eval-set rebuild gates W3 plan flip;Chris owns rebuild |
 | G2 | All 11 deliverables 完成 OR explicit defer | ✅ **11/11 code-complete**(F1-F11);F7 live + F8 SME validation explicit defer post-VPN-disconnect | Acceptable |
 | G3 | F11 ground truth ≥ 30 SME-validated | ⚠️ **Deferred** cascade post-C1 (live populate + chunk_id discovery)| Chris async work pending |
 | G4 | 6 sample 全 ingested | ✅ Code-complete via `scripts/run_populate_sanity.py`;**live populate pending VPN** | Acceptable per defer rationale |
 | G5 | Backend ruff + frontend lint 0 errors | ✅ Backend ruff clean;**frontend lint pending F9 admin views完成** | F9 W2 D5 partial — full pass at W3 末 |
 | G6 | Component design note status updated | ✅ C01 v1→v2-stable / C03 last_updated bump / C04 v0→v1-active / C06 v0→v1(post F7) / C09 v0(F9 partial)/ rest unchanged | Acceptable |
 
-**Gate 1 verdict will be appended to retro after live run completes**。Verdict commit message format:`docs(planning): W02 Gate 1 verdict — R@5 = X.XX (pass/fail)`。
+**Gate 1 verdict 已 obtained at Day 5 cont 2026-05-04 — see entry below**。
 
 ### Phase status
 
-- **Closeout commit**:pending Gate 1 verdict + W2 D5 retro signoff(this entry will be the basis;hash backfilled after closeout commit lands)
-- **Frontmatter status flip `in-progress → closed`**:pending Gate 1 verdict obtained AND Chris signoff
-- **Phase W03 kickoff trigger**:`docs/01-planning/W03-chat-retrieval-citation/{plan,checklist,progress}.md` already drafted W2 D5 same-session(status=draft until Gate 1 pass + W2 closeout sign-off)。Activation trigger = closeout commit referencing Gate 1 pass
+- **Closeout commit**:Gate 1 verdict obtained(FAIL — structural caveat)+ Day 5 cont entry below + carry-overs C9/C10 added
+- **Frontmatter status flip `in-progress → closed`**:可 flip after Chris signoff on verdict + eval-set rebuild plan
+- **Phase W03 kickoff trigger**:`docs/01-planning/W03-chat-retrieval-citation/` 仍 status=draft;Activation **GATED on eval-set rebuild + re-Gate 1 pass**(NOT current FAIL,因為 structural caveat — verdict 唔反映 retrieval pipeline quality)
 
 ---
 
-**End of W02 progress retro draft**(W2 D5 same-session;Gate 1 live run + Chris signoff pending VPN disconnect)
+**End of W02 progress retro draft**(W2 D5 same-session;Day 5 cont 2026-05-04 補充 Gate 1 verdict)
+
+---
+
+## Day 5 cont — 2026-05-04 (Mon) — Gate 1 live verdict + BUG-002 mitigation
+
+> **Real-time entry**:Plan dates labeled D5=2026-05-07 per Option A shift,but Gate 1 live run executed 2026-05-04 once corp proxy mitigation landed via truststore。Treated as continuation of W2 D5 retro,non new Day。
+
+### Done
+
+- **R8 mitigation via truststore**(non manual VPN disconnect):
+  - Discovered Ricoh corp proxy SSL inspection 仍 active under GlobalProtect VPN 即使 firewall 改動 — Python `certifi` 唔信 corp root CA(其 already in Windows Cert Store via GPO)
+  - Solution:install `truststore>=0.10` package + call `truststore.inject_into_ssl()` 於 entry point 頂端 → Python TLS 改用 Windows Cert Store(信 corp CA = browser-equivalent trust)
+  - Per CLAUDE.md §5.2 H2 utility lib 例外(同 tenacity / structlog 同類),non ADR required;non vendor change,non security exception
+  - Files updated:`scripts/run_populate_sanity.py` truststore inject + `backend/pyproject.toml` deps += truststore + `scripts/run_gate1_eval.py` NEW Gate 1 driver
+- **BUG-002 — Index pipeline 2-issue fix**(quick path absorbed into W2 closeout per Chris confirm):
+  - **Issue 1** — `schema.json` 缺 `chunk_total` + `chunk_token_count` Edm.Int32 fields(per architecture.md §3.5 + §3.6 spec ChunkRecord 一部分,W2 D1 create_index 落咗 18-field subset)。Azure AI Search 對 unknown field 返 400 InvalidName。Fix:加入 schema.json + PUT idempotent index update(20 fields confirmed)
+  - **Issue 2** — Azure AI Search keys 限 `[A-Za-z0-9_=-]`,但 `make_chunk_id(kb_id, doc_id, chunk_index)` 將 docx filename 直接帶入 doc_id,filename 含 space / parens `(AR)` / dots `0.03` → 全部 chunk 嘅 chunk_id 違反 key constraint。Fix:`indexing/schemas.py` `make_chunk_id` 加 regex sanitize(non-conforming chars → `_`);unit test `test_make_chunk_id_sanitizes_forbidden_chars` 加 regression-protect
+  - **Diagnostic improvement** — `populate.py` `_upload_batch` 加 4xx response body logging(structlog `index_upload_4xx` event)— 唔再有 silent 400,future debug 即可見 Azure error message
+- **Live populate sanity**:6 docs / 329 chunks → AI Search index `ekp-kb-drive-v1` succeeded=329 failed=0;**probe-1/probe-2 diagnostic records cleaned up post-debug**(kb_id='x' 不污染 main eval)
+- **Gate 1 live run** via `scripts/run_gate1_eval.py`(NEW reproducible driver):
+  - Eval-set v0 30 main queries + 5 OOS queries
+  - All 30 main queries fell into **keyword-mode fallback**(strict=0 because eval-set-v0 chunk_ids 仍 placeholder + validated=False)
+  - **Aggregate R@5 = 0.2278**(threshold 0.80 → **FAIL**)
+  - Avg embed latency 506.9ms / avg search latency 385.7ms(retrieval performance acceptable)
+  - Report:`reports/gate1_w2.yaml`(gitignored per C06 design)
+- **Diagnosis** — Sample inspection of per-query results revealed structural caveat:
+  - Q001 "How do I clear a paper jam in the rear cover area?" → recall 0.0(corpus 完全冇 paper jam content)
+  - Q002 "How to replace the toner cartridge?" → recall 0.0(冇 toner content)
+  - Q003 "How can I cancel a print job?" → recall 0.333(only "queue" coincidentally matched)
+  - Recall distribution:**14/30 queries scored 0.0**(no keyword match at all);1/30 scored 1.0(coincidental keyword match)
+  - **Root cause**:eval-set-v0 由 architect synthesize 自 generic「Ricoh MFP printer manual」假設(per `docs/eval-set-v0.yaml` header line 1 disclaim);actual sample corpus 係 **Ricoh financial software user manuals**(FNA-AR Management / AP / Fixed Asset / Cash & Bank / General Ledger / Budget Management v0.02-v0.03)。Eval queries 同 corpus 完全 different domain;retrieval pipeline 即使 perfect 都 score low。
+
+### Decisions / Bug closeout
+
+- **BUG-002 quick path** absorbed into W2 closeout per user confirm(non separate `docs/03-implementation/bugs/BUG-002-*/` doc);scope:schema.json 2 fields + make_chunk_id sanitize + populate.py 4xx logging + 1 regression test
+- **Gate 1 HALT POC trigger NOT activated**(per architecture.md §6.3): HALT meant 為 valid-eval-set + retrieval system fail;呢度 eval-set itself invalid for corpus,verdict 唔反映 pipeline quality
+- **W3 active flip continues to be GATED** on eval-set rebuild + re-Gate 1(non on current FAIL verdict)
+- truststore 屬 utility lib per CLAUDE.md §5.2 第 1 例外;non H2 vendor change,non new architectural component
+- Index schema field add(`chunk_total` + `chunk_token_count`)spec-aligned per architecture.md §3.5 / §3.6;non H1 architectural change(spec already lists fields,implementation catch-up only)
+
+### Carry-overs(additions to W3 plan)
+
+| # | Item | Reason / Context |
+|---|---|---|
+| **C9** | **Eval-set rebuild against real financial corpus** | Replace eval-set-v0 placeholder MFP queries with corpus-aligned queries(FNA-AR / AP / FA / CB / GL / BM topics)。Owner Chris(per Q14)。Cascade:rebuild → SME validate chunk_ids → run `scripts/discover_chunk_ids.py` → annotation.validated=true → eval-set-v1.yaml → re-Gate 1 |
+| **C10** | **truststore broadcast to other entry points** | `scripts/run_populate_sanity.py` + `scripts/run_gate1_eval.py` ✅;但 `backend/api/server.py`(FastAPI)+ `scripts/run_embedder_smoke.py` + `scripts/discover_chunk_ids.py` + future scripts 都需要 same `truststore.inject_into_ssl()` 喺 entry top。W3 D1 propagate(or centralize via small helper module),零 ADR、零 architectural change |
+| C11 | **`scripts/create_index.py` Azure 204 mis-treated as fail** | Pre-existing tiny bug:Azure AI Search PUT in-place index update returns 204(non 200/201),create_index.py 報 FAILED 但實際 succeed。Trivial fix W3 cleanup window(or whenever next touch script) |
+
+### Blockers cleared
+
+- ✅ R8 SSL inspection — mitigated via truststore(Microsoft enterprise pattern)
+- ✅ BUG-002 — fixed
+- ⚠️ C9 eval-set rebuild — gates re-Gate 1 attempt;Chris owner
+
+### Actual vs Planned Effort
+
+| Item | Planned (h) | Actual (h) | Variance | Note |
+|---|---|---|---|---|
+| R8 mitigation truststore install + inject | 0(unplanned)| 0.5 | +0.5h | Discovery + Microsoft pattern lookup;clean fix |
+| BUG-002 schema fix + sanitize fix + 4xx logging + regression test | 0(unplanned)| 1.0 | +1.0h | Surfaced via 400 response body diagnostic improvement |
+| `scripts/run_gate1_eval.py` driver write | 0.5 | 0.3 | -0.2h | EvalRunner already done,thin driver only |
+| Gate 1 live run + per-query diagnosis | 1.0 | 0.5 | -0.5h | Eval ran clean once populate succeeded |
+| Day 5 cont entry + retro update | 1.0 | 0.5 | -0.5h | Update single G1 row + new section |
+| **Total D5 cont** | **2.5** | **2.8** | **+0.3h** | BUG-002 unplanned but surgical;truststore mitigation prevented full-day loss |
+
+### Commits(D5 cont batch)
+
+| Hash | Subject | Scope |
+|---|---|---|
+| _pending_ | `chore(infra): truststore for corp proxy SSL inspection compatibility` | C12 — pyproject deps + 2 entry-point inject(populate sanity + gate1 driver) |
+| _pending_ | `fix(c03): chunk_id key sanitize + index schema add chunk_total/chunk_token_count + 4xx body logging (BUG-002 closeout)` | C03 — schema.json + schemas.py + populate.py + tests +1 |
+| _pending_ | `feat(c06): Gate 1 reproducible eval driver scripts/run_gate1_eval.py` | C06 — 1 new file |
+| _pending_ | `docs(planning): W02 Gate 1 verdict — R@5 = 0.2278 (FAIL — eval-set / corpus structural mismatch, HALT not triggered)` | docs — progress.md update |
 
 ---
 
