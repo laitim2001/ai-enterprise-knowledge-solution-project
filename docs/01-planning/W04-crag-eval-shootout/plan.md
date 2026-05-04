@@ -4,7 +4,7 @@ name: "CRAG L2 + RAGAs Eval + Reranker Shootout + Gate 2"
 sprint_week: W4
 start_date: 2026-05-15          # tentative — same Option-A 2-day-shift heuristic as W2/W3 if Chris confirms; otherwise 2026-05-19 per architecture.md §6.1 original schedule
 end_date: 2026-05-21            # tentative,5 working days
-status: draft                   # flips to active after Chris W3 D5 closeout sign-off + W4 kickoff approval
+status: active                  # flipped 2026-05-04 W4 D1 kickoff per user "啟動 W4 D1" signal post W3 closeout
 spec_refs:
   - architecture.md §6.1 W4 row
   - architecture.md §3.1       # query pipeline + CRAG loop
@@ -228,6 +228,7 @@ Carry-overs from `W03-chat-retrieval-citation/progress.md` retro:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-04 | Initial draft(W3 D5 末 closeout batch)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W3 D5 closeout sign-off + W4 kickoff approval | Chris(pending approve to flip active) |
+| 2026-05-04 | Status `draft → active`(same calendar day W3 closeout → W4 kickoff per user "啟動 W4 D1" signal)| Same-day momentum continues from W3;Chris signoff implicit via "啟動 W4 D1" command;procurement carry-overs (Voyage / ZeroEntropy keys + Cohere endpoint populate) remain async — F3 / F5 plans accommodate via partial shootout fallback per §4 R1+R2 | User-flipped per W4 D1 kickoff |
 
 ---
 

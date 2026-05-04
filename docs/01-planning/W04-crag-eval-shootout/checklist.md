@@ -1,7 +1,7 @@
 ---
 phase: W04-crag-eval-shootout
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-05-04
 ---
 
@@ -13,15 +13,15 @@ last_updated: 2026-05-04
 
 ## F1 — CRAG L2 correction loop
 
-- [ ] `backend/generation/crag.py` `CragLoop` class skeleton
-- [ ] Grader `grade_chunks(query, chunks) → list[ConfidenceScore]` via GPT-5.4-mini
-- [ ] Threshold check `mean(confidence) < 0.6` triggers correction
-- [ ] Query rewrite + re-fetch top_k=20 + re-synthesize path
-- [ ] Max 1 correction iteration(L2 baseline,L3 deferred per §6.1 W5)
-- [ ] tenacity retry on grader RateLimitError + APITimeoutError
-- [ ] structlog `crag_loop_grader` cost log event
-- [ ] Wired into `/query` non-stream path
-- [ ] Unit tests:above-threshold skip / below-threshold trigger / correction failure graceful fallback
+- [x] `backend/generation/crag.py` `CragLoop` class skeleton ✅ W4 D1
+- [x] Grader via GPT-5.4-mini(`CragGrader.grade(query, chunks) → GradeResult` returning numeric confidence ∈ [0, 1])✅ W4 D1
+- [x] Threshold check `confidence < threshold` triggers correction(threshold from `Settings.crag_confidence_threshold`,default 0.70 not 0.6 plan-draft)✅ W4 D1
+- [x] Query rewrite(`CragGrader.rewrite_query`)+ re-fetch top_k=20(configurable `expanded_top_k`)+ re-synthesize path ✅ W4 D1
+- [x] Max 1 correction iteration(L2 baseline,L3 deferred per §6.1 W5)✅ W4 D1
+- [x] tenacity retry on grader RateLimitError + APITimeoutError(3 attempts exponential 1-8s)✅ W4 D1
+- [x] structlog `crag_loop` cost log event(grader + rewrite + extra synth tokens + crag_latency_ms)✅ W4 D1
+- [x] Wired into `/query` non-stream path(stream path L3-only per architecture.md §3.5;respects `payload.enable_crag` flag)✅ W4 D1
+- [x] Unit tests:above-threshold skip / below-threshold trigger / 4 graceful fallback paths(grader failure / rewrite failure / rewrite empty / re-synth failure)✅ W4 D1(14 tests pass)
 
 ## F2 — RAGAs eval automation
 
@@ -80,20 +80,20 @@ last_updated: 2026-05-04
 
 ## F8 — Component design note status bumps(W3 G4 close)
 
-- [ ] `docs/02-architecture/components/C04-retrieval.md` v1 → v2(rerank wire + 4-way shootout)
-- [ ] `docs/02-architecture/components/C05-generation.md` v0 → v1(synthesizer + CRAG L2)
-- [ ] `docs/02-architecture/components/C08-api-gateway.md` v1 → v1.1(SSE wire + cancel)
-- [ ] `docs/02-architecture/components/C09-admin-ui.md` v1 → v1.1(wizard + Settings)
-- [ ] `docs/02-architecture/components/C10-chat-ui.md` v0 → v1(streaming + citation + modal)
-- [ ] `docs/02-architecture/COMPONENT_CATALOG.md` status row updates synced
+- [x] `docs/02-architecture/components/C04-retrieval.md` v1-active → v2-stable(rerank wire + 4-way shootout surface ready)✅ W4 D1
+- [x] `docs/02-architecture/components/C05-generation.md` v0-draft → v1-active(synthesizer + SSE + CRAG L2)✅ W4 D1
+- [x] `docs/02-architecture/components/C08-api-gateway.md` v2-stable updated with W3-W4 deliverables(SSE wire + cancel + CragLoop)✅ W4 D1
+- [x] `docs/02-architecture/components/C09-admin-ui.md` v0-draft → v1-active(wizard + admin views + Settings baseline)✅ W4 D1
+- [x] `docs/02-architecture/components/C10-chat-ui.md` v0-draft → v1-active(streaming + citation + modal)✅ W4 D1
+- [x] `docs/02-architecture/COMPONENT_CATALOG.md` status row updates synced ✅ W4 D1
 
 ## F9 — PPT parser orchestrator wire(W3 C6 close)
 
-- [ ] `IngestionOrchestrator` parser registry adds `pptx → PptxParser()`
-- [ ] Format auto-detect via file extension(.pptx / .docx / .pdf)
-- [ ] `chunker/strategies.py` slide_based path no longer NotImplementedError
-- [ ] Smoke run 1 of W3 D1 後段 3 PPT samples → end-to-end ingest → chunks visible via `/kb/{id}/chunks`
-- [ ] Unit test:orchestrator selects PptxParser for .pptx → calls parser → emits chunks
+- [x] `backend/ingestion/parsers/__init__.py` `select_parser()` factory dispatches by file extension(.pptx → PptxParser / .docx → DoclingDocxParser / .pdf → DoclingDocxParser)✅ W4 D1
+- [x] Format auto-detect via file extension(.pptx / .docx / .pdf;uppercase normalised;unsupported → ValueError)✅ W4 D1
+- [x] `chunker/strategies.py` `slide_based` path no longer NotImplementedError — delegates to `LayoutAwareChunker`(per Karpathy §1.2 simplicity:PptxParser emits same heading-para-table-image structure as Docling so chunker reuse natural)✅ W4 D1
+- [ ] **DEFERRED W4 D2-D3** Smoke run 1 of W3 D1 後段 3 PPT samples → end-to-end ingest → chunks visible via `/kb/{id}/chunks`(needs `scripts/run_pptx_ingest_sanity.py` + Azure AI Search index ready;non-blocking F9 unit acceptance)
+- [x] Unit test:select_parser dispatches correctly(.pptx / .docx / .pdf / uppercase / unsupported)+ select_chunker(pptx, auto/slide_based) returns LayoutAwareChunker + heading_aware standalone still NotImplementedError ✅ W4 D1(8 tests pass + 1 W2 test updated)
 
 ## F10 — Gate 2 verdict + W4 retro + W5 kickoff prep
 
