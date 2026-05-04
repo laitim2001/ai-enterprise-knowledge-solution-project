@@ -43,9 +43,14 @@ class Settings(BaseSettings):
     )
     azure_blob_container_screenshots: str = "ekp-kb-drive-screenshots"
 
-    # Cohere
+    # Cohere — Path A Azure Marketplace per Q5 Resolved 2026-05-04 (Chris signoff)
+    # Endpoint format: https://<deployment>.<region>.models.ai.azure.com/v2/rerank
+    # Path B fallback (direct API api.cohere.com/v2) selected via cohere_path_b flag
+    cohere_endpoint: str = ""  # Marketplace endpoint base (e.g. https://...models.ai.azure.com)
     cohere_api_key: str = ""
     cohere_rerank_model: str = "rerank-v3.5"
+    cohere_procurement_path: Literal["A", "B"] = "A"  # A=Marketplace, B=direct API
+    cohere_request_timeout_s: float = 10.0
 
     # Langfuse
     langfuse_host: str = "http://localhost:3000"
