@@ -107,7 +107,7 @@ status: in-progress     # flipped 2026-05-04 W5 D1 kickoff per user "現在可�
 
 | Hash | Subject |
 |---|---|
-| _pending_ | `docs(planning): W5 D1 — drop Voyage + ZeroEntropy per Karpathy §1.2; F1 simplified to Cohere + Azure semantic 2-way` |
+| `c394ee5` | `docs(planning): W5 D1 — drop Voyage + ZeroEntropy per Karpathy §1.2; F1 simplified to Cohere + Azure semantic 2-way` |
 
 ---
 
