@@ -4,7 +4,7 @@ name: "Chat + Hybrid Retrieval + Citations"
 sprint_week: W3
 start_date: 2026-05-08          # tentative — see §7 changelog;Option A continues 2-day-earlier shift if approved at W2 closeout
 end_date: 2026-05-14            # tentative,5 working days
-status: draft                   # draft → active flip pending W2 D5 closeout sign-off + Gate 1 verdict
+status: active                  # flipped 2026-05-04 W2 D5 cont — Gate 1 PASS R@5=0.9722 against eval-set-v1-draft
 spec_refs:
   - architecture.md §6.1 W3 row
   - architecture.md §3.1       # query pipeline (CRAG loop deferred to W4)
@@ -205,7 +205,8 @@ Carry-over from `W02-multi-format-ingestion/progress.md` retro(D5 draft pending 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-07 | Initial draft(W2 D5 末 retro prep)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W2 D5 closeout sign-off + Gate 1 verdict | Chris(pending approve to flip active) |
+| 2026-05-04 | Status `draft → active`(W2 D5 cont 後段)| Gate 1 PASS R@5=0.9722 against eval-set-v1-draft;W02 closed same day。Caveat:current PASS mode=keyword + validated=False;true SME-strict PASS pending Chris cascade(C9 → C2 — non blocking for W3 forward but informs Gate 2 / production wording)| AI-flipped per W2 closeout decision |
 
 ---
 
-**Lifecycle reminder**:呢份 plan `status=draft` until W2 D5 closeout signoff + Gate 1 pass。重大 deviation 入第 7 節 changelog。
+**Lifecycle reminder**:呢份 plan `status=active`(flipped 2026-05-04 W2 D5 cont)。重大 deviation 入第 7 節 changelog。

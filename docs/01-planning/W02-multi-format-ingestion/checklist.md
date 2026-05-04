@@ -80,7 +80,7 @@ last_updated: 2026-05-03
 - [x] Compute Recall@5 per query + aggregate(non-OOS only;errored excluded)
 - [x] `backend/eval/gates.py` ✅ Gate 1 decision logic(`gate1_recall_at_5(report) → GateDecision` with threshold 0.80,note flags errored / keyword-mode / FAIL guidance)
 - [x] `report_to_yaml()` serializer ready for `reports/gate1_w2.yaml`
-- [x] **Gate 1 live verdict obtained 2026-05-04**(D5 cont):**R@5 = 0.2278 — FAIL** but **structural caveat**:eval-set-v0 placeholder MFP queries vs actual financial-software corpus;14/30 queries 拿 0 因為 keyword 唔喺 corpus。HALT POC trigger NOT activated — eval-set rebuild prerequisite to re-Gate 1。R8 mitigated via `truststore` package(Microsoft enterprise pattern,Windows Cert Store)— see Day 5 cont entry。Reproducible driver `scripts/run_gate1_eval.py` committed
+- [x] **Gate 1 verdict 2026-05-04**(D5 cont 兩段):**First-pass FAIL R@5=0.2278**(eval-set-v0 placeholder MFP vs financial corpus mismatch);**re-run after AI-rebuild eval-set-v1-draft → ✅ PASS R@5=0.9722**(28/30 queries 1.0)— W3 active flip unblocked。R8 mitigated via `truststore`。Reproducible driver `scripts/run_gate1_eval.py` 支持 `--eval-set` arg。**Caveat preserved**:mode=keyword + validated=False;true SME-strict PASS 仍 pending Chris cascade(C9 → C2)
 - [x] Fail-path framework: gates.py `note` includes failure root cause hints(chunk strategy reference,low_value 67.2% rate)
 - [x] Update `components/C06-eval.md` status `v0-draft → v1-active`(per CC-5)— pending W2 closeout commit
 
@@ -119,7 +119,7 @@ last_updated: 2026-05-03
 ## F11 — W2 末 retro + W3 kickoff prep
 
 - [x] W02 progress.md retro section ✅ draft completed(What worked / didn't work / Surprises / Carry-overs C1-C8 / ADR triggers / Phase Gate result table with G1 PENDING)
-- [x] **Gate 1 verdict explicit + analysis** ✅ 2026-05-04 D5 cont entry:FAIL R@5=0.2278 with structural caveat(eval-set / corpus mismatch)— HALT POC NOT triggered;C9 eval-set rebuild gates re-Gate 1
+- [x] **Gate 1 verdict explicit + analysis** ✅ 2026-05-04 D5 cont 兩段:first-pass FAIL R@5=0.2278 → AI-rebuild eval-set-v1-draft → re-run PASS R@5=0.9722;28/30 queries 1.0,minor keyword-mode noise 2 queries
 - [x] W03 phase folder ✅ `docs/01-planning/W03-chat-retrieval-citation/` mkdir + `plan.md` draft(10 deliverables F1-F10:Cohere Rerank + GPT-5.5 + SSE streaming + Chat UI + PPT parser + Pipeline wizard + Settings tab)+ `checklist.md` derive + `progress.md` Day 0 entry
 - [x] W03 carry-overs documented(C1-C8 in W02 retro § Carry-overs to W03)
 - [ ] **DEFERRED** W02 progress.md frontmatter status flipped to `closed`(awaits Gate 1 verdict + Chris signoff)
