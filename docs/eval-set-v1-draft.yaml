@@ -38,22 +38,22 @@ metadata:
   created_by: "AI(Claude Opus 4.7) based on corpus survey of ekp-kb-drive-v1"
   intended_use: "W2 D5 cont — replace v0 placeholder MFP queries with corpus-aligned queries; awaits SME validation cascade for true v1"
 
-  total_queries: 35
+  total_queries: 55
   composition:
-    synthetic_main: 30
-    synthetic_oos: 5
-    user_collected: 0      # to be added W4 (target +20)
+    synthetic_main: 30          # Q001-Q030 (W2 D5 cont)
+    synthetic_oos: 5            # Q031-Q035 (W2 D5 cont)
+    user_collected: 20          # Q036-Q055 (W4 D2 F4 — placeholder phrasings awaiting Chris SME real-phrasing replacement)
 
   difficulty_distribution:
-    easy: 14
-    medium: 13
-    hard: 3
-    n_a_oos: 5             # OOS queries don't have difficulty
+    easy: 18                    # 14 W2 + 4 NEW W4
+    medium: 22                  # 13 W2 + 9 NEW W4
+    hard: 10                    # 3 W2 + 7 NEW W4
+    n_a_oos: 5                  # OOS queries don't have difficulty
 
   query_type_distribution:
-    single_step_lookup: 18
-    multi_step_synthesis: 9
-    troubleshooting: 3
+    single_step_lookup: 25      # 18 W2 + 7 NEW W4
+    multi_step_synthesis: 14    # 9 W2 + 5 NEW W4
+    troubleshooting: 11         # 3 W2 + 8 NEW W4
     oos: 5
 
   domain:
@@ -773,3 +773,427 @@ queries:
       annotated_at: ""
       validated: false
       notes: "AI-DRAFT — OOS: chitchat / off-task"
+
+# ============================================================================
+# REAL USER QUERIES — W4 D2 F4 expansion (+20 queries: Q036-Q055)
+# ============================================================================
+# 此節 20 條 query 由 W4 D2 F4 添加,用作 corpus-aligned 真實用戶問法 placeholder
+# (per W4 plan §F4)。
+#
+# Status:**ALL 20 ARE PLACEHOLDER PHRASINGS** awaiting Chris SME label cascade:
+#   1. Chris collect actual user phrasing(customer support tickets / Drive
+#      Manual support requests)→ 替換 query_text 至真實口頭問法
+#   2. Chris label `acceptable_chunk_ids` per query(用 scripts/discover_chunk_ids
+#      → reports/chunk_id_candidates_v1.yaml → SME pick)
+#   3. Set `validated: true` + 填 annotator + date
+#
+# 20 queries 拓展模板:
+#   - 5 conversational rephrasings(more colloquial than synthetic Q001-Q030)
+#   - 5 multi-step troubleshooting(workflow + error scenarios)
+#   - 5 cross-document synthesis(span 2+ corpus sections)
+#   - 5 table-data lookups(R4 hallucination test bed per W4 plan §4 R3)
+#
+# 這些 placeholder query phrasings 對應 corpus topics Q001-Q030 嘅變體
+# (rephrased / scenario-augmented),non duplicate 同 expected 完成 SME label 後
+# 提供 4-RAGAs metric 真實用戶 distribution baseline for Gate 2 verdict。
+# ============================================================================
+
+  # --- 5 conversational rephrasings ---
+
+  - query_id: Q036
+    query_text: "Hey, can you walk me through how to log a customer payment? My screen looks different from the manual."
+    query_phrasing_source: real_user_placeholder
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "payment collection"
+        - "customer"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — real user rephrasing of Q001 (AR01 Payment Collection); awaits Chris SME real-phrasing replacement + chunk_id label"
+
+  - query_id: Q037
+    query_text: "I accidentally posted the wrong AP invoice — what's the fastest way to undo it?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "AP"
+        - "invoice"
+        - "reverse"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — real user rephrasing of AP04 Reverse AP Voucher; user-frustrated phrasing"
+
+  - query_id: Q038
+    query_text: "Where do I go to write off an invoice that the customer never paid?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "write-off"
+        - "receivable"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — conversational variant of Q003 (AR03 Write-Off Receivables)"
+
+  - query_id: Q039
+    query_text: "How does the depreciation calculation actually work in this system?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "depreciation"
+        - "fixed asset"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — open-ended FA depreciation rephrasing of Q018 (FA03)"
+
+  - query_id: Q040
+    query_text: "I need to reconcile yesterday's bank statement — what's the procedure?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "bank reconciliation"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — conversational rephrasing of CB Bank Reconciliation"
+
+  # --- 5 multi-step troubleshooting ---
+
+  - query_id: Q041
+    query_text: "I posted a depreciation entry but the asset's net book value didn't update — what should I check?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "depreciation"
+        - "net book value"
+        - "fixed asset"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — multi-step FA troubleshooting (depreciation + asset register)"
+
+  - query_id: Q042
+    query_text: "The trial balance won't balance after closing — where do I start debugging?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "trial balance"
+        - "closing"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — GL closing troubleshooting (TB + journal voucher)"
+
+  - query_id: Q043
+    query_text: "Customer payment came in but their aging report still shows them overdue — how to fix?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "aging"
+        - "customer payment"
+        - "AR"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — AR aging + payment journal cross-reference troubleshooting"
+
+  - query_id: Q044
+    query_text: "When I try to post a journal voucher, the system says period is closed — what should I do?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "journal voucher"
+        - "period"
+        - "closed"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — GL period control troubleshooting (closing + journal posting)"
+
+  - query_id: Q045
+    query_text: "My check void in CB doesn't reflect in the GL — is there an additional step?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "check void"
+        - "GL"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — CB / GL integration troubleshooting (check void posting)"
+
+  # --- 5 cross-document synthesis ---
+
+  - query_id: Q046
+    query_text: "What's the full lifecycle of an invoice from AP entry to cash payment to GL posting?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "invoice"
+        - "AP"
+        - "payment"
+        - "GL"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — cross-doc AP → CB → GL synthesis"
+
+  - query_id: Q047
+    query_text: "How does fixed asset disposal flow into the GL closing process?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "fixed asset disposal"
+        - "GL closing"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — FA disposal → GL closing synthesis"
+
+  - query_id: Q048
+    query_text: "When I run customer aging, what data sources does it pull from across AR and CB?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "customer aging"
+        - "AR"
+        - "CB"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — AR aging + CB cash data synthesis"
+
+  - query_id: Q049
+    query_text: "Walk me through the budget vs. actual variance reporting end-to-end."
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "budget"
+        - "actual"
+        - "variance"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — BM + GL synthesis"
+
+  - query_id: Q050
+    query_text: "How do allocation rules in GL interact with budget management for cost center reporting?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: multi_step_synthesis
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "allocation"
+        - "GL"
+        - "budget"
+        - "cost center"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — GL allocation rules + BM synthesis"
+
+  # --- 5 table-data lookups (R4 hallucination test bed) ---
+
+  - query_id: Q051
+    query_text: "What are the field requirements for the customer payment journal entry form?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "customer payment"
+        - "journal"
+        - "field"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — table-form field listing (R4 hallucination guard)"
+
+  - query_id: Q052
+    query_text: "Which depreciation methods are supported in the FA module?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "depreciation method"
+        - "FA"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — table enumeration (depreciation method options)"
+
+  - query_id: Q053
+    query_text: "What dimension fields are mandatory when creating an asset record?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "asset record"
+        - "mandatory"
+        - "dimension"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — table-form mandatory field lookup"
+
+  - query_id: Q054
+    query_text: "What are the standard system-supplied dimension types in GL configuration?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "dimension"
+        - "GL"
+        - "configuration"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — table enumeration (GL dimension types)"
+
+  - query_id: Q055
+    query_text: "Which screens require approval workflow for AP voucher posting?"
+    query_phrasing_source: real_user_placeholder
+    difficulty: hard
+    query_type: troubleshooting
+    ground_truth:
+      primary_chunk_ids: []
+      acceptable_chunk_ids: []
+      expected_screenshot_chunks: []
+      expected_answer_keywords:
+        - "AP voucher"
+        - "approval"
+      expected_refusal: false
+    annotation:
+      annotator: ""
+      annotated_at: ""
+      validated: false
+      notes: "PLACEHOLDER — table-form workflow lookup"
