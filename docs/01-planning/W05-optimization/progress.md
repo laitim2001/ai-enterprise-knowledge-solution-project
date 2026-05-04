@@ -121,7 +121,7 @@ status: in-progress     # flipped 2026-05-04 W5 D1 kickoff per user "現在可�
 | `4c43e96` | `fix(c04): Azure semantic reranker — config name + queryLanguage + mojibake (W5 D1 Bug C+D+E)` |
 | `38ea9b1` | `fix(generation): GPT-5 reasoning model compat — drop temperature; switch ragas async client (W5 D1 Bug F+G partial)` |
 | `8b1c3da` | `fix(eval): Path A — monkey-patch GPT-5 param translation on ragas judge client (W5 D1 Bug F+H closure)` |
-| _pending_ | `docs(planning): W5 D1 closeout — Path A success + Bug A-H timeline + F1.5/F1.6/F1.7 LIVE results + defer subset=20 to D2` |
+| `9fed47d` | `docs(planning): W5 D1 closeout — Path A success + Bug A-H timeline + F1.5/F1.6/F1.7 LIVE results + defer subset=20 to D2` |
 
 ### F1.7 RAGAs LIVE 5-query results(reports/ragas-results.json)
 
