@@ -139,7 +139,7 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 - ⏸ W6 C7 R8 mitigation `RISK_REGISTER.md` entry — already landed W6 D5 closeout housekeeping per session-start §11(no W7 D1 cascade required)
 
 ### Commit reference
-- _(W7 D1 implementation commit pending — references progress.md Day 1 + checklist F1.2 + F1.2.1 ticked + 9 new files + 1 file modified)_
+- W7 D1 F1.2 + F1.2.1 commit `85269f1`(13 files changed,+446 / -4;9 new files + 4 modified;backend C11 auth scaffold + frontend lib/auth/ scaffold + 7 unit tests + Settings.feature_auth_mock flag)
 
 ---
 
