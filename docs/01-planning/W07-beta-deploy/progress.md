@@ -199,7 +199,7 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 - ⏸ F4 + F5 — W7 D4-D5
 
 ### Commit reference
-- _(W7 D2 commit pending — references progress.md Day 2 + checklist F1.3 + F1.4 + F2.1-F2.3 + F2.4 ticked)_
+- W7 D2 F1.3 + F1.4 + F2 commit `5c72bfe`(14 files changed,+794 / -33;6 new files + 8 modified;backend middleware + auth wire + frontend auth provider + UserMenu + 14 new tests)
 
 ---
 
