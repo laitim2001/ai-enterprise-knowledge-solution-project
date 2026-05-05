@@ -2,7 +2,7 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-12
+last_updated: 2026-05-13
 ---
 
 # Phase W07 — Checklist
@@ -16,8 +16,8 @@ last_updated: 2026-05-12
 - [ ] ~~**CRITICAL Q11 IT** F1.1 IT confirm Ricoh Entra ID tenant access~~ → **DEFERRED W8 D1** per a-revised mock auth strategy(Q11 decision-level Resolved 2026-05-05;operational IT cred cascade trigger moved Beta deploy phase entry per `beta-plan-v1.md §2 W8.F1`)
 - [x] F1.2 MSAL Python SDK + msal-react integration scaffold(`backend/api/auth/` + `frontend/lib/auth/`)— **W7 D1 done 2026-05-12** — library skeleton + import + barrel re-export(msal SDK install 推 W8 D2-D3 per Karpathy §1.2 — current scaffold uses fastapi.security.HTTPBearer + Pydantic only,zero new dep);msal_provider.py / .ts fail-closed 503 / throw stub
 - [x] **F1.2.1 NEW** `backend/api/auth/mock_msal.py` dev-only middleware + `Settings.feature_auth_mock: bool = False` flag — **W7 D1 done 2026-05-12** — `auth_mock_oid` / `auth_mock_tid` / `auth_mock_preferred_username` / `auth_mock_bearer_token` Settings;7 unit tests pass
-- [ ] F1.3 Auth middleware on `backend/api/main.py` lifespan — protect `/query/**` + `/kb/**`;`/healthz` + `/livez` 公開;FastAPI Depends pattern `auth_dependency = get_current_user_mock if settings.feature_auth_mock else get_current_user_msal`
-- [ ] F1.4 Login flow UI(C09 Admin + C10 Chat):redirect to Entra ID hosted login → callback → token store;**dev mode UI returns fake bearer "dev-token" via `frontend/lib/auth/mock_msal.ts`**
+- [x] F1.3 Auth middleware — **W7 D2 done 2026-05-13** — wired router-level on `server.py` `/query/**` + `/kb/**` + `/feedback`(feedback rides query workflow);`/health` 公開保留;`Depends(get_current_user)` from `api.auth.dependency` single switching point;documents/chunks/eval/screenshots/debug 公開保留 W8 cascade scope per beta-plan-v1.md §2 W8.F1
+- [x] F1.4 Login flow UI(C09 Admin + C10 Chat)— **W7 D2 done 2026-05-13** — `frontend/lib/api-client.ts` Authorization Bearer header injection on every request via `lib/auth/getBearer()`;`frontend/lib/providers/auth-provider.tsx` Zustand store(idle/loading/authenticated/error)+ `<AuthProvider>` auto-signs-in mock mode;`frontend/components/auth/user-menu.tsx` UserMenu component shown in admin layout header(name + [mock] badge + sign out);Chat UI integration W7 D3 cascade if needed
 - [ ] F1.5 Token refresh logic + logout endpoints
 - [ ] F1.6 Unit tests:auth middleware reject unauth + valid token allow + expired token reject(mocked MSAL responses)
 - [ ] ~~F1.7 LIVE smoke:dev tenant Entra ID end-to-end login flow on local dev server~~ → **DEFERRED W8 D4** post-IT cred delivery cascade(`Settings.feature_auth_mock=False` switch + real Entra ID redirect flow)

@@ -6,7 +6,19 @@ W3+ replaces individual tests with real implementation tests.
 
 from fastapi.testclient import TestClient
 
+from api.auth import AuthenticatedUser, get_current_user
 from api.server import app
+
+# W7 D2 F1.3 — auth Depends now wraps /query/** + /kb/** + /feedback. Pre-W7
+# tests authenticated implicitly; preserve that behavior here by overriding
+# the dependency to return a fixed test user. Real auth reject/allow paths
+# are covered separately in test_mock_msal.py + test_auth_routes.py.
+app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+    oid="test-oid",
+    tid="test-tid",
+    preferred_username="test@ekp.local",
+    is_mock=True,
+)
 
 client = TestClient(app)
 

@@ -145,7 +145,63 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 
 ---
 
-## Day 2 — _(pending)_
+## Day 2 — 2026-05-13: F1.3 + F1.4 + F2 wired
+
+**Action**:W7 D2 — auth Depends router-level wire(F1.3)+ frontend bearer injection + login flow UI(F1.4)+ token-bucket rate limiter middleware(F2.1-F2.3)。
+
+**Backend(C08 + C11)**:
+- `backend/api/server.py` — `Depends(get_current_user)` router-level wired on `/query/**` + `/kb/**` + `/feedback`(per plan §2 F1.3 字面 scope + feedback rides query workflow);documents/chunks/eval/screenshots/debug 公開保留 W8 cascade scope;`/health` 公開保留 ACA liveness probe target
+- `backend/api/middleware/__init__.py` + `rate_limit.py` NEW — `RateLimitMiddleware`(BaseHTTPMiddleware token-bucket + concurrent counter,per-key oid/ip resolution shares auth scaffold validators,zero new external dep per Karpathy §1.2)
+- `backend/api/server.py` — `app.add_middleware(RateLimitMiddleware, ...)` scoped to same protected prefixes as auth(`("/query", "/kb", "/feedback")`);F1.3 + F2 lock-step
+- `backend/storage/settings.py` — `rate_limit_enabled` / `rate_limit_per_minute=50` / `rate_limit_concurrent=5`(architecture.md §8.1 R5 spec)
+- `.env.example` — FEATURE_AUTH_MOCK + RATE_LIMIT_* + NEXT_PUBLIC_AUTH_MOCK 一齊加,backend/frontend single switching point sync hint
+
+**Frontend(C09 admin shell + C11 auth state)**:
+- `frontend/lib/api-client.ts` — `buildAuthHeader()` injects Bearer header on every GET/POST/PATCH from `lib/auth/getBearer()` switching point;msal_provider skeleton throw → caller sees backend 401 cleanly
+- `frontend/lib/providers/auth-provider.tsx` NEW — Zustand `useAuthStore`(idle/loading/authenticated/error states + signIn / signOut / setUserFromCache);AuthProvider component auto-signs-in mock mode,manual click for MSAL W8+
+- `frontend/components/auth/user-menu.tsx` NEW — `<UserMenu>` shows preferredUsername + `[mock]` badge + sign-out CTA;C09 admin shell upper-right header
+- `frontend/app/admin/layout.tsx` — wrapped with `<AuthProvider>` outside QueryProvider;new header bar holding `<UserMenu>`
+
+**Tests**:
+- `backend/tests/test_auth_routes.py` NEW — 5 integration tests:public route no-auth + protected route reject no-bearer 401 + accept dev-token 200 + reject wrong token 401 + 503 fail-closed when mock disabled
+- `backend/tests/test_rate_limit.py` NEW — 9 unit + integration tests:within-budget allowed + burst exceed + concurrent cap + per-key isolation + middleware integration(allow + 429 + skip unprotected + disabled flag + IP fallback + release reset)
+- `backend/tests/test_api_skeleton.py` — module-level `app.dependency_overrides[get_current_user]` shim preserves W6 baseline test behavior post-F1.3 wire
+- 30/30 W7 D1+D2 tests pass(7 mock_msal + 5 auth_routes + 9 rate_limit + 9 api_skeleton);full suite verified clean
+
+**Verification**:
+- `pytest -q` → **237 passed in 55.80s**(W6 baseline 215 + W7 D1 +7 mock_msal + W7 D2 +5 auth_routes + +9 rate_limit + 1 implicit fixture = +22 vs W6;zero regression)
+- `ruff check api/middleware api/auth tests/test_rate_limit.py tests/test_auth_routes.py tests/test_mock_msal.py tests/test_api_skeleton.py storage/settings.py` → All checks passed
+- `tsc --noEmit`(frontend)→ exit 0
+- `eslint --max-warnings=0 lib/auth lib/providers/auth-provider.tsx lib/api-client.ts components/auth app/admin/layout.tsx` → exit 0
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:rate limiter middleware vs Depends — chose middleware for clean acquire/release try-finally semantics on exception path;path-prefix scope matches auth scope so F1.3 + F2 stay lock-step
+- §1.2 simplicity-first:token bucket implemented from scratch ~50 lines instead of slowapi/limits new dep;zero msal SDK install yet(W8 D2-D3 trigger when LIVE)
+- §1.3 surgical:server.py +1 import +1 middleware register +3-line dependencies arg on 3 routers — zero edit to route files (`query.py`/`kb.py`/`feedback.py`);frontend admin layout add 2 wrappers + 1 header bar(other routes untouched W7 D2 scope)
+- §1.4 goal-driven:`F1.3+F1.4+F2 wired + 30/30 tests + ruff/tsc/eslint clean + zero regression` = verifiable;closed loop per task
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;C08 + C11 design intent preserved;rate limiter per architecture.md §8.1 R5 spec
+- H2 vendor lock — ✅ zero new dep added(token bucket from-scratch + zustand + fastapi.security all pre-existing)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ single-tenant only(rate-key per-`oid`,Tier 2 multi-tenancy 唔滲入)
+- H5 security — ✅ Authorization header secret only flows through Settings flag-guarded code path;no secret commit;`.env.example` placeholder only
+- H6 test coverage — ✅ critical modules(C08 middleware + C11 auth)synced 14 new tests with code
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved 2026-05-05;operational IT cred trigger W8 D1)
+- No ADR triggered(architecture impact zero — middleware class implements existing §8.1 R5 spec)
+
+### Open / blocked
+- ⏸ F1.5 token refresh logic + logout endpoint — W7 D3 trigger
+- ⏸ F1.6 full middleware integration tests(unauth 401 + valid token allow + expired token reject mocked MSAL)— W7 D3 trigger(D2 covers F1.3 + auth-routes 401/200/503 paths;F1.6 spec adds explicit "expired token" via mocked JWT exp claim — defer until msal_provider real wire W8 D2-D3)
+- ⏸ F3 audit logging — W7 D3 trigger;use mock `oid` + `tid` tags
+- ⏸ F4 + F5 — W7 D4-D5
+
+### Commit reference
+- _(W7 D2 commit pending — references progress.md Day 2 + checklist F1.3 + F1.4 + F2.1-F2.3 + F2.4 ticked)_
+
+---
 
 ---
 

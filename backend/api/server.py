@@ -13,8 +13,10 @@ truststore.inject_into_ssl()
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from api.auth import get_current_user
+from api.middleware import RateLimitMiddleware
 from api.routes import chunks, debug, documents, feedback, kb, query, screenshots
 from api.routes import eval as eval_routes
 from generation.crag import CragGrader, CragLoop
@@ -124,6 +126,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# W7 D2 F2 — token-bucket rate limiter scoped to the same routers as auth
+# (Karpathy §1.3 surgical: shared protected prefix list keeps F1.3 + F2 in
+# lock-step). 50 req/min + 5 concurrent per user (architecture.md §8.1 R5).
+_PROTECTED_PREFIXES = ("/query", "/kb", "/feedback")
+app.add_middleware(
+    RateLimitMiddleware,
+    settings=get_settings(),
+    protected_prefixes=_PROTECTED_PREFIXES,
+)
+
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
@@ -131,9 +143,16 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(query.router, tags=["query"])
-app.include_router(feedback.router, tags=["query"])
-app.include_router(kb.router, tags=["kb"])
+# W7 D2 F1.3 — auth Depends wired router-level. Plan §2 F1.3 字面 scope
+# protects /query/** + /kb/**; feedback (user-action trail) included since it
+# rides query workflow. Documents/chunks/eval/screenshots/debug remain public
+# W7 D2 (W8 cascade scope per beta-plan-v1.md §2 W8.F1 deploy gating).
+# /health stays public (Azure Container Apps liveness probe target).
+_auth = [Depends(get_current_user)]
+
+app.include_router(query.router, tags=["query"], dependencies=_auth)
+app.include_router(feedback.router, tags=["query"], dependencies=_auth)
+app.include_router(kb.router, tags=["kb"], dependencies=_auth)
 app.include_router(documents.router, tags=["documents"])
 app.include_router(chunks.router, tags=["chunks"])
 app.include_router(eval_routes.router, tags=["eval"])

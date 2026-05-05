@@ -111,6 +111,13 @@ class Settings(BaseSettings):
     auth_mock_preferred_username: str = "dev-user@ekp.local"
     auth_mock_bearer_token: str = "dev-token"
 
+    # W7 F2 rate limiter (per architecture.md §8.1 R5 spec: 50 req/min per user
+    # + 5 concurrent active queries per user). Conservative W7 thresholds;
+    # production tuning W8-W10 based on real query patterns.
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 50
+    rate_limit_concurrent: int = 5
+
     # Logging / Environment
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     environment: Literal["local", "poc", "beta", "production"] = "local"
