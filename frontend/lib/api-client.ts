@@ -23,13 +23,44 @@ function buildAuthHeader(): Record<string, string> {
   }
 }
 
+/**
+ * Backend ApiError envelope (F4.1 contract). Frontend boundary (F4.2)
+ * inspects `code` for branching and shows `message` + `actionable_hint`.
+ */
+export interface ApiErrorEnvelope {
+  error: {
+    code: string;
+    message: string;
+    actionable_hint?: string | null;
+  };
+}
+
 export class ApiError extends Error {
+  public readonly code: string;
+  public readonly actionableHint: string | null;
+
   constructor(
     public readonly status: number,
     public readonly body: string,
+    parsed?: ApiErrorEnvelope,
   ) {
-    super(`API error ${status}: ${body}`);
+    super(parsed?.error.message ?? `API error ${status}: ${body}`);
+    this.code = parsed?.error.code ?? `http.${status}`;
+    this.actionableHint = parsed?.error.actionable_hint ?? null;
   }
+}
+
+async function buildApiError(response: Response): Promise<ApiError> {
+  const body = await response.text();
+  try {
+    const parsed = JSON.parse(body) as ApiErrorEnvelope;
+    if (parsed?.error?.code && parsed?.error?.message) {
+      return new ApiError(response.status, body, parsed);
+    }
+  } catch {
+    // Body wasn't the F4.1 envelope; fall through to generic ApiError.
+  }
+  return new ApiError(response.status, body);
 }
 
 export class ApiClient {
@@ -40,7 +71,7 @@ export class ApiClient {
       headers: { ...buildAuthHeader() },
     });
     if (!response.ok) {
-      throw new ApiError(response.status, await response.text());
+      throw await buildApiError(response);
     }
     return response.json() as Promise<T>;
   }
@@ -55,7 +86,7 @@ export class ApiClient {
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      throw new ApiError(response.status, await response.text());
+      throw await buildApiError(response);
     }
     return response.json() as Promise<T>;
   }
@@ -70,7 +101,7 @@ export class ApiClient {
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      throw new ApiError(response.status, await response.text());
+      throw await buildApiError(response);
     }
     return response.json() as Promise<T>;
   }

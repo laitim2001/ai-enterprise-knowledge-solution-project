@@ -269,7 +269,73 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 
 ---
 
-## Day 4 — _(pending)_
+## Day 4 — 2026-05-15: F4 error handling polish + F5 mobile kickoff
+
+**Action**:W7 D4 — uniform ApiError envelope contract(F4.1)+ UI error boundary(F4.2)+ E1-E14 mapping doc(F4.3)+ error contract unit tests(F4.4)+ mobile responsive kickoff(F5.1 audit + F5.2 hamburger nav);F4.5 LIVE smoke + F5.4 viewport smoke deferred per dev server / W7 D5 schedule。
+
+**Backend(C08)**:
+- `backend/api/schemas/errors.py` NEW — `ApiErrorBody` + `ApiErrorResponse` Pydantic models + `ErrorCodes` constants(13 codes covering auth / rate-limit / validation / resource / pipeline / refusal / generic)
+- `backend/api/error_handlers.py` NEW — F4.1 unified handlers:
+  - `http_exception_handler` maps Starlette/FastAPI HTTPException → envelope(401/403/404/409/429/502/503/504 → corresponding ErrorCodes)
+  - `validation_exception_handler` maps RequestValidationError → 422 + `validation.invalid_payload` OR `validation.query_too_long`(E6 detection via `string_too_long` Pydantic type)without leaking input values(CLAUDE.md §5.5 H5 redaction)
+  - `unhandled_exception_handler` server-side structlog `unhandled_exception` event;client-side generic 500 + safe message(NO stack trace / NO exception detail leak)
+- `backend/api/server.py` — `register_error_handlers(app)` wired before middleware so middleware-raised HTTPException all flow through envelope
+- `backend/api/middleware/rate_limit.py` — 429 path now emits envelope shape directly(matches F4.1 contract)
+
+**Frontend(C09 + C10 共用)**:
+- `frontend/lib/api-client.ts` — `ApiErrorEnvelope` interface;`ApiError` 加 `code` / `actionableHint` fields;`buildApiError()` parses backend envelope or falls back to generic;all GET/POST/PATCH error path routed
+- `frontend/components/error/error-boundary.tsx` NEW(F4.2)— `<ErrorBoundaryView>` reusable component:title / code / status / message / actionable_hint / Retry CTA(reset)/ Report CTA(GitHub for now,W8 EKP support channel cascade)
+- `frontend/app/error.tsx` NEW — App Router root error UI;catches client-side rendering + unhandled API failures
+- `frontend/app/admin/error.tsx` NEW — `/admin` segment scoped error UI(scope="Admin" without tearing down auth state)
+
+**Frontend(C09 mobile shell)**:
+- `frontend/components/nav/admin-shell.tsx` NEW(F5.2)— mobile-aware admin shell client component:sidebar `< md` off-canvas drawer + hamburger button + dimmed overlay + auto-close on nav tap;`>= md` static W2 D5 desktop layout preserved verbatim;touch targets `min-h-[40px]`;`aria-expanded` accessibility
+- `frontend/app/admin/layout.tsx` — extracted shell to `<AdminShell>` keeping providers(Auth + Query)on server component side per Next.js convention
+
+**Doc(F4.3 + F5.1)**:
+- `docs/02-architecture/error-cases-E1-E14.md` NEW(7 sections)— mapping E1-E14 architecture.md §7.3 → API outcome / UI surface / observability / F4.5 LIVE smoke trigger;F4.4 unit-test verification matrix;F4.5 LIVE smoke plan(E1+E5+E12 priority);Tier 2 boundaries
+- `docs/02-architecture/responsive-audit-W7.md` NEW(8 sections)— Tailwind breakpoints / per-view audit / F5.2 hamburger implementation / F5.3 citation card mobile UX **DEFERRED** rationale(C10 not yet built)/ F5.4 viewport smoke plan W7 D5(5 viewports)/ F5.5 pixel diff snapshots **DEFERRED W8** rationale(no Vitest/Playwright snapshot harness)
+
+**Tests**:
+- `backend/tests/test_error_contract.py` NEW — 10 tests F4.4(401 auth / 404 not found / 409 conflict / 502 retrieval / 503 synthesis / **504 LLM timeout E5** / unhandled exception redacts internals / **422 query too long E6** / 422 invalid payload generic / actionable_hint present)
+- 53/53 W7 D1-D4 tests pass(7 mock_msal + 7 auth_routes + 5 auth_endpoints + 6 audit_log + 9 rate_limit + 9 api_skeleton + 10 error_contract);full suite verified clean
+
+**Verification**:
+- `pytest -q` → **260 passed in 142.93s**(W7 D3 baseline 250 + F4.4 +10 = 260;zero regression)
+- `ruff check api/error_handlers.py api/middleware api/auth api/routes/auth.py api/schemas/auth.py api/schemas/errors.py tests/{test_error_contract,test_audit_log,test_auth_endpoints,test_auth_routes,test_rate_limit,test_mock_msal,test_api_skeleton}.py storage/settings.py` → All checks passed
+- `tsc --noEmit`(frontend)→ exit 0
+- `eslint --max-warnings=0`(touched files)→ exit 0
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:envelope wired via FastAPI exception_handler(applies retroactively to all routes,including middleware-raised HTTPException via 401/403)而 non-route-level adapter — single source of truth;rate limit middleware's direct Response build matches envelope shape inline(non-HTTPException path)
+- §1.2 simplicity-first:F5.3 + F5.5 honestly DEFERRED with rationale instead of building a stubbed CitationCard or installing Playwright snapshot harness — defer-with-reason 比 partial-build cleaner per W6 C10 calibration(static work 0.5x);F4.5 LIVE smoke deferred per dev server availability(W6 C3 carry-over)
+- §1.3 surgical:server.py +1 import +1 call;rate_limit.py inline-replace 429 Response body;layout.tsx replaces inline shell with `<AdminShell>` component import 而非 in-place rewrite;每 deferred item 標明 trigger condition
+- §1.4 goal-driven:`F4.1+F4.2+F4.3+F4.4+F5.1+F5.2 + 10 new tests + zero regression + ruff/tsc/eslint clean` = verifiable;closed loop per task
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;error-cases-E1-E14 + responsive-audit 屬 §7.3 + §6.1 implementation living docs(non-architectural amendment per CLAUDE.md §5.1 H1 boundary)
+- H2 vendor lock — ✅ zero new dep added(structlog + uuid + starlette + lucide-react pre-existing,actually inline-svg hamburger 唔 import lucide for snapshot stability per Karpathy §1.2)
+- H3 Dify reference — ✅ untouched(layout.tsx Dify Image 4 注釋 preserved as reference-only)
+- H4 Tier 1 boundary — ✅ E10 OCR Tier 2 explicit;multi-modal retrieval explicit OUT
+- H5 security & privacy — ✅ F4.1 redaction enforced:unhandled_exception_handler structured-logs server-side full repr but client-side returns generic message;F4.4 test_unhandled_exception_envelope_redacts_internals verifies "RuntimeError" + "secret_password" 不出現 in response
+- H6 test coverage — ✅ critical module(C08 error_handlers + middleware)synced 10 new tests with code
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved 2026-05-05)
+- No ADR triggered(error_handlers + responsive-audit 屬 architecture.md §7.3 + §6.1 implementation,non-architectural amendment)
+
+### Open / blocked
+- ⏸ F4.5 LIVE smoke(E1 grounded refusal + E5 LLM timeout + E12 chunk_id collision)— deferred per W6 C3 dev server availability carry-over;若 W7 D5 dev server 可用 trigger,否則 W8 D1+D4 cascade post-IT engagement
+- ⏸ F5.3 citation card mobile UX — deferred until C10 Chat UI built(rolling-JIT scope per session-start §3 status `⏳ Not started`)
+- ⏸ F5.4 viewport smoke 5 widths — W7 D5 trigger
+- ⏸ F5.5 pixel diff snapshots — DEFERRED W8(no Vitest/Playwright snapshot harness;adding = scope creep;W6 C10 calibration applied)
+- ⏸ F1.7-mock(W7 closeout substitute)— W7 D5 trigger per plan §5
+- ⏸ F6 closeout — W7 D5
+
+### Commit reference
+- _(W7 D4 commit pending — references progress.md Day 4 + checklist F4.1 + F4.2 + F4.3 + F4.4 + F5.1 + F5.2 ticked + F5.3 + F5.5 deferred 標明)_
+
+---
 
 ---
 

@@ -210,8 +210,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 retry_after_s=int(retry_after) or 1,
             )
+            # F4.1 — match the ApiError envelope so the frontend boundary
+            # treats middleware-issued 429 the same as route-issued errors.
+            import json as _json
+
+            from api.schemas.errors import ErrorCodes
+
+            envelope = {
+                "error": {
+                    "code": ErrorCodes.RATE_LIMIT_EXCEEDED,
+                    "message": "Rate limit exceeded — see Retry-After header",
+                    "actionable_hint": "Wait a few seconds and retry — see Retry-After header.",
+                }
+            }
             return Response(
-                content='{"detail":"Rate limit exceeded — see Retry-After header"}',
+                content=_json.dumps(envelope),
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 media_type="application/json",
                 headers={"Retry-After": str(max(1, int(retry_after)))},

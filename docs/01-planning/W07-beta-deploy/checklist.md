@@ -2,7 +2,7 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-14
+last_updated: 2026-05-15
 ---
 
 # Phase W07 — Checklist
@@ -41,19 +41,19 @@ last_updated: 2026-05-14
 
 ## F4 — Error handling polish(C08 + C09 + C10)
 
-- [ ] F4.1 API error contract:every endpoint return `{"error": {"code", "message", "actionable_hint"}}` shape;NO raw stack trace
-- [ ] F4.2 UI error boundary:user-friendly message + "retry" / "report" CTA;NO browser default error page
-- [ ] F4.3 14 edge cases mapping(architecture.md §7.3 E1-E14):confirm each surfaces graceful message + log
-- [ ] F4.4 Unit tests:5xx + 4xx + timeout each produce contract-compliant response;UI snapshot tests for error boundary
-- [ ] F4.5 LIVE smoke:trigger E1 OOS query refusal + E5 LLM timeout + E12 KB delete during query → graceful UX
+- [x] F4.1 API error contract — **W7 D4 done 2026-05-15** — `backend/api/schemas/errors.py` `ApiErrorBody` + `ErrorCodes`(13 codes);`backend/api/error_handlers.py` `register_error_handlers` wires HTTPException + RequestValidationError + Exception → `{"error":{"code","message","actionable_hint"}}` envelope;rate limit middleware 429 emits envelope shape inline;NO raw stack trace leaks(unhandled_exception_handler logs server-side via structlog,client-side generic 500)
+- [x] F4.2 UI error boundary — **W7 D4 done 2026-05-15** — `frontend/components/error/error-boundary.tsx` `<ErrorBoundaryView>` with code/status/message/actionable_hint + Retry CTA + Report CTA;`frontend/app/error.tsx` root + `frontend/app/admin/error.tsx` segment scoped;`frontend/lib/api-client.ts` `ApiError` enriched with `code` + `actionableHint` parsed from envelope
+- [x] F4.3 14 edge cases mapping — **W7 D4 done 2026-05-15** — `docs/02-architecture/error-cases-E1-E14.md` NEW(7 sections)maps E1-E14 → API outcome + UI surface + observability + F4.5 LIVE smoke trigger;F4.4 unit-test verification matrix
+- [x] F4.4 Unit tests — **W7 D4 done 2026-05-15** — `backend/tests/test_error_contract.py` 10 tests:401 / 404 / 409 / 502 / 503 / **504 E5 LLM timeout** / unhandled exception redacts internals(no "RuntimeError" / no "secret_password" in response)/ **422 E6 query too long** / 422 generic invalid payload / actionable_hint present;UI snapshot tests deferred(no Vitest/Playwright harness — see F5.5)
+- [ ] ~~F4.5 LIVE smoke~~ → **DEFERRED post-W7 D4-D5 dev server availability** — Chris dev server availability per W6 C3 carry-over;若 W7 D5 dev server 可用 trigger E1+E5+E12,否則 W8 D1+D4 cascade post-IT engagement(non-W7-blocking — F4.1-F4.4 unit-test verified)
 
 ## F5 — Mobile responsive baseline complete(C09 + C10)
 
-- [ ] F5.1 Tailwind responsive breakpoints audit `sm` `md` `lg` `xl` correctness on 4 main views(KB list / KB detail / Chat / Eval Console)
-- [ ] F5.2 Mobile-only adjustments:hamburger nav + collapsible sidebars + touch-friendly tap targets
-- [ ] F5.3 Citation card mobile UX:full-width vs sidebar adjust;screenshot modal mobile-friendly
-- [ ] F5.4 Manual smoke test:Chrome DevTools mobile emulation 5 viewports(320 / 375 / 414 / 768 / 1024 width)
-- [ ] F5.5 Pixel diff snapshots committed for regression catch(`frontend/tests/snapshots/`)
+- [x] F5.1 Tailwind responsive breakpoints audit — **W7 D4 done 2026-05-15** — `docs/02-architecture/responsive-audit-W7.md` NEW(8 sections):breakpoints sm/md/lg/xl reference;per-view audit(KB list 🟡 / KB detail 🟡 / Eval Console ⏳ skeleton / Chat ⏳ C10 not started);F5.2 hamburger implementation note;F5.3 deferred reason;F5.4 viewport plan;F5.5 deferred reason
+- [x] F5.2 Mobile-only adjustments — **W7 D4 done 2026-05-15** — `frontend/components/nav/admin-shell.tsx` NEW client component:sidebar `< md` off-canvas drawer with hamburger button + dimmed overlay + auto-close on nav tap;`>= md` static W2 D5 desktop layout preserved;touch targets `min-h-[40px]`;`aria-expanded` / `aria-label` accessibility
+- [ ] ~~F5.3 Citation card mobile UX~~ → **DEFERRED W7+ until C10 Chat UI built** — C10 status `⏳ Not started` per session-start §3;rolling-JIT trigger when C10 lands(citation card MUST be `< md` full-width + screenshot modal `max-h-[80vh] w-full`,`>= md` 320px right rail per architecture.md §5.4 Chat layout;rationale documented in responsive-audit-W7.md §4)
+- [ ] F5.4 Manual smoke test 5 viewports — W7 D5 trigger
+- [ ] ~~F5.5 Pixel diff snapshots~~ → **DEFERRED W8** — no Vitest/Playwright snapshot harness installed(W7 D2 frontend audit confirmed `package.json` scripts only `lint`/`type-check`/`dev`/`build`/`start`);adding = scope creep;W6 C10 calibration applied(static work 0.5x not in budget);rationale documented in responsive-audit-W7.md §6
 
 ## F6 — Phase Gate closeout + W7 retro + W8 kickoff prep
 

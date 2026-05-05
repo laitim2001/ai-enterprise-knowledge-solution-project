@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 
 from api.auth import get_current_user
+from api.error_handlers import register_error_handlers
 from api.middleware import AuditLogMiddleware, RateLimitMiddleware
 from api.routes import (
     auth as auth_routes,
@@ -138,6 +139,13 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# W7 D4 F4.1 — uniform ApiError envelope for all 4xx + 5xx + ValidationError.
+# Wired before middleware so middleware-raised HTTPException (rate limit 429
+# from F2; auth Depends 401 from F1.3; audit fail-closed) all return the
+# same {"error": {...}} shape — frontend error boundary (F4.2) never sees
+# raw stack traces or implementation detail.
+register_error_handlers(app)
 
 # W7 D2 F2 — token-bucket rate limiter scoped to the same routers as auth
 # (Karpathy §1.3 surgical: shared protected prefix list keeps F1.3 + F2 in
