@@ -48,22 +48,40 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
   - **Approval 3** 5 OQ Resolved batch:**Q7 Q9 Q10 Q11 Q12** all `Resolved` 2026-05-05 — Q12 explicit Chris as Tier 2 owner;Q11 decision-level approve unblocks W7 active flip
   - **Approval 4** Beta plan v1 **APPROVED** → `docs/03-implementation/beta-plan-v1.md` status `draft → active`
 - W7 plan/checklist/progress frontmatter status `draft → active`(this batch)
-- W7 D1 critical path:**Q11 IT operational confirm cascade trigger** — Chris W7 D1 engage IT to confirm Ricoh tenant access + app registration + owner identification;若 IT cascade slips → F1.1 fallback mock auth dev mode preserved for D1-D3;若 W7 D5 仍未 confirm → F1 LIVE smoke defer W8(Beta-blocking risk per R-B1 active monitoring)
+- ~~W7 D1 critical path:Q11 IT operational confirm cascade trigger~~ → **a-revised 2026-05-05 same-session**:Chris IT engagement(Deliverable A Tenant Access + B App Registration + C Owner Identification)moved **W8 D1 Beta deploy phase entry**(per `beta-plan-v1.md §2 W8.F1` alignment);W7 D1 implementation start **不再 IT-blocked**
+
+### a-revised mock auth dev mode strategy(2026-05-05 W6 D5 closeout same-session)
+
+**Karpathy §1.1 think-before-coding outcome**:Q11 IT cred 屬 **W8 deploy-time dependency**,non W7 dev-time dependency。MSAL library + middleware + login flow UI + token refresh logic 全部可以 with **mock identity provider**(`backend/api/auth/mock_msal.py` returning fixed dummy user identity)做 W7 D1-D5。
+
+**Strategy details**:
+- `Settings.feature_auth_mock: bool = False`(default production gate)— W7 dev set True via `.env`;W8 D4 切回 False post-IT cred delivery
+- FastAPI Depends pattern single switching point:`auth_dependency = get_current_user_mock if settings.feature_auth_mock else get_current_user_msal`
+- F1.7-mock W7 closeout substitute(verify mock auth end-to-end on local dev server);LIVE F1.7 推 W8 D4 natural deploy-time gate
+- F1.2.1 NEW `backend/api/auth/mock_msal.py` dev-only middleware
+- W7 plan §1 + §2 F1 + §3 G1' + §4 R1 + §5 day-by-day + §7 changelog row 全部 updated
+
+**Saved cost**:eliminates W7 D1 IT engagement bottleneck;W7 全 5 deliverable 並行 unblocked;F1.7 LIVE 自然推 W8 D4 deploy-time gate。
+
+**Architecture impact zero**(per CLAUDE.md §5.1 H1 boundary check):Settings flag + FastAPI Depends pattern preserves C11 component design intent;non-architectural change。
 
 ### Decisions / OQ summary
 
 - Q7 + Q9 + Q10 + Q11 + Q12 — all `Resolved` 2026-05-05 W6 D5 stakeholder approval cycle
+- Q11 decision-level Resolved 2026-05-05;**operational IT cred cascade trigger moved W8 D1**(per a-revised mock auth strategy)
 - ADR-0012 — formal record landed(architecture.md v5 → v5.1 amendment + Gate 2 PARTIAL PASS verdict)
-- Phase status W07 `draft → active` 2026-05-05
+- Phase status W07 `draft → active` 2026-05-05;W7 plan + checklist + progress a-revised mock auth path landed same-session
 
 ### Open / blocked
 
-- ⏸ W7 D1 implementation start awaiting Chris IT engagement trigger(Q11 operational cascade)
-- ⏸ Q11 IT operational confirmation by W7 D5(Beta-blocking risk threshold)
+- ⏸ W7 D1 implementation start ready(non-blocked per a-revised — F1.2 MSAL library scaffold + F1.2.1 mock middleware + F1.3-F1.6 + F2-F5 全部 並行 unblocked)
+- ⏸ W8 D1 Q11 IT operational cascade trigger awaiting beta deploy phase entry(per `beta-plan-v1.md §2 W8.F1`)
+- ⏸ R-B1 active monitor:W8 D5 仍未 IT confirm → Beta-blocking escalation
 
 ### Commit reference
 
-- _(W6 D5 stakeholder approval cycle cascade commit pending — references B1-B6 batch covering architecture amendment + ADR-0012 + 5 OQ resolved + beta-plan active + session-start sync + W7 active)_
+- W6 D5 stakeholder approval cycle cascade commit `b3a63f0`(architecture amendment + ADR-0012 + 5 OQ resolved + beta-plan active + session-start sync + W7 active)
+- _(W7 a-revised mock auth path commit pending — references plan + checklist + progress 3-file batch + plan changelog row 2026-05-05 a-revised)_
 
 ---
 

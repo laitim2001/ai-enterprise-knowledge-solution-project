@@ -32,17 +32,24 @@ related_artifacts:
 W07 開啟 **Tier 1 Beta deploy phase**(W7-W12)。**Beta hardening Sprint 1** 焦點:authentication + rate limiting + audit logging + error handling polish + mobile responsive complete — 為 W8 Beta deploy 到 Azure Container Apps + Static Web Apps 鋪路。
 
 **6 deliverables F1-F6**:
-- F1 Microsoft Entra ID auth integration(C11)— Q11 OQ resolve dependency,**W7 critical path**(blocks F1 if IT not confirm tenant access by W7 D1)
+- F1 Microsoft Entra ID auth integration(C11)— Q11 decision-level approved W6 D5;**W7 全程 mock auth dev mode**(F1.1 IT engagement + F1.7 LIVE smoke 推 W8 D1+D4);F1.2-F1.6 + F1.7-mock 全 W7 D1-D5 並行 unblocked
 - F2 Rate limiting middleware per-user concurrency cap(C08 + C11)— architecture.md §8.1 R5 mitigation
 - F3 Audit logging per-query trail(C07)— Langfuse trace audit-tag enrichment
 - F4 Error handling polish graceful messages(C08 + C09 + C10)— architecture.md §7.3 E1-E14 edge cases
 - F5 Mobile responsive baseline complete(C09 + C10)— architecture.md §6.1 W7 row deliverable
 - F6 Phase Gate closeout + W7 retro + W8 kickoff prep
 
-**Pre-condition for W7 promotion**:
-- W6 D5 closeout PASS(structural + Gate 2 PARTIAL PASS confirmed)
-- Chris W7 D1 sign-off
-- **Q11 Entra ID tenant access IT confirm**(critical path — fallback = mock auth for W7 dev,Beta-blocking)
+**Pre-condition for W7 promotion**(已 met 2026-05-05 W6 D5 stakeholder approval cycle cascade):
+- W6 D5 closeout PASS(structural + Gate 2 PARTIAL PASS confirmed)✅
+- Chris W7 D1 sign-off ✅
+- ~~Q11 Entra ID tenant access IT confirm~~ — **decision-level approve W6 D5;operational confirm cascade trigger moved W8 D1**(per a-revised mock auth dev mode strategy 2026-05-05;see plan §2 F1 update + plan §7 changelog row)
+
+**Mock auth dev mode strategy(W7 全程,W8 切換 LIVE)**:
+- **Q11 IT cred 屬 W8 deploy-time dependency,non W7 dev-time dependency** — MSAL library scaffold + middleware skeleton + login flow UI + token refresh logic 全部可以 with **mock identity provider**(`backend/api/auth/mock_msal.py` returning fixed dummy user identity)做 W7 D1-D5
+- **Settings flag**:`feature_auth_mock: bool = False`(default;production gate;W7 dev 設 True;W8 D4 post-IT cred delivery 切回 False LIVE smoke)
+- **W7 closeout 用 F1.7-mock**(mock auth bearer end-to-end through middleware → return dummy user identity);**LIVE F1.7 推 W8 D4** post-IT cred delivery — natural deploy-time gate,non-W7-blocking
+- **W8 D1 IT engagement trigger**:per `beta-plan-v1.md §2 W8.F1` Azure Container Apps deploy phase entry(architecture aligned — auth LIVE 同 deploy 同期)
+- **Saved cost**:eliminates W7 D1 IT engagement bottleneck;W7 全 5 deliverable 並行 unblocked
 
 **Sprint week origin**:[`architecture.md` §6.1 W7](../../architecture.md);[`docs/03-implementation/beta-plan-v1.md` §2 W7](../../03-implementation/beta-plan-v1.md)
 
@@ -52,19 +59,21 @@ W07 開啟 **Tier 1 Beta deploy phase**(W7-W12)。**Beta hardening Sprint 1** �
 
 - **Component(s)**:**C11** Identity & Access(MSAL + Entra ID)+ **C08** API Gateway(auth middleware)+ **C09/C10** UI(login flow + token store)
 - **Spec ref**:`architecture.md §6.1 W7`,`components/C11-identity.md`,`beta-plan-v1.md §2 W7.F1`
-- **OQ deps**:**Q11 Entra ID tenant**(critical;IT 配合);Q9 Sensitivity / CMK(non-blocking,default Azure-managed key acceptable W7)
+- **OQ deps**:Q11 Entra ID tenant **decision-level Resolved 2026-05-05**(W6 D5 stakeholder approval cycle);**operational IT cred cascade trigger moved W8 D1**(per a-revised mock auth dev mode strategy);Q9 Sensitivity / CMK Resolved 2026-05-05(default Azure-managed key acceptable W7)
 - **Acceptance criteria**:
-  - F1.1 IT confirm Ricoh Entra ID tenant access(W7 D1 critical;fallback = mock auth dev mode)
-  - F1.2 MSAL Python SDK + msal-react integration scaffold(`backend/api/auth/` + `frontend/lib/auth/`)
-  - F1.3 Auth middleware on `backend/api/main.py` lifespan — protect all `/query/**` + `/kb/**` routes;`/healthz` + `/livez` 公開
-  - F1.4 Login flow UI(C09 Admin Console + C10 Chat UI):redirect to Entra ID hosted login → callback to app → token store
-  - F1.5 Token refresh logic + logout
-  - F1.6 Unit tests:auth middleware reject unauth requests + valid token allow + expired token reject;mocked MSAL responses
-  - F1.7 LIVE smoke:dev tenant Entra ID end-to-end login flow on local dev server
-- **Effort estimate**:2-3 days(LIVE deploy 2x calibration per W6 C10 retro)
-- **Owner**:Chris(IT 配合 Q11)+ AI(scaffold + tests)
-- **Cost expected**:~$0(Entra ID Free tier 50 user under Beta scope)
-- **Blocking**:F2(rate limit per-user requires user identity);F3(audit log requires user identity);F6 closeout requires F1 LIVE smoke pass
+  - ~~F1.1 IT confirm Ricoh Entra ID tenant access~~ → **DEFERRED W8 D1** — Chris IT engagement(tenant access + app registration + owner identification)moved Beta deploy phase entry per `beta-plan-v1.md §2 W8.F1`;3 deliverables(Tenant Access / App Registration / Owner Identification)same trigger
+  - F1.2 MSAL Python SDK + msal-react integration scaffold(`backend/api/auth/` + `frontend/lib/auth/`)— library install + import + middleware skeleton + login flow UI;**唔需要 real cred 即可寫**
+  - **F1.2.1 NEW** `backend/api/auth/mock_msal.py` — dev-only middleware returning fixed dummy user identity(`oid` + `preferred_username` + `tid` matching real MSAL JWT claim shape);**`Settings.feature_auth_mock: bool = False`** flag(default False production gate;W7 dev mode set True via `.env`;W8 D4 切回 False LIVE smoke);Karpathy §1.3 surgical preserves C11 component design intent
+  - F1.3 Auth middleware on `backend/api/main.py` lifespan — protect `/query/**` + `/kb/**`;`/healthz` + `/livez` 公開;**FastAPI Depends pattern**:`auth_dependency = get_current_user_mock if settings.feature_auth_mock else get_current_user_msal` — single switching point for W8 LIVE
+  - F1.4 Login flow UI(C09 Admin + C10 Chat):redirect to Entra ID hosted login → callback → token store;**dev mode UI returns fake bearer "dev-token" via `frontend/lib/auth/mock_msal.ts`** for W7 testing
+  - F1.5 Token refresh logic + logout endpoints
+  - F1.6 Unit tests:auth middleware reject unauth + valid token allow + expired token reject;mocked MSAL responses
+  - ~~F1.7 LIVE smoke:dev tenant Entra ID end-to-end login flow~~ → **DEFERRED W8 D4** — post-IT cred delivery cascade(W8 D1-D3:`AZURE_TENANT_ID` + `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` populate Azure Key Vault → W8 D4:`Settings.feature_auth_mock=False` → real Entra ID redirect flow LIVE smoke);natural deploy-time gate
+  - **F1.7-mock NEW W7 closeout substitute** — verify mock auth dev mode end-to-end on local dev server:`Settings.feature_auth_mock=True` + curl `/query` with `Authorization: Bearer dev-token` header → middleware accept → return `_DEV_USER` identity;invalid bearer reject 401;F2 rate limiter use mock `oid` as rate-key successfully;F3 audit log Langfuse trace tag mock `oid` + `tid` visible
+- **Effort estimate**:1.5-2 days W7 mock path(W6 C10 calibration LIVE deploy 2x → mock-only 0.7-1x);W8 D1 IT engagement + W8 D4 LIVE switch 各 0.5 day(beta-plan-v1.md W8 budget;non-W7 effort)
+- **Owner**:AI(scaffold + tests + mock middleware)+ Chris(W8 D1 IT engagement)
+- **Cost expected**:~$0(W7 mock dev mode no cloud spend;real Entra ID Free tier W8 onwards)
+- **Blocking**:F2 + F3 用 mock user `oid` + `tid` 完全 unblocked W7;F1.7-mock pass = W7 closeout substitute;F1.7 real LIVE = W8 D4 deploy gating(non-W7-blocking);F6 closeout requires F1.7-mock pass(NOT F1.7 LIVE)
 
 ### F2 — Rate limiting middleware per-user concurrency cap
 
@@ -145,19 +154,20 @@ W07 開啟 **Tier 1 Beta deploy phase**(W7-W12)。**Beta hardening Sprint 1** �
 
 | # | Criterion | Target | Measure | Block W8?|
 |---|---|---|---|---|
-| G1 | F1 Entra ID auth LIVE smoke pass on dev tenant | LIVE pass | F1.7 | **Yes**(Beta deploy blocker) |
+| **G1'** | **F1.7-mock NEW** mock auth dev mode end-to-end smoke | mock pass | F1.7-mock | **Yes**(W7 closeout blocker;substitute for G1)|
+| ~~G1~~ | ~~F1 Entra ID auth LIVE smoke pass on dev tenant~~ | LIVE pass | F1.7(W8 D4) | **Moved to W8 D4** Beta deploy blocker(per a-revised mock auth strategy)|
 | G2 | F2 rate limiter unit tests + integration smoke | 0/0 fail | F2.4 + F2.5 | Yes |
 | G3 | F3 audit log Langfuse trace tags visible | 100% tag coverage | F3.5 | Yes |
 | G4 | F4 14 edge cases graceful UX | 14/14 verified | F4.3 + F4.5 | No(some can defer W8) |
 | G5 | F5 mobile responsive 5 viewport smoke | 5/5 pass | F5.4 + F5.5 | No(can polish W8) |
 | G6 | Backend ruff + frontend lint + type-check 0 errors | All clean | local run | Yes |
-| G7 | OQ Q11 Resolved | Resolved | decision-form.md | Yes |
+| G7 | OQ Q11 Resolved(decision-level — operational IT cred cascade tracked W8) | `Resolved` 2026-05-05 | decision-form.md | **Already met W6 D5** stakeholder approval cycle |
 
 ## 4. Risks(Phase-Specific)
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R1 | Q11 Entra ID tenant access IT delay | Medium | High | W6 D5 IT pre-engage;fallback = mock auth dev mode for W7 D1-D3,IT cascade by D4-D5;若 W7 D5 仍未 confirm → defer F1 LIVE smoke to W8(Beta-blocking) |
+| R1 | Q11 Entra ID tenant IT delay(W8 D1 trigger per a-revised mock auth strategy) | Medium | High | **W7 全程 mock auth dev mode**(F1.7-mock as W7 closeout);W8 D1 Chris IT engagement trigger per `beta-plan-v1.md §2 W8.F1`;若 W8 D5 仍未 confirm → Beta-blocking R-B1 active monitor → Stakeholder + IT manager 三方 escalation;Karpathy §1.2 simplicity-first decoupled W7 dev from W8 deploy IT bottleneck |
 | R2 | MSAL SDK Python + Next.js integration friction | Medium | Medium | Microsoft sample code reference;known good pattern in references/dify/web/app/login(read-only inspiration per CLAUDE.md §5.3 H3);scaffold tests early to catch contract mismatch |
 | R3 | Rate limiter affecting demo / Beta legitimate user burst | Low | Medium | Conservative thresholds W7(50 req/min + 5 concurrent);production tuning W8-W10 based on observed real query patterns |
 | R4 | Audit log volume overwhelming Langfuse local instance | Low | Low | Self-host Langfuse retention policy 30 day rolling;production move to Langfuse cloud W8+ |
@@ -169,11 +179,11 @@ W07 開啟 **Tier 1 Beta deploy phase**(W7-W12)。**Beta hardening Sprint 1** �
 
 | Day | Date | Focus | Deliverables targeted |
 |---|---|---|---|
-| D1 | 2026-05-12 | F1 Entra ID auth integration scaffold + IT sync(Q11)| F1 |
-| D2 | 2026-05-13 | F1 cont(MSAL middleware + login flow UI)+ F2 rate limiter | F1, F2 |
-| D3 | 2026-05-14 | F1 LIVE smoke + F3 audit logging | F1, F3 |
+| D1 | 2026-05-12 | F1.2 + F1.2.1 mock middleware scaffold(`backend/api/auth/mock_msal.py` + `frontend/lib/auth/mock_msal.ts` + `Settings.feature_auth_mock` flag)| F1 |
+| D2 | 2026-05-13 | F1.3 auth middleware Depends pattern + F1.4 login flow UI(mock bearer)+ F2 rate limiter(use mock `oid` rate-key)| F1, F2 |
+| D3 | 2026-05-14 | F1.5 token refresh + logout + F1.6 unit tests + F3 audit logging(use mock `oid` + `tid` tags)| F1, F3 |
 | D4 | 2026-05-15 | F4 error handling polish + F5 mobile responsive | F4, F5 |
-| D5 | 2026-05-16 | F5 polish + F6 closeout + W08 kickoff prep | F5, F6 |
+| D5 | 2026-05-16 | F5 polish + **F1.7-mock end-to-end smoke**(mock auth W7 closeout substitute)+ F6 closeout + W08 kickoff prep | F5, F1, F6 |
 
 ## 6. Dependencies on Prior Phase
 
@@ -195,6 +205,7 @@ Carry-overs from `W06-final-eval-demo/progress.md` retro:
 |---|---|---|---|
 | 2026-05-05 | Initial draft(W6 D4 末 closeout prep early-start)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W6 D5 closeout sign-off + W7 D1 kickoff approval + Q11 IT confirm | Chris(pending approve to flip active) |
 | 2026-05-05 | Status flip `draft → active`(W6 D5 stakeholder approval cycle cascade)| Stakeholder approve 4 points landed(architecture amendment + Q7/Q9/Q10/Q11/Q12 Resolved + Beta plan v1 sign-off);Q11 decision-level approve unblocks W7 active flip;**Q11 IT operational confirm cascade trigger W7 D1**(non-blocking flip — F1.1 fallback mock auth dev mode preserved if IT slips;Beta-blocking only if W7 D5 仍未 confirm)| Stakeholder + Chris(W6 D5 closeout)|
+| 2026-05-05 | a-revised mock auth dev mode strategy adopted(同 W6 D5 closeout same-session)| Per Karpathy §1.2 simplicity-first decoupling — Q11 IT cred 屬 W8 deploy-time dependency,non W7 dev-time dependency。MSAL library + middleware + login flow UI + token refresh logic 全部可以 with mock identity provider 寫 W7 D1-D5。F1 acceptance criteria refined:F1.1(IT engagement)+ F1.7(LIVE smoke)推 W8 D1 + W8 D4;F1.2.1(mock_msal.py)+ F1.7-mock(W7 closeout substitute)NEW;G1 → G1' substitute;R1 mitigation refined;day-by-day breakdown re-mapped。**Saved cost**:eliminates W7 D1 IT engagement bottleneck;W7 全 5 deliverable 並行 unblocked;F1.7 LIVE 自然推 W8 D4 deploy-time gate(architecture aligned)。**Architecture impact zero**(per CLAUDE.md §5.1 H1 boundary check — `feature_auth_mock` Settings flag + FastAPI Depends pattern preserves C11 component design intent;non-architectural change)| Chris approve via "執行 (a-revised) — W7 plan + checklist + progress update"|
 
 ---
 
