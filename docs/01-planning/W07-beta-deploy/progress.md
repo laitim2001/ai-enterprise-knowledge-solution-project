@@ -333,7 +333,7 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 - ⏸ F6 closeout — W7 D5
 
 ### Commit reference
-- _(W7 D4 commit pending — references progress.md Day 4 + checklist F4.1 + F4.2 + F4.3 + F4.4 + F5.1 + F5.2 ticked + F5.3 + F5.5 deferred 標明)_
+- W7 D4 commit `6ad6e24`(15 files changed,+857 / -49;9 new files + 6 modified;F4.1 envelope + handlers + F4.2 ErrorBoundary + F4.3 E1-E14 doc + F4.4 10 tests + F5.1 audit doc + F5.2 hamburger AdminShell)
 
 ---
 
