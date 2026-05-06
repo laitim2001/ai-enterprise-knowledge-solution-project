@@ -15,7 +15,6 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from api.auth import get_current_user
 from api.server import app
 from observability import langfuse_tracer
 from observability.alerts import beta_alert_rules
@@ -28,16 +27,16 @@ from observability.cost_estimator import (
 
 @pytest.fixture(autouse=True)
 def _isolate_app_state() -> None:
-    """Reset Langfuse singleton + clear dependency_overrides leaked from
-    other test modules (test_api_skeleton.py installs a module-level
-    `get_current_user` override that would mask 401 expectations here).
+    """Reset Langfuse singleton between tests。
+
+    W9 D5 C11 cleanup:upstream `test_api_skeleton.py` no longer leaks
+    `get_current_user` dependency_override at module load(now autouse-fixture
+    scoped),so the previous defensive `app.dependency_overrides.pop()`
+    workaround here is redundant — only Langfuse singleton reset remains。
     """
     langfuse_tracer._set_langfuse_client_for_tests(None)
-    saved_override = app.dependency_overrides.pop(get_current_user, None)
     yield
     langfuse_tracer._set_langfuse_client_for_tests(None)
-    if saved_override is not None:
-        app.dependency_overrides[get_current_user] = saved_override
 
 
 def _bearer() -> dict[str, str]:

@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-05-26
+last_updated: 2026-05-30
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---

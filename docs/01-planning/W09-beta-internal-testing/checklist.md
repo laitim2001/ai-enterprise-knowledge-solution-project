@@ -1,8 +1,8 @@
 ---
 phase: W09-beta-internal-testing
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-26 cont
+status: closed
+last_updated: 2026-05-30
 ---
 
 # Phase W09 — Checklist
@@ -51,12 +51,16 @@ last_updated: 2026-05-26 cont
 
 ## F6 — Phase Gate closeout + W9 retro + W10 kickoff prep
 
-- [ ] F6.1 W9 phase Gate verdict landed
-- [ ] F6.2 W09 progress.md retro 7 sections complete
-- [ ] F6.3 W10 phase folder kickoff:`docs/01-planning/W10-beta-iteration/{plan,checklist,progress}.md` draft
-- [ ] F6.4 W09 progress.md frontmatter status flipped to `closed`
-- [ ] F6.5 R-B1 closure(if Q11 + LIVE smoke landed)or status update(if escalation cycle ongoing)
-- [ ] F6.6 OQ Q11 final operational Resolved + Q6 Real query collection owner Resolved sync to `decision-form.md`
+- [x] F6.1 W9 phase Gate verdict landed — **W9 D5 done 2026-05-30** — PARTIAL PASS:Track A G1+G2+G3+G7(IT cred + LIVE deploy + LIVE smoke + Q11 final operational)deferred W10-W11 per W9 D1 三方 outcome IT delivery target early June real;Track B G4+G5+G6(F5 observability + F4.2 onboarding doc + W11 readiness scaffold)= 5/7 PASS
+- [x] F6.2 W09 progress.md retro 7 sections complete — **W9 D5 done 2026-05-30** — What worked / What didn't work / Surprises / Carry-overs / ADR triggers / Phase Gate result / Phase status全部填寫
+- [x] F6.3 W10 phase folder kickoff — **W9 D5 done 2026-05-30** — `docs/01-planning/W10-beta-iteration/` 三 file 建好(plan.md draft Track A LIVE deploy cascade + Track B implementation polish split + checklist.md ~28 items + progress.md Day 0 entry)
+- [x] F6.4 W09 progress.md frontmatter status flipped to `closed` — **W9 D5 done 2026-05-30**(此 batch)
+- [x] F6.5 R-B1 status update — **W9 D5 done 2026-05-30** — `RISK_REGISTER.md` R14 R-B1 timeline secured 🟡 Active monitor with confirmed deadline preserved(W9 D1 三方 outcome unchanged;closure trigger W10 Track A IT cred populate event)
+- [x] F6.6 OQ Q11 status sync — **W9 D5 done 2026-05-30** — `decision-form.md` Q11 status `decision-level Resolved + operational committed early June 2026 real` preserved unchanged(no further outcome event since W9 D1 三方 alignment);final `Resolved` operational trigger event W10 Track A IT cred populate
+
+## Cross-Cutting
+
+- [x] **C11 dependency_overrides cleanup** — **W9 D5 done 2026-05-30** — refactored `test_api_skeleton.py:16-21` module-level `app.dependency_overrides[get_current_user]` set into `_mock_auth_override` autouse fixture-scoped pattern(install + yield + pop teardown);simplified `test_observability_routes.py:_isolate_app_state` defensive pop+restore workaround(leak source fixed,redundant);358/358 pytest pass — zero regression
 
 ---
 

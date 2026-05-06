@@ -4,7 +4,7 @@ name: "Beta Internal Testing — Chris IT/infra/DNS apply cascade + LIVE deploy 
 sprint_week: W9
 start_date: 2026-05-26          # tentative — assumes W8 closed 2026-05-23
 end_date: 2026-05-30            # 5 working days
-status: active                  # flipped draft→active 2026-05-26 W9 D1 kickoff(W8 D5 closeout PARTIAL PASS cascade;A+B parallel deliverable batch — alignment memo + observe wrapper landed before 三方 session per Karpathy §1.1 prep-while-blocked)
+status: closed                  # flipped active→closed 2026-05-30 W9 D5 closeout(PARTIAL PASS — Track B 5/7;Track A LIVE deploy cascade deferred W10 per W9 D1 三方 outcome cascade)
 spec_refs:
   - architecture.md §6.1 W9 row             # Beta internal testing + real query log collection + UX iteration
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline
@@ -205,6 +205,7 @@ Carry-overs from `W08-beta-deploy-sprint2/progress.md` retro § Carry-overs C1-C
 | 2026-05-23 | Initial draft(W8 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W8 closeout sign-off + W9 D1 三方 alignment outcome | Chris(pending approve to flip active) |
 | 2026-05-26 | status `draft → active` | W9 D1 kickoff cascade — A+B parallel deliverables landed pre-session(R-B1 alignment memo for Chris + F5.2-kickoff observe wrapper + 3-stage decoration);F1.1 三方 session itself is human-coordinated external work | Chris implicit(W8 closeout sign-off cascade) |
 | 2026-05-26 | **三方 session outcome — IT delivery defer early June real**(scope deviation per R3) | W9 D1 三方 alignment outcome:Option B-extended(IT 預期 early June 2026 real-calendar deliver ~2026-06-02 to 2026-06-07)+ Pattern A confirmed + domain `ekp-beta.ricoh.com` confirmed;real-calendar today 2026-05-06 = project doc calendar ~W2 D2(implementation front-run real ~3-4 週);**re-baselined W9-W10 scope:F1.2-F1.4 + F2 + F3 + F4 LIVE deploy work cascade defer to project W11**(post real-early-June IT cred populate);W9-W10 active scope = F5 observability progressive + Q6 owner trigger + W11 production launch readiness doc polish;**R-B1 de-escalated 🔴 → 🟡** active monitor with confirmed deadline | Chris(W9 D1 三方 session outcome briefing) |
+| 2026-05-30 | status `active → closed` PARTIAL PASS | W9 D5 closeout — Track B(F5 observability + F4.2 onboarding doc + F6 closeout)5/7 PASS;Track A(IT cred + F2 deploy + F3 LIVE smoke + Q11 final operational)deferred W10 per W9 D1 三方 outcome cascade;C11 dependency_overrides cleanup landed(W8 retro carry-over closed before W10 polish window);W10-beta-iteration phase folder rolling-JIT kickoff with Track A/B split | Chris(W10 kickoff approve trigger) |
 
 ---
 

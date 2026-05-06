@@ -2,34 +2,54 @@
 
 W1 scope: verify route registration + 501 stub response + schema validation.
 W3+ replaces individual tests with real implementation tests.
+
+W9 D5 C11 cleanup: refactored module-level `app.dependency_overrides` set
+into autouse fixture-scoped pattern with proper teardown — prevents leak
+into downstream test modules (test_observability_routes.py F4.4 401 assertions
+were previously masked by this leak per W8 D5 retro § What didn't work).
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.auth import AuthenticatedUser, get_current_user
 from api.server import app
 
-# W7 D2 F1.3 — auth Depends now wraps /query/** + /kb/** + /feedback. Pre-W7
-# tests authenticated implicitly; preserve that behavior here by overriding
-# the dependency to return a fixed test user. Real auth reject/allow paths
-# are covered separately in test_mock_msal.py + test_auth_routes.py.
-app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
-    oid="test-oid",
-    tid="test-tid",
-    preferred_username="test@ekp.local",
-    is_mock=True,
-)
 
-client = TestClient(app)
+@pytest.fixture(autouse=True)
+def _mock_auth_override():
+    """Install fixed test-user override on `get_current_user` for the duration
+    of each test, then pop it on teardown.
+
+    W7 D2 F1.3 — auth Depends wraps /query/** + /kb/** + /feedback. Pre-W7
+    tests authenticated implicitly; preserve that behavior here. Real
+    auth reject/allow paths are covered separately in test_mock_msal.py +
+    test_auth_routes.py.
+    """
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="test-oid",
+        tid="test-tid",
+        preferred_username="test@ekp.local",
+        is_mock=True,
+    )
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
-def test_health_returns_ok() -> None:
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(app)
+
+
+def test_health_returns_ok(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_query_route_returns_502_when_retrieval_fails_due_to_network() -> None:
+def test_query_route_returns_502_when_retrieval_fails_due_to_network(
+    client: TestClient,
+) -> None:
     """W2 D4 F6: /query wired to RetrievalEngine. With .env configured, lifespan
     initializes engine; live retrieval fails (R8 reactivated VPN cert) → 502.
     R8 cleared environment would return 200 with chunks."""
@@ -46,7 +66,9 @@ def test_query_route_returns_502_when_retrieval_fails_due_to_network() -> None:
         assert "answer" in body
 
 
-def test_query_stream_route_registered_returns_2xx_or_5xx() -> None:
+def test_query_stream_route_registered_returns_2xx_or_5xx(
+    client: TestClient,
+) -> None:
     """W3 D3 F4 (commit pending) wired SSE; route returns 503 when synthesizer
     not initialized (TestClient lifespan provides no Azure OpenAI keys),
     502 if retrieval fails downstream, or 200 with text/event-stream when
@@ -58,7 +80,7 @@ def test_query_stream_route_registered_returns_2xx_or_5xx() -> None:
     assert response.status_code in (200, 502, 503)
 
 
-def test_kb_list_route_returns_empty_in_memory() -> None:
+def test_kb_list_route_returns_empty_in_memory(client: TestClient) -> None:
     """W1 D2 F7 (commit c6ca6e3) replaced 501 stub with in-memory KB CRUD.
 
     GET /kb returns 200 with empty list when no KBs created. W2 D1 swap to
@@ -69,7 +91,7 @@ def test_kb_list_route_returns_empty_in_memory() -> None:
     assert response.json() == []
 
 
-def test_eval_run_route_registered_returns_501() -> None:
+def test_eval_run_route_registered_returns_501(client: TestClient) -> None:
     response = client.post(
         "/eval/run",
         json={"eval_set_id": "v0"},
@@ -77,12 +99,14 @@ def test_eval_run_route_registered_returns_501() -> None:
     assert response.status_code == 501
 
 
-def test_screenshots_redirect_route_registered_returns_501() -> None:
+def test_screenshots_redirect_route_registered_returns_501(
+    client: TestClient,
+) -> None:
     response = client.get("/screenshots/drive/M042/img_007.png")
     assert response.status_code == 501
 
 
-def test_query_request_schema_rejects_too_long_query() -> None:
+def test_query_request_schema_rejects_too_long_query(client: TestClient) -> None:
     """Per architecture.md §4.5: query max_length=2000."""
     too_long = "a" * 2001
     response = client.post(
@@ -92,7 +116,7 @@ def test_query_request_schema_rejects_too_long_query() -> None:
     assert response.status_code == 422
 
 
-def test_query_request_schema_rejects_empty_query() -> None:
+def test_query_request_schema_rejects_empty_query(client: TestClient) -> None:
     """Per architecture.md §4.5: query min_length=1."""
     response = client.post(
         "/query",

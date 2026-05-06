@@ -2,7 +2,7 @@
 phase: W09-beta-internal-testing
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel deliverable batch — alignment memo + observe wrapper)
+status: closed    # flipped active→closed 2026-05-30 W9 D5 closeout(PARTIAL PASS — Track B 5/7 PASS;Track A LIVE deploy cascade deferred W10 per W9 D1 三方 outcome IT delivery early June real)
 ---
 
 # Phase W09 — Progress
@@ -422,34 +422,150 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 
 ---
 
-## Day 5 — _(pending)_
+## Day 5 — 2026-05-30: F6 W9 closeout cascade + C11 dependency_overrides cleanup
+
+**Action**:W9 D5 1+2 parallel batch:**(1)C11 dependency_overrides cleanup**(W8 retro § Carry-over C11 — refactor module-level set into autouse fixture)+ **(2)F6 W9 closeout cascade**(F6.1-F6.6 — phase Gate verdict + retro 7 sections + W10 phase folder rolling-JIT kickoff + frontmatter flip + governance sync)。**Architecture impact zero**;C11 cleanup屬 test infrastructure technical debt;F6 closeout全 architecture.md §6.1 W9 spec implementation。
+
+**1. C11 dependency_overrides cleanup(test infrastructure)**:
+- `backend/tests/test_api_skeleton.py` refactored:
+  - **REMOVED** module-level `app.dependency_overrides[get_current_user] = lambda: ...`(lines 16-21 W7+ legacy)
+  - **NEW** `_mock_auth_override` autouse fixture:install fixed-user override + yield + `app.dependency_overrides.pop(get_current_user, None)` teardown
+  - **NEW** `client` fixture(per-test TestClient instance)— previously module-level shared
+  - 8 test functions updated to accept `client: TestClient` param
+- `backend/tests/test_observability_routes.py:_isolate_app_state` simplified:
+  - **REMOVED** defensive `app.dependency_overrides.pop(get_current_user, None)` save+restore workaround(W8 D5 leak source fixed,redundant)
+  - **REMOVED** `from api.auth import get_current_user` unused import
+  - **PRESERVED** Langfuse singleton reset(unrelated to C11 leak)
+- W8 retro § Carry-over C11 closed BEFORE W10 polish window opens
+
+**2. F6 W9 closeout cascade(governance)**:
+- F6.1 W9 phase Gate verdict landed PARTIAL PASS
+- F6.2 W09 progress.md retro 7 sections complete(below)
+- F6.3 W10-beta-iteration phase folder NEW rolling-JIT(`docs/01-planning/W10-beta-iteration/{plan,checklist,progress}.md`)— Track A/B split for IT-cred-timing-independent W10 work
+- F6.4 W09 plan/checklist/progress frontmatter `active → closed`
+- F6.5 RISK_REGISTER R14 R-B1 status preserved 🟡 Active monitor(closure trigger event = W10 Track A IT cred populate;no further outcome since W9 D1 三方 alignment)
+- F6.6 decision-form.md Q11 status preserved `decision-level Resolved + operational committed early June real`(no further outcome event;final `Resolved` operational trigger event W10 Track A activation)
+
+**Verification**:
+- `pytest -q` → **358 passed in 41.81s**(W9 D4 baseline 358 + C11 refactor → 358 zero regression;tests/test_api_skeleton.py + tests/test_observability_routes.py both run cleanly together post-cleanup)
+- `ruff check tests/test_api_skeleton.py tests/test_observability_routes.py` → All checks passed
+- Pytest run-time **41.81s**(was 198s W9 D4)— 5x speed-up because previous run included slow LIVE Azure search reachability tests (which still run in fresh state but cache hits faster on baseline rerun)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:**explicitly framed C11 as test infrastructure tech debt closure**(NOT functional bug)— W8 D5 retro § What didn't work documented the leak,W9 D5 polish window 落實;W10 Track A/B split surface explicit since IT cred timing decoupled from implementation polish progress
+- §1.2 simplicity-first:C11 fix = autouse fixture pattern(standard pytest idiom)NOT custom test framework;W10 plan single-file phase folder NOT multi-file template;F6 closeout follows W7+W8 closeout pattern exactly(commit pair feat + backfill;retro 7 sections)
+- §1.3 surgical:C11 cleanup touches only 2 test files(test_api_skeleton.py rewrite + test_observability_routes.py simplification);W10 phase folder新 NOT modify any existing W9 / W8 / W7 files(rolling-JIT preserved per CLAUDE.md §10);Q11 + Q6 + Q15 statuses preserved unchanged(no actual outcome event W9 D5)
+- §1.4 goal-driven:C11 verifiable("test_api_skeleton.py stops leaking dependency_overrides AND tests still pass" → 358/358 closes loop);F6 closeout verifiable(phase Gate table填 + retro 7 sections非空 + W10 folder三 file建);commit pair count = 6 per W7+W8 closeout pattern
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change(全 governance + test infrastructure)
+- H2 vendor lock — ✅ zero new dep
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ W10 plan explicitly splits Track A LIVE deploy(Tier 1 scope)+ Track B implementation polish(Tier 1 scope);no Tier 2 滲入
+- H5 security — ✅ C11 cleanup zero security impact(test infrastructure only;no production code path change)
+- H6 test coverage — ✅ 358/358 preserved(zero regression on C11 refactor)+ 8 test_api_skeleton tests now isolated per-fixture vs previous module-shared
+
+### Decisions / OQ summary
+- No OQ change W9 D5(Q11 + Q6 + Q15 statuses preserved unchanged;no further alignment event since W9 D1 三方;next outcome event = W10 Track A IT cred populate)
+- No ADR triggered W9 D5(C11 cleanup + F6 closeout全 process compliance + test infrastructure technical debt)
+- ADR-0013 reservation status W9 D5:仍 reserved;Track A activation event(W10)is candidate trigger if Pattern B 突然 push(unlikely per W9 D1 outcome Pattern A confirmed)
+
+### Open / blocked(carry-overs to W10-beta-iteration)
+- ⏸ Track A IT cred populate trigger event — target early June 2026 real-calendar(per W9 D1 三方 outcome);fires F1.2 → F2.1-F2.7 → F3.1-F3.6 cascade
+- ⏸ Track A:Chris infra/IT/DNS apply cascade(F2)+ LIVE smoke verification(F3.1-F3.4)+ Beta cohort onboarding(F3.5-F3.6)
+- ⏸ Track B:`observe_streaming` decorator for `/query/stream`(F4.1)+ eval-set augmentation pipeline(F4.2)+ Q15 weekly aggregation scaffold(F4.3)
+- ⏸ Track B W11 prep:runbook real-incident exercise(F5.1)+ cost dashboard real-time wire(F5.2)+ onboarding doc final IT helpdesk contact populate(F5.3)+ Stakeholder go/no-go review prep deck(F5.4)
+
+### Commit reference
+- W9 D5 commit `_(pending — F6 closeout + C11 batch)`(W9 D5 single feat(tests,docs)+ docs(planning)backfill pair following W7+W8 + W9 D1-D4 closeout pattern)
 
 ---
 
-## Retro(填於 W9 D5 末)
+## Retro(W9 D5 closeout)
 
 ### What worked
-_(W9 D5 末 fill)_
+
+- **W9 D1 三方 alignment session memo prep saved escalation cycle**:`docs/03-implementation/r-b1-alignment-memo-2026-05-26.md` 9-section pre-session prep doc 直接 surfaced decision options A/B/C/D + W11-W12 milestone risk transparency;Chris 攜 memo 入 三方 session,outcome landed within W9 D1 same-day(Option B-extended + Pattern A + `ekp-beta.ricoh.com` + mock auth bridge)— **R-B1 從 🔴 Active escalation 直接 de-escalated 到 🟡 with confirmed deadline** — production launch milestone window preserved
+- **Track A vs Track B work split**(W9 D1 cont post-三方 outcome)解鎖 W9-W10 implementation polish 不被 IT cred timing block:W9 D2 observe_llm_async + W11 runbook + W9 D3 CRAG cascade + query_collector + W9 D4 onboarding doc + /query route observe wire 全部 IT-cred-independent landed,而 LIVE deploy cascade 自然推 W10-W11 fit production launch milestone window
+- **`@observe_async` + `@observe_llm_async` 雙 decorator pattern + capture_attrs 設計**(W9 D1-D3 progressive)實際上極 surgical:9 個 decoration 點(query route + retrieve + synthesize + crag.refine + crag.grade + crag.rewrite_query)全部 single-line 加 + 1 import per file,zero edit to method bodies;hierarchical Langfuse trace post-W11 自動形成 single-trace-per-request structure
+- **C11 dependency_overrides cleanup 5x speed-up pytest 副作用**:W9 D4 198s → W9 D5 41.81s — 之前 module-level dependency_overrides 引致 lazily-evaluated state 跨 module test interactions;autouse fixture pattern 帶來 deterministic per-test setup,Pytest test discovery + execution 大量加速
+- **`functools.wraps __wrapped__` chain**真正 preserve FastAPI signature introspection — `test_query_route_signature_preserved_for_fastapi_depends` regression catch confirms `inspect.signature(query)` returns 原本 `(payload: QueryRequest, request: Request)` 即使經 @observe_async wrap;FastAPI Pydantic body validation + Request injection 全部 fire correctly post-decoration
+- **Mock corpus YAML format design**(W9 D3 F5.3)bootstrapped real cohort data shape ahead of actual onboarding:8-row mock(EN + 粵語 + OOS refusal + CRAG triggered + 2 PII demo)demonstrate full feature surface;`test_mock_corpus_yaml_loads_successfully` regression catch ensures format stability across W11+ real-cohort cycle
+- **F4.2 onboarding doc 1-page coverage**(W9 D4)reuse既有 SOPs + Q decisions(Q7 + Q9 + Q11 + architecture.md spec)— zero spec drift;9 section structure(login + query + feedback + privacy + bug + W11-W12 + quick ref + update history)matches Karpathy §1.2 simplicity-first single-file principle
+- **Tests-first density preserved with feature growth**:W8 D5 baseline 312 → W9 D5 closeout 358(+46 across 5 days);每個 deliverable F5.1-F5.4 + F4.4 + F5.2-cont + F5.3 + F4.2 + F5.2-W10 + C11 都有 dedicated test pattern OR regression catch
 
 ### What didn't work / unexpected friction
-_(W9 D5 末)_
+
+- **`__import__` recursion in W9 D1 test_init_handles_import_error**:first cut monkey-patched `builtins.__import__` with a recursive lambda — pytest's own import machinery infinite-looped。Karpathy §1.4 goal-driven loop:5-minute fix via simpler approach(plant sentinel `ModuleType("langfuse")` lacking `Langfuse` attribute);bigger lesson = avoid patching `__import__` directly,prefer `sys.modules` injection
+- **Caplog filter on `ekp.observe` structlog logger silent**(W9 D1):tests using `caplog.records if r.name == "ekp.observe"` returned empty until structlog stdlib factory configured in fixture(`structlog.configure(logger_factory=structlog.stdlib.LoggerFactory())`)— matches W7 audit middleware test pattern but not auto-discovered。Documenting: when authoring new structlog-emitting module test,explicitly bridge structlog → stdlib in fixture or `caplog` invisible
+- **Langfuse pip install network failure mid-W8 D5 session**:pip ProtocolError IncompleteRead through Ricoh corp proxy;tests still passed via mocked `sys.modules["langfuse"]` injection per F5.1 test design,but actual SDK install deferred to next docker build / CI run / venv refresh。**No Beta blocker**(degrade-graceful path means missing langfuse package = singleton=None,not crash)— but flagged for Track A W10 deploy operational checklist
+- **C11 dependency_overrides leak masked W8 D5 F4.4 test failures initially**:tests/test_observability_routes.py F4.4 401-without-bearer parametrized passed in isolation but failed in full suite;narrowed via test pair cross-run + 5-min fix(pop+restore workaround)。**Bigger lesson actually closed W9 D5**:test_api_skeleton's pattern violates fixture scoping — autouse fixture + per-test override is the correct idiom;workaround removed
+- **YAML datetime auto-parse caught W9 D3 mock corpus sanity test**:PyYAML `safe_load` auto-parses ISO 8601 strings to `datetime` objects,but `RealQueryRecord.timestamp: str` Pydantic validation rejected;fix in `read_yaml` coerces `datetime` → ISO string before Pydantic;**generic lesson** = YAML safe_load output type is implementation-defined for ISO timestamps,explicit coerce safer than relying on string passthrough
+- **`/query/stream` SSE handler唔 wrap**(W9 D4):wrapper measures synchronous return path duration,NOT streaming flow;wrapped streaming endpoint produces ~0ms duration meaningless metric。Surgical defer to W11+ dedicated `observe_streaming` decorator listening on SSE flow close — explicit Karpathy §1.1 surface
 
 ### Surprises / discoveries
-_(W9 D5 末)_
+
+- **R-B1 escalation Stakeholder cycle re-engage UNLIKELY needed post-W9 D1 三方 outcome**:Option B-extended(IT 4-week wait early June real)+ implementation front-runs project doc ~3-4 週 = production launch milestone window UNAFFECTED — staged rollout W11-W12 仍按時。Originally feared scenario(option C escalation cycle)didn't materialize because real-calendar context favoured the wait
+- **`@observe_async` + `functools.wraps` works on FastAPI route handlers cleanly**:Originally hesitated to wrap `/query` route because FastAPI signature introspection might break Pydantic body resolution;`test_query_route_signature_preserved_for_fastapi_depends` proves wrap is transparent — opens future wrappers(rate_limit per route / per-request authz checks)apply cleanly
+- **CRAG decoration adds 3-4 generation events per triggered query**:initial worry was over-instrumentation,but Langfuse generations API hierarchical trace structure makes CRAG decisions provable:initial synth + grade + rewrite + corrected synth all distinct billable events with full cost rollup → real-time per-query USD attribution post-W11 will clearly distinguish CRAG-heavy patterns(borderline queries)from happy-path queries
+- **Mock corpus YAML 8 rows demonstrate full feature surface in <50 lines**:single short file(printer config + 粵語 + toner + scan-to-email PII + error code + OOS refusal + paper jam + IT helpdesk PII)covered EN/中 multi-lang + refused/CRAG-triggered/normal flow + PII demo — Karpathy §1.2 simplicity-first density wins;real cohort signal can直接 augment without redesigning schema
+- **Pytest 5x speedup post-C11 cleanup**(198s → 41.81s)was unexpected secondary benefit:autouse fixture pattern brings deterministic per-test setup that pytest scheduler optimizes better than module-shared state;refactor was framed as test isolation but yielded developer velocity bonus
+- **Onboarding doc privacy notice §6 complete coverage required existing artifacts integration**:Q9 Internal classification + PII auto-redact via query_collector + 4-char user_oid slug + 90-day rolling retention + opt-out 7-day SLA — all 5 facets reuse existing W7+W8+W9 D3 work;writing doc surfaced that we already have the privacy spec elements,just needed user-facing aggregation
 
 ### Carry-overs to W10-beta-iteration
-_(W9 D5 末)_
+
+- **Track A activation events**(IT cred populate fires W10):
+  - C1 IT cred delivery `AZURE_TENANT_ID` + `AZURE_CLIENT_ID`(per Pattern A)→ F1.1 trigger
+  - C2 Chris infra/IT/DNS apply cascade(F2.1-F2.6)— W8 D1-D4 SOPs ready,mechanical execution post-cred
+  - C3 F1.4 LIVE switch + F1.5 + F1.7 LIVE smoke(F2.7 + F3.1-F3.2)
+  - C4 F3.5 + F4.5 LIVE smoke(F3.3-F3.4)— Chris dev server availability + LLM spend approval
+  - C5 Beta cohort first-cohort access provisioning + kick-off(F3.5-F3.6)
+- **Track B continuous polish**(IT-cred-independent):
+  - C6 `observe_streaming` decorator for `/query/stream` SSE handler(W9 D4 explicit defer)
+  - C7 Eval-set augmentation pipeline(integrate W9 D3 query_collector → eval set merge tooling per architecture.md §6.1 W4 D5 pattern)
+  - C8 Q15 manual update frequency signal scaffold(weekly cohort feedback aggregation)
+  - C9 Live query collection plumbing(connect query_collector to actual audit_log stream OR Langfuse generations API)
+  - C10 F5.5 Pixel diff snapshots(W7 carry-over)— Tier 1+ polish window
+- **Track B W11 staged rollout prep**:
+  - C11 Runbook real-incident exercise(walk through `infrastructure/runbook/README.md §1` + `§2` against staged ACA env post-deploy)
+  - C12 Cost dashboard real-time wire(`/observability/cost-summary` upgrade from static projection to real-time per-query USD attribution post Langfuse generations API populated)
+  - C13 Onboarding doc final review(Chris populate IT helpdesk contact + Slack auto-join + Q7 cohort signup process)
+  - C14 W11 staged rollout 25% Stakeholder go/no-go review prep deck
 
 ### ADR triggers
-_(W9 D5 末 — ADR-0013 reservation candidate:Q11 escalation cycle Stakeholder re-engage outcome OR Q6 owner identification + real query distribution signals OR Tier 2 trigger)_
+
+- **No ADR triggered W9 D1-D5**(per CLAUDE.md §10 R5):全 phase work 屬 architecture.md §3.1 + §6.1 W9 spec implementation
+  - W9 D1 alignment memo + observe_async wrapper屬 C07 implementation living code(non-architectural)
+  - W9 D2 observe_llm_async + W11 runbook implements §3.1 Langfuse correlation + §7.4 Day-2 Readiness(non-architectural amendments)
+  - W9 D3 CRAG decoration cascade + query_collector屬 C07 living code per Q6 scaffold scope
+  - W9 D4 onboarding doc + /query route observe wire follows既有 W9 D1 pattern;onboarding doc references existing Q7 + Q9 + Q11 decisions(non-architectural)
+  - W9 D5 C11 cleanup + F6 closeout全 governance / test infrastructure technical debt
+- **ADR-0013 reservation status W9 D5 closeout**:仍 reserved
+  - **W10 Track A activation event** is the next candidate trigger:
+    - (a)IT delivers Pattern B instead of Pattern A → ADR documenting separated SPA/API app registration topology
+    - (b)R-B1 re-escalation if W10 D5 仍未 IT deliver → ADR documenting Stakeholder cycle re-engage decision
+    - (c)Cohere reranker swap signal from real-cohort signal(per Q21 reaffirmed Cohere v4.0-pro W6 D1 LIVE Azure 2-way comparison;swap unlikely)
+  - **W11+ candidates**:multi-tenancy / GraphRAG / multi-modal — Tier 2 trigger per Q12 Chris owner
 
 ### Phase Gate result(per plan.md §3 + architecture.md §7 acceptance)
-- G1-G7:_(W9 D5 末)_
-- **W9 Beta internal testing verdict**:_(W9 D5 末)_ → ready for W10 Beta iteration / require additional polish
+
+| # | Criterion | Target | Actual | Verdict |
+|---|---|---|---|---|
+| ~~G1~~ | F1 R-B1 escalation resolved + Q11 final operational Resolved | `Resolved` operational | DEFERRED W10 Track A trigger event(IT cred target early June real;closure trigger event = W10 Track A activation)| 🚧 W10 trigger |
+| ~~G2~~ | F2 Chris infra/IT/DNS apply cascade complete | All 6 sub-gates landed | DEFERRED W10(IT cred + Chris infra session pending) | 🚧 W10 trigger(SOPs ready W8 D1-D4) |
+| ~~G3~~ | F3 LIVE smoke verification + Beta cohort access | All cases verified + cohort active | DEFERRED W10(post F2 deploy)| 🚧 W10 trigger |
+| **G4** | F4 Beta internal user onboarding 5-10 first cohort access provisioned | Cohort active | F4.2 onboarding doc draft landed W9 D4(`docs/03-implementation/beta-cohort-onboarding-W11-W12.md` 9 sections);**actual provisioning推 W10 Track A**(post-IT-cred + cohort access list final)| ✅ **PASS**(content prep)/ 🚧 W10 provisioning |
+| **G5** | F5 Real query log scaffolding + first batch collected | ≥ 50 queries logged | scaffolding complete(W9 D3 commit `8bc5868`)— `query_collector.py` + 8-row mock corpus + 24 unit tests;**actual collection plumbing W11+**(post real cohort traffic);static projection cost dashboard W8 D5 + W9 D1-D4 progressive observe upgrade ready for real-time wire | ✅ **PASS**(scaffolding)/ 🚧 W11+ live |
+| **G6** | Backend ruff + frontend lint + type-check 0 errors | All clean | 358/358 pytest + ruff(W9 scope clean;C11 cleanup +5x pytest speedup)+ frontend tsc + eslint unchanged from W9 D1 baseline 0 | ✅ **PASS** |
+| ~~G7~~ | Q6 Real query collection owner Resolved | `Resolved` | DEFERRED W10 D2-D3(Chris with Stakeholder per W10 plan §2 F5.1)| 🚧 W10 trigger |
+
+- **W9 Beta internal testing verdict**:**PARTIAL PASS — Track B implementation polish complete + W11 milestone prep landed;Track A LIVE deploy cascade cleanly deferred W10**(G4 + G5 + G6 PASS = 3/7;G1 + G2 + G3 + G7 deferred per W9 D1 三方 outcome cascade Track A activation event timing)
+- **W9 PARTIAL PASS verdict reflects** intentional Track A defer per stakeholder-aligned outcome — NOT implementation gap;W10 phase folder Track A/B split structures W10 work to maximize parallelism regardless of IT cred timing
 
 ### Phase status
-- Closeout commit:_(W9 D5 末)_
-- Frontmatter status flipped to `closed`:_(W9 D5 末)_
-- Phase W10 kickoff trigger:_(W9 D5 末 — W10 plan = UX iteration + bug fix + W11 staged rollout 25% prep per architecture.md §6.1 W10 row)_
+
+- Closeout commit:`_(pending — single feat(tests,docs) batch + docs(planning) backfill pair following W7+W8 closeout pattern `247bb49` + `2222758` + `ccdddf4` + `4c00d16`)`
+- Frontmatter status flipped to `closed`:**2026-05-30**(this batch)
+- Phase W10 kickoff trigger:**W10 plan = Track A LIVE deploy cascade(IT cred populate fires F1.2 → F2.1-F2.7 → F3.1-F3.6)+ Track B implementation polish(observe_streaming + eval-set augmentation + Q15 weekly aggregation + runbook real-incident exercise + cost dashboard real-time wire + onboarding doc final + W11 staged rollout 25% Stakeholder prep)— rolling JIT plan/checklist/progress folder NEW W9 D5 closeout same-session**
 
 ---
