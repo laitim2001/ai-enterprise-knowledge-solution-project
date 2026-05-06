@@ -23,7 +23,7 @@ from generation.citation_enrichment import build_citations
 from generation.crag import CragLoop
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
-from observability.observe import observe_async
+from observability.observe import observe_async, observe_streaming
 from retrieval.retrieval_engine import RetrievalEngine
 
 logger = structlog.get_logger(__name__)
@@ -189,9 +189,19 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         ) from exc
 
     async def event_serializer():
+        # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
+        # terminal `done` frame's model + token counts flow to Langfuse
+        # generation event(closes W9 D4 SSE flow capture carry-over)。
+        # Cancellation mid-stream still emits a generation event with
+        # status=cancelled so partial-spend cost attribution stays accurate。
         try:
             synth_stream = synthesizer.synthesize_stream(payload.query, result.chunks)
-            async for event in compose_query_stream(result, synth_stream):
+            observed = observe_streaming(
+                compose_query_stream(result, synth_stream),
+                name="api.query.stream",
+                extra_metadata_fields=("refused", "reranker_used"),
+            )
+            async for event in observed:
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             logger.info("query_stream_cancelled", query_chars=len(payload.query))

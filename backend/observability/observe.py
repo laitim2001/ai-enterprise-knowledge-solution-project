@@ -24,9 +24,10 @@ USD per query。This module is the seam where that upgrade lands。
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, TypeVar
 
 import structlog
@@ -284,4 +285,125 @@ def _emit_generation_safe(
             stage=gen_name,
             error_type=type(exc).__name__,
             error_message=str(exc),
+        )
+
+
+async def observe_streaming(
+    stream: AsyncIterator[Any],
+    *,
+    name: str,
+    done_event_type: str = "done",
+    model_field: str = "model",
+    input_tokens_field: str = "input_tokens",
+    output_tokens_field: str = "output_tokens",
+    extra_metadata_fields: tuple[str, ...] = (),
+) -> AsyncIterator[Any]:
+    """SSE async-iterator passthrough wrapper(W10 D1 F4.1 — closes W9 D4 carry-over).
+
+    Difference from `observe_async` / `observe_llm_async`(decorators on
+    result-returning coroutines):
+      - Wraps an async iterator(NOT a coroutine);events flow through
+        unchanged so SSE protocol semantics + Vercel AI SDK frame ordering
+        preserved exactly。
+      - Captures usage metadata from a terminal sentinel event matching
+        `done_event_type`(matches `compose_query_stream` final frame
+        `{"type":"done", "model":..., "input_tokens":..., "output_tokens":...}`)。
+      - Handles `asyncio.CancelledError` gracefully — client disconnect
+        mid-stream still emits a Langfuse generation event with
+        `status=cancelled` so partial-spend cost attribution remains
+        accurate(no metadata leak past the disconnect point)。
+
+    Use as a passthrough wrapper around `compose_query_stream(...)` in the
+    `/query/stream` SSE handler。Decorator form rejected because the
+    natural seam is the iterator object,not the iterator-producing function。
+
+    Args:
+        stream: Async iterator yielding SSE event dicts。`done` event must
+            be a dict for capture to fire;non-dict events pass through
+            silently(no capture attempted)。
+        name: Langfuse generation event name(e.g. "api.query.stream")。
+        done_event_type: Event `type` value signalling end-of-stream
+            (default "done" matches `compose_query_stream`)。
+        model_field / input_tokens_field / output_tokens_field: Field
+            names on the done event that carry usage data。
+        extra_metadata_fields: Additional fields pulled from the done
+            event into Langfuse metadata(e.g. `("refused", "reranker_used")`)。
+
+    H5 SECURITY:same guarantee as `observe_llm_async` — only token counts
+    + model + structured metadata flow to Langfuse。`text-delta` content
+    + `citation` payloads are NEVER captured into trace metadata。Full
+    prompt / answer remain private(per CLAUDE.md §5.5 H5)。
+
+    Cost attribution flow:
+        client connects → /query/stream → compose_query_stream yields
+        text-delta* citation* done → observe_streaming captures usage from
+        done frame → emits client.generation() with model + usage tokens →
+        Langfuse cost dashboard rolls per-query USD attribution real-time
+        (per architecture.md §9 + W11+ Beta cohort cost dashboard upgrade)。
+    """
+    client = get_langfuse_client()
+    start = time.perf_counter()
+    captured_model: str | None = None
+    captured_input_tokens: int | None = None
+    captured_output_tokens: int | None = None
+    captured_extras: dict[str, Any] = {}
+    status = "ok"
+    error_type: str | None = None
+
+    try:
+        async for event in stream:
+            if isinstance(event, dict) and event.get("type") == done_event_type:
+                model_value = event.get(model_field)
+                if model_value:
+                    captured_model = str(model_value)
+                input_value = event.get(input_tokens_field)
+                if input_value is not None:
+                    try:
+                        captured_input_tokens = int(input_value)
+                    except (TypeError, ValueError):
+                        captured_input_tokens = None
+                output_value = event.get(output_tokens_field)
+                if output_value is not None:
+                    try:
+                        captured_output_tokens = int(output_value)
+                    except (TypeError, ValueError):
+                        captured_output_tokens = None
+                for field in extra_metadata_fields:
+                    value = event.get(field)
+                    if value is not None:
+                        captured_extras[field] = value
+            yield event
+    except asyncio.CancelledError:
+        status = "cancelled"
+        raise
+    except Exception as exc:  # noqa: BLE001 — observed in finally + re-raised
+        status = "error"
+        error_type = type(exc).__name__
+        raise
+    finally:
+        duration_ms = int((time.perf_counter() - start) * 1000)
+        metadata: dict[str, Any] = {"duration_ms": duration_ms, "status": status}
+        if error_type is not None:
+            metadata["error_type"] = error_type
+        metadata.update(captured_extras)
+        log_event = "stream_complete" if status == "ok" else "stream_terminated"
+        log_kwargs: dict[str, Any] = {
+            "stage": name,
+            "status": status,
+            "model": captured_model,
+            "input_tokens": captured_input_tokens,
+            "output_tokens": captured_output_tokens,
+            "duration_ms": duration_ms,
+        }
+        if error_type is not None:
+            log_kwargs["error_type"] = error_type
+        log_kwargs.update(captured_extras)
+        _logger.info(log_event, **log_kwargs)
+        _emit_generation_safe(
+            client,
+            name,
+            model=captured_model,
+            input_tokens=captured_input_tokens,
+            output_tokens=captured_output_tokens,
+            metadata=metadata,
         )

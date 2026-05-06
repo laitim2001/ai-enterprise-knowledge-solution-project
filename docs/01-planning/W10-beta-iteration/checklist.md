@@ -1,14 +1,14 @@
 ---
 phase: W10-beta-iteration
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-05-30
+status: active
+last_updated: 2026-06-02
 ---
 
 # Phase W10 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration:LIVE deploy 2x;static 0.5x)。
-> Status:`draft` 自 2026-05-30 W9 D5 closeout cascade。
+> Status:`active` flipped 2026-06-02 W10 D1 Track B kickoff(Track A still blocked on IT cred populate event)。
 
 ## F1 — Q11 final operational Resolved + R-B1 closure(Track A — IT cred trigger)
 
@@ -38,8 +38,8 @@ last_updated: 2026-05-30
 
 ## F4 — Implementation polish(Track B — IT-cred-independent)
 
-- [ ] F4.1 `observe_streaming` decorator NEW for `/query/stream` SSE handler(W9 D4 deferred)
-- [ ] F4.2 Eval-set augmentation pipeline(`query_collector.py` real query corpus → eval set merge tool)
+- [x] F4.1 `observe_streaming` SSE wrapper NEW for `/query/stream` handler — **W10 D1 done 2026-06-02** — `backend/observability/observe.py` async-iterator passthrough wrapper(NOT decorator — natural seam is the iterator,not the iterator-producing fn);captures terminal `done` frame model + token counts → `client.generation()` emit;handles `asyncio.CancelledError` graceful(status=cancelled)+ exception(status=error)+ no-op when client absent + emit-failure swallowed;H5 SECURITY:wrapper passes ONLY tokens + model + structured metadata to Langfuse,NEVER text-delta content / citation chunk_text(test asserts via `repr(kwargs)` substring negative);wired to `/query/stream` route with `extra_metadata_fields=("refused", "reranker_used")`;8 tests pass(C07 + C08)
+- [x] F4.2 Eval-set augmentation pipeline — **W10 D1 done 2026-06-02** — `backend/eval/eval_set_augmentor.py` NEW C06 module + CLI(`python -m eval.eval_set_augmentor --eval-set ... --real-corpus ... --output ... [--dry-run] [--start-qid N]`);real query corpus(query_collector YAML)→ candidate eval-set entry stubs matching `eval-set-v1-draft.yaml` Q001+ schema(query_phrasing_source=real_user_W10 + difficulty="" + query_type=oos/single_step_lookup heuristic + ground_truth empty for SME + annotation.validated=False + provenance notes embed hash/duration_ms/crag_triggered/user_oid_redacted);dedup against existing eval set canonical hashes + within-corpus;**Karpathy §1.2 simplicity-first**:no LLM topic classification + no difficulty heuristic + no in-place overwrite(safety guard ValueError when output_path == eval_set_path)+ no external API;`MergeReport` dataclass with stable contract for W11+ RAGAs runner integration;canonicalisation lockstep with `query_collector._canonical` enforced via guard test;20 tests pass(C06)
 - [ ] F4.3 Q15 manual update frequency signal scaffold(weekly cohort feedback aggregation report from Langfuse + Slack)
 - [ ] F4.4 F5.5 Pixel diff snapshots installation(if Vitest/Playwright harness available;non-Beta-blocking)
 

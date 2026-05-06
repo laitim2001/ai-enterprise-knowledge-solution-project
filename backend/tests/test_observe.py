@@ -14,7 +14,9 @@ a `MagicMock` for assertion;production code path goes through `init_tracer`.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
@@ -22,7 +24,7 @@ import pytest
 import structlog
 
 from observability import langfuse_tracer
-from observability.observe import observe_async, observe_llm_async
+from observability.observe import observe_async, observe_llm_async, observe_streaming
 
 
 @pytest.fixture(autouse=True)
@@ -407,3 +409,216 @@ async def test_llm_decorator_h5_no_prompt_or_answer_text_emitted() -> None:
     assert "output" not in kwargs
     # Only structured fields:name, model, usage, metadata
     assert set(kwargs.keys()) <= {"name", "model", "usage", "metadata"}
+
+
+# ===========================================================================
+# observe_streaming — W10 D1 F4.1(SSE flow capture variant;closes W9 D4 carry-over)
+# ===========================================================================
+
+
+async def _make_stream(events: list[dict]) -> AsyncIterator[dict]:
+    """Build a tiny async iterator yielding the supplied events in order。"""
+    for event in events:
+        yield event
+
+
+async def test_observe_streaming_emits_generation_with_done_frame() -> None:
+    """Terminal `done` event drives Langfuse `client.generation()` emit。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    events = [
+        {"type": "text-delta", "content": "Hello "},
+        {"type": "text-delta", "content": "world."},
+        {
+            "type": "done",
+            "model": "gpt-5-5",
+            "input_tokens": 1024,
+            "output_tokens": 256,
+            "latency_ms": 1500,
+            "refused": False,
+            "reranker_used": "cohere-v3.5",
+        },
+    ]
+
+    seen: list[dict] = []
+    async for event in observe_streaming(
+        _make_stream(events),
+        name="api.query.stream",
+        extra_metadata_fields=("refused", "reranker_used"),
+    ):
+        seen.append(event)
+
+    # Passthrough preserves order + content unchanged
+    assert seen == events
+
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["name"] == "api.query.stream"
+    assert kwargs["model"] == "gpt-5-5"
+    assert kwargs["usage"] == {"input": 1024, "output": 256, "unit": "TOKENS"}
+    md = kwargs["metadata"]
+    assert md["status"] == "ok"
+    assert md["duration_ms"] >= 0
+    assert md["refused"] is False
+    assert md["reranker_used"] == "cohere-v3.5"
+
+
+async def test_observe_streaming_no_done_frame_emits_generation_without_usage() -> None:
+    """Stream ends without `done` sentinel — generation emitted with no usage。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    events = [
+        {"type": "text-delta", "content": "partial "},
+        {"type": "text-delta", "content": "no terminal frame"},
+    ]
+
+    async for _ in observe_streaming(_make_stream(events), name="stream.no-done"):
+        pass
+
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["name"] == "stream.no-done"
+    assert "model" not in kwargs
+    assert "usage" not in kwargs
+    assert kwargs["metadata"]["status"] == "ok"
+
+
+async def test_observe_streaming_no_op_when_client_absent() -> None:
+    """Local dev / CI — no client → wrapper passes events through silently。"""
+    events = [
+        {"type": "text-delta", "content": "hi"},
+        {"type": "done", "model": "gpt-5-5", "input_tokens": 5, "output_tokens": 3},
+    ]
+
+    seen = [event async for event in observe_streaming(_make_stream(events), name="solo.test")]
+    assert seen == events
+
+
+async def test_observe_streaming_handles_cancellation_with_status_cancelled() -> None:
+    """Mid-stream `asyncio.CancelledError` → emit generation `status=cancelled`。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    async def _stream_then_cancel() -> AsyncIterator[dict]:
+        yield {"type": "text-delta", "content": "before-cancel"}
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        async for _ in observe_streaming(_stream_then_cancel(), name="stream.cancel"):
+            pass
+
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["metadata"]["status"] == "cancelled"
+    # No usage captured(no done frame seen before cancellation)
+    assert "usage" not in kwargs
+    assert "model" not in kwargs
+
+
+async def test_observe_streaming_handles_exception_with_status_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Mid-stream exception → emit generation `status=error` + propagate。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+    caplog.set_level(logging.INFO, logger="ekp.observe")
+
+    async def _stream_then_raise() -> AsyncIterator[dict]:
+        yield {"type": "text-delta", "content": "before-error"}
+        raise RuntimeError("synth blew up mid-stream")
+
+    with pytest.raises(RuntimeError, match="synth blew up"):
+        async for _ in observe_streaming(_stream_then_raise(), name="stream.error"):
+            pass
+
+    fake_client.generation.assert_called_once()
+    kwargs = fake_client.generation.call_args.kwargs
+    assert kwargs["metadata"]["status"] == "error"
+    assert kwargs["metadata"]["error_type"] == "RuntimeError"
+
+    blob = "\n".join(r.getMessage() for r in caplog.records if r.name == "ekp.observe")
+    assert "stream_terminated" in blob
+
+
+async def test_observe_streaming_swallows_emit_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`client.generation()` raises → wrapper still passes events + warns。"""
+    fake_client = MagicMock()
+    fake_client.generation.side_effect = RuntimeError("network down")
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+    caplog.set_level(logging.WARNING, logger="ekp.observe")
+
+    events = [
+        {"type": "text-delta", "content": "ok"},
+        {"type": "done", "model": "gpt-5-5", "input_tokens": 10, "output_tokens": 5},
+    ]
+    seen = [event async for event in observe_streaming(_make_stream(events), name="emit.fail")]
+    assert seen == events
+
+    warn_msgs = "\n".join(
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "ekp.observe" and r.levelno >= logging.WARNING
+    )
+    assert "generation_emit_failed" in warn_msgs
+
+
+async def test_observe_streaming_h5_no_text_delta_content_in_metadata() -> None:
+    """H5 SECURITY:text-delta content + citation payloads NEVER captured into metadata。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    events = [
+        {"type": "text-delta", "content": "secret prompt content here"},
+        {"type": "citation", "citation": {"chunk_id": "c1", "chunk_text": "private chunk"}},
+        {
+            "type": "done",
+            "model": "gpt-5-5",
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "refused": False,
+        },
+    ]
+
+    async for _ in observe_streaming(
+        _make_stream(events),
+        name="h5.privacy",
+        extra_metadata_fields=("refused",),
+    ):
+        pass
+
+    kwargs = fake_client.generation.call_args.kwargs
+    serialised = repr(kwargs)
+    # H5 hard guarantees:no text-delta content + no citation chunk_text in payload
+    assert "secret prompt content here" not in serialised
+    assert "private chunk" not in serialised
+    assert "input" not in kwargs  # raw input field not emitted
+    assert "output" not in kwargs  # raw output field not emitted
+    # Only structured shape:name, model, usage, metadata
+    assert set(kwargs.keys()) <= {"name", "model", "usage", "metadata"}
+
+
+async def test_observe_streaming_extra_metadata_fields_filter_to_done_only() -> None:
+    """`extra_metadata_fields` only pulled from the `done` event,not other events。"""
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    events = [
+        # Fake non-done event with `refused` field — must NOT leak into metadata
+        {"type": "text-delta", "content": "x", "refused": True},
+        {"type": "done", "model": "m", "input_tokens": 1, "output_tokens": 1, "refused": False},
+    ]
+
+    async for _ in observe_streaming(
+        _make_stream(events),
+        name="filter.test",
+        extra_metadata_fields=("refused",),
+    ):
+        pass
+
+    md = fake_client.generation.call_args.kwargs["metadata"]
+    # refused captured from the done frame(False),not from the text-delta(True)
+    assert md["refused"] is False

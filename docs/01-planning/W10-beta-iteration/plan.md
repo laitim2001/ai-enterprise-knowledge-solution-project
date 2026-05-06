@@ -4,7 +4,7 @@ name: "Beta Iteration — IT cred-bridge polish + LIVE deploy cascade trigger wi
 sprint_week: W10
 start_date: 2026-06-02            # tentative — assumes W9 closed 2026-05-30 + IT cred target early June real
 end_date: 2026-06-06              # 5 working days
-status: draft                     # `draft` 自 2026-05-30 W9 D5 closeout cascade(per PROCESS.md §2.3 rolling-JIT kickoff)
+status: active                    # `draft → active` flipped 2026-06-02 W10 D1 implementation start(Track B IT-cred-independent kickoff per W9 D1 三方 outcome cascade)
 spec_refs:
   - architecture.md §6.1 W10 row             # UX iteration + W11 staged rollout prep
   - architecture.md §6.2 Beta + Rollout      # W7-W12 timeline
@@ -191,6 +191,7 @@ Carry-overs from `W09-beta-internal-testing/progress.md` retro § Carry-overs(W9
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-30 | Initial draft(W9 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W9 closeout sign-off + IT cred populate trigger | Chris(pending approve to flip active) |
+| 2026-06-02 | `draft → active` flip — W10 D1 implementation start | Chris W9 closeout sign-off received;Track B kickoff IT-cred-independent per plan §1 split;Track A still blocked on IT cred populate event(target ~2026-06-02 to 2026-06-07) | Chris(W10 D1 sign-off) |
 
 ---
 
