@@ -110,7 +110,8 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 
 ### Commit reference
 
-- W10 D1 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
+- W10 D1 commit `85aa8f4`(feat — Track B F4.1 observe_streaming + F4.2 eval-set augmentor batch;C06 + C07 + C08)
+- W10 D1 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
 
 ---
 
