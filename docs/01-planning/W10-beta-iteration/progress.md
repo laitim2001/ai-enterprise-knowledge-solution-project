@@ -166,7 +166,83 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 ### Commit reference
 
 - W10 D2 commit `86ecf7f`(feat — F4.3 Q15 weekly signal scaffold + Track A monitor;C07)
-- W10 D2 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
+- W10 D2 backfill commit `9c391a5`(docs(planning) — hash backfill to W10 D2 entry per R2)
+
+---
+
+## Day 3 — 2026-06-04: F5.2 Cost dashboard real-time wire(C07 + C08)
+
+**Action**:Track B implementation polish continues — F5.2 plumbs Langfuse generations API into `/observability/cost-summary` for real-time per-deployment USD attribution(closes W9 D3 Live query collection plumbing carry-over via the cost-attribution branch);Track A monitor pass-through unchanged。
+
+- **F5.2 ✅ done — Real-time cost dashboard hybrid endpoint(C07 + C08)**
+  - `backend/observability/realtime_cost.py` NEW C07 module
+    - `_PRICING_TABLE` baseline:per-1k-token rates for `gpt-5-5`($0.005 input + $0.015 output)+ `gpt-5-4-mini`($0.00015 + $0.00060)+ `text-embedding-3-large`($0.00013 + $0.0)+ Cohere Rerank v3.5(per-call $0.001)+ Cohere Rerank v4-pro(+5% bump per ADR-0012 reaffirm)
+    - `_rate_for(deployment)` lookup:case-insensitive + prefix-tolerant(`gpt-5-5-prod-eastus2` → matches `gpt-5-5` rate row)
+    - `aggregate_generations(events)` core:groups by deployment + sums tokens / call counts;**unknown deployments preserved as zero-USD rows**(signal not silent drop;flagged「missing rate — add to _PRICING_TABLE before Beta cohort gate」);known rows ordered by pricing-table iteration + unknown bucket last
+    - `fetch_realtime_usage(client, *, window_hours=24, fetcher=None)` graceful wrapper:**4 status semantics**(`no_client` / `sdk_method_missing` / `fetch_failed` / `ok`);test-injectable `fetcher` callable avoids SDK roundtrip in unit tests;production `_default_fetcher` duck-types Langfuse 2.x SDK shapes(handles `{"data": [...]}` envelope OR bare list + `usage.{input/output}` OR `usage.{input_tokens/output_tokens}` field variants + object `.model`/`.usage` attribute access OR dict access)
+    - `total_realtime_usd(rows)` aggregator with stable rounding(4 decimal places)
+  - `backend/api/schemas/observability.py` extended(C08)
+    - NEW `RealtimeUsageRow` Pydantic schema(deployment + component + call_count + input_tokens + output_tokens + estimated_usd + rate_note)
+    - `CostSummary` extended:`realtime_usage` list[RealtimeUsageRow] + `realtime_total_usd` + `realtime_status` + `realtime_window_hours` + `pricing_baseline` — all default to safe values so backward-compatible response when wrapper degrades
+  - `backend/api/routes/observability.py` upgrade(C08)
+    - `/observability/cost-summary` accepts `?window_hours=N` Query param(`ge=1, le=720` Pydantic validation → 422 on out-of-range)
+    - Hybrid response:**static projection rows preserved + realtime usage embedded side-by-side**(no double-count — static is monthly projection,realtime is rolling N-hour actuals)
+    - Endpoint **always returns 200** even when fetch fails(observability never blocks dashboard render per Karpathy §1.2 + H6 read-side baseline);failure mode encoded in `realtime_status` string field
+  - **Karpathy §1.2 simplicity-first**:
+    - No live LLM API roundtrip required for tests(fetcher injection)
+    - No DB layer(in-memory aggregation per request;cache W11+ when traffic exposes hot path)
+    - **Pricing table = placeholder** explicitly labelled `placeholder_publicly_quoted_rates_2026-Q2`;F5.4 prep deck flag for stakeholder spend gate review before Beta cohort onboarding
+    - Graceful degradation via 4 status states(no client / SDK method missing / fetch failed / ok)— UI dashboard renders predictable empty-state per status string
+  - **Tests**:`backend/tests/test_realtime_cost.py` NEW +30 cases + `tests/test_observability_routes.py` +7 endpoint cases
+    - Pricing lookup:exact match / prefix match / case-insensitive / unknown returns None / empty / whitespace
+    - Aggregation:groups by deployment + sums / per-token rate USD computation / per-call rate Cohere / unknown deployment zero-USD / known + unknown coexist / known-rows-first ordering / empty list / zero-token edge case
+    - Total aggregator:sum + rounding / empty list = 0
+    - Fetch wrapper:no client status / SDK method missing / fetch raises caught / ok path aggregates / empty events ok / window_hours propagates
+    - Default fetcher duck-typing:method absent raises / dict envelope unwrap / bare list / input_tokens key variant / object attribute shape / missing usage / missing model
+    - Endpoint:no client → empty + status / SDK method missing / fetch failed → 200 with status / ok → aggregated rows + total > 0 / window_hours query param propagates / out-of-range = 422 / static projection unchanged
+    - Smoke contracts:dataclass field set stability + pricing_baseline label descriptive
+- **Tests**:**419 → 456**(+37 zero regression — full backend pytest sweep `pytest -q` exit 0 in 56.48s)
+- **Lint**:`ruff check --fix` cleaned 1 stale duplicate-class block in schema(F811 — leftover from extension edit)+ 1 import-grouping(I001 in tests)+ unused `Callable` import
+
+### Track A status(W10 D3 monitor pass-through,unchanged)
+
+- ⏸ IT cred populate event still NOT fired(real-calendar W10 D3 = 2026-06-04;target window 2026-06-02 to 2026-06-07 per W9 D1 三方 outcome;**3-day buffer remaining within target**)
+- 🟡 R-B1 status:**Active monitor preserved unchanged**(re-escalation deadline 2026-06-08 = 4 days out;within target window so 🔴 trigger NOT armed)
+- Q11 status:`Resolved` decision-level + **operational committed early June real** unchanged
+
+### Track B progress
+
+- F4.1 ✅(observe_streaming;W10 D1)
+- F4.2 ✅(eval-set augmentation pipeline;W10 D1)
+- F4.3 ✅(weekly_signal_report Q15 scaffold;W10 D2)
+- F5.2 ✅(real-time cost dashboard hybrid endpoint;W10 D3 today)
+- F4.4 ⏳ F5.5 Pixel diff snapshots installation(W10 D4 candidate;non-Beta-blocking)
+- F5.1 ⏳ Runbook real-incident exercise(W10 D4-D5;blocked on staged ACA env per Track A)
+- F5.3 ⏳ Onboarding doc final review(W10 D4-D5;blocked on Chris IT helpdesk contact populate)
+- F5.4 ⏳ W11 staged rollout 25% prep deck(W10 D4-D5;**partially unblocked** — F5.2 pricing baseline placeholder labelling now flags Q4 deployment rate confirmation as gate item)
+
+### Decisions / OQ summary
+
+- No architectural change(`realtime_cost` = additive C07 module extending observability suite;`CostSummary` schema extension is backward-compatible defaulting per Pydantic;within architecture.md §7.4 + §9 spec scope)
+- No ADR triggered(spec implementation per Karpathy §1.3 surgical;ADR-0012 still reserved for W10 Track A IT cred populate trigger)
+- No OQ status change(Q11 + Q15 + Q6 unchanged;**Q15 partial signal pipeline now end-to-end** — F4.3 weekly_signal_report Markdown + F5.2 real-time per-deployment USD;real-cohort signal still 🔴 Open until traffic flows post-IT-cred populate W11+)
+- No R-B1 status change(🟡 Active monitor preserved per real-calendar within-target-window context)
+
+### Open / blocked
+
+- ⏸ Track A cascade still blocked on IT cred populate event;Track B continues unblocked
+- ⏸ F4.4 Pixel diff harness installation check(W10 D4 candidate)
+- ⏸ F5.1 Runbook real-incident exercise(staged ACA env dependency)
+- ⏸ F5.3 Onboarding doc final review(IT helpdesk contact dependency)
+- ⏸ **NEW** Q4 deployment pricing rate confirmation(F5.2 placeholder rate baseline → real Beta tenant rates;blocker before Beta cohort spend gate per F5.4 prep deck)
+
+### Commit reference
+
+- W10 D3 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
+
+---
+
+## Retro(填於 W10 D5 末)
 
 ### What worked
 _(W10 D5 末 fill)_
