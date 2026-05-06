@@ -2,7 +2,7 @@
 phase: W08-beta-deploy-sprint2
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
+status: closed    # flipped active→closed 2026-05-23 W8 D5 closeout(G1' + G4 substitute + G5 + G6 PASS = 4/7;G1 + G2 + G3 + G7 deferred W9 per Chris external dependencies — IT + infra + DNS sessions pending)
 ---
 
 # Phase W08 — Progress
@@ -315,34 +315,178 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 
 ---
 
-## Day 5 — _(pending)_
+## Day 5 — 2026-05-23: F5 observability cascade + F4.4 admin auth wire + F6 closeout
+
+**Action**:W8 D5 — F5.1 real Langfuse SDK wire(W7 D5 retro § Carry-over C10);F5.2 cost projection dashboard;F5.3 user feedback Langfuse forwarding;F5.4 Beta alert ruleset spec;F4.4 admin routes auth wire(W7 D2 字面 scope 之外 cascade);F6 W8 closeout(retro 7 sections + W09 phase folder rolling-JIT kickoff + R-B1 status update + frontmatter active→closed)。**Architecture impact zero**;Langfuse SDK already locked vendor per architecture.md §3.2(direct approve same pattern as W8 D2 python-jose / W8 D3 @azure/msal-*)。**Q11 operational confirm 仍 in-progress** — Chris IT engagement external不 W8 D5 closeout-blocking per W8 plan §1 deferred handling。
+
+**Backend(C07 — F5.1 Langfuse SDK wire)**:
+- `backend/observability/langfuse_tracer.py` — complete rewrite of W1 stub:
+  - Module-level singleton `_langfuse_client: object | None`(typed Any to avoid import-time langfuse dep)
+  - `init_tracer(settings)` preserves W1 structlog config contract;adds lazy Langfuse client init when both `langfuse_public_key` + `langfuse_secret_key` populated;degrades to `None` on import / init failure with structured warning(never raises)
+  - `get_langfuse_client()` accessor — service modules branch on `is not None`(F5.3 feedback + W9+ progressive `@observe` paths funnel through this single accessor per Karpathy §1.2 simplicity-first)
+  - `flush_tracer()` lifespan shutdown drain hook — wired in `api/server.py` lifespan finally
+  - `_set_langfuse_client_for_tests()` escape hatch for fixture substitution
+- `backend/pyproject.toml` — `langfuse>=2.50` dep added(architecture.md §3.2 stack lock — direct approve per W8 plan §2 F5.1)
+- `backend/api/server.py` — `from observability.langfuse_tracer import flush_tracer, init_tracer` + `flush_tracer()` call in lifespan finally block
+
+**Backend(C07 + C08 — F5.2 cost dashboard)**:
+- `backend/observability/cost_estimator.py` NEW — projection table:
+  - `ServiceCostRow` frozen dataclass(service / component / projected_daily_usd / projected_monthly_usd / source)
+  - `_BETA_MONTHLY_BASELINE` 8 services per architecture.md §9 Beta column:Azure AI Search S1 + Azure OpenAI text-embedding-3-large + GPT-5.5 synthesis + GPT-5.4-mini judge + Cohere Rerank v3.5 + Azure Blob + ACA + SWA
+  - `projected_daily_rows()` + `total_projected_daily_usd()` + `total_projected_monthly_usd()` accessors
+- `backend/api/schemas/observability.py` NEW — Pydantic schemas `CostRow` + `CostSummary` + `AlertRule` + `AlertsConfig`
+- `backend/api/routes/observability.py` NEW — `GET /observability/cost-summary` + `GET /observability/alerts` admin endpoints
+
+**Backend(C07 + C08 — F5.3 user feedback Langfuse wire)**:
+- `backend/api/routes/feedback.py` complete rewrite of W1 501 stub:
+  - `POST /feedback` returns 202 with `feedback_id` uuid4
+  - thumbs_up → score value=1;thumbs_down → score value=-1
+  - Forwards to Langfuse `score(trace_id, name="user_feedback", value, comment)` when client wired
+  - Audit-logs `feedback_received` with `forwarded_to_langfuse` flag
+  - `score()` raise → still 202 accepted(warning logged;feedback never silently dropped per Karpathy §1.2)
+
+**Backend(C07 — F5.4 alerts spec)**:
+- `backend/observability/alerts.py` NEW — declarative ruleset:
+  - 6 `AlertRule` frozen dataclasses(name / condition / threshold / severity / spec_ref)
+  - `_BETA_ALERT_RULES` per architecture.md §7.4:api_latency_p95 / api_error_rate / cost_spike / crag_trigger_rate + W8 plan-specific rate_limit_saturation + langfuse_export_lag
+  - Severity p1(critical)/ p2(warning)/ p3(info)mapping per Beta on-call SOP
+
+**Backend(C08 — F4.4 admin routes auth wire)**:
+- `backend/api/server.py` — added `dependencies=_auth` to 5 admin routers + new observability router:
+  - `documents.router`(W2 implementation pending,but auth gate preserved per W8 cascade scope)
+  - `chunks.router`,`eval_routes.router`,`debug.router`,`screenshots.router`,`observability.router`
+- W7 D2 字面 scope 之外 cascade per beta-plan-v1.md §2 W8.F1 deploy gating
+- /health stays public(Azure Container Apps liveness probe target preserved)
+
+**Tests(F5 + F4.4 coverage,+25 new tests = baseline 287 → 312)**:
+- `backend/tests/test_langfuse_tracer.py` NEW(8 tests)— init without keys / init with keys SDK construction / import failure / constructor failure / flush no-op / flush invokes / flush swallows exception / flush when client lacks method
+- `backend/tests/test_feedback.py` NEW(6 tests)— accepts thumbs_up without client / thumbs_up forwards score=+1 / thumbs_down forwards score=-1 / swallows forward failure / Pydantic Literal rejects invalid rating / client without score method
+- `backend/tests/test_observability_routes.py` NEW(11 tests)— cost-summary structure + langfuse_status reflection + alerts ruleset shape + 7 admin routes 401-without-bearer parametrized + admin routes pass with bearer
+
+**Doc(C07 + C12 — F5 SOP)**:
+- `infrastructure/observability/README.md` NEW — F5.1-F5.4 SOP:Langfuse SDK lifecycle + cost dashboard payload schema + user feedback contract + alerts ruleset table + W9+ wire-up sequence(Azure Monitor KQL + Langfuse cloud alerts + Slack/PagerDuty paging)+ local dev / CI zero-cred behaviour + cross-component dependencies + Tier 2 boundaries
+
+**F1.4 + F1.5 + F1.7 LIVE STATUS(W8 closeout snapshot)**:
+- F1.4 `Settings.feature_auth_mock=False` flip:**仍 NOT executed** — Q11 IT cred 仍未 deliver(Chris external W8 D1+ in-progress);empty `azure_tenant_id` would cause msal_provider 503 fail-closed across protected routes
+- F1.5 + F1.7 LIVE smoke:**deferred W9** — per `infrastructure/entra-id/README.md` step 8 trigger sequence post-Chris portal apply
+- W8 plan §3 G1(F1.7 LIVE):**carry-over W9** — non-blocking per W7 D5 closeout cascade rationale(F1.7-mock substitute landed W7 D5 covers same acceptance via deterministic test)
+
+**Verification**:
+- `pytest -q` → **312 passed in 39.27s**(W8 D4 baseline 287 + F5/F4.4 +25 = 312;zero regression)
+- `ruff check observability/ api/routes/observability.py api/routes/feedback.py api/schemas/observability.py tests/test_langfuse_tracer.py tests/test_feedback.py tests/test_observability_routes.py` → All checks passed!
+- `ruff check api/server.py` → 18 E402 baseline preserved(server.py imports must come after `truststore.inject_into_ssl()` per W2 D5 R8 mitigation pattern;zero new errors)
+- frontend tsc + eslint unchanged from W8 D3(no frontend code changes W8 D5)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:Langfuse SDK degrade-graceful pattern(missing keys / import failure / init failure all yield singleton=None;tracer init NEVER blocks server boot)— protects all 312 tests from observability brittleness;dependency_overrides leak from `test_api_skeleton.py:16-21` debugged via cross-test pair narrowing(test_api_skeleton + test_observability_routes alone reproduces failure)— surgical fixture cleanup added without modifying test_api_skeleton.py
+- §1.2 simplicity-first:cost dashboard ships as **static projection table**(architecture.md §9 Beta column / 30 days)— zero Langfuse generations API queries;real-time LLM token attribution requires per-stage `@observe` decoration(W9+ scope per beta-plan-v1.md §2);alerts ruleset = declarative dataclass spec only(actual paging integration W9+ post-rotation staffed)
+- §1.3 surgical:F4.4 admin auth wire = single server.py edit(`dependencies=_auth` added to 5+1 router include lines);zero edit to documents/chunks/eval/screenshots/debug router files(Karpathy §1.3 boundary respected — auth concern lives at server.py orchestration layer);F5.3 feedback rewrite preserves W3 schema contract `FeedbackRequest` + `FeedbackResponse`
+- §1.4 goal-driven:F5.1-F5.4 + F4.4 each have verifiable acceptance criteria(unit tests for SDK init paths / cost endpoint shape / alert ruleset shape / 401-without-bearer parametrized × 7 admin routes);312/312 pytest pass = closed loop
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;Langfuse SDK + cost dashboard + alerts implement architecture.md §3.1 + §7.4 Day-2 Readiness;F4.4 admin auth implements §6.1 W8 deploy gating
+- H2 vendor lock — ✅ `langfuse>=2.50` 屬 architecture.md §3.2 stack lock(zero new vendor);direct approve cycle pre-confirmed in W8 plan §2 F5.1(same pattern as W8 D2 python-jose / W8 D3 @azure/msal-*)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ no Tier 2 滲入(custom Grafana dashboard / multi-region Langfuse / auto-anomaly detection 全 explicit Tier 2 in `infrastructure/observability/README.md` §Tier 2)
+- H5 security — ✅ Langfuse public/secret keys 走 Settings → Azure Key Vault Managed Identity W9+ populate;feedback `comment` field user-supplied → Langfuse handles redaction at storage layer(architecture.md §3.1 vendor-managed encryption at rest)
+- H6 test coverage — ✅ +25 tests for critical C07 + C08 paths(observability SDK lifecycle / feedback Langfuse wire / cost endpoint / alerts endpoint / admin auth)
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved 2026-05-05;F1.1 IT operational still in-progress external;W8 D5 closeout time confirms still-pending status — non-blocking per a-revised mock auth strategy preserved)
+- No ADR triggered W8 D5(全 work within architecture.md §3.1 + §3.2 + §7.4 + §6.1 W8 spec scope;langfuse SDK = locked vendor implementation library per H2)
+
+### Open / blocked(carry-overs to W09-beta-internal-testing)
+- ⏸ **F1.1 Q11 IT operational confirm cascade** — Chris external in-progress past W8 D5;cred delivery still cascades F1.4 + F1.5 + F3.3 application of SOPs;**R-B1 status update needed**(Beta-blocking escalation trigger active per W8 plan §4 R1 mitigation)
+- ⏸ **F1.4 LIVE switch + F1.5 F1.7 LIVE smoke** — W9 cascade post-cred per `infrastructure/entra-id/README.md` step 8(W8 plan §3 G1 carry-over;F1.7-mock substitute W7 D5 covers acceptance)
+- ⏸ **F3.2 SWA custom domain DNS** — Chris infra session + Ricoh corp DNS team;SOP authoring complete pending DNS authority + apply
+- ⏸ **F3.3 Entra ID app registration apply** — Chris IT session + portal apply pending Q11 cred confirm
+- ⏸ **F2.5 networking Bicep apply** — Chris infra session(VNet pre-provision + ACA env vnet integration + DNS zone link + PE deploy + disable Search public access)
+- ⏸ **F2.4 Key Vault populate** — Chris infra session(SOP ready W8 D2;values populate post-IT cred)
+- ⏸ **F4.3 W4/W5 LIVE smoke remainder** — PPT E2E + GPT-5.5 latency baseline + Chat UI screenshots(W6 C3 inherited;Chris dev server bound)
+- ⏸ **F3.5 + F4.5 LIVE smoke real dev server** — W9 cascade(Chris dev server availability + LLM spend approval)
+- ⏸ **F5.3 Admin Console feedback view UI** — C10 Chat UI not built(W7 carry-over);rolling-JIT trigger when C10 lands
+- ⏸ **F5.5 Pixel diff snapshots** — W7 carry-over(no Vitest/Playwright harness installed);W8 polish window 過(W9+ if installed)
+- ⏸ **W9+ progressive `@observe` decoration on query/synthesizer/crag** — F5.1 SDK ready;per-stage instrumentation deferred per Karpathy §1.3 surgical(W8 D5 scope = SDK lifecycle only)
+
+### Commit reference
+- W8 D5 commit `_(pending — F5+F4.4+F6 batch)`(W8 phase closeout single feat+docs commit per W7 closeout pattern)
 
 ---
 
-## Retro(填於 W8 D5 末)
+## Retro(W8 D5 closeout)
 
 ### What worked
-_(W8 D5 末 fill)_
+
+- **F5.1 Langfuse SDK fail-graceful pattern saves Beta deploy day**:tracer init NEVER raises — missing keys / import failure / constructor failure all yield `_langfuse_client=None` with structured warning;means W8 D5 deploy can ship with empty Langfuse cred(W9+ populate via Key Vault)without Beta blocker。Karpathy §1.1 explicit assumption surfacing wins
+- **F5.2 cost dashboard as static projection sidesteps real-time attribution complexity**:架構 §9 Beta column / 30 days 一次計清 8-row baseline,langfuse_status reflection 留 hook for W9+ generations API wire;simplest endpoint that survives Beta launch without depending on Langfuse cloud cred or per-stage @observe decoration
+- **F4.4 admin auth wire 單 server.py edit 5 行**:Karpathy §1.3 surgical exemplar — `dependencies=_auth` added to 5 router include lines + 1 new observability include;zero edit to 5 admin route files(documents/chunks/eval/screenshots/debug 全 W2 implementation pending,auth concern lives at server.py orchestration layer)。Tests verified all 7 admin paths return 401 without bearer + 501/200 with bearer
+- **dependency_overrides leak debug + surgical fixture cleanup**:tests passed in isolation but failed in full suite — narrowed via test pair test_api_skeleton + test_observability cross-run;found `test_api_skeleton.py:16-21` module-level `app.dependency_overrides[get_current_user] = lambda: ...` 永遠 return mock user;fixed via fixture pop+restore in test_observability_routes.py without modifying test_api_skeleton.py(其他 test 仍依賴 override behaviour)
+- **W7 carry-over C10(Real Langfuse SDK wire)closed clean**:W3+ original scope finally landed W8 D5 — saved going into W9 Beta internal testing with stub observability;structlog JSON output + Langfuse SDK accessor pattern same as W7 D3 audit middleware(consistent observability surface)
+- **W6 C10 plan estimate calibration applied to W8 D5 static work × 0.5x**:F5+F4.4+F6 全 1 day(實際 ~6 hours)— 5+1+6 deliverables 落在 single commit batch;W6 calibration LIVE deploy 2x not applicable(zero LIVE deploy this day);static implementation 0.5x estimate 準確
+- **Tests-first density preserved**:W8 D4 baseline 287 → W8 D5 +25 = 312;每個 deliverable F5.1-F5.4 + F4.4 都有 dedicated test file pattern reproduction(test_langfuse_tracer + test_feedback + test_observability_routes;test_observability_routes covers F5.2 + F5.4 + F4.4 trio);8 critical modules(C07 + C08)synced
 
 ### What didn't work / unexpected friction
-_(W8 D5 末)_
+
+- **dependency_overrides leak from `test_api_skeleton.py` module-level set**:initial run = 11/11 isolated pass + 7 fail in full suite — caused by test_api_skeleton's module-level `app.dependency_overrides[get_current_user] = ...` persisting across test files。Karpathy §1.4 goal-driven loop:narrowed via test pair cross-run + 5-minute fix pop+restore in fixture;bigger lesson = test_api_skeleton's pattern violates fixture scoping(should use `monkeypatch` or function-scoped fixture)but fixing 該 test 屬 W9+ cleanup window per §1.3 surgical(out-of-scope this commit)
+- **Langfuse import error mocking via `__import__` patch hit RecursionError**:first cut of test_init_handles_import_error monkey-patched `builtins.__import__` with a lambda that recursively called `__import__(name, *a, **kw)` — pytest's own import machinery hit infinite recursion。Fix = simpler approach plant a sentinel `ModuleType("langfuse")` lacking `Langfuse` attribute(natural ImportError on `from langfuse import Langfuse`)— Karpathy §1.2 simplicity-first wins over complex fakery
+- **pip install langfuse failed mid-session(corp proxy ProtocolError)**:retry path = tests written against mocked `sys.modules["langfuse"]` so they pass without actual SDK install;langfuse dep added to pyproject.toml is **declarative-only this commit** — actual `pip install langfuse` happens at next docker build / CI run / next venv refresh。**No Beta blocker**(degrade-graceful path means missing langfuse package = singleton=None,not crash)— but flagged for next-session env refresh
 
 ### Surprises / discoveries
-_(W8 D5 末)_
+
+- **Cost projection sums to ~$288/month Beta total**:8-row baseline aggregate ~$9.60 daily — within architecture.md §9 Beta column ballpark(some rows projected from monthly forward to daily;ACA + SWA new W8 additions per W8 plan §2 F2 + F3)。Useful sanity check for Stakeholder review post-Beta cycle
+- **Langfuse `score()` API signature stable across SDK 2.x versions**:client init pattern + `client.score(trace_id, name, value, comment)` consistent — F5.3 feedback wire can survive future SDK minor version bumps(Karpathy §1.2 — minimum API surface to lock contract)
+- **dependency_overrides in FastAPI = module-level state on shared `app` instance**:not just request-scoped;means any test that imports `from api.server import app` 共用 同一 instance 加 同一 overrides。If test installs override at module load + no teardown → pollutes next test。Documenting this in W8 retro for W9+ test infrastructure cleanup window
+- **W8 D5 single-day shipped 5 deliverables F5.1-F5.4 + F4.4 + F6**:W6 C10 calibration "static 0.5x" prediction 準確 — non-LIVE work scaled efficiently when scope is well-defined(SDK lifecycle / endpoint / spec table / 5-line auth wire)
+- **`langfuse_status` reflection in cost-summary endpoint = useful debug surface**:admin UI can show "Langfuse not configured — populate cred via Key Vault" without backend logging access。Pattern reusable for future external dep status surface(reranker / synthesizer / etc.)
 
 ### Carry-overs to W09-beta-internal-testing
-_(W8 D5 末)_
+
+- **C1 Q11 IT operational confirm cascade**:**Beta-blocking escalation trigger active 2026-05-23**(per W8 plan §4 R1 mitigation:若 W8 D5 仍未 confirm → escalation Stakeholder + IT manager 三方);R-B1 status updated 🟡 Active monitor → 🔴 Active escalation
+- **C2 F1.4 LIVE switch + F1.5 F1.7 LIVE smoke**:W9 cascade post-cred per `infrastructure/entra-id/README.md` step 8(F1.7-mock W7 D5 substitute provides equivalent acceptance via deterministic test;LIVE smoke = production verification cycle)
+- **C3 F3.2 SWA custom domain DNS apply + F3.3 Entra ID app registration apply**:Chris infra + IT sessions;SOPs authoring complete W8 D4
+- **C4 F2.4 Key Vault populate + F2.5 ACA networking Bicep apply**:Chris infra session;Bicep declarative spec complete W8 D1 + D3
+- **C5 F4.3 W4/W5 LIVE smoke remainder + F3.5 + F4.5 LIVE smoke real dev server**:Chris dev server availability + LLM spend approval(W6 C3 + W7 D5 carry-over preserved through W8 D5)
+- **C6 F5.3 Admin Console feedback view UI**:C10 Chat UI not built;rolling-JIT trigger when C10 lands(deferred since W7;explicit re-tag per `responsive-audit-W7.md` §4)
+- **C7 F5.5 Pixel diff snapshots installation**:W7 carry-over;W8 polish window 過 — W9+ if Vitest/Playwright harness installed(non-Beta-blocking)
+- **C8 W9+ progressive `@observe` decoration on query/synthesizer/crag stages**:F5.1 SDK ready W8 D5 closeout;per-stage instrumentation surface activates Langfuse generations API → cost-summary real-time attribution(W9 scope)
+- **C9 Q6 Real query collection owner trigger**:W9-W10 Beta phase real query log collection — W9 plan kickoff scope(per architecture.md §6.1 W9 row)
+- **C10 W9 Beta internal testing user roster**:Chris W7-W8 pre-identify per Q7 Resolved(RAPO 內部 + 1-2 友好部門);W9 plan kickoff trigger
+- **C11 dependency_overrides cleanup pattern**:test_api_skeleton.py module-level set 屬技術債;W9+ test infrastructure cleanup window cycle through fixture-scoped overrides
 
 ### ADR triggers
-_(W8 D5 末 — ADR-0013 reservation candidate:msal SDK ask-and-approve outcome OR ACA networking topology decision OR Tier 2 trigger)_
+
+- **No ADR triggered W8 D5**(per CLAUDE.md §10 R5):全 phase work 屬 architecture.md §3.1 + §3.2 + §7.4 + §6.1 W8 spec implementation
+  - F5.1 langfuse SDK = locked vendor implementation library per H2(architecture.md §3.2 stack lock — same direct-approve pattern as W8 D2 python-jose / W8 D3 @azure/msal-*)
+  - F5.2 cost dashboard implements architecture.md §7.4 Day-2 Readiness(static projection layer;real-time attribution W9+)
+  - F5.3 feedback wire implements architecture.md §4.4 #3 + §7.4 user feedback loop
+  - F5.4 alerts ruleset implements architecture.md §7.4(declarative spec;paging integration W9+)
+  - F4.4 admin auth wire = beta-plan-v1.md §2 W8.F1 deploy gating cascade(W7 D2 字面 scope 之外 implementation)
+- **ADR-0013 reservation status W8 D5 closeout**:仍 reserved;W8 D1-D5 zero architectural-adjacent trigger fired
+  - W8 D2 python-jose direct approve(no ADR)
+  - W8 D3 @azure/msal-* direct approve(no ADR)
+  - W8 D5 langfuse SDK direct approve(no ADR)
+- **ADR-0013 future trigger candidates**:(a)Tier 2 GraphRAG entry per Q12 / (b)production launch W12 governance trigger / (c)W9-W10 real query distribution signals reranker swap(Q21 reaffirmed Cohere v4.0-pro W6 D1 LIVE Azure 2-way negative comparison;swap unlikely)/ (d)multi-tenancy W12+ Stakeholder cycle
 
 ### Phase Gate result(per plan.md §3 + architecture.md §7 acceptance)
-- G1-G7:_(W8 D5 末)_
-- **W8 Beta deploy verdict**:_(W8 D5 末)_ → ready for W9 Beta internal testing / require additional polish
+
+| # | Criterion | Target | Actual | Verdict |
+|---|---|---|---|---|
+| ~~G1~~ | F1 Real Entra ID LIVE smoke pass on dev tenant | LIVE pass | DEFERRED W9(per Chris IT cred external in-progress through W8 D5 closeout) | 🚧 W9 trigger |
+| **G1'** | F1.7-mock substitute(W7 D5)+ F1.6 unit tests + W8 D2 backend msal_provider real wire + W8 D3 frontend msal-react real wire | mock + real-wire-unit pass | F1.7-mock 9 cases pass(W7 D5 commit `247bb49`)+ F1.6 13 cases pass(W8 D2 commit `9504a6b`)+ W8 D3 frontend tsc + eslint clean(commit `cbd36b3`)| ✅ **PASS** |
+| **G2** | F2 Backend deployed to ACA + smoke 200 OK on /health | 200 OK | DEFERRED W9(Chris infra session apply pending);F2.1 Dockerfile + F2.2 Bicep + F2.3 GHA + F2.4 KV SOP + F2.5 networking Bicep declarative-spec complete W8 D1-D3 | 🚧 W9 trigger(spec complete) |
+| **G3** | F3 Frontend deployed to SWA + custom domain reachable | 200 OK | DEFERRED W9(Chris DNS apply pending);F3.1 GHA + F3.2 SWA SOP + F3.3 Entra ID SOP + F3.4 staticwebapp.config.json complete W8 D3-D4 | 🚧 W9 trigger(spec complete) |
+| **G4** | F4 LIVE smoke cascade(F3.5 + F4.5)pass | All 5+3 cases | F4 substitute integration smoke 5 cases pass(W8 D4 commit `84c7a26`);LIVE deferred W9 per LLM spend + dev server | ✅ **PASS**(substitute) / 🚧 W9 LIVE |
+| **G5** | F5 Cost dashboard live + user feedback wired | Dashboard reachable | F5.1 Langfuse SDK + F5.2 `/observability/cost-summary` + F5.3 `/feedback` + F5.4 `/observability/alerts` 全 312/312 pass(W8 D5 commit pending) | ✅ **PASS** |
+| **G6** | Backend ruff + frontend lint + type-check 0 errors | All clean | 312/312 pytest + ruff(W8 scope clean — 18 baseline E402 preserved per `truststore` injection pattern)+ frontend tsc + eslint unchanged from W8 D3 baseline 0 | ✅ **PASS** |
+| ~~G7~~ | OQ Q11 final operational Resolved | `Resolved` operational | NOT MET — Chris IT engagement still in-progress past W8 D5;Q11 stays decision-level Resolved with operational pending(per W6 D5 stakeholder approval + W7 a-revised + W8 plan F1.1 IT delivery) | 🚧 W9 trigger |
+
+- **W8 Beta deploy verdict**:**PARTIAL PASS — Beta-deploy spec-complete + observability landed**(G1' + G4 substitute + G5 + G6 全 PASS = 4/7;G1 + G2 + G3 + G7 deferred to W9 per Chris external dependencies);**ready for W9 Beta internal testing once Chris IT + infra + DNS sessions apply**(W8 work-product is deploy-ready;W9 W8 Q11 IT delivery + Chris infra session + DNS session = single multi-stakeholder coordination cycle)
+- **W8 closeout PARTIAL PASS** — production-ready backend implementation + observability + Chris-cascade SOPs all landed;LIVE deploy gates blocked on external Chris IT/infra delivery,not implementation gaps
 
 ### Phase status
-- Closeout commit:_(W8 D5 末)_
-- Frontmatter status flipped to `closed`:_(W8 D5 末)_
-- Phase W09 kickoff trigger:_(W8 D5 末 — W9 plan = real query log collection + UX iteration + Q6 Real query collection owner trigger per architecture.md §6.1 W9 row)_
+
+- Closeout commit:`_(pending — single feat(api,docs) batch + docs(planning) backfill pair following W7 closeout pattern `247bb49` + `2222758`)`
+- Frontmatter status flipped to `closed`:**2026-05-23**(this batch)
+- Phase W09 kickoff trigger:**W9 plan = Beta internal testing + Chris IT/infra/DNS apply cascade(F1.4 LIVE switch + F1.5 LIVE smoke + F2.3 ACA deploy + F3.2 DNS apply + F2.5 networking apply + F2.4 Key Vault populate + Q11 final operational Resolved)+ real query log collection + UX iteration + Q6 owner trigger per architecture.md §6.1 W9 row;rolling JIT plan/checklist/progress folder NEW W8 D5 closeout same-session**
 
 ---

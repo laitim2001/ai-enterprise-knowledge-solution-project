@@ -1,8 +1,8 @@
 ---
 phase: W08-beta-deploy-sprint2
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-22
+status: closed
+last_updated: 2026-05-23
 ---
 
 # Phase W08 — Checklist
@@ -42,23 +42,23 @@ last_updated: 2026-05-22
 - [ ] ~~F4.1 F3.5 LIVE smoke real dev server~~ → **DEFERRED W8 D5 OR W9** — Chris dev server availability + LLM spend approval(W6 C3 carry-over preserved);substitute integration smoke landed 2026-05-22 covers same acceptance via deterministic test
 - [ ] ~~F4.2 F4.5 LIVE smoke real dev server~~ → **DEFERRED W8 D5 OR W9** — same gating as F4.1 LIVE;substitute integration smoke landed 2026-05-22
 - [ ] F4.3 W4/W5 LIVE smoke remainder(W6 C3):PPT E2E + GPT-5.5 latency baseline + Chat UI screenshots
-- [ ] F4.4 Documents/chunks/eval/screenshots/debug routes auth wire(W7 D2 字面 scope 之外)cascade per beta-plan-v1.md §2 W8.F1
+- [x] F4.4 Documents/chunks/eval/screenshots/debug routes auth wire — **W8 D5 done 2026-05-23** — `backend/api/server.py` 添加 `dependencies=_auth` to documents/chunks/eval/screenshots/debug + observability routers(W7 D2 字面 scope 之外 cascade per beta-plan-v1.md §2 W8.F1);7 admin routes 401-without-bearer parametrized tests + 1 pass-with-bearer test in `backend/tests/test_observability_routes.py`;single server.py edit per Karpathy §1.3 surgical;zero edit to 5 admin route files
 
 ## F5 — Cost monitoring + user feedback dashboard(C07)
 
-- [ ] F5.1 Real Langfuse SDK wire(replace `langfuse_tracer.py:4` W1 stub with actual SDK init + flush hooks)
-- [ ] F5.2 Cost dashboard build:Azure OpenAI + Cohere + Blob + AI Search daily spend(architecture.md §7.4 alert spec)
-- [ ] F5.3 User feedback loop wire:`/feedback` endpoint → Langfuse comment field;Admin Console feedback view
-- [ ] F5.4 Alerts:p95 latency > 30s + API error > 5% + cost spike + CRAG trigger rate > 50%
+- [x] F5.1 Real Langfuse SDK wire — **W8 D5 done 2026-05-23** — `backend/observability/langfuse_tracer.py` complete rewrite of W1 stub:lazy module-level singleton + degrade-graceful init(missing keys / import failure / constructor failure all yield `None`)+ `get_langfuse_client()` accessor + `flush_tracer()` lifespan shutdown drain hook + `_set_langfuse_client_for_tests()` escape hatch;`backend/pyproject.toml` `langfuse>=2.50` dep(architecture.md §3.2 stack lock — direct approve same pattern as W8 D2 python-jose);`backend/api/server.py` lifespan finally block calls `flush_tracer()`;8 unit tests `test_langfuse_tracer.py`
+- [x] F5.2 Cost dashboard build — **W8 D5 done 2026-05-23** — `backend/observability/cost_estimator.py` NEW 8-row Beta projection table(architecture.md §9 Beta column / 30 days):Azure AI Search S1 + text-embedding-3-large + GPT-5.5 synthesis + GPT-5.4-mini judge + Cohere Rerank v3.5 + Blob + ACA + SWA;`backend/api/routes/observability.py` NEW `GET /observability/cost-summary` returning `{rows, total_projected_daily_usd, total_projected_monthly_usd, langfuse_status, note}`;langfuse_status reflection lets admin UI surface Langfuse cred wire status;real-time LLM token attribution requires per-stage `@observe` decoration(W9+ scope per beta-plan-v1.md §2)
+- [x] F5.3 User feedback loop wire — **W8 D5 done 2026-05-23** — `backend/api/routes/feedback.py` complete rewrite of W1 501 stub:`POST /feedback` returns 202 with uuid4 feedback_id;thumbs_up → score `value=1`;thumbs_down → score `value=-1`;forwards to Langfuse `score(trace_id, name="user_feedback", value, comment)` when client wired;degrades to audit-log only when client `None`;swallows `score()` raise(202 still accepted,never silently dropped per Karpathy §1.2);6 unit tests `test_feedback.py`;**Admin Console feedback view UI deferred** since C10 Chat UI not built(W7 carry-over;rolling-JIT trigger when C10 lands)
+- [x] F5.4 Alerts — **W8 D5 done 2026-05-23** — `backend/observability/alerts.py` NEW declarative ruleset 6 `AlertRule` frozen dataclasses(p95 latency > 30s p2 + API error > 5% p1 + cost spike > 1.5x rolling avg p2 + CRAG trigger > 50% p3 + rate_limit_saturation > 10% p3 + langfuse_export_lag > 10min p2);`GET /observability/alerts` returns ruleset + routing summary + spec ref;**paging integration(Slack / PagerDuty)deferred W9+** post on-call rotation staffed per beta-plan-v1.md §3 W9;`infrastructure/observability/README.md` SOP authored
 
 ## F6 — Phase Gate closeout + W8 retro + W9 kickoff prep
 
-- [ ] F6.1 W8 phase Gate verdict landed
-- [ ] F6.2 W08 progress.md retro 7 sections complete
-- [ ] F6.3 W09 phase folder kickoff:`docs/01-planning/W09-beta-internal-testing/{plan,checklist,progress}.md` draft
-- [ ] F6.4 W08 progress.md frontmatter status flipped to `closed`
-- [ ] F6.5 R-B1 risk status update(Entra ID delay → mitigated or active per F1 outcome)
-- [ ] F6.6 OQ Q11 final operational Resolved sync to `decision-form.md`
+- [x] F6.1 W8 phase Gate verdict landed — **W8 D5 done 2026-05-23** — PARTIAL PASS:G1' + G4 substitute + G5 + G6 PASS = 4/7;G1 + G2 + G3 + G7 deferred W9 per Chris IT/infra/DNS external dependency cascade(implementation spec-complete W8 D1-D5;LIVE deploy + Q11 final operational blocked on Chris external sessions)— `progress.md` Phase Gate result table填寫
+- [x] F6.2 W08 progress.md retro 7 sections complete — **W8 D5 done 2026-05-23** — What worked / What didn't work / Surprises / Carry-overs(C1-C11)/ ADR triggers / Phase Gate result / Phase status全部填寫
+- [x] F6.3 W09 phase folder kickoff — **W8 D5 done 2026-05-23** — `docs/01-planning/W09-beta-internal-testing/` 三 file 建好(plan.md draft + checklist.md + progress.md Day 0 entry)
+- [x] F6.4 W08 progress.md frontmatter status flipped to `closed` — **W8 D5 done 2026-05-23**(此 batch)
+- [x] F6.5 R-B1 risk status update — **W8 D5 done 2026-05-23** — `RISK_REGISTER.md` R14 R-B1 Entra ID tenant operational delay 🟡 Active monitor → 🔴 **Active escalation**(Chris IT engagement past W8 D5 closeout仍未 confirm;per W8 plan §4 R1 escalation trigger:Stakeholder + IT manager 三方);F1.7 LIVE 推 W9
+- [x] F6.6 OQ Q11 final operational Resolved sync to `decision-form.md` — **W8 D5 done 2026-05-23** — Q11 status update:decision-level Resolved 2026-05-05 PRESERVED;**operational confirm DEFERRED W9** post-Chris IT engagement(W8 D5 closeout time仍 in-progress);transparent status documentation per CLAUDE.md §13 "When in doubt → ask, don't guess"
 
 ---
 

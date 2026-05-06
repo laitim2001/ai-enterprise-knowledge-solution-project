@@ -27,6 +27,11 @@ dependencies = [
     # validates client tokens only; token acquisition lives in frontend
     # msal-react (W8 D3 F1.3). architecture.md §6.1 W7 + §3.2 vendor scope.
     "python-jose[cryptography]>=3.3",
+    # W8 D5 F5.1 — Real Langfuse SDK wire replaces W1 structlog-only stub.
+    # architecture.md §3.2 stack lock + §7.4 Day-2 Readiness (LLM observability
+    # + cost dashboard data source). Lazy init when public/secret keys present;
+    # no-op when missing so local dev / CI work unchanged.
+    "langfuse>=2.50",
 ]
 
 [project.optional-dependencies]

@@ -4,7 +4,7 @@ name: "Beta Hardening Sprint 2 — Azure Container Apps + Static Web Apps + Real
 sprint_week: W8
 start_date: 2026-05-19          # tentative — assumes W7 closed 2026-05-16
 end_date: 2026-05-23            # 5 working days
-status: active                  # flipped draft→active 2026-05-19 W8 D1 kickoff(W7 D5 closeout PASS G1'-G7;Q11 IT engagement F1.1 in-progress external — non-blocking F2-F5 dev per W7 a-revised mock auth preserved)
+status: closed                  # flipped active→closed 2026-05-23 W8 D5 closeout(PARTIAL PASS — G1'+G4 substitute+G5+G6 PASS = 4/7;G1+G2+G3+G7 deferred W9 per Chris IT+infra+DNS external dependency cascade)
 spec_refs:
   - architecture.md §6.1 W8 row             # Azure Container Apps + Static Web Apps + cost monitoring + Beta smoke
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline
@@ -185,6 +185,8 @@ Carry-overs from `W07-beta-deploy/progress.md` retro § Carry-overs C1-C10(全 1
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-16 | Initial draft(W7 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W7 closeout sign-off + W8 D1 kickoff approval + Q11 IT operational confirm | Chris(pending approve to flip active) |
+| 2026-05-19 | status `draft → active` | W8 D1 kickoff cascade post W7 D5 closeout PASS G1'-G7 verdict | Chris implicit(W7 closeout sign-off cascade) |
+| 2026-05-23 | status `active → closed` PARTIAL PASS | W8 D5 closeout — G1'+G4 substitute+G5+G6 PASS;G1+G2+G3+G7 deferred W9 per Chris IT+infra+DNS external dependency cascade(implementation spec-complete,LIVE deploy blocked on multi-stakeholder coordination cycle)| Chris(W9 kickoff approve trigger) |
 
 ---
 

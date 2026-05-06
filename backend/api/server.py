@@ -27,6 +27,7 @@ from api.routes import (
     documents,
     feedback,
     kb,
+    observability,
     query,
     screenshots,
 )
@@ -36,7 +37,7 @@ from api.routes import (
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
-from observability.langfuse_tracer import init_tracer
+from observability.langfuse_tracer import flush_tracer, init_tracer
 from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
 from retrieval.reranker.factory import make_reranker
@@ -131,6 +132,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await embedder.__aexit__(None, None, None)
         if searcher is not None:
             await searcher.__aexit__(None, None, None)
+        # W8 D5 F5.1 — drain Langfuse queue before process exit so short-lived
+        # tasks (CI / one-shot scripts) don't lose trace events.
+        flush_tracer()
 
 
 app = FastAPI(
@@ -177,22 +181,24 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# W7 D2 F1.3 — auth Depends wired router-level. Plan §2 F1.3 字面 scope
-# protects /query/** + /kb/**; feedback (user-action trail) included since it
-# rides query workflow. Documents/chunks/eval/screenshots/debug remain public
-# W7 D2 (W8 cascade scope per beta-plan-v1.md §2 W8.F1 deploy gating).
-# /health stays public (Azure Container Apps liveness probe target).
+# W7 D2 F1.3 — auth Depends wired router-level. W8 D5 F4.4 cascade extends
+# coverage to admin-only routers (documents / chunks / eval / screenshots /
+# debug + W8 D5 F5.2/F5.4 observability) so every authenticated surface lands
+# behind the same gate. /health stays public (Azure Container Apps liveness
+# probe target). /auth/** keeps in-route Depends so /auth/refresh + /auth/logout
+# require an existing valid bearer (no unauthenticated session bootstrap).
 _auth = [Depends(get_current_user)]
 
 app.include_router(query.router, tags=["query"], dependencies=_auth)
 app.include_router(feedback.router, tags=["query"], dependencies=_auth)
 app.include_router(kb.router, tags=["kb"], dependencies=_auth)
-# /auth/** — endpoints handle Depends(get_current_user) inside each route so
-# /auth/refresh + /auth/logout require an existing valid bearer (no
-# unauthenticated session bootstrap surface).
 app.include_router(auth_routes.router)
-app.include_router(documents.router, tags=["documents"])
-app.include_router(chunks.router, tags=["chunks"])
-app.include_router(eval_routes.router, tags=["eval"])
-app.include_router(debug.router, tags=["debug"])
-app.include_router(screenshots.router, tags=["screenshots"])
+# W8 D5 F4.4 — admin routes auth wire (W7 D2 字面 scope 之外 cascade per
+# beta-plan-v1.md §2 W8.F1). All 5 admin routers + new observability dashboard
+# now require authentication — Beta phase prerequisite.
+app.include_router(documents.router, tags=["documents"], dependencies=_auth)
+app.include_router(chunks.router, tags=["chunks"], dependencies=_auth)
+app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
+app.include_router(debug.router, tags=["debug"], dependencies=_auth)
+app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)
+app.include_router(observability.router, tags=["observability"], dependencies=_auth)
