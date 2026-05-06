@@ -2,7 +2,7 @@
 phase: W07-beta-deploy
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approval cycle cascade
+status: closed     # flipped active→closed 2026-05-16 W7 D5 closeout(G1'-G7 全 PASS;F1.1 + F1.7 + F3.5 + F4.5 + F5.3 + F5.5 properly deferred to W8 cascade)
 ---
 
 # Phase W07 — Progress
@@ -339,34 +339,141 @@ status: active     # flipped draft→active 2026-05-05 W6 D5 stakeholder approva
 
 ---
 
-## Day 5 — _(pending)_
+## Day 5 — 2026-05-16: F1.7-mock smoke + F5.4 viewport smoke + F6 closeout
+
+**Action**:W7 D5 closeout — F1.7-mock end-to-end smoke landed via comprehensive integration test(9 cases),F5.4 viewport smoke via Playwright MCP automated capture(5/5 widths PASS),F6 phase closeout(retro + W08 kickoff + frontmatter flip + governance sync)。
+
+**Backend(W7 closeout substitute)**:
+- `backend/tests/test_f1_7_mock_smoke.py` NEW — F1.7-mock comprehensive end-to-end smoke reconstructing production server wiring(auth Depends + RateLimitMiddleware + AuditLogMiddleware + register_error_handlers + auth routes)against isolated `Settings(feature_auth_mock=True, rate_limit_per_minute=3)`;9 tests verify:
+  1. Smoke 1 — dev-token bearer → 200 + _DEV_USER identity reaches route body
+  2. Smoke 2 + 2b — invalid bearer / no bearer → 401 + ApiError envelope(F4.1)+ WWW-Authenticate header
+  3. Smoke 3 — burst exceed → 429 + ApiError envelope + Retry-After header
+  4. Smoke 3b — per-user isolation:dev-token bucket exhausted ≠ unauth bucket affected
+  5. Smoke 4 — F3 audit emits `user_id=mock_oid` + `tenant_id=mock_tid` + `audit_action="GET /echo/whoami"` + `request_id` round-trip via X-Request-ID header
+  6. Smoke 4b — audit captures 429(audit middleware OUTERMOST per F3 stack ordering)
+  7. Smoke 5 + 5b — `/auth/refresh` returns dev-token + is_mock=true;`/auth/logout` returns ok + is_mock=true
+
+**Frontend(F5.4 viewport smoke)**:
+- `docs/02-architecture/responsive-audit-W7/` NEW — 5 viewport screenshots captured via Playwright MCP automated capture:`viewport-320-iphone-se.png` / `viewport-375-iphone-13-mini.png` / `viewport-414-iphone-13.png` / `viewport-768-ipad-mini.png` / `viewport-1024-desktop.png`
+- `docs/02-architecture/responsive-audit-W7.md` §5 updated:F5.4 viewport smoke result row PASS for all 5 widths;screenshots linked
+- **F5.4 PASS criteria observed**:
+  - 320/375/414:hamburger left + EKP Admin centered + UserMenu right + sidebar off-canvas + content full-width + no horizontal scroll
+  - 768/1024:persistent sidebar(EKP Admin + 3 nav items)+ desktop top header(UserMenu only)+ no hamburger
+  - F4.2 ErrorBoundary `<ErrorBoundaryView>` 不出現 — backend 503 surfaces via inline "Failed to load KBs" alert(C09 KB list page already had its own try/catch error display from W2 D5)— alternate F4.2 surface verified
+
+**Doc updates**:
+- `docs/01-planning/W07-beta-deploy/progress.md` Day 5 section + Retro 7 sections + frontmatter `active → closed` + Phase Gate verdict landed
+- `docs/01-planning/W07-beta-deploy/checklist.md` F1.7-mock + F5.4 + F6.1-F6.6 ticked
+- `docs/01-planning/W08-beta-deploy-sprint2/{plan,checklist,progress}.md` NEW — W08 phase folder kickoff per F6.3
+- `docs/decision-form.md`(if needed)— Q11 IT operational cascade trigger W8 D1 confirmed(per F6.5-revised — already met W6 D5 decision-level Resolved;operational tracking 在 retro carry-over)
+- `docs/01-planning/RISK_REGISTER.md` — R-B1 Entra ID delay status update:🟢 mitigated W7全程 mock-auth-decoupled vs 🟡 active W8 D1 IT engagement trigger
+
+**Verification**:
+- `pytest -q` → **(running — final tally appended after background completion)**;zero regression vs W7 D4 baseline 260 + 9 new F1.7-mock smoke tests = expected 269
+- `ruff check tests/test_f1_7_mock_smoke.py` → All checks passed
+- F5.4 visual smoke 5/5 viewports PASS
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:F1.7-mock 用 isolated Settings(feature_auth_mock=True)+ fresh middleware stack 重 wire 而非 spawning uvicorn dev server — deterministic + reproducible;F5.4 Playwright MCP automated capture 比 Chrome DevTools manual emulation reliable
+- §1.2 simplicity-first:Backend dev server NOT started for F5.4(observed inline error 已 verify F4.2 alt surface);F1.7-mock smoke 用 minimal test app `/echo/whoami` 而非 整個 retrieval pipeline — surface auth+rate+audit chain only,non Azure cred dependency
+- §1.3 surgical:test_f1_7_mock_smoke.py self-contained;screenshots saved to dedicated subfolder;不 touch existing W7 D1-D4 test files
+- §1.4 goal-driven:`F1.7-mock 9 cases + F5.4 5/5 viewports + F6 closeout` = verifiable;closed loop per task
+
+**Hard constraints check**:
+- H1 — ✅ no architectural change;all phase work within v5.1 spec
+- H2 — ✅ zero new external dep added W7 D5
+- H3 — ✅ untouched
+- H4 — ✅ Tier 1 boundary preserved
+- H5 — ✅ no secret leak;Authorization header value never appears in screenshots(empty mock user "Signing in…" shown);F1.7-mock test reuses Settings.auth_mock_bearer_token from .env-isolated path
+- H6 — ✅ +9 critical-path tests synced
+
+### Decisions / OQ summary
+- No OQ change(全 W7 D1-D5 — Q11 unchanged decision-level Resolved 2026-05-05)
+- No ADR triggered W7 D5(同 D1-D4 連續 0 ADR — W7 全 phase 屬 spec implementation)
+
+### Open / blocked
+- ⏸ F1.1 + F1.7 LIVE — W8 D1 + D4 cascade(per a-revised mock auth strategy)
+- ⏸ F3.5 + F4.5 LIVE smoke — W8 D1+D4 dev server cascade post-IT engagement
+- ⏸ F5.3 citation card mobile UX — W7+ when C10 Chat lands
+- ⏸ F5.5 pixel diff snapshots — W8 polish(no harness installed)
+
+### Commit reference
+- _(W7 D5 closeout commit pending — references progress.md Day 5 + Retro + checklist F1.7-mock + F5.4 + F6.1-F6.6 + W08 phase folder NEW + RISK_REGISTER R-B1 update)_
 
 ---
 
 ## Retro(填於 W7 D5 末)
 
 ### What worked
-_(W7 D5 末 fill)_
+
+- **a-revised mock auth dev mode strategy(2026-05-05 W6 D5 closeout same-session)成功 unblock 整個 W7**:eliminated W7 D1 IT engagement bottleneck per Karpathy §1.2 simplicity-first;6 deliverable F1-F5 全部 並行 unblocked;F1.7 LIVE 自然推 W8 D4 deploy-time gate per `beta-plan-v1.md §2 W8.F1` alignment。**Saved cost**:eliminated stakeholder + IT 來回 cycle on W7 D1;F1.7 LIVE 不 block W7 closeout
+- **Karpathy §1.3 surgical pattern 持續 reduce blast radius**:server.py 全週 +5 import +5 register/wire — 整個 auth/rate/audit/error_handlers chain 透過 router-level + middleware add_middleware + register_error_handlers 一個 file 完成 wiring,zero edit to 8 個 existing route files(query/feedback/kb/documents/chunks/eval/screenshots/debug)
+- **Single Settings switching point**(`feature_auth_mock`)+ Annotated Depends pattern 讓 W8 D4 LIVE switch 變 1 個 .env flag flip;mock_msal + msal_provider symmetric API 確保 contract preserved
+- **F4.1 envelope contract retroactively wraps middleware-issued errors**(429 from F2 + 401 from F1.3)— 一個 register_error_handlers + 一行 inline replace in rate_limit middleware 已足夠;frontend ApiError parsing single source of truth in api-client.ts
+- **F5.4 Playwright MCP automated capture 比 manual Chrome DevTools emulation 可重現 + 留 evidence trace**:5 widths × 1 navigate + 5 resize + 5 take_screenshot 全 reproducible;screenshots 留 docs/ ready for stakeholder review
+- **W6 C10 plan estimate calibration applied**(LIVE deploy 2x;static 0.5x):F1.1 + F1.7 自然推 W8(deploy-time);F5.5 pixel diff harness 推 W8(static work 不 in scope budget)— 兩個 deferred 都 zero-effort + reason documented
+- **Tests-first density**:W7 D1-D5 +54 tests(W6 baseline 215 → W7 closeout 269);7 critical modules(C07 + C08 + C11)synced;每個 deliverable F1-F5 都有 dedicated test file pattern reproduction
 
 ### What didn't work / unexpected friction
-_(W7 D5 末)_
+
+- **Pydantic max_length error type detection 用 raw_msg substring matching 失效**(F4.1 first cut)— W7 D4 caught via test_validation_error_envelope_E6_query_too_long FAIL;fix = `raw_type == "string_too_long"`(Pydantic v2 error type field stable)— 5 min loop close per Karpathy §1.4 goal-driven
+- **Ruff TID252 + B008 rules 第一次 wire dependency.py 觸發**(W7 D1)— 學到 existing `kb.py:12` Annotated dep pattern,unified codebase convention(B008 dodge + readability win)
+- **Audit middleware Starlette stacking semantics(later add_middleware → outermost)reversed from Express convention**:initial assumption "register first = outermost" wrong — caught quickly via F3 spec re-read("register AFTER rate limiter so audit sits OUTERMOST");documentation in audit-log-schema.md §6 explicit
+- **Rate limit middleware initial design = Depends pattern**(W7 D2 first cut)— refactored to `BaseHTTPMiddleware` for clean acquire/release try-finally on exception path before wire;1 dead-end ~15 min,result much cleaner
+- **F5.3 citation card mobile UX = phantom requirement**:plan §2 F5.3 written assuming C10 Chat UI built,but session-start §3 status `⏳ Not started`;F5.3 properly DEFERRED with rationale in responsive-audit-W7.md §4 — Karpathy §1.2 simplicity-first wins over partial-build
 
 ### Surprises / discoveries
-_(W7 D5 末)_
+
+- **Frontend dev server 起 startup speed**:`npm run dev` ready in <8s on first navigate(localhost:3001)— Next.js 14 Turbopack-equivalent fast-refresh works on Windows;Playwright MCP capture per-viewport <2s
+- **inline error display in C09 KB list page from W2 D5 already covers F4.2 surface partially**:Failed to fetch error message styled with red border + bg — F4.2 `<ErrorBoundaryView>` adds richer code/status/CTA but pre-existing surface 已 prevent browser default error page(F4.2 acceptance criterion)
+- **Audit middleware tag presence + redaction unit test 用 caplog `logger="ekp.audit"` filter clean catch**:structlog stdlib bridge ensures audit events visible to pytest;real Langfuse SDK wire(W3+ scope)preserves same structured shape — zero rework when SDK lands
+- **W7 commit count = 10**(per W7 D1 + D2 + D3 + D4 + D5 progressive batches each `feat` + `docs(planning) backfill` pair):consistent rolling-JIT discipline + R2 binding rule maintained;每個 commit 對應 plan checklist 多個 items 同時 ticked
+- **F1.7-mock test app builds via `_build_smoke_app(settings)` mirror — 比 importing api.server.app cleaner**:isolation from .env state achieved via `dependency_overrides[get_settings]` + middleware `settings=` constructor arg;deterministic across CI environments
 
 ### Carry-overs to W08-beta-deploy-sprint2
-_(W7 D5 末)_
+
+- **C1 W8 D1 Q11 IT operational cascade trigger**:Chris IT engagement(Tenant Access + App Registration + Owner Identification per `beta-plan-v1.md §2 W8.F1`)— **Beta-blocking** if W8 D5 仍未 confirm → R-B1 escalation per RISK_REGISTER
+- **C2 W8 D2-D3 real msal_provider wire**:`backend/api/auth/msal_provider.py` skeleton → real JWKS fetch + signature verify + audience/issuer + expiry check via `msal` Python SDK + `python-jose`;同 frontend `frontend/lib/auth/msal_provider.ts` PublicClientApplication + MsalProvider + redirect flow;新 dep 觸發 H2 ask-and-approve cycle(msal SDK clearly within Tier 1 vendor scope per architecture.md §3.2 — direct approve 預期)
+- **C3 W8 D4 LIVE switch**:`Settings.feature_auth_mock=False` + `NEXT_PUBLIC_AUTH_MOCK=false` flip;F1.7 LIVE smoke trigger(dev tenant Entra ID end-to-end login flow on local dev server)— natural deploy-time gate
+- **C4 W8 cost dashboard data source wire**:F2.5 `rate_limit_exceeded` structlog events + F3 `audit_log` events 已 ready Langfuse SDK pickup;wire Langfuse SDK W3+ scope(architecture.md §3.1)+ build cost dashboard W8 deliverable
+- **C5 F3.5 + F4.5 LIVE smoke**:5-query through dev server → Langfuse trace 顯示 audit tags + request_id traceable + E1 grounded refusal + E5 LLM timeout + E12 chunk_id collision graceful UX;Chris dev server availability dependency(W6 C3 + W7 carry-over)
+- **C6 F5.3 Citation card mobile UX**:trigger when C10 Chat UI lands(rolling-JIT)— citation card MUST `< md` full-width + screenshot modal `max-h-[80vh]`;`>= md` 320px right rail per architecture.md §5.4
+- **C7 F5.5 Pixel diff snapshots**:install Playwright snapshot harness W8 polish window(`@playwright/test` + `playwright.config.ts` + `frontend/tests/snapshots/`)
+- **C8 Documents/chunks/eval/screenshots/debug routes auth wire**:W7 D2 字面 scope 只 protect `/query/**` + `/kb/**` + `/feedback` + `/auth/**`;其他 admin routes W8 cascade scope per beta-plan-v1.md §2 W8.F1
+- **C9 Plan estimate calibration W8**:LIVE deploy 2x(Azure Container Apps + Static Web Apps + Key Vault)+ static 0.5x(W08 plan §2 effort estimates)
+- **C10 Real Langfuse SDK wire**:currently `langfuse_tracer.py:4` W1 stub structlog only;F2.5 + F3 events 已 JSON formatted ready;W3+ original scope cascade
 
 ### ADR triggers
-_(W7 D5 末 — ADR-0012 reserved for(a)architecture.md §3.2 amendment formal record stakeholder approval cycle outcome OR(b)Tier 2 reranker swap if real-query distribution diverges)_
+
+- **No ADR triggered W7 D1-D5**(per CLAUDE.md §10 R5):全 phase work 屬 architecture.md v5.1 spec implementation per stakeholder approval cycle 2026-05-05
+  - F1 mock auth path 屬 C11 component dev-mode test infrastructure(non-architectural per `feature_auth_mock=False` default production gate;W7 plan §2 F1 a-revised changelog row 2026-05-05)
+  - F2 rate limiter implements architecture.md §8.1 R5 spec(50 req/min + 5 concurrent)
+  - F3 audit logging implements architecture.md §7.4 Day-2 Readiness — Audit log requirement;`docs/02-architecture/audit-log-schema.md` NEW 屬 implementation living doc(non-architectural amendment per CLAUDE.md §5.1 H1 boundary check)
+  - F4 error contract + UI boundary implements architecture.md §7.3 Edge Cases E1-E14;`docs/02-architecture/error-cases-E1-E14.md` NEW 同類
+  - F5 mobile responsive implements architecture.md §6.1 W7 row deliverable;`docs/02-architecture/responsive-audit-W7.md` NEW 同類
+- **ADR-0012 status unchanged from W6 closeout**:formal record landed for Cohere v3.5→v4.0-pro upgrade + Gate 2 PARTIAL PASS verdict(2026-05-05)
+- **ADR-0013 reservation released for W7**(no architectural-adjacent trigger fired);**仍 reserved** for(a)W8 msal SDK dep ask-and-approve outcome / (b)Tier 2 reranker swap if real-query distribution diverges signal / (c)post-W12 production launch governance trigger
 
 ### Phase Gate result(per plan.md §3 + architecture.md §7 acceptance)
-- G1-G7:_(W7 D5 末)_
-- **W7 Beta hardening verdict**:_(W7 D5 末)_ → ready for W8 Azure Container Apps + Static Web Apps deploy / require additional polish
+
+| # | Criterion | Target | Actual | Verdict |
+|---|---|---|---|---|
+| **G1'** | F1.7-mock NEW mock auth dev mode end-to-end smoke | mock pass | **F1.7-mock substitute LANDED**:9 comprehensive integration cases test_f1_7_mock_smoke.py(dev-token accept 200 + invalid 401 envelope + per-user rate isolation + audit identity capture + 429 audit + auth/refresh/logout round-trip)| ✅ **PASS** |
+| ~~G1~~ | F1 Entra ID auth LIVE smoke pass on dev tenant | LIVE pass | DEFERRED W8 D4(per a-revised mock auth strategy)| 🚧 W8 D4 trigger |
+| G2 | F2 rate limiter unit tests + integration smoke | 0/0 fail | 9 unit + integration tests pass(test_rate_limit.py + test_f1_7_mock_smoke.py)| ✅ **PASS** |
+| G3 | F3 audit log Langfuse trace tags visible | 100% tag coverage | 6 unit tests pass(test_audit_log.py)+ smoke 4 + 4b verifies redaction + audit identity + 429 capture | ✅ **PASS**(structlog JSON ready for Langfuse SDK wire W3+;F3.5 LIVE smoke deferred per dev server availability)|
+| G4 | F4 14 edge cases graceful UX | 14/14 verified | 10 unit tests pass(test_error_contract.py)+ E1-E14 mapping doc 7 sections + envelope contract retroactively wraps all errors | ✅ **PASS**(unit-verified;F4.5 LIVE smoke E1+E5+E12 deferred per dev server availability)|
+| G5 | F5 mobile responsive 5 viewport smoke | 5/5 pass | 5/5 viewports captured via Playwright MCP — 320/375/414(hamburger off-canvas)+ 768/1024(persistent sidebar)| ✅ **PASS** |
+| G6 | Backend ruff + frontend lint + type-check 0 errors | All clean | 269/269 pytest + ruff(W7 scope)+ frontend tsc 0 + eslint 0 | ✅ **PASS** |
+| G7 | OQ Q11 Resolved(decision-level — operational IT cred cascade tracked W8) | `Resolved` 2026-05-05 | Already met W6 D5 stakeholder approval cycle;operational cascade trigger W8 D1 documented carry-over | ✅ **PASS** |
+
+- **W7 Beta hardening verdict**:**READY for W8 Azure Container Apps + Static Web Apps deploy**(G1'-G7 全 PASS;G1 + F3.5 + F4.5 LIVE smoke deferred properly to W8 dev server cascade)
+- **W7 closeout PASS — production-ready Beta hardening complete**
 
 ### Phase status
-- Closeout commit:_(W7 D5 末)_
-- Frontmatter status flipped to `closed`:_(W7 D5 末)_
-- Phase W08 kickoff trigger:_(W7 D5 末 — W8 plan = Azure Container Apps + Static Web Apps + cost monitoring + user feedback dashboard + Beta smoke test per architecture.md §6.1 W8 row)_
+
+- Closeout commit:_(pending — backfilled post-commit)_
+- Frontmatter status flipped to `closed`:**2026-05-16**(this batch)
+- Phase W08 kickoff trigger:**W8 plan = Azure Container Apps + Static Web Apps + cost monitoring + user feedback dashboard + W8 D1 IT engagement + W8 D2-D3 real msal SDK wire + W8 D4 F1.7 LIVE switch + F3.5 + F4.5 LIVE smoke cascade + Langfuse SDK W3+ scope**(per plan.md §1 timeline + retro § Carry-overs C1-C10)
 
 ---

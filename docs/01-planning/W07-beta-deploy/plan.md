@@ -4,7 +4,7 @@ name: "Beta Hardening Sprint 1 — Auth + Rate Limiting + Audit + Mobile Respons
 sprint_week: W7
 start_date: 2026-05-12          # tentative — assumes W6 closed 2026-05-09
 end_date: 2026-05-16            # 5 working days
-status: active                  # flipped draft→active 2026-05-05 W6 D5 stakeholder approval cycle cascade(Q11 decision-level approve;IT operational confirm cascade trigger W7 D1)
+status: closed                  # flipped active→closed 2026-05-16 W7 D5 closeout(G1'-G7 全 PASS verdict per progress.md retro)
 spec_refs:
   - architecture.md §6.1 W7 row             # Microsoft Entra ID + rate limiting + React polish + Beta deploy
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline

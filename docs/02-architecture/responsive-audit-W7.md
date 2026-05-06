@@ -53,17 +53,17 @@ spec_refs:
 - `< md`:full-width card list,citation expand/collapse toggle,screenshot modal `max-h-[80vh] w-full`
 - `>= md`:sidebar 320 px right rail per architecture.md §5.4 Chat layout
 
-## 5. F5.4 viewport smoke plan(W7 D5)
+## 5. F5.4 viewport smoke result(W7 D5 — 2026-05-16 PASS)
 
-| Viewport | Width × height | Pass criterion |
-|---|---|---|
-| iPhone SE 1st | 320 × 568 | Sidebar off-canvas;header all 3 elements visible(hamburger / title / user-menu);no horizontal scroll |
-| iPhone 13 mini | 375 × 812 | Same as 320 |
-| iPhone 13 | 414 × 896 | Same as 320 |
-| iPad mini | 768 × 1024 | Sidebar persistent(md+ behaviour);desktop header visible |
-| Small laptop | 1024 × 768 | Same as iPad mini;everything matches W2 D5 baseline |
+| Viewport | Width × height | Result | Screenshot |
+|---|---|---|---|
+| iPhone SE 1st | 320 × 568 | ✅ PASS — sidebar off-canvas + hamburger left + EKP Admin centered + UserMenu right + content full-width + no horizontal scroll;backend 503 surfaces inline error message correctly | [viewport-320-iphone-se.png](./responsive-audit-W7/viewport-320-iphone-se.png)|
+| iPhone 13 mini | 375 × 812 | ✅ PASS — identical mobile shell as 320,wider title fits inline | [viewport-375-iphone-13-mini.png](./responsive-audit-W7/viewport-375-iphone-13-mini.png)|
+| iPhone 13 | 414 × 896 | ✅ PASS — identical mobile shell pattern | [viewport-414-iphone-13.png](./responsive-audit-W7/viewport-414-iphone-13.png)|
+| iPad mini | 768 × 1024 | ✅ PASS — md+ kicks in:persistent sidebar(EKP Admin / Overview / Knowledge Bases / Eval Console)+ desktop top header(UserMenu only)+ no hamburger;hamburger correctly hidden via `md:hidden` | [viewport-768-ipad-mini.png](./responsive-audit-W7/viewport-768-ipad-mini.png)|
+| Small laptop | 1024 × 768 | ✅ PASS — W2 D5 baseline desktop layout 完整保留;more horizontal space for content; everything 同 768 一致 | [viewport-1024-desktop.png](./responsive-audit-W7/viewport-1024-desktop.png)|
 
-**Tool**:Chrome DevTools mobile emulation;Playwright MCP for automated snapshot capture(per session-start §1 dev tools available)。
+**Tool**:Playwright MCP automated capture(per session-start §1)。`npm run dev` localhost:3001 + browser_navigate `/admin/kb` + browser_resize 5 widths + browser_take_screenshot。**Backend not running during capture**(no /kb response)— inline "Failed to load KBs" error surfaces F4.2 boundary working as intended;layout-only smoke verifies F5.2 hamburger / sidebar / header behaviour at all 5 widths。
 
 ## 6. F5.5 Pixel diff snapshots — DEFERRED W8
 

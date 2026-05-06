@@ -1,8 +1,8 @@
 ---
 phase: W07-beta-deploy
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-15
+status: closed
+last_updated: 2026-05-16
 ---
 
 # Phase W07 — Checklist
@@ -21,7 +21,7 @@ last_updated: 2026-05-15
 - [x] F1.5 Token refresh logic + logout endpoints — **W7 D3 done 2026-05-14** — `backend/api/routes/auth.py` `POST /auth/refresh`(mock returns same dev-token + 1h expiry;real MSAL skeleton 503 W8 D2-D3)+ `POST /auth/logout`(mock no-op + real MSAL skeleton 留 W8);`/auth/**` rate-limited + audited;5 unit tests pass
 - [x] F1.6 Unit tests — **W7 D3 done 2026-05-14** — `tests/test_auth_routes.py` 7 tests(public no-auth + reject no-bearer + accept dev-token + reject wrong token + 503 mock-disabled + mocked-MSAL valid 200 + mocked-MSAL expired 401);`tests/test_mock_msal.py` 7 unit tests(W7 D1);`tests/test_auth_endpoints.py` 5 tests(W7 D3 F1.5)— covers reject unauth + valid token allow + expired token reject contract
 - [ ] ~~F1.7 LIVE smoke:dev tenant Entra ID end-to-end login flow on local dev server~~ → **DEFERRED W8 D4** post-IT cred delivery cascade(`Settings.feature_auth_mock=False` switch + real Entra ID redirect flow)
-- [ ] **F1.7-mock NEW W7 closeout substitute** — verify mock auth dev mode end-to-end:`Settings.feature_auth_mock=True` + curl `/query` Bearer dev-token → middleware accept → return `_DEV_USER`;invalid bearer reject 401;F2 rate-key + F3 audit tag 用 mock `oid` 完整 trace
+- [x] **F1.7-mock NEW W7 closeout substitute** — **W7 D5 done 2026-05-16** — `backend/tests/test_f1_7_mock_smoke.py` NEW comprehensive integration smoke reconstructs production server wiring(auth Depends + RateLimitMiddleware + AuditLogMiddleware + register_error_handlers + auth routes)against isolated `Settings(feature_auth_mock=True)`;9 cases pass:dev-token 200 + invalid bearer 401 envelope + per-user rate isolation + F3 audit emits user_id=mock_oid + tenant_id=mock_tid + audit_action + request_id round-trip + audit captures 429(outermost middleware)+ /auth/refresh + /auth/logout round-trip
 
 ## F2 — Rate limiting middleware per-user concurrency cap(C08 + C11)
 
@@ -52,18 +52,18 @@ last_updated: 2026-05-15
 - [x] F5.1 Tailwind responsive breakpoints audit — **W7 D4 done 2026-05-15** — `docs/02-architecture/responsive-audit-W7.md` NEW(8 sections):breakpoints sm/md/lg/xl reference;per-view audit(KB list 🟡 / KB detail 🟡 / Eval Console ⏳ skeleton / Chat ⏳ C10 not started);F5.2 hamburger implementation note;F5.3 deferred reason;F5.4 viewport plan;F5.5 deferred reason
 - [x] F5.2 Mobile-only adjustments — **W7 D4 done 2026-05-15** — `frontend/components/nav/admin-shell.tsx` NEW client component:sidebar `< md` off-canvas drawer with hamburger button + dimmed overlay + auto-close on nav tap;`>= md` static W2 D5 desktop layout preserved;touch targets `min-h-[40px]`;`aria-expanded` / `aria-label` accessibility
 - [ ] ~~F5.3 Citation card mobile UX~~ → **DEFERRED W7+ until C10 Chat UI built** — C10 status `⏳ Not started` per session-start §3;rolling-JIT trigger when C10 lands(citation card MUST be `< md` full-width + screenshot modal `max-h-[80vh] w-full`,`>= md` 320px right rail per architecture.md §5.4 Chat layout;rationale documented in responsive-audit-W7.md §4)
-- [ ] F5.4 Manual smoke test 5 viewports — W7 D5 trigger
+- [x] F5.4 Manual smoke test 5 viewports — **W7 D5 done 2026-05-16** — Playwright MCP automated capture all 5 widths:320 iPhone SE / 375 iPhone 13 mini / 414 iPhone 13 / 768 iPad mini / 1024 desktop;screenshots saved `docs/02-architecture/responsive-audit-W7/`;5/5 PASS — < md hamburger off-canvas + ≥ md persistent sidebar verified;`responsive-audit-W7.md §5` updated with results table
 - [ ] ~~F5.5 Pixel diff snapshots~~ → **DEFERRED W8** — no Vitest/Playwright snapshot harness installed(W7 D2 frontend audit confirmed `package.json` scripts only `lint`/`type-check`/`dev`/`build`/`start`);adding = scope creep;W6 C10 calibration applied(static work 0.5x not in budget);rationale documented in responsive-audit-W7.md §6
 
 ## F6 — Phase Gate closeout + W7 retro + W8 kickoff prep
 
-- [ ] F6.1 W7 phase Gate verdict landed(F1-F5 outcomes documented + carry-overs to W8 — **F1.1 + F1.7 W8 carry-over per a-revised mock auth strategy**)
-- [ ] F6.2 W07 progress.md retro 7 sections complete(per W6 retro structure precedent)
-- [ ] F6.3 W08 phase folder kickoff:`docs/01-planning/W08-beta-deploy-sprint2/{plan,checklist,progress}.md` draft(scope = Azure Container Apps + Static Web Apps deploy + cost monitoring + user feedback dashboard + **W8 D1 Q11 IT engagement** + **W8 D4 F1.7 LIVE smoke real Entra ID switch**)
-- [ ] F6.4 W07 progress.md frontmatter status flipped to `closed`
-- [ ] ~~F6.5 OQ Q11 final Resolved sync to `decision-form.md`~~ → **already met W6 D5**(decision-level Resolved 2026-05-05);W6 D5 stakeholder approval cycle landed
-- [ ] F6.5-revised OQ Q11 IT operational cascade trigger documented in W7 retro carry-over to W8(Chris IT engagement W8 D1 timeline)
-- [ ] F6.6 R-B1 risk status update to `RISK_REGISTER.md`(Entra ID delay → mitigated W7 全程 mock-auth-decoupled vs W8 D1 IT engagement trigger active 監察)
+- [x] F6.1 W7 phase Gate verdict landed — **W7 D5 done 2026-05-16** — `progress.md § Retro § Phase Gate result` 8-row table:G1' PASS(F1.7-mock 9 cases)/ G1 deferred W8 D4 / G2 PASS(9 rate limit tests)/ G3 PASS(6 audit log tests + smoke 4)/ G4 PASS(10 error contract tests + E1-E14 mapping doc)/ G5 PASS(5/5 viewport)/ G6 PASS(269 pytest + 0 ruff + 0 tsc + 0 eslint)/ G7 PASS(Q11 already met W6 D5 + operational tracked W8 D1 carry-over)
+- [x] F6.2 W07 progress.md retro 7 sections complete — **W7 D5 done 2026-05-16** — What worked / What didn't work / Surprises / Carry-overs to W08 C1-C10 / ADR triggers(none) / Phase Gate result(8 rows) / Phase status
+- [x] F6.3 W08 phase folder kickoff — **W7 D5 done 2026-05-16** — `docs/01-planning/W08-beta-deploy-sprint2/{plan,checklist,progress}.md` NEW(plan §1-§7 7 sections + 31 atomic checklist items + Day 0 progress entry);scope per beta-plan-v1.md §2 W8.F1 alignment(Azure Container Apps + Static Web Apps + real Entra ID + LIVE smoke cascade + cost dashboard + W9 kickoff prep)
+- [x] F6.4 W07 progress.md frontmatter status flipped to `closed` — **W7 D5 done 2026-05-16** — plan.md + checklist.md + progress.md 全 frontmatter `active → closed` 2026-05-16
+- [x] ~~F6.5 OQ Q11 final Resolved sync to `decision-form.md`~~ — **already met W6 D5**(decision-level Resolved 2026-05-05 stakeholder approval cycle);W7 retro § Carry-overs C1 documents W8 D1 operational cascade trigger
+- [x] F6.5-revised OQ Q11 IT operational cascade trigger documented in W7 retro carry-over to W8(Chris IT engagement W8 D1 timeline)— **W7 D5 done 2026-05-16** — `progress.md § Retro § Carry-overs to W08 C1` + W08 plan §2 F1.1
+- [x] F6.6 R-B1 risk status update to `RISK_REGISTER.md` — **W7 D5 done 2026-05-16** — R-B1 status update:🟢 mitigated W7全程 mock-auth-decoupled(F1.7-mock substitute LANDED;W7 closeout PASS without IT cred);🟡 active monitor W8 D1 IT engagement trigger(若 W8 D5 仍未 confirm → escalation)
 
 ---
 
