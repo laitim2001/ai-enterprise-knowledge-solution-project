@@ -1,0 +1,64 @@
+collection_metadata:
+  phase: W9-W10 Beta internal testing
+  collection_owner: TBD per Q6 W9 D3 trigger
+  privacy_class: Internal
+  pii_strip_version: v1
+  record_count: 6
+  spec_ref: W10 plan §2 F4.3 + Q15 weekly signal report scaffold
+  status: mock-bootstrap-2026-06-03
+  notes: |
+    W10 D2 mock feedback corpus to bootstrap the YAML format ahead of real
+    /feedback endpoint live capture(currently structlog-only emit per
+    feedback.py W8 D5 F5.3)。Replace with real records W11+ once the
+    feedback aggregation pipeline plumbs structlog → YAML rotation。
+    All 6 sample feedback events are SYNTHETIC — no real user data。
+    `query_hash` values reference beta-real-queries-W9-W10.yaml mock corpus
+    so the cross-join lights up in the weekly signal report scaffold。
+feedback_records:
+  - feedback_id: 11111111-2222-3333-4444-555555555555
+    trace_id: trace-mock-001
+    timestamp: 2026-06-03T09:30:00Z
+    rating: thumbs_up
+    comment: ""
+    query_hash: 5b1a7f3c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f0b4c8e9d2a6f
+    user_oid_redacted: u_a3b2
+
+  - feedback_id: 22222222-3333-4444-5555-666666666666
+    trace_id: trace-mock-002
+    timestamp: 2026-06-03T10:42:00Z
+    rating: thumbs_down
+    comment: "Reset procedure looks like older firmware screenshots"
+    query_hash: 6c2b8e4d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b1c5d9f0a3b
+    user_oid_redacted: u_5d7e
+
+  - feedback_id: 33333333-4444-5555-6666-777777777777
+    trace_id: trace-mock-003
+    timestamp: 2026-06-03T11:15:00Z
+    rating: thumbs_up
+    comment: "Clear toner replacement steps, exactly what I needed"
+    query_hash: 7d3c9f5e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c2d6e0a1b4c
+    user_oid_redacted: u_a3b2
+
+  - feedback_id: 44444444-5555-6666-7777-888888888888
+    trace_id: trace-mock-004
+    timestamp: 2026-06-03T14:55:00Z
+    rating: thumbs_down
+    comment: "E-08 explanation outdated — manual missing v3 firmware notes"
+    query_hash: 9f5e1b7c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f4a8c2d3e6f
+    user_oid_redacted: u_3e9d
+
+  - feedback_id: 55555555-6666-7777-8888-999999999999
+    trace_id: trace-mock-005
+    timestamp: 2026-06-03T15:31:00Z
+    rating: thumbs_up
+    comment: ""
+    query_hash: 1b7c3d9e4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b6c0d4f5a8b
+    user_oid_redacted: u_a3b2
+
+  - feedback_id: 66666666-7777-8888-9999-aaaaaaaaaaaa
+    trace_id: trace-mock-006
+    timestamp: 2026-06-03T16:04:00Z
+    rating: thumbs_down
+    comment: "Helpdesk number out of date, contact <REDACTED_PHONE> instead"
+    query_hash: 2c8d4e0f5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c7d1e5a6b9c
+    user_oid_redacted: u_3e9d

@@ -111,11 +111,61 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 ### Commit reference
 
 - W10 D1 commit `85aa8f4`(feat — Track B F4.1 observe_streaming + F4.2 eval-set augmentor batch;C06 + C07 + C08)
-- W10 D1 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
+- W10 D1 backfill commit `86c5b36`(docs(planning) — hash backfill to W10 D1 entry per R2)
 
 ---
 
-## Retro(填於 W10 D5 末)
+## Day 2 — 2026-06-03: F4.3 Q15 weekly signal scaffold + Track A monitor
+
+**Action**:Track B F4.3 Q15 manual update frequency signal scaffold lands(closes W10 plan §2 F4.3 acceptance)+ Track A trigger watching governance(R-B1 monitor pass-through;real-calendar still within IT delivery target window)。Single-day surgical batch — no Track A event signal received yet。
+
+- **F4.3 ✅ done — `weekly_signal_report.py` Q15 scaffold(C07)**
+  - `backend/observability/weekly_signal_report.py` NEW module:`FeedbackRecord` Pydantic schema(parallels `RealQueryRecord` shape;adds optional `query_hash` join key for cross-corpus correlation)+ `TopQuery` + `WeeklyAggregation` dataclasses(volume summary + top-N per signal axis)+ `parse_iso_week()` ISO-8601 → `YYYY-Www` label + `aggregate_week` / `aggregate_all_weeks` partitioners + `read_feedback_yaml()` reader + `render_markdown()` report generator + `main()` CLI
+  - **Three signal axes per Q15 governance pattern**:(1)**Frequency** top-N most-asked queries(high-volume topics → manual coverage priority)+(2)**Refusal cluster** top-N OOS-refused queries(coverage gap signal)+(3)**CRAG-triggered cluster** top-N(rewrite needed = ambiguity / outdated content)+(4)**Negative feedback** thumbs_down with PII-stripped comment preview joined by `query_hash` to query corpus
+  - **Karpathy §1.2 simplicity-first**:no live API fetch(offline YAML inputs match W9 D3 query_collector bootstrap precedent)+ no NLP topic modelling(top-N by raw frequency;SME spots patterns in report)+ no DB layer(Markdown-on-disk output)+ feedback comment H5 PII strip belt-and-braces via `query_collector.pii_strip` reuse(consistent across observability modules)
+  - **W11+ scope explicit**:hook live Langfuse generations API for trace-id ↔ feedback correlation + Slack `#ekp-beta` channel scrape for "outdated" / "old version" mention frequency(currently scaffold,real cohort traffic plumbs post-IT-cred populate)
+  - **CLI**:`python -m observability.weekly_signal_report --queries QUERIES.yaml [--feedback FEEDBACK.yaml] [--output OUT.md] [--week 2026-W23] [--top-n N]`(stdout default;file write optional;single-week filter optional)
+  - **Mock feedback corpus**:`docs/03-implementation/beta-feedback-W9-W10.yaml` NEW 6-row mock(3 thumbs_up + 3 thumbs_down with PII-demo comment + cross-references to `beta-real-queries-W9-W10.yaml` query_hash values so the cross-join lights up in the scaffold's negative-feedback section)
+  - **Tests**:`backend/tests/test_weekly_signal_report.py` NEW +33 cases(ISO-week parser:Z suffix / +00:00 offset / date-only / year-boundary / garbage rejection / current week well-formed;Aggregation:volume summary / top frequent ordering / refusal segregation from frequency / CRAG segregation / top-N cap / negative feedback join / unknown when no query_hash / PII strip belt-and-braces / empty inputs;Multi-week:partition by ISO week / week filter / empty corpora / skip unparseable timestamps;Feedback YAML:round-trip / datetime coercion;Markdown render:required sections / empty placeholder / per-section empty placeholder / long text truncation;CLI:stdout default / output file write / feedback corpus integration / week filter / missing input file = exit 2;Smoke:dataclass field-set contracts + mock corpus loads cleanly)
+- **Tests**:**386 → 419**(+33 zero regression — full backend pytest sweep `pytest -q` exit 0 in 88.65s)
+- **Lint**:`ruff check --fix` cleaned 1 import-grouping issue(I001;same pattern as W10 D1)
+
+### Track A status(W10 D2 monitor pass-through)
+
+- ⏸ IT cred populate event still NOT fired(real-calendar W10 D2 = 2026-06-03;target window 2026-06-02 to 2026-06-07 per W9 D1 三方 outcome;**4-day buffer remaining within target,no early-trigger signal yet**)
+- 🟡 R-B1 status:**Active monitor preserved unchanged**(re-escalation deadline 2026-06-08 still 5 days out;within target window so 🟡 → 🔴 trigger NOT armed)
+- Q11 status:`Resolved` decision-level + **operational committed early June real** unchanged(no operational trigger event since W9 D1 三方 alignment)
+- W7-W12 production launch milestone window:**comfortable**(real-calendar 4-week IT wait fits naturally per W9 D1 outcome briefing — implementation front-runs project doc ~3-4 週,total real-calendar slack remains)
+
+### Track B progress
+
+- F4.1 ✅(observe_streaming;W10 D1)
+- F4.2 ✅(eval-set augmentation pipeline;W10 D1)
+- F4.3 ✅(weekly_signal_report Q15 scaffold;W10 D2 today)
+- F4.4 ⏳ F5.5 Pixel diff snapshots installation(non-Beta-blocking;W10 D4-D5 polish window candidate)
+- F5.1 ⏳ Runbook real-incident exercise(W10 D4-D5;blocked on staged ACA env per Track A)
+- F5.2 ⏳ Cost dashboard real-time wire(W10 D3-D4 target — plumb Langfuse generations API delta into `/observability/cost-summary`;**partially unblocked** by F4.3 scaffold which proved YAML offline → Markdown report pipeline,same shape applies)
+- F5.3 ⏳ Onboarding doc final review(W10 D4-D5;blocked on Chris IT helpdesk contact populate)
+- F5.4 ⏳ W11 staged rollout 25% prep deck(W10 D4-D5)
+
+### Decisions / OQ summary
+
+- No architectural change(weekly_signal_report = additive C07 module extending observability suite — `query_collector` + `langfuse_tracer` + `audit_log` middleware family;within architecture.md v5.1 §3 + §7.4 Day-2 Readiness scope)
+- No ADR triggered(spec implementation per Karpathy §1.3 surgical;ADR-0012 still reserved for W10 Track A IT cred populate trigger)
+- No OQ status change(Q11 + Q15 + Q6 unchanged;Q15 scaffold ready BUT real-cohort signal still 🔴 Open until cohort traffic flows post-IT-cred populate W11+)
+- No R-B1 status change(🟡 Active monitor preserved per real-calendar within-target-window context)
+
+### Open / blocked
+
+- ⏸ Track A cascade still blocked on IT cred populate event;Track B continues unblocked
+- ⏸ F4.4 Pixel diff harness installation check(W10 D4-D5)
+- ⏸ F5.1 Runbook real-incident exercise(staged ACA env dependency)
+- ⏸ F5.2 Cost dashboard real-time wire(W10 D3-D4 candidate)
+- ⏸ F5.3 Onboarding doc final review(IT helpdesk contact dependency)
+
+### Commit reference
+
+- W10 D2 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
 
 ### What worked
 _(W10 D5 末 fill)_
