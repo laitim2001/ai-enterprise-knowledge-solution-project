@@ -185,7 +185,7 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 - ⏸ W11 production launch readiness runbook + rollback SOP — **W9-W10 actionable**
 
 ### Commit reference
-- W9 D1 cont commit `_(pending — governance cascade batch)`(decision-form + RISK_REGISTER + W9 plan §1+§7 + W9 checklist + W9 progress)
+- W9 D1 cont commit `099c751`(5 files changed,+87 / -11;0 new files + 5 modified;decision-form Q11 + RISK_REGISTER R14 R-B1 de-escalation + W9 plan §1 scope re-baseline + §7 R3 deviation log + W9 checklist F1.1/F1.3/F1.4 ticked + W9 progress Day 1 cont entry)
 
 ---
 
