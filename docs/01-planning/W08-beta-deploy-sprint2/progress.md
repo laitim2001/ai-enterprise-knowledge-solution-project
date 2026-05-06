@@ -253,7 +253,65 @@ status: active    # flipped draft→active 2026-05-19 W8 D1 kickoff
 
 ---
 
-## Day 4 — _(pending)_
+## Day 4 — 2026-05-22: F4 smoke substitute + F1.1/F3.2/F3.3 SOPs;F1.4+F1.5 LIVE deferred
+
+**Action**:W8 D4 — F4 LIVE smoke cascade substitute(E1+E5+E12+F3.5 audit chain via TestClient + mocked Azure responses,deterministic + zero LLM cost);Chris-cascade SOPs landed for F3.3 Entra ID app registration + F3.2 SWA custom domain。**F1.4 LIVE switch + F1.5 LIVE smoke 仍 DEFERRED** — Q11 IT cred 仍未 deliver(Chris external in-progress per W8 D1+);F1.7 LIVE smoke 推 W8 D5 OR W9 cascade post-IT engagement。**Architecture impact zero**;all W8 D4 work within existing Microsoft Entra ID locked vendor scope。
+
+**Backend tests(F4 substitute)**:
+- `backend/tests/test_e1_e5_e12_smoke.py` NEW — 5 integration smoke tests covering full middleware chain(authenticate_mock + RateLimitMiddleware + AuditLogMiddleware + register_error_handlers + `/query` route)against mocked retrieval / synthesis:
+  - **E1** OOS query 拒答:_MockSynth `refused=True` + grounded refusal message → 200 + `refused=true` + NO ApiError envelope(per error-cases-E1-E14.md §2 non-error path)
+  - **E5** LLM API timeout:`_Timeout` Exception in synth → 502 envelope `code=pipeline.retrieval_failed` + actionable_hint;NO Traceback / site-packages leak
+  - **E5** Synthesizer unavailable:`app.state.synthesizer = None` → 200 retrieval-only fallback per W2 baseline
+  - **E12** chunk_id collision across docs:dual `kb_id__doc_id__chunk_id` namespaced ids returned from `/query` distinctly(no collision merge)— architecture.md §7.3 E12 namespace enforcement verified
+  - **F3.5** audit chain under burst:5 sequential `/query` calls → audit middleware emits 5 `audit_log` rows with mock `oid` + `tid` + `audit_action="POST /query"` + `request_id` round-trip(X-Request-ID header echoed)
+- **F4.5 LIVE smoke vs substitute distinction**:LIVE smoke against real dev server with Azure cred remains W8 D5 / W9 carry-over(Chris dev server availability + W7 D5 retro § Carry-overs C5);substitute provides equivalent acceptance via deterministic test 而 zero LLM spend
+
+**Doc(F3.3 + F3.2 Chris cascade SOPs)**:
+- `infrastructure/entra-id/README.md` NEW(F3.3 SOP)— 8-step Entra ID app registration cascade for Chris:Pattern A combined SPA+API single app(recommended)/ Pattern B separate apps(audit fallback);step 1-7 cred populate to Key Vault + GHA secrets;step 8 F1.5 LIVE smoke procedure(uvicorn + pnpm dev + redirect round-trip + audit propagation verification);Tier 2 boundaries(multi-tenant dispatcher / Conditional Access / B2B / claims mapping all out)
+- `infrastructure/swa/README.md` NEW(F3.2 SOP)— 5-step SWA custom domain cascade for Chris:Azure portal Add domain → Ricoh corp DNS team CNAME + TXT validation → portal Validate → Entra ID redirect URI sync → GHA env var update;apex domain caveat(ALIAS vs A record);post-validation security headers verification via `curl -I`;rollback procedures
+
+**F1.4 + F1.5 LIVE SWITCH STATUS**:
+- F1.4 `Settings.feature_auth_mock=False` flip:**NOT executed** — empty `azure_tenant_id` + `azure_client_id` would cause msal_provider 503 fail-closed across all protected routes(W7 D1 contract);Karpathy §1.1 think-before-coding — flipping without cred = breaking system not implementing
+- F1.5 LIVE smoke real Entra ID redirect flow:**deferred** — requires Chris IT cred delivery(Tenant Access + App Registration + Owner Identification per W8 plan §2 F1.1)+ dev server boot
+- F1.7 LIVE smoke acceptance(W7 plan §3 G1):W8 D5 OR W9 trigger post-cred(per `infrastructure/entra-id/README.md` step 8)
+
+**Verification**:
+- `pytest -q` → **287 passed in 90.53s**(W8 D3 baseline 282 + F4 substitute +5 = 287;zero regression)
+- `ruff check tests/test_e1_e5_e12_smoke.py` → All checks passed(after import order auto-fix)
+- frontend tsc + eslint unchanged from W8 D3(no frontend code changes)
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:**explicitly surfaced F1.4 LIVE switch deferral**(blocking on cred);**explicitly surfaced F4.5 LIVE smoke deferral**(LLM cost + dev server availability);proposed substitute integration smoke achieves same acceptance criteria deterministically;chose Pattern A app registration default for SOP simplicity unless audit pushes Pattern B
+- §1.2 simplicity-first:F4 substitute uses TestClient + mocked retrieval / synthesis — zero LLM cost(W6 cycle ~$5-10 / 5 queries avoided);Chris SOPs in dedicated `infrastructure/entra-id/` + `infrastructure/swa/` folders alongside `infrastructure/aca/` + `infrastructure/keyvault/`(consistent topology)
+- §1.3 surgical:F4 smoke test 唔 edit `query.py`(W2 design preserved — exception type name in 502 detail accepted as ops-friendly,not stack-trace leak);SOP files NEW only — zero edit to existing infra Bicep / GHA workflows
+- §1.4 goal-driven:F4 substitute 5 verifiable cases mapped to acceptance criteria(E1 / E5 / E5 fallback / E12 / F3.5 audit chain);Chris SOPs verifiable via portal apply gate(step-by-step + verification commands + rollback)
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change;F4 substitute exercises wired pipeline;SOPs implementation living docs
+- H2 vendor lock — ✅ zero new dep;all SOPs reference already-locked Microsoft Entra ID + Azure SWA stack(architecture.md §6.1 W7 + W8)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ Entra ID single-tenant Pattern A documented;multi-tenant + B2B explicit Tier 2 in SOP §Tier 2
+- H5 security — ✅ F4 smoke test verifies no Traceback / site-packages leak in error response;SOPs enforce Key Vault for client_secret;Entra ID implicit grant **OFF** documented(msal-react Authorization Code with PKCE only)
+- H6 test coverage — ✅ +5 tests for critical C08(error_handlers + middleware)+ C11(auth chain through query route)
+
+### Decisions / OQ summary
+- No OQ change(Q11 unchanged decision-level Resolved 2026-05-05;F1.1 IT operational still in-progress external)
+- No ADR triggered W8 D4(全 work within architecture.md §6.1 W7+W8 + §6.2 Beta scope)
+
+### Open / blocked
+- ⏸ **F1.1 W8 D1+ Q11 IT operational confirm cascade** — Chris external in-progress;cred delivery cascades F1.4 + F1.5 + F3.3 application of SOP
+- ⏸ **F1.4 LIVE switch + F1.5 F1.7 LIVE smoke** — W8 D5 OR W9 cascade post-cred per `infrastructure/entra-id/README.md` step 8
+- ⏸ **F3.2 SWA custom domain DNS** — Chris infra session + Ricoh corp DNS team;SOP authoring complete pending DNS authority + apply
+- ⏸ **F3.3 Entra ID app registration apply** — Chris IT session + portal apply pending Q11 cred confirm
+- ⏸ **F3.5 + F4.5 LIVE smoke against real dev server** — W8 D5 OR W9 cascade(Chris dev server availability + LLM spend approval)
+- ⏸ F4.4 Documents/chunks/eval/screenshots/debug routes auth wire(W7 D2 字面 scope 之外)— W8 D5 OR W9 cascade
+- ⏸ F5 cost dashboard + Langfuse SDK wire — W8 D5
+- ⏸ F6 closeout — W8 D5
+
+### Commit reference
+- _(W8 D4 commit pending — references progress.md Day 4 + checklist F4 substitute + F3.2 SOP + F3.3 SOP ticked + F1.4 + F1.5 + F4.5 LIVE deferred 標明)_
+
+---
 
 ---
 

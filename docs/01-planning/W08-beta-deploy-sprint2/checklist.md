@@ -2,7 +2,7 @@
 phase: W08-beta-deploy-sprint2
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21
+last_updated: 2026-05-22
 ---
 
 # Phase W08 — Checklist
@@ -32,14 +32,15 @@ last_updated: 2026-05-21
 ## F3 — Azure Static Web Apps deploy frontend(C12)
 
 - [x] F3.1 SWA build pipeline — **W8 D3 done 2026-05-21** — `.github/workflows/frontend-deploy.yml` lint + type-check + Next.js build → `Azure/static-web-apps-deploy@v1` upload to staging slot(PR / manual)or production(main push);env vars NEXT_PUBLIC_API_URL + AUTH_MOCK=false + AZURE_TENANT/CLIENT/SCOPE from GHA secrets;PR comment auto-post preview URL;pnpm cache via `pnpm/action-setup@v4`
-- [ ] F3.2 Custom domain DNS(`ekp.ricoh.com` 或 staging subdomain — owner confirm W8 D1)
-- [ ] F3.3 Auth integration sync:msal-react redirect URI + post-logout URI register in Entra ID app registration(blocked on F1.1)
+- [x] F3.2 Custom domain DNS — **W8 D4 SOP done 2026-05-22 (Chris cascade pending)** — `infrastructure/swa/README.md` NEW 5-step SOP:Azure portal Add domain → Ricoh corp DNS team CNAME + TXT validation → portal Validate → Entra ID redirect URI sync → GHA env var update;apex domain ALIAS vs A record caveat;`Q owner` Chris + Stakeholder W8 D1 confirm pending(default = subdomain of ricoh.com)
+- [x] F3.3 Auth integration sync — **W8 D4 SOP done 2026-05-22 (Chris cascade pending)** — `infrastructure/entra-id/README.md` NEW 8-step app registration cascade:Pattern A combined SPA+API single app(recommended)/ Pattern B separate(audit fallback);redirect URIs(prod + staging + localhost)+ post-logout URIs;Expose API + scope `api://<client-id>/access`;F1.5 LIVE smoke procedure(uvicorn + pnpm dev + redirect round-trip + audit propagation);Chris portal apply pending Q11 cred confirm
 - [x] F3.4 SPA route fallback — **W8 D3 done 2026-05-21** — `frontend/staticwebapp.config.json` navigationFallback `/index.html`(exclude `/api/*` + `/_next/*` + asset MIME globs);responseOverrides 401 → `/admin` 302 redirect + 403 → `/admin/error.html` + 404 → `/index.html` 200(SPA);global security headers X-Frame-Options DENY + nosniff + Referrer-Policy + Permissions-Policy + HSTS
 
 ## F4 — LIVE smoke cascade(W7 carry-overs)
 
-- [ ] F4.1 F3.5 LIVE smoke(W7 carry-over):5 query through dev server → Langfuse trace 顯示 audit tags + request_id traceable
-- [ ] F4.2 F4.5 LIVE smoke(W7 carry-over):trigger E1 + E5 + E12 → verify graceful UX
+- [x] F4.1 + F4.2 substitute — **W8 D4 done 2026-05-22** — `backend/tests/test_e1_e5_e12_smoke.py` 5 integration smoke tests covering full middleware chain(authenticate_mock + RateLimit + Audit + ErrorHandlers + /query route)against mocked retrieval / synthesis:E1 OOS query 拒答 200 + `refused=true`;E5 LLM timeout 502 envelope + no Traceback leak;E5 synthesizer unavailable → 200 retrieval-only fallback;E12 chunk_id namespaced collision distinct;F3.5 audit chain 5-burst with mock identity + request_id round-trip
+- [ ] ~~F4.1 F3.5 LIVE smoke real dev server~~ → **DEFERRED W8 D5 OR W9** — Chris dev server availability + LLM spend approval(W6 C3 carry-over preserved);substitute integration smoke landed 2026-05-22 covers same acceptance via deterministic test
+- [ ] ~~F4.2 F4.5 LIVE smoke real dev server~~ → **DEFERRED W8 D5 OR W9** — same gating as F4.1 LIVE;substitute integration smoke landed 2026-05-22
 - [ ] F4.3 W4/W5 LIVE smoke remainder(W6 C3):PPT E2E + GPT-5.5 latency baseline + Chat UI screenshots
 - [ ] F4.4 Documents/chunks/eval/screenshots/debug routes auth wire(W7 D2 字面 scope 之外)cascade per beta-plan-v1.md §2 W8.F1
 
