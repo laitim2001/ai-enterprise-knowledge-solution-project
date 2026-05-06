@@ -2,7 +2,7 @@
 phase: W10-beta-iteration
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(per plan §7 changelog)
+status: closed   # `active → closed` flipped 2026-06-06 W10 D5 closeout cascade(PARTIAL PASS verdict;per plan §7 changelog)
 ---
 
 # Phase W10 — Progress
@@ -308,30 +308,145 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 ### Commit reference
 
 - W10 D4 commit `787eae4`(feat — F4.4 defer + F5.4 W11 staged rollout 25% prep deck;governance)
-- W10 D4 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
+- W10 D4 backfill commit `ca7c1d1`(docs(planning) — hash backfill to W10 D4 entry per R2)
+
+---
+
+## Day 5 — 2026-06-06: Closeout cascade(F5.1 tabletop + F5.3 review + F6 + W11 phase folder kickoff + R-B1 monitor)
+
+**Action**:W10 closeout cascade — F5.1 Runbook real-incident exercise via tabletop substitute(Track A staged ACA env still blocked)+ F5.3 Onboarding doc final review pass(IT helpdesk contact carry-over flagged for W11 D1)+ F6 governance(retro 7 sections + Phase Gate verdict + W11 phase folder kickoff per rolling JIT + frontmatter `active → closed`)+ R-B1 monitor pass-through(re-escalation deadline 2026-06-08 still 2 days out — within target window)。Same-session completion of W10 phase。
+
+- **F5.1 ✅ done — Runbook real-incident exercise via tabletop substitute**(per W11 prep deck §5 No-Go Fallback)
+  - `docs/03-implementation/runbook-tabletop-W10-d5.md` NEW 6-section tabletop walkthrough
+  - **§1 Document parse failure walkthrough**:✅ Clear with 1 clarification(AF1 — `§1.A` step 2「offline re-process queue」 = Slack `#ekp-beta` thread + bugs/BUG-{NNN} instance,no separate queue infra Tier 1)
+  - **§2 API quota exhaustion walkthrough**:✅ Clear with 2 clarifications + 1 gap
+    - AF2 — `§2 step 2 Azure OpenAI tier-1` rate limit tighten requires ACA revision restart(Settings env-var bound,not hot-reload)
+    - AF3 — `§2 step 2 Azure OpenAI tier-3` fallback rewrite:`OPENAI_API_KEY=''` env override(actual mechanism)instead of「set `app.state.synthesizer = None`」
+    - AF4 🔴 gap — runaway client per-user revoke is NOT IMPLEMENTED Tier 1;path = Slack ask user pause + Entra ID role removal via IT helpdesk;Tier 2 trigger flag if recurring
+  - **4 aggregate findings(AF1-AF4)logged for W11 F4.1-F4.4 in-place edits before live exercise**;live exercise within 72h post-Track A LIVE deploy
+  - **Karpathy §1.2**:tabletop scoped narrowly to §1+§2 per W10 plan acceptance;no scope creep into §3-§5 + §6-§8 cross-cutting(those validate via live exercise post-Track A)
+- **F5.3 ✅ done — Onboarding doc final review pass**
+  - `docs/03-implementation/beta-cohort-onboarding-W11-W12.md` content coverage verified across §1-§9
+  - **Carry-over to W11 D1**:Chris IT helpdesk contact info populate + Slack `#ekp-beta` channel auto-join confirmation(blocked on Track A IT engagement cascade)
+  - **Karpathy §1.3 surgical**:Update history entry added;NO structural change W10 D5 — defer in-place IT helpdesk number edit until Chris contact data lands(same pattern as F5.1 tabletop substitute)
+- **F6 ✅ done — Closeout cascade**
+  - F6.1+F6.2 W10 progress.md retro 7 sections complete(this file — What worked / What didn't / Surprises / Carry-overs / ADR triggers / Phase Gate result / Phase status)
+  - F6.3 W11-staged-rollout-25 phase folder kickoff per rolling JIT(`docs/01-planning/W11-staged-rollout-25/` — `plan.md` + `checklist.md` + `progress.md` Day 0 entry,all status=`draft`)— 6 deliverables F1-F6 split into Track A LIVE deploy cascade + Track B 25% staged rollout + W12 production launch readiness;~30 atomic checklist items
+  - F6.4 W10 frontmatter status flipped `active → closed`(this batch)
+  - F6.5 R-B1 monitor pass-through:🟡 Active monitor preserved unchanged(re-escalation deadline 2026-06-08 = 2 days out;within target window 2026-06-02 to 2026-06-07);**re-escalation procedure documented**:if 2026-06-08 仍未 IT cred populate event → 🟡 → 🔴 cycle re-engage Stakeholder + IT manager + Chris triple session(same pattern as W9 D1 三方 alignment)+ W11 D1 staged rollout 25% defers to W12 D1 trigger window per W11 prep deck §5 No-Go fallback(within Tier 1 launch envelope 2026-07-19)
+  - F6.6 OQ status sync:Q11 + Q15 + Q6 unchanged W10 D5(Track A pending);**Q4 surfaced as NEW gate item** per W10 D3 F5.2 placeholder labelling — Stakeholder W11 prep deck §6.1 Option A vs Option B decision pending W10 D5 末 review trigger event
+- **R-B1 monitor pass-through(W10 D5,unchanged)**:status preserved 🟡 Active monitor with confirmed deadline;re-escalation trigger 2026-06-08 if real-calendar 仍未 IT cred populate event;procedure documented above per F6.5
+- **Tests**:**456 unchanged**(no code change W10 D5;governance + tabletop doc + W11 phase folder + onboarding doc Update history only)
+- **Lint**:N/A(only Markdown writes)
+
+### Track A status(W10 D5 monitor pass-through,unchanged)
+
+- ⏸ IT cred populate event still NOT fired(real-calendar W10 D5 = 2026-06-06;target window 2026-06-02 to 2026-06-07 per W9 D1 三方 outcome;**1-day buffer remaining within target;2-day buffer to re-escalation deadline 2026-06-08**)
+- 🟡 R-B1 status:**Active monitor preserved unchanged**;re-escalation procedure documented per F6.5
+- Q11 status:`Resolved` decision-level + **operational committed early June real** unchanged
+
+### Track B progress(final summary)
+
+- F4.1 ✅(observe_streaming;W10 D1)
+- F4.2 ✅(eval-set augmentation pipeline;W10 D1)
+- F4.3 ✅(weekly_signal_report Q15 scaffold;W10 D2)
+- F5.2 ✅(real-time cost dashboard hybrid endpoint;W10 D3)
+- F4.4 🚧(Pixel diff harness DEFER W11+ post-cohort signal;W10 D4 decision)
+- F5.4 ✅(W11 staged rollout 25% prep deck draft;W10 D4)
+- F5.1 ✅(Runbook tabletop substitute;W10 D5 today;AF1-AF4 carry-over to W11 F4)
+- F5.3 ✅(Onboarding doc final review pass;W10 D5 today;IT helpdesk contact carry-over to W11 F2.2)
+- F6.1-F6.6 ✅(Closeout cascade;W10 D5 today;W11 phase folder kickoff per rolling JIT)
+
+### Decisions / OQ summary
+
+- **W10 verdict landed PARTIAL PASS**(Track B complete 8/8 + F4.4 deferred + Track A pending IT cred event per W9 D1 三方 outcome cascade pattern)
+- No architectural change(全 governance + spec implementation;ADR-0012 still reserved for W10/W11 Track A IT cred populate trigger;ADR-0013 reservation candidates documented in retro for W11 D5 retro)
+- **NEW gate item Q4 deployment pricing rate**(per W10 D3 F5.2 placeholder labelling)— Stakeholder W11 prep deck §6.1 Option A vs Option B decision pending W10 D5 末 review trigger
+- No R-B1 status change(🟡 Active monitor preserved per real-calendar within-target-window context;re-escalation procedure documented for 2026-06-08 deadline)
+- **W11 phase folder kickoff per rolling JIT** — 3 files(plan.md + checklist.md + progress.md Day 0)all status=`draft`;~30 atomic checklist items;6 deliverables F1-F6
+
+### Open / blocked
+
+- ⏸ Track A cascade still blocked on IT cred populate event(2-day buffer to re-escalation deadline)
+- ⏸ W11 prep deck Stakeholder review approve cycle(W10 D5 末 trigger event)
+- ⏸ Q4 deployment pricing rate confirmation(Stakeholder W11 prep deck §6.1 Option A vs Option B decision)
+- ⏸ W11 phase plan/checklist/progress status `draft → active` flip(W11 D1 trigger gate)
+- 🚧 F4.4 Pixel diff harness DEFER W11+ post-cohort signal(re-trigger condition recorded)
+- 🚧 Runbook AF1-AF4 in-place edits + live exercise → W11 F4
+
+### Commit reference
+
+- W10 D5 commit:_(pending — will backfill after `feat(docs,observability)` + `docs(planning)` pair)_
+
+---
+
+## Retro(filled 2026-06-06 W10 D5 closeout)
 
 ### What worked
-_(W10 D5 末 fill)_
+
+- **Track A vs Track B split design(W9 D5 carry-over)held up perfectly**:Track B(F4.1 + F4.2 + F4.3 + F5.2 + F5.4 + F5.1 tabletop + F5.3)shipped 8/8 IT-cred-independent items in 5 working days(W10 D1-D5)without any blocker from Track A pending IT cred populate event。W10 D1-D5 commit pace = 5 feat + 5 docs(planning)backfill = 10 commits,zero churn from Track A timing uncertainty。
+- **Karpathy §1.2 simplicity-first applied consistently across the week** — `observe_streaming` helper-function-not-decorator(W10 D1)+ eval_set_augmentor in-place-overwrite refused via ValueError safety guard(W10 D1)+ weekly_signal_report offline-YAML bootstrap matching W9 D3 query_collector precedent(W10 D2)+ realtime_cost test-injectable fetcher with 4 explicit degradation states(W10 D3)+ F4.4 Pixel diff DEFER recorded with re-trigger condition(W10 D4)+ F5.4 W11 prep deck one-page-decision-form structure(W10 D4)+ F5.1 tabletop substitute scoped narrowly to §1+§2 with 4 aggregate findings(W10 D5)。Each surgical change traceable back to user request without scope creep。
+- **Test cadence held**:358 → 386 → 419 → 456 → 456 → 456(+98 tests across W10 D1-D5,zero regression sustained)。Full sweep duration 56-88s acceptable;C11 cleanup speedup from W9 D5 still holding。
+- **R2 binding rule cadence**:every commit referenced progress.md Day-N entry + every day produced feat + docs(planning) backfill pair(W10 D1 `85aa8f4`+`86c5b36` / D2 `86ecf7f`+`9c391a5` / D3 `d656b03`+`4d810ef` / D4 `787eae4`+`ca7c1d1` / D5 _(this batch)_)。Pattern rhythm carried over from W9 unchanged。
+- **W11 prep deck surfaced NEW Q4 pricing rate gate item proactively** — F5.2 placeholder labelling discipline forced the gate item into Stakeholder review cycle agenda before Beta cohort spend gate could be silently breached。Karpathy §1.2 placeholder-then-recalibrate pattern proved its worth as a forcing function。
+- **F5.1 tabletop substitute pattern scaled cleanly** — when staged ACA env unavailable per Track A,tabletop walkthrough still produced 4 actionable aggregate findings(AF1-AF4)to land in runbook before live exercise。Pattern reusable for future blocked-on-infra exercises。
 
 ### What didn't work / unexpected friction
-_(W10 D5 末)_
+
+- **Schema extension F811 surfaced via lint pass W10 D3**(`api/schemas/observability.py` left duplicate `AlertRule` + `AlertsConfig` class blocks after extension edit)— `Edit` tool's `old_string`-replace pattern can leave residue when a class definition appears verbatim above and below the targeted edit zone。Mitigation:always re-read full file post-multi-class-edit + lint-then-fix immediately。Cost = 1 ruff cycle + ~30s。
+- **Onboarding doc F5.3 review revealed structural carry-over only**(IT helpdesk contact)— W10 D5 review pass confirmed 9-section content coverage solid,但 the `<placeholder>` IT helpdesk number can't be filled until Chris IT engagement cascade lands(blocked on Track A timing)。Pattern same as F5.1 tabletop substitute — surface dependency,defer in-place edit。
+- **F4.4 Pixel diff DEFER decision was correct but slightly underspecified at W10 plan time** — plan §2 F4.4 said「if Vitest/Playwright harness available;non-Beta-blocking」without explicit「if not installed → DEFER」branch。W10 D4 finding bridged the gap with explicit Karpathy §1.2 rationale + re-trigger condition,但 future plans should pre-bake the if/else branch where install presence is uncertain。
+- **R-B1 monitor pass-through 4 days in a row(W10 D2-D5)** generated minimal new signal — re-escalation trigger 2026-06-08 still preserved as the inflection point。Pattern OK but「monitor pass-through」entries in progress.md become repetitive;W11 daily monitor automation(F3)should compress these into 1-line status flag rather than full sub-section per day。
 
 ### Surprises / discoveries
-_(W10 D5 末)_
+
+- **F5.2 hybrid endpoint shape proved to be a re-usable scaffold pattern beyond cost dashboard** — the『static projection + realtime delta + status field for graceful degradation』pattern applies cleanly to(a)future quota dashboards(b)future SLA dashboards(c)any place where projection-vs-actual signal needs surfacing without breaking dashboard render on observability fetch failure。Karpathy §1.2 fail-graceful + 4-status taxonomy reusable。
+- **Q15 signal pipeline became end-to-end mid-week without explicit plan**:F4.3 weekly_signal_report(W10 D2)+ F5.2 real-time per-deployment USD(W10 D3)+ F5.4 Q4 pricing rate gate item(W10 D4)collectively closed the Q15 manual update frequency signal scaffold loop ahead of W11 cohort traffic。Three discrete deliverables retroactively cohered into a complete signal source。
+- **MagicMock spec=["score"]** trick proved invaluable for testing「old SDK without method X」degradation paths — tests can simulate「Langfuse client wired but lacks `fetch_observations`」purely through spec restriction,no production code change needed。Pattern reusable for any duck-typed SDK access wrapper。
+- **Tabletop walkthrough surfaced more architecture-document-bug findings than expected**(AF3 specifically — runbook §2 tier-3 fallback referenced `app.state.synthesizer = None` mechanism that doesn't exist as documented;real path is `OPENAI_API_KEY=''` env override → init failure → fallback)。Tabletop = cheap way to find runbook-vs-implementation drift before live incident。
 
 ### Carry-overs to W11-staged-rollout-25
-_(W10 D5 末)_
+
+- **Track A IT cred populate event**(F1.1)— W10 carry-over preserved;real-calendar 2026-06-08 re-escalation deadline if not yet fired
+- **Chris infra/IT/DNS apply cascade**(F1.2-F1.4)— W10 carry-over;mechanical execution post-IT cred event per W8 D1-D4 SOPs
+- **LIVE smoke verification**(F1.5)— W10 + W7 + W8 carry-over chain
+- **R-B1 closure verification**(F1.6)— Track A trigger
+- **25% rollout activation + cohort onboarding**(F2)— Beta plan v1 §2 W11.F1 + Q7 cohort roster final
+- **Onboarding doc IT helpdesk contact final-fill**(F2.2)— W10 D5 onboarding doc Update history carry-over
+- **Daily 4-metric monitor + 50% EoW conditional gate**(F3)— Beta plan v1 §2 W11.F2-F3
+- **Runbook AF1-AF4 in-place edits**(F4.1-F4.4)— per `runbook-tabletop-W10-d5.md` aggregate findings(NEW W10 D5 carry-over)
+- **Runbook live exercise post-LIVE-deploy**(F4.5-F4.6)— replaces tabletop substitute within 72h
+- **Q15 first weekly signal report W11 EoW**(F5.1)— scaffold ready W10 D2 F4.3
+- **Q4 deployment pricing rate confirmation**(F5.2)— W11 prep deck §6.1 Stakeholder Option A vs Option B(NEW W10 D3 F5.2 carry-over)
+- **Tier 2 trigger metric review**(F5.3)— W11 prep deck §3 W11.F5
+- **F4.4 Pixel diff harness re-trigger condition**(W10 D4 DEFER)— if real cohort UX feedback W11+ surfaces regression risk → install harness + capture baseline
+- **W11 prep deck Stakeholder approve cycle outcome**(W10 D5 末 trigger event)
 
 ### ADR triggers
-_(W10 D5 末 — ADR-0013 reservation candidate per W10 outcome)_
+
+- **No ADR triggered W10**(全 spec implementation per Karpathy §1.3 surgical;no §3/§4 component change)
+- **ADR-0012 still reserved** for W11 Track A IT cred populate trigger(per W6 closeout reservation;若 trigger 仍未 fire by W11 D5 → roll forward to W12 reservation)
+- **ADR-0013 reservation candidates**(W11 D5 retro):(a)architecture.md §3.2 amendment formal record per W6 D5 stakeholder approval cycle outcome / (b)Tier 2 per-KB reranker column STICKY future / (c)Tier 2 reranker swap if Beta real-query distribution diverges signal /(d)Tier 2 per-user blocklist mechanism if recurring runaway client signal per F5.1 tabletop AF4
 
 ### Phase Gate result(per plan.md §3 + architecture.md §7 acceptance)
-- G1-G7:_(W10 D5 末)_
-- **W10 Beta iteration verdict**:_(W10 D5 末)_ → ready for W11 staged rollout 25% / require additional polish
+
+| # | Criterion | Verdict | Notes |
+|---|---|---|---|
+| G1 | F1 Q11 final operational Resolved + R-B1 closed | ⏸ **DEFERRED W11**(Track A IT cred populate event pending — within target window;re-escalation 2026-06-08)| 同 W9 D1 三方 outcome cascade pattern |
+| G2 | F2 Chris infra/IT/DNS apply cascade complete | ⏸ **DEFERRED W11**(Track A carry-over) | F2.1-F2.7 W10 plan items roll forward to W11 plan F1.2-F1.4 + F2 |
+| G3 | F3 LIVE smoke verification + Beta cohort access provisioned | ⏸ **DEFERRED W11**(Track A carry-over) | W7+W8+W10 carry-over chain |
+| G4 | F4 Implementation polish(observe_streaming + eval-set augmentation prep) | ✅ **PASS** | F4.1 ✅(W10 D1)+ F4.2 ✅(W10 D1)+ F4.3 ✅(W10 D2;exceeded plan scope — F4.3 originally assumed deferred Q15 scaffold,landed full module + tests + mock corpus)+ F4.4 🚧 **DEFER W11+**(Karpathy §1.2 — Vitest/Playwright not installed;re-trigger condition recorded) |
+| G5 | F5 W11 staged rollout readiness:runbook exercise + cost dashboard real-time + onboarding doc final | ✅ **PASS WITH ASTERISKS** | F5.1 🟡 tabletop substitute(staged ACA blocked on Track A;AF1-AF4 aggregate findings logged for W11 live exercise)+ F5.2 ✅(W10 D3 hybrid endpoint)+ F5.3 🟡 final review pass(IT helpdesk contact carry-over to W11 D1)+ F5.4 ✅(W10 D4 W11 prep deck)|
+| G6 | Backend ruff + frontend lint + type-check 0 errors | ✅ **PASS** | 456/456 pytest + ruff clean across W10 D1-D5 |
+| G7 | Q11 + Q6 + Q15 sync to decision-form.md per outcome | 🟡 **PARTIAL** | Q11 + Q6 + Q15 unchanged(real-cohort signal pending Track A);**NEW Q4 pricing rate gate item surfaced** per F5.2 placeholder labelling — Stakeholder W11 prep deck §6.1 Option A vs Option B decision pending |
+
+- **W10 Beta iteration verdict**:**PARTIAL PASS**(identical to W9 D1 三方 outcome cascade pattern;Track B complete + Track A pending IT cred event)→ **ready for W11 staged rollout 25% conditional on Stakeholder W11 prep deck approve cycle + Track A IT cred populate event by 2026-06-08 re-escalation deadline**
 
 ### Phase status
-- Closeout commit:_(W10 D5 末)_
-- Frontmatter status flipped to `closed`:_(W10 D5 末)_
-- Phase W11 kickoff trigger:_(W10 D5 末 — W11 plan = staged rollout 25% + cohort expansion + production launch readiness final review per architecture.md §6.1 W11 row)_
+
+- Closeout commit:_(pending W10 D5 batch — `feat(docs,observability)` + `docs(planning):` backfill pair)_
+- Frontmatter status flipped to `closed`:**this batch W10 D5 末**(plan.md + checklist.md + progress.md frontmatter status update)
+- Phase W11 kickoff trigger:**W11 phase folder created W10 D5**(`docs/01-planning/W11-staged-rollout-25/` — plan.md + checklist.md + progress.md draft per rolling JIT;W11 plan = staged rollout 25% + Track A LIVE deploy cascade execution + cohort 25% rollout + W12 production launch readiness final review per architecture.md §6.1 W11 row + Beta plan v1 §2 W11)
+- W11 D1 implementation start awaiting:Chris W10 closeout sign-off + Stakeholder W11 prep deck approve cycle outcome + Track A IT cred populate trigger event(target ≤ 2026-06-08 re-escalation deadline)
 
 ---

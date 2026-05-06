@@ -202,5 +202,6 @@ When stuck: @chris on Slack #ekp-beta
 | Date | Change | Reason |
 |---|---|---|
 | 2026-05-29(W9 D4)| Initial draft | F4.2 acceptance per W9 plan §2;Karpathy §1.2 simplicity-first 1-page coverage;final cohort kickoff version W11 D1 post IT cred + DNS apply per W9 D1 三方 outcome |
+| 2026-06-06(W10 D5)| F5.3 final review pass — content coverage verified across §1-§9;**carry-over to W11 D1**:Chris IT helpdesk contact info populate + Slack `#ekp-beta` channel auto-join confirmation;**no structural change W10 D5**(Karpathy §1.3 surgical — defer in-place edits until Chris contact data lands per Track A IT engagement cascade)| F5.3 W10 plan §2 acceptance partial(Track A still blocked on IT cred populate event;tabletop substitute pattern same as F5.1)|
 
-**Lifecycle reminder**:呢份 onboarding doc 喺 W11 D1 cohort kickoff 之前由 Chris 最後 review + 加實際 contact info(IT helpdesk number + Slack channel auto-join confirmation)。Real-cohort feedback W11+ 收返 lessons → W11 D5 retro update history with usage signals。
+**Lifecycle reminder**:呢份 onboarding doc 喺 W11 D1 cohort kickoff 之前由 Chris 最後 review + 加實際 contact info(IT helpdesk number + Slack channel auto-join confirmation per W10 D5 carry-over)。Real-cohort feedback W11+ 收返 lessons → W11 D5 retro update history with usage signals。
