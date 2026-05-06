@@ -409,7 +409,7 @@ status: closed    # flipped active→closed 2026-05-23 W8 D5 closeout(G1' + G4 s
 - ⏸ **W9+ progressive `@observe` decoration on query/synthesizer/crag** — F5.1 SDK ready;per-stage instrumentation deferred per Karpathy §1.3 surgical(W8 D5 scope = SDK lifecycle only)
 
 ### Commit reference
-- W8 D5 commit `_(pending — F5+F4.4+F6 batch)`(W8 phase closeout single feat+docs commit per W7 closeout pattern)
+- W8 D5 commit `ccdddf4`(20 files changed,+1652 / -60;7 new files + 9 modified;single feat(api,observability,docs)batch per W7 closeout pattern;F5.1 Langfuse SDK + F5.2 cost dashboard + F5.3 feedback + F5.4 alerts + F4.4 admin auth + F6 closeout cascade)
 
 ---
 
@@ -485,7 +485,7 @@ status: closed    # flipped active→closed 2026-05-23 W8 D5 closeout(G1' + G4 s
 
 ### Phase status
 
-- Closeout commit:`_(pending — single feat(api,docs) batch + docs(planning) backfill pair following W7 closeout pattern `247bb49` + `2222758`)`
+- Closeout commit:`ccdddf4`(2026-05-23 W8 D5 末 — feat(api,observability,docs): W8 D5 closeout — F5 + F4.4 + F6 cascade)+ docs(planning)backfill pair following W7 closeout pattern
 - Frontmatter status flipped to `closed`:**2026-05-23**(this batch)
 - Phase W09 kickoff trigger:**W9 plan = Beta internal testing + Chris IT/infra/DNS apply cascade(F1.4 LIVE switch + F1.5 LIVE smoke + F2.3 ACA deploy + F3.2 DNS apply + F2.5 networking apply + F2.4 Key Vault populate + Q11 final operational Resolved)+ real query log collection + UX iteration + Q6 owner trigger per architecture.md §6.1 W9 row;rolling JIT plan/checklist/progress folder NEW W8 D5 closeout same-session**
 
