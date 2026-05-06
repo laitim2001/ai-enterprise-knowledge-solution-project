@@ -259,7 +259,7 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 - ⏸ Runbook real-incident exercise — W11+ Beta cohort onset(post-IT cred populate)post-mortem updates per `infrastructure/runbook/README.md` §10 update history
 
 ### Commit reference
-- W9 D2 commit `_(pending — 1+2 parallel batch)`(W9 D2 single feat(observability,docs)+ docs(infra)batch per W7+W8+W9 D1 closeout pattern)
+- W9 D2 commit `6f465d0`(7 files changed,+811 / -6;1 new file + 6 modified;single feat(observability,docs)batch per W7+W8+W9 D1 closeout pattern;observe_llm_async + W11 runbook + observability SOP update + 7 NEW LLM decorator tests + synthesizer.synthesize 切換 LLM decorator)
 
 ---
 
