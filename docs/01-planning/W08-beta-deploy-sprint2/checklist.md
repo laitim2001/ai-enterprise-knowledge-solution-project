@@ -1,8 +1,8 @@
 ---
 phase: W08-beta-deploy-sprint2
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-05-16
+status: active
+last_updated: 2026-05-19
 ---
 
 # Phase W08 — Checklist
@@ -23,8 +23,8 @@ last_updated: 2026-05-16
 
 ## F2 — Azure Container Apps deploy backend(C12)
 
-- [ ] F2.1 Dockerfile finalize backend(multi-stage + non-root user + health probe)
-- [ ] F2.2 Azure Container Apps spec:2 replicas + 1 vCPU/2GB + autoscale 1-5 + Managed Identity + Key Vault binding
+- [x] F2.1 Dockerfile finalize backend — **W8 D1 done 2026-05-19** — `backend/Dockerfile` multi-stage(builder uv venv + runtime slim)+ non-root user `ekp` UID 10001 + HEALTHCHECK `/health` interval=30s start-period=15s;`.dockerignore` H5 enforcement(`.env*` + `*.pem` / `*.key` / `*.pfx` ignored;`.env.example` whitelisted)
+- [x] F2.2 Azure Container Apps spec — **W8 D1 done 2026-05-19** — `infrastructure/aca/backend.bicep` declarative spec:internal ingress + 1 vCPU/2GB + autoscale 1-5 HTTP concurrency target 30(§8.1 R5)+ User-assigned Managed Identity + 6 Key Vault secret references + Liveness + Readiness probes;`infrastructure/aca/README.md` pre-requisite list + manual deploy reference
 - [ ] F2.3 GHA CI/CD pipeline:test → ruff → docker build → ACR push → ACA deploy revision → smoke;rollback via revision swap
 - [ ] F2.4 Azure Key Vault secrets management(全 keys 移到 Key Vault;Settings via Managed Identity)
 - [ ] F2.5 ACA networking:internal ingress with Private Endpoint to Azure AI Search;public ingress for `/health` + auth endpoints

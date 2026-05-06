@@ -4,7 +4,7 @@ name: "Beta Hardening Sprint 2 — Azure Container Apps + Static Web Apps + Real
 sprint_week: W8
 start_date: 2026-05-19          # tentative — assumes W7 closed 2026-05-16
 end_date: 2026-05-23            # 5 working days
-status: draft                   # awaiting Chris W7 closeout sign-off + W8 D1 kickoff approval + Q11 IT operational confirm
+status: active                  # flipped draft→active 2026-05-19 W8 D1 kickoff(W7 D5 closeout PASS G1'-G7;Q11 IT engagement F1.1 in-progress external — non-blocking F2-F5 dev per W7 a-revised mock auth preserved)
 spec_refs:
   - architecture.md §6.1 W8 row             # Azure Container Apps + Static Web Apps + cost monitoring + Beta smoke
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline

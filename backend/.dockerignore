@@ -12,3 +12,13 @@ tests/
 htmlcov/
 *.egg-info/
 .git/
+
+# CLAUDE.md §5.5 H5 — secrets must never bake into the image.
+# Settings reads .env at runtime from a host bind-mount (dev) or Azure Key
+# Vault via Managed Identity (W8 D2-D3 cascade per W08 plan §2 F2.4).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
