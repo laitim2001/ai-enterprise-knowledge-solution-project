@@ -124,7 +124,7 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 - ⏸ F5.3 Real query log scaffolding + F5.4 daily query review — F4 cohort onboarded post-F4
 
 ### Commit reference
-- W9 D1 commit `_(pending — A+B parallel batch)`(W9 D1 single feat+docs commit per W7+W8 closeout pattern)
+- W9 D1 commit `579e336`(9 files changed,+706 / -7;3 new files + 6 modified;single feat(observability,docs) batch per W7+W8 closeout pattern;A R-B1 alignment memo + B F5.2-kickoff observe wrapper + 3-stage decoration synthesizer/retrieval/crag)
 
 ---
 
