@@ -2,7 +2,7 @@
 phase: W09-beta-internal-testing
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-26
+last_updated: 2026-05-26 cont
 ---
 
 # Phase W09 — Checklist
@@ -13,10 +13,10 @@ last_updated: 2026-05-26
 
 ## F1 — R-B1 escalation alignment + Q11 final operational Resolved
 
-- [ ] **CRITICAL R-B1** F1.1 W9 D1 三方 alignment session:Stakeholder + IT manager + Chris — IT delivery commitment date confirmed
-- [ ] F1.2 IT cred delivery:`AZURE_TENANT_ID` + `AZURE_CLIENT_ID` (+ optional Pattern B `AZURE_CLIENT_SECRET`)populated to Key Vault per `infrastructure/keyvault/README.md`
-- [ ] F1.3 Q11 status `decision-level Resolved + operational pending` → `Resolved` operational(decision-form.md sync)
-- [ ] F1.4 R-B1 status 🔴 Active escalation → 🟢 Mitigated(or 🔴 Open if escalation cycle slips)— RISK_REGISTER.md update
+- [x] **CRITICAL R-B1** F1.1 W9 D1 三方 alignment session — **W9 D1 done 2026-05-26** — Stakeholder + IT manager + Chris session outcome:**Option B-extended**(IT 預期 early June 2026 real-calendar deliver ~2026-06-02 to 2026-06-07)+ **Pattern A combined SPA+API confirmed**(NO Pattern B compliance push)+ **domain `ekp-beta.ricoh.com` confirmed**;mock auth bridge continues until IT cred populate;real-calendar context = implementation front-runs real ~3-4 週,IT 4-week wait fits production launch milestone window naturally
+- [ ] F1.2 IT cred delivery — **DEFER project W11**(post real-early-June IT cred populate per Chris infra session):`AZURE_TENANT_ID` + `AZURE_CLIENT_ID` populated to Key Vault per `infrastructure/keyvault/README.md`(Pattern A — NO `AZURE_CLIENT_SECRET` needed)
+- [x] F1.3 Q11 status update partial — **W9 D1 done 2026-05-26** — `decision-form.md` Q11 updated:`Resolved` decision-level + **operational committed early June 2026 real**(was "operational pending W9");final `Resolved` operational trigger 等 IT cred populate(post real-early-June)
+- [x] F1.4 R-B1 status update — **W9 D1 done 2026-05-26** — `RISK_REGISTER.md` R14 R-B1 🔴 **Active escalation 2026-05-23 → 🟡 Active monitor with confirmed deadline 2026-05-26**(W9 D1 三方 outcome de-escalation);re-escalation trigger 若 real 2026-06-08 仍未 deliver
 
 ## F2 — Chris infra/IT/DNS apply cascade
 

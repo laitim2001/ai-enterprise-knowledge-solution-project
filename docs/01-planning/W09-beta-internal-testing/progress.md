@@ -128,6 +128,67 @@ status: active    # flipped draft→active 2026-05-26 W9 D1 kickoff(A+B parallel
 
 ---
 
+## Day 1 cont — 2026-05-26: 三方 session outcome briefing + governance cascade
+
+**Action**:Chris 攜 `r-b1-alignment-memo-2026-05-26.md` 入三方 session;outcome briefing landed same-day W9 D1。AI cascade governance updates per memo §9 post-session action items template。
+
+**Session outcome(per Chris briefing)**:
+1. **Timeline**:**Option B-extended**(memo §6 framework)— IT manager committed delivery target **early June 2026 real-calendar(~2026-06-02 to 2026-06-07)**;maps to project doc calendar approximately W11 deploy window
+2. **Topology**:**Pattern A combined SPA+API confirmed**(memo §5.1)— NO Pattern B compliance push from Stakeholder / IT manager
+3. **Domain**:**`ekp-beta.ricoh.com`** confirmed for Beta SWA(memo Section 1 default)
+4. **Bridge strategy**:**Mock auth dev mode continues** until IT cred populate;real-calendar context = today 2026-05-06,implementation front-runs project doc calendar ~3-4 週,IT 4-week wait fits production launch milestone window naturally(W11-W12 staged rollout phase per architecture.md §6.1)
+
+**Governance cascade landed(per memo §9 template)**:
+- `docs/decision-form.md` Q11 — `Resolved` decision-level + **operational committed early June 2026 real**(was "operational pending W9");final `Resolved` operational trigger等 IT cred populate
+- `docs/01-planning/RISK_REGISTER.md` R14 R-B1 — 🔴 **Active escalation 2026-05-23 → 🟡 Active monitor with confirmed deadline 2026-05-26**(W9 D1 outcome de-escalation);re-escalation trigger 若 real 2026-06-08 仍未 deliver
+- `docs/01-planning/W09-beta-internal-testing/plan.md` §1 scope re-baselined + §7 changelog 2026-05-26 deviation entry per R3 — F1.2-F1.4 + F2 + F3 + F4 LIVE deploy cascade defer to **project W11**;W9-W10 active focus = F5 observability progressive + Q6 owner trigger + W11 production launch readiness doc polish + C11 dependency_overrides cleanup
+- `docs/01-planning/W09-beta-internal-testing/checklist.md` F1.1 ✅ ticked + F1.3 ✅ partial(decision update done;final Resolved post-IT)+ F1.4 ✅(R-B1 de-escalated)
+- F1.2 IT cred populate **DEFER project W11**(checklist item updated with explicit defer marker per CLAUDE.md sacred rule for unchecked `[ ]` items)
+
+**W9-W10 re-baselined active scope(post 三方 outcome)**:
+- F5.1 Q6 Real query collection owner identification(non-IT-blocked;Chris with Stakeholder)
+- F5.2 progressive @observe upgrade(W9 D1 baseline ready;W9 D2+ upgrade `client.trace()` → `client.generation()` for real-time LLM cost-attribution per W9 plan §2 F5.2)
+- F5.3 Real query log scaffolding with mock data(synthetic corpus to validate scaffolding logic — exercises pipeline before real cohort onboarding)
+- F4.2 Onboarding doc draft(content prep — actual provisioning推 W11)
+- W11 production launch readiness doc polish(runbook + rollback SOP per architecture.md §7.4 Day-2 Readiness)
+- C11 dependency_overrides cleanup(W8 retro § Carry-over)— test infrastructure technical debt
+- F6 W9 closeout + W10 phase folder rolling-JIT kickoff
+
+**Karpathy §1 alignment**:
+- §1.1 think-before-coding:Chris briefing surfaced critical real-calendar context(implementation front-runs project doc ~3-4 週)which transforms IT 4-week wait from "Beta-blocking" to "natural milestone alignment";re-baselined scope without panic — production launch window preserved
+- §1.2 simplicity-first:re-baseline via plan.md changelog + checklist updates,NOT via plan rewrite or W10 phase folder pre-build(rolling-JIT preserved per CLAUDE.md §10);W9-W10 scope concentrates on non-IT-blocked work — zero waste
+- §1.3 surgical:governance cascade touches 4 files(decision-form + RISK_REGISTER + W9 plan §1+§7 + W9 checklist + W9 progress);zero spec drift;Pattern A confirmation closes Pattern B branch in `infrastructure/entra-id/README.md` 但 SOP 文 retain 全部(audit trail)
+- §1.4 goal-driven:R3 plan deviation log entry verifiable;R-B1 de-escalation trigger conditions explicit;W9-W10 re-baselined deliverables each have unblocked acceptance path
+
+**Hard constraints check**:
+- H1 architecture lock — ✅ no §3 / §4 component change(governance update only)
+- H2 vendor lock — ✅ Pattern A confirmation = locked Microsoft Entra ID single app registration(architecture.md §6.1 W7+ baseline)
+- H3 Dify reference — ✅ untouched
+- H4 Tier 1 boundary — ✅ Beta phase work re-baselined within Tier 1 scope
+- H5 security — ✅ Pattern A NO client secret needed(simpler attack surface)
+- H6 test coverage — ✅ no test changes needed for governance cascade
+
+### Decisions / OQ summary
+- **Q11 operational status update**:decision-level Resolved 2026-05-05 PRESERVED + operational committed early June 2026 real(was "pending W9")— sync to `decision-form.md`(R4 binding rule)
+- No new OQ;F4 Beta cohort onboarding deferred → Q7 final user roster sync stays W11
+- No ADR triggered(Pattern A confirmation = within architecture.md §6.1 default path;non-architectural)
+
+### Open / blocked(W9-W10 re-baselined)
+- ⏸ F1.2 IT cred populate to Key Vault — **DEFER project W11**(post real-early-June);Chris coordinates with IT
+- ⏸ F2.1-F2.6 Chris infra apply cascade — **DEFER project W11**(post-IT cred)
+- ⏸ F3.1-F3.5 LIVE smoke verification — **DEFER project W11**(post-F2)
+- ⏸ F4.1 Final user roster + F4.3 Entra ID app access provision + F4.4 First-cohort kick-off — **DEFER project W11**(post-F3 LIVE smoke)
+- ⏸ F4.2 Onboarding doc draft — **W9-W10 actionable**(content prep)
+- ⏸ F5.1 Q6 Real query collection owner — **W9 D2 actionable**(Chris with Stakeholder)
+- ⏸ F5.2 progressive @observe `client.generation()` upgrade — **W9 D2-D5 actionable**(F5.1 SDK seam ready)
+- ⏸ F5.3 Real query log scaffolding(mock data corpus)— **W9 D2-D5 actionable**
+- ⏸ W11 production launch readiness runbook + rollback SOP — **W9-W10 actionable**
+
+### Commit reference
+- W9 D1 cont commit `_(pending — governance cascade batch)`(decision-form + RISK_REGISTER + W9 plan §1+§7 + W9 checklist + W9 progress)
+
+---
+
 ## Day 2 — _(pending)_
 
 ---

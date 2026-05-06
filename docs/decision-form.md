@@ -199,7 +199,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | **Decision** | **Approved per W6 D5 stakeholder approval cycle**(2026-05-05 Beta plan v1 sign-off batch)— default path accepted = Ricoh 統一 tenant via Entra ID;**W7 D1 critical path**:IT engagement trigger to confirm tenant access + app registration + owner identification;fallback = mock auth dev mode for W7 D1-D3 if IT cascade slips,Beta-blocking if W7 D5 仍未 confirm。 |
 | **Decided By** | Stakeholder(W6 D5 closeout approval cycle)|
 | **Date** | 2026-05-05 |
-| **Status** | `Resolved` decision-level(Ricoh 統一 tenant path approved 2026-05-05);**operational pending W9 cascade**(updated 2026-05-23 W8 D5 closeout)— IT engagement Tenant Access + App Registration + Owner Identification still in-progress past W8 D5 escalation threshold(W8 plan §4 R1);**W9 D1 三方 alignment session needed**:Stakeholder + IT manager + Chris;mitigation preserved via W7 a-revised mock auth strategy + W8 D2-D3 real msal_provider wire + W8 D4 SOPs(`infrastructure/entra-id/README.md` step 8 LIVE smoke procedure ready)— implementation spec-complete,IT delivery 是唯一 missing piece per RISK_REGISTER R14。|
+| **Status** | `Resolved` decision-level(Ricoh 統一 tenant path approved 2026-05-05);**operational committed early June 2026 real-calendar**(updated 2026-05-26 W9 D1 三方 alignment session outcome)— IT delivery target ~2026-06-02 to 2026-06-07 real calendar;**Pattern A combined SPA+API confirmed**(NO Pattern B compliance push)+ **Beta domain `ekp-beta.ricoh.com` confirmed**;mock auth bridge继续 until IT cred populate;maps to project doc calendar approximately W11 deploy window — naturally aligns with W11-W12 staged rollout milestone per architecture.md §6.1。**Implementation context**:Chris noted real-calendar today(2026-05-06)= project doc calendar ~W2 D2,即 EKP team 開發進度超前 real calendar ~3-4 週,所以 IT 4-week wait 完全 fit production launch milestone window。**Final operational `Resolved`** trigger 等 IT cred populate to Key Vault(post early-June real)。|
 
 ---
 
@@ -367,7 +367,7 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q8 | 4-metric replacement | Stakeholder | | C06 | Open | — |
 | Q9 | Sensitivity / CMK | Stakeholder | 2026-05-05 | C03 + C12 | `Resolved` (default Internal classification + Azure-managed key;CMK trigger post-Beta if requires) | W6 D5 stakeholder approval cycle |
 | Q10 | Visual identity | Stakeholder | 2026-05-05 | C09 + C10 | `Resolved` (default neutral tokens approved;designer pass post-Beta optional) | W6 D5 stakeholder approval cycle |
-| Q11 | Entra ID tenant | Stakeholder | 2026-05-05 | C11 | `Resolved` decision-level + **operational pending W9** (W8 D5 escalation — IT engagement past threshold;W9 D1 三方 alignment) | W6 D5 stakeholder approval + W8 D5 escalation update |
+| Q11 | Entra ID tenant | Stakeholder | 2026-05-05 | C11 | `Resolved` decision-level + **operational committed early June 2026 real**(W9 D1 三方 alignment outcome — Pattern A + `ekp-beta.ricoh.com` confirmed;mock auth bridge until IT cred populate) | W6 D5 stakeholder approval + W9 D1 三方 outcome 2026-05-26 |
 | Q12 | Tier 2 owner = Chris | Stakeholder | 2026-05-05 | (cross-cutting governance) | `Resolved` (Chris confirmed as Tier 2 GraphRAG + multi-agent + multi-tenancy + ... decision owner) | W6 D5 stakeholder approval cycle |
 | Q13 | Ground truth allocation | Stakeholder | 🔴 | C06 | `Resolved` | 2026-04-30 |
 | Q14 | Specific labeler | Domain Expert | 🔴 | C06 | `Resolved` (full — Chris Lai self-assigned) | 2026-05-01 |

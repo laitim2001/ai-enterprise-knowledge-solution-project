@@ -27,9 +27,23 @@ related_artifacts:
 > **Owner**:Chris(Tech Lead + IT engagement + infra apply + DNS apply)+ Stakeholder(W9 D1 三方 alignment session for R-B1 escalation)+ AI(LIVE smoke verification + UX iteration support)
 > **Approved by**:_(pending Chris W8 closeout sign-off + W9 D1 三方 alignment outcome + Q11 final operational Resolved)_
 
-## 1. Scope
+## 1. Scope(re-baselined W9 D1 三方 outcome 2026-05-26)
 
-W09 = **Tier 1 Beta internal testing phase entry**(W7-W12)。**Beta deploy LIVE cascade + internal user onboarding** 焦點:Chris IT engagement(Q11 final operational confirm)+ Chris infra session(F2.3 ACA deploy + F2.4 Key Vault populate + F2.5 ACA networking apply)+ Chris DNS session(F3.2 SWA custom domain apply)+ F1.4 LIVE switch + F1.5 + F1.7 LIVE smoke verification + W7 D5 deferred LIVE smoke cascade(F3.5 + F4.5)+ W9 D3 onset Beta internal user onboarding(per Q7 RAPO 內部 + 1-2 友好部門)+ real query log collection scaffolding(per Q6 owner trigger)+ UX iteration based on first-cohort feedback。
+W09 = **Tier 1 Beta internal testing phase entry**(W7-W12)。**ORIGINAL scope intent**:Beta deploy LIVE cascade + internal user onboarding。
+
+**RE-BASELINED scope post 三方 session 2026-05-26**(per §7 changelog):
+- IT delivery committed early June 2026 real-calendar(Pattern A + `ekp-beta.ricoh.com`)
+- F1.2-F1.4 + F2 + F3 + F4 LIVE deploy cascade **defer to project W11**(post real-early-June IT cred populate;natural alignment with W11-W12 staged rollout milestone window per architecture.md §6.1)
+- **W9-W10 active focus**:
+  - F5 observability progressive(W9 D1 baseline ready;W9 D2+ upgrade `client.trace()` → `client.generation()` for real-time LLM cost-attribution)
+  - F5.1 Q6 Real query collection owner identification(non-IT-blocked;Chris with Stakeholder)
+  - F5.3 Real query log scaffolding with mock data(synthetic corpus to validate scaffolding logic)
+  - F4.2 Onboarding doc draft(content prep,not provisioning)
+  - W11 production launch readiness doc polish(runbook + rollback SOP per architecture.md §7.4 Day-2 Readiness)
+  - C11 dependency_overrides cleanup(W8 retro § Carry-over C11)— test infrastructure technical debt
+- Mock auth bridge continues until IT cred populate
+
+**Real-calendar vs project doc calendar context**:Real today 2026-05-06 = project doc ~W2 D2;EKP team implementation front-runs real calendar ~3-4 週。IT 4-week wait fits production launch milestone window naturally。
 
 **6 deliverables F1-F6**:
 - F1 R-B1 escalation alignment + Q11 final operational Resolved(W9 D1 三方 session)
@@ -190,6 +204,7 @@ Carry-overs from `W08-beta-deploy-sprint2/progress.md` retro § Carry-overs C1-C
 |---|---|---|---|
 | 2026-05-23 | Initial draft(W8 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W8 closeout sign-off + W9 D1 三方 alignment outcome | Chris(pending approve to flip active) |
 | 2026-05-26 | status `draft → active` | W9 D1 kickoff cascade — A+B parallel deliverables landed pre-session(R-B1 alignment memo for Chris + F5.2-kickoff observe wrapper + 3-stage decoration);F1.1 三方 session itself is human-coordinated external work | Chris implicit(W8 closeout sign-off cascade) |
+| 2026-05-26 | **三方 session outcome — IT delivery defer early June real**(scope deviation per R3) | W9 D1 三方 alignment outcome:Option B-extended(IT 預期 early June 2026 real-calendar deliver ~2026-06-02 to 2026-06-07)+ Pattern A confirmed + domain `ekp-beta.ricoh.com` confirmed;real-calendar today 2026-05-06 = project doc calendar ~W2 D2(implementation front-run real ~3-4 週);**re-baselined W9-W10 scope:F1.2-F1.4 + F2 + F3 + F4 LIVE deploy work cascade defer to project W11**(post real-early-June IT cred populate);W9-W10 active scope = F5 observability progressive + Q6 owner trigger + W11 production launch readiness doc polish;**R-B1 de-escalated 🔴 → 🟡** active monitor with confirmed deadline | Chris(W9 D1 三方 session outcome briefing) |
 
 ---
 
