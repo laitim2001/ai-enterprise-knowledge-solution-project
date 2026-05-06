@@ -52,7 +52,7 @@ status: draft    # `draft` 自 2026-05-30 W9 D5 closeout cascade(rolling JIT kic
 
 ### Commit reference
 
-- W9 D5 closeout commit `_(pending)_`(W10 phase folder included in W9 closeout batch per F6.3 acceptance)
+- W9 D5 closeout commit `8e78fd7`(W10 phase folder included in W9 closeout batch per F6.3 acceptance)
 
 ---
 

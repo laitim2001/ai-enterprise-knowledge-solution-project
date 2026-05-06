@@ -477,7 +477,7 @@ status: closed    # flipped active→closed 2026-05-30 W9 D5 closeout(PARTIAL PA
 - ⏸ Track B W11 prep:runbook real-incident exercise(F5.1)+ cost dashboard real-time wire(F5.2)+ onboarding doc final IT helpdesk contact populate(F5.3)+ Stakeholder go/no-go review prep deck(F5.4)
 
 ### Commit reference
-- W9 D5 commit `_(pending — F6 closeout + C11 batch)`(W9 D5 single feat(tests,docs)+ docs(planning)backfill pair following W7+W8 + W9 D1-D4 closeout pattern)
+- W9 D5 commit `8e78fd7`(9 files changed,+554 / -49;3 new files + 6 modified;single feat(tests,docs)batch per W7+W8+W9 D1-D4 closeout pattern;C11 cleanup test_api_skeleton autouse fixture refactor + test_observability_routes simplification + F6 closeout cascade governance + W10-beta-iteration phase folder rolling-JIT)
 
 ---
 
@@ -564,7 +564,7 @@ status: closed    # flipped active→closed 2026-05-30 W9 D5 closeout(PARTIAL PA
 
 ### Phase status
 
-- Closeout commit:`_(pending — single feat(tests,docs) batch + docs(planning) backfill pair following W7+W8 closeout pattern `247bb49` + `2222758` + `ccdddf4` + `4c00d16`)`
+- Closeout commit:`8e78fd7`(2026-05-30 W9 D5 末 — feat(tests,docs): W9 D5 closeout — C11 dependency_overrides cleanup + F6 cascade + W10-beta-iteration phase folder kickoff)+ docs(planning)backfill pair following W7+W8+W9 D1-D4 closeout pattern
 - Frontmatter status flipped to `closed`:**2026-05-30**(this batch)
 - Phase W10 kickoff trigger:**W10 plan = Track A LIVE deploy cascade(IT cred populate fires F1.2 → F2.1-F2.7 → F3.1-F3.6)+ Track B implementation polish(observe_streaming + eval-set augmentation + Q15 weekly aggregation + runbook real-incident exercise + cost dashboard real-time wire + onboarding doc final + W11 staged rollout 25% Stakeholder prep)— rolling JIT plan/checklist/progress folder NEW W9 D5 closeout same-session**
 
