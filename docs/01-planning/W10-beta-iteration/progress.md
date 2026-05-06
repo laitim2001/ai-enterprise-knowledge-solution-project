@@ -376,7 +376,8 @@ status: closed   # `active → closed` flipped 2026-06-06 W10 D5 closeout cascad
 
 ### Commit reference
 
-- W10 D5 commit:_(pending — will backfill after `feat(docs,observability)` + `docs(planning)` pair)_
+- W10 D5 commit `7374dd4`(feat(docs,planning) — closeout cascade F5.1 tabletop + F5.3 review + F6 + W11 phase folder kickoff;governance)
+- W10 D5 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
 
 ---
 
