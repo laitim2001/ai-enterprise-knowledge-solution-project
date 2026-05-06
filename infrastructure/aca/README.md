@@ -9,6 +9,7 @@
 | File | Purpose |
 |---|---|
 | `backend.bicep` | EKP backend Container App spec — image / env / secrets(Key Vault refs)/ probes / autoscale 1-5 |
+| `networking.bicep`(W8 D3)| Private Endpoint to Azure AI Search + Private DNS zone group;forces backend retrieval traffic onto VNet(no internet hop)|
 | `parameters.beta.json`(W8 D2)| Per-environment parameter file populated by GHA pipeline pre-deploy |
 
 ## Pre-requisites(Chris infra setup,outside W8 D1 AI scope)
@@ -46,6 +47,27 @@ az deployment group create \
 
 ## W8 D2 cascade
 
-- F2.3 GHA pipeline:`test → ruff → docker build → ACR push → ACA deploy revision → smoke`
-- F2.4 Key Vault populate:Chris pre-stages secrets;Managed Identity grant via `az role assignment create`
-- F2.5 networking:Private Endpoint to Azure AI Search(`pl-ekp-search-beta`);ACA env vnet integration
+- F2.3 GHA pipeline:`test → ruff → docker build → ACR push → ACA deploy revision → smoke`(landed `.github/workflows/backend-deploy.yml` W8 D2)
+- F2.4 Key Vault populate:Chris pre-stages secrets;Managed Identity grant via `az role assignment create`(SOP `infrastructure/keyvault/README.md` W8 D2)
+
+## W8 D3 cascade
+
+- F2.5 networking:`networking.bicep` Private Endpoint to Azure AI Search;auto-DNS via `privatelink.search.windows.net` zone group;**Chris infra apply** sequence:
+  1. Pre-provision VNet `vnet-ekp-beta`(/23)+ subnet `snet-private-endpoints`(`/27` for PE NICs)+ subnet `snet-aca`(`/24` for ACA env)
+  2. Create ACA Managed Environment with `--infrastructure-subnet-resource-id <snet-aca>`(VNet integration must be set at env create — non-mutable post-create)
+  3. Create Private DNS zone `privatelink.search.windows.net` linked to VNet
+  4. `az deployment group create --template-file infrastructure/aca/networking.bicep --parameters ...`
+  5. Disable Azure AI Search public access via `az search service update --public-network-access disabled`(only AFTER PE verified working — irreversible without re-enabling)
+- Networking deploy command(W8 D3 reference):
+
+```bash
+az deployment group create \
+  --resource-group rg-ekp-beta-eastus2 \
+  --template-file infrastructure/aca/networking.bicep \
+  --parameters \
+    environmentTag=beta \
+    vnetId="/subscriptions/{SUB}/resourceGroups/rg-ekp-beta-eastus2/providers/Microsoft.Network/virtualNetworks/vnet-ekp-beta" \
+    peSubnetName=snet-private-endpoints \
+    searchServiceId="/subscriptions/{SUB}/resourceGroups/rg-ekp-beta-eastus2/providers/Microsoft.Search/searchServices/srch-ekp-beta" \
+    privateDnsZoneId="/subscriptions/{SUB}/resourceGroups/rg-ekp-beta-eastus2/providers/Microsoft.Network/privateDnsZones/privatelink.search.windows.net"
+```

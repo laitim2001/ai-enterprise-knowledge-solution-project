@@ -2,7 +2,7 @@
 phase: W08-beta-deploy-sprint2
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20
+last_updated: 2026-05-21
 ---
 
 # Phase W08 — Checklist
@@ -15,7 +15,7 @@ last_updated: 2026-05-20
 
 - [ ] **CRITICAL Q11 IT** F1.1 W8 D1 IT engagement:Chris confirm Tenant Access + App Registration + Owner Identification(Ricoh 統一 tenant)— W7 a-revised mock auth fallback preserved if IT slips
 - [x] F1.2 W8 D2-D3 backend JWT validation — **W8 D2 done 2026-05-20** — `python-jose[cryptography]` installed(Karpathy §1.2 simplicity-first:backend = resource server only,skip msal Python SDK;frontend msal-react W8 D3 handles token acquisition);real `backend/api/auth/msal_provider.py` implementation:JWKS fetch + TTL cache + RS256 signature + audience+issuer check + expiry check;Settings 加 `azure_tenant_id` + `azure_client_id` + `jwks_cache_ttl_s` + JWKS URI / issuer templates;empty config falls back to 503(W7 D1 contract preserved while IT delivery in-flight)
-- [ ] F1.3 W8 D2-D3 frontend `@azure/msal-react` install + PublicClientApplication + MsalProvider + redirect flow on `frontend/lib/auth/msal_provider.ts`
+- [x] F1.3 W8 D3 frontend msal-react wire — **W8 D3 done 2026-05-21** — `pnpm add @azure/msal-browser@5.9.0 @azure/msal-react@5.3.2`(within Microsoft Entra ID locked vendor scope per architecture.md §6.1 W7);real `frontend/lib/auth/msal_provider.ts` PublicClientApplication lazy SSR-safe singleton + sessionStorage cache + handleRedirectPromise on init + loginRedirect / logoutRedirect / acquireTokenSilent + module-level token cache so api-client.ts sync `getBearer()` API preserved;`auth-provider.tsx` LIVE branch initMsal on mount + 50min refresh interval + no auto-redirect on misconfigured cred;`.env.example` NEXT_PUBLIC_AZURE_TENANT_ID + CLIENT_ID + API_SCOPE
 - [ ] F1.4 W8 D4 LIVE switch:`Settings.feature_auth_mock=False` + `NEXT_PUBLIC_AUTH_MOCK=false`;real Entra ID redirect flow exercise
 - [ ] F1.5 W8 D4 F1.7 LIVE smoke(W7 carry-over):dev tenant Entra ID end-to-end login flow on local dev server
 - [x] F1.6 unit tests — **W8 D2 done 2026-05-20** — `backend/tests/test_msal_provider.py` 13 tests with self-signed RSA keypair fixture + JWKS mock:valid signed JWT 200 + upn fallback 200 + expired 401 + audience mismatch 401 + issuer mismatch 401 + missing kid 401 + unknown kid 401 + missing oid claim 401 + malformed JWT 401 + missing credentials 401 + JWKS fetch failure 503 + incomplete config 503 + JWKS cache TTL reuse
@@ -27,14 +27,14 @@ last_updated: 2026-05-20
 - [x] F2.2 Azure Container Apps spec — **W8 D1 done 2026-05-19** — `infrastructure/aca/backend.bicep` declarative spec:internal ingress + 1 vCPU/2GB + autoscale 1-5 HTTP concurrency target 30(§8.1 R5)+ User-assigned Managed Identity + 6 Key Vault secret references + Liveness + Readiness probes;`infrastructure/aca/README.md` pre-requisite list + manual deploy reference
 - [x] F2.3 GHA CI/CD pipeline — **W8 D2 done 2026-05-20** — `.github/workflows/backend-ci.yml`(PR validation:ruff + pytest)+ `.github/workflows/backend-deploy.yml`(main push:test → ACR build → Bicep deploy revision → smoke `/health` via `az containerapp exec`;`workflow_dispatch + rollback=true` swaps traffic to previous active revision non-destructive);OIDC federated credential via `azure/login@v2`
 - [x] F2.4 Azure Key Vault secrets management — **W8 D2 done 2026-05-20** — `infrastructure/keyvault/README.md` SOP:vault layout 6 secrets table(azure-openai-api-key / azure-search-admin-key / cohere-api-key / azure-tenant-id / azure-client-id / azure-client-secret)+ create + populate `az keyvault` commands + Managed Identity grant `Key Vault Secrets User`(reader-only least-privilege per H5)+ rotation SOP per-cadence + emergency + verification commands + Tier 2 boundaries;**actual apply 等 Chris infra session W8 D2-D3**(SOP authoring 完成,值 populate 等 Q11 IT delivery)
-- [ ] F2.5 ACA networking:internal ingress with Private Endpoint to Azure AI Search;public ingress for `/health` + auth endpoints
+- [x] F2.5 ACA networking — **W8 D3 done 2026-05-21**(declarative spec)— `infrastructure/aca/networking.bicep` Private Endpoint `<name>-search-pe` to Azure AI Search + auto-attached Private DNS zone group `privatelink.search.windows.net`;forces backend retrieval traffic onto VNet zero internet hop;`infrastructure/aca/README.md` updated with Chris infra apply sequence(VNet pre-provision → ACA env vnet integration AT CREATE → DNS zone link → Bicep deploy → disable Search public access AFTER PE verified);**actual apply Chris infra session**;backend.bicep already specifies `external: false` internal ingress(W8 D1)
 
 ## F3 — Azure Static Web Apps deploy frontend(C12)
 
-- [ ] F3.1 SWA build pipeline GHA workflow:`next build` → SWA deploy(staging slot)+ env vars wire
+- [x] F3.1 SWA build pipeline — **W8 D3 done 2026-05-21** — `.github/workflows/frontend-deploy.yml` lint + type-check + Next.js build → `Azure/static-web-apps-deploy@v1` upload to staging slot(PR / manual)or production(main push);env vars NEXT_PUBLIC_API_URL + AUTH_MOCK=false + AZURE_TENANT/CLIENT/SCOPE from GHA secrets;PR comment auto-post preview URL;pnpm cache via `pnpm/action-setup@v4`
 - [ ] F3.2 Custom domain DNS(`ekp.ricoh.com` 或 staging subdomain — owner confirm W8 D1)
 - [ ] F3.3 Auth integration sync:msal-react redirect URI + post-logout URI register in Entra ID app registration(blocked on F1.1)
-- [ ] F3.4 SPA route fallback(`staticwebapp.config.json`)for Next.js App Router
+- [x] F3.4 SPA route fallback — **W8 D3 done 2026-05-21** — `frontend/staticwebapp.config.json` navigationFallback `/index.html`(exclude `/api/*` + `/_next/*` + asset MIME globs);responseOverrides 401 → `/admin` 302 redirect + 403 → `/admin/error.html` + 404 → `/index.html` 200(SPA);global security headers X-Frame-Options DENY + nosniff + Referrer-Policy + Permissions-Policy + HSTS
 
 ## F4 — LIVE smoke cascade(W7 carry-overs)
 

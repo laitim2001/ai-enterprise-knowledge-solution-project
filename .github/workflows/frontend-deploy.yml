@@ -1,0 +1,114 @@
+# EKP frontend — Azure Static Web Apps deploy pipeline (W8 D3 F3.1).
+# Per W08-beta-deploy-sprint2 plan §2 F3.1 + frontend/staticwebapp.config.json.
+#
+# Trigger: push to main affecting frontend/** OR manual workflow_dispatch.
+# Stages: lint + type-check → next build → SWA staging deploy → smoke probe.
+# Rollback: manual via Azure portal SWA "promote staging" — non-destructive
+# slot swap; W8 D5 retro candidate to add automated rollback if needed.
+
+name: frontend-deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-deploy.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write  # SWA action posts PR preview URL comment
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Next build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://ekp-beta-backend-internal.example' }}
+          NEXT_PUBLIC_AUTH_MOCK: "false"
+          NEXT_PUBLIC_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          NEXT_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.AZURE_FRONTEND_CLIENT_ID }}
+          NEXT_PUBLIC_AZURE_API_SCOPE: ${{ vars.AZURE_API_SCOPE }}
+
+  deploy:
+    needs: [lint-and-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install deps
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for SWA
+        working-directory: frontend
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_AUTH_MOCK: "false"
+          NEXT_PUBLIC_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          NEXT_PUBLIC_AZURE_CLIENT_ID: ${{ secrets.AZURE_FRONTEND_CLIENT_ID }}
+          NEXT_PUBLIC_AZURE_API_SCOPE: ${{ vars.AZURE_API_SCOPE }}
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend
+          api_location: ""
+          output_location: .next
+          # Use `staging` slot on PR / manual; `default` on main push.
+          deployment_environment: ${{ github.event_name == 'push' && 'production' || 'staging' }}
