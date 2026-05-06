@@ -42,6 +42,7 @@ Cross-cutting:
 2. **§1.A path**(single doc skip):
    - Mark doc `enabled=False` in Admin Console(via PATCH `/kb/{kb_id}/chunks/{chunk_id}`)
    - Document the doc_id + filename for offline re-process queue
+     - **Note(W11 D1 AF1 clarification per W10 D5 tabletop substitute)**:no separate queue infrastructure exists in Tier 1。「Queue」 = (a) Slack `#ekp-beta` thread tag the doc_id + filename + (b) open `bugs/BUG-{NNN}-doc-parse-skip-{kebab}` instance per PROCESS.md §4 Bug-fix workflow。Tier 2 trigger:dedicated re-process queue infra if Beta signal shows recurring parse-skip pattern
    - Continue serving Beta cohort(其他 docs unaffected)
 3. **§1.B path**(全 docs fail = infrastructure issue):
    - Check Azure Container Apps `/health` endpoint via `az containerapp exec`
@@ -84,9 +85,9 @@ Cross-cutting:
    - `429` from `azure_search_*` → Azure AI Search S1 query quota
 2. **Apply per-quota mitigation**:
    - **Azure OpenAI quota exhausted**:
-     - Tier-1 immediate:reduce `synthesizer_call` rate by tightening `Settings.rate_limit_per_minute` from 50 → 25(application-side per-user limit;architecture.md §8.2 R5)
+     - Tier-1 immediate:reduce `synthesizer_call` rate by tightening `Settings.rate_limit_per_minute` from 50 → 25(application-side per-user limit;architecture.md §8.2 R5)+ **ACA revision restart required**(W11 D1 AF2 clarification:`Settings` env-var bound per W7 D2 F2 implementation;not hot-reload)
      - Tier-2 1-2 hour:Azure portal → Azure OpenAI resource → Quotas → request emergency quota increase(SLA varies)
-     - Tier-3 fallback:disable synthesizer(`app.state.synthesizer = None` via deployment env);Beta cohort gets retrieval-only mode(W2 baseline preserved per query.py:79-92)
+     - Tier-3 fallback(W11 D1 AF3 rewrite per W10 D5 tabletop substitute):set **`OPENAI_API_KEY=''` env override + ACA revision restart** → synthesizer init fails gracefully in `lifespan` startup → `app.state.synthesizer` stays `None` → `query.py:79-92` retrieval-only fallback path active(W2 baseline preserved);application-state mutation not env-settable directly
    - **Cohere quota exhausted**:
      - Immediate:`Settings.reranker_kind = "azure"` env override(switch to Azure built-in semantic ranker — architecture.md §3.2 R6 hot fallback)+ ACA revision restart
      - Recovery:Cohere Marketplace quota typically auto-refills 1h;contact account team if persistent
@@ -100,7 +101,7 @@ Cross-cutting:
 - **Azure portal**:OpenAI resource → Metrics → "Provisioned Tokens Per Minute"  / "Tokens Per Minute (Standard)"
 - **Common causes**:
   - **Beta cohort burst**(unanticipated demand)— scale quota OR tighten per-user rate limit
-  - **Runaway client**(eg. test script in loop)— audit log identify oid + revoke / contact user
+  - **Runaway client**(eg. test script in loop)— audit log identify oid + revoke / contact user。**W11 D1 AF4 gap acknowledgment per W10 D5 tabletop substitute**:application-side per-user blocklist IS NOT IMPLEMENTED Tier 1(no `Settings.beta_user_blocklist` mechanism)。Practical revoke path = (a)Slack `#ekp-beta` tag user requesting they pause script(immediate)+ (b)Entra ID app role removal via IT helpdesk(5-10 min round-trip per Pattern A 8-step)。**Tier 2 trigger flag** if recurring runaway client signal — application-side per-user blocklist worth implementing
   - **CRAG loop bug**(§5)— grader 反覆 trigger correction;check `crag_trigger_rate` alert
 
 ### Rollback / recovery
@@ -376,5 +377,6 @@ Per §3 if `ekp-kb-drive-v1` corrupt:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-05-27(W9 D2)| Initial draft | architecture.md §7.4 Day-2 Readiness Checklist runbook spec + W9 plan §2 W11 production launch readiness scope;Karpathy §1.2 simplicity-first single-file 5-scenario coverage |
+| 2026-06-09(W11 D1)| AF1-AF4 in-place edits per W10 D5 tabletop substitute aggregate findings | F4.1-F4.4 — AF1 §1.A step 2 queue clarification(no separate queue infra Tier 1)+ AF2 §2 tier-1 ACA revision restart note + AF3 §2 tier-3 `OPENAI_API_KEY=''` rewrite + AF4 §2 runaway client per-user revoke gap acknowledged + Tier 2 trigger flag。Live exercise post-Track A LIVE deploy 將 replace W10 D5 tabletop substitute within 72h(F4.5 W11 plan deliverable) |
 
 **Lifecycle reminder**:呢份 runbook 喺 Beta 階段(W9-W12)+ production launch 後會持續 evolve。每個 real incident 結束 → postmortem in `docs/03-implementation/postmortems/INC-{YYYY-MM-DD}-*.md` + 對應 section update here。**新 scenario 必須先入 architecture.md §7 acceptance section 確認 spec coverage,再加 runbook entry**(per CLAUDE.md §5.1 H1 boundary check)。

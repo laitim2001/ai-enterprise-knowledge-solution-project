@@ -1,8 +1,8 @@
 ---
 phase: W11-staged-rollout-25
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-06-06
+status: active
+last_updated: 2026-06-09
 ---
 
 # Phase W11 — Checklist
@@ -37,10 +37,10 @@ last_updated: 2026-06-06
 
 ## F4 — Runbook live exercise replacing W10 D5 tabletop substitute
 
-- [ ] F4.1 Runbook AF1 — `infrastructure/runbook/README.md §1.A` step 2 queue clarification(append: `"queue" = Slack #ekp-beta thread + bugs/BUG-{NNN}` instance — no separate queue infra Tier 1)
-- [ ] F4.2 Runbook AF2 — `§2 step 2 Azure OpenAI tier-1` append `"+ ACA revision restart required (Settings env-var bound;not hot-reload)"`
-- [ ] F4.3 Runbook AF3 — `§2 step 2 Azure OpenAI tier-3` rewrite to use `OPENAI_API_KEY=''` env override(actual mechanism)instead of「set `app.state.synthesizer = None`」
-- [ ] F4.4 Runbook AF4 — `§2 root cause investigation` add explicit「per-user block IS NOT IMPLEMENTED Tier 1;path is Slack ask user pause + Entra ID role removal via IT helpdesk」+ Tier 2 trigger flag
+- [x] F4.1 Runbook AF1 — `infrastructure/runbook/README.md §1.A` step 2 queue clarification(append: `"queue" = Slack #ekp-beta thread + bugs/BUG-{NNN}` instance — no separate queue infra Tier 1) ✅ W11 D1
+- [x] F4.2 Runbook AF2 — `§2 step 2 Azure OpenAI tier-1` append `"+ ACA revision restart required (Settings env-var bound;not hot-reload)"` ✅ W11 D1
+- [x] F4.3 Runbook AF3 — `§2 step 2 Azure OpenAI tier-3` rewrite to use `OPENAI_API_KEY=''` env override(actual mechanism)instead of「set `app.state.synthesizer = None`」 ✅ W11 D1
+- [x] F4.4 Runbook AF4 — `§2 root cause investigation` add explicit「per-user block IS NOT IMPLEMENTED Tier 1;path is Slack ask user pause + Entra ID role removal via IT helpdesk」+ Tier 2 trigger flag ✅ W11 D1
 - [ ] F4.5 Runbook live exercise — Chris + AI walk through `runbook/README.md §1 + §2` against live ACA env within 72h post-Track A LIVE deploy
 - [ ] F4.6 Update `runbook/README.md` Update history with live exercise outcome
 
@@ -50,7 +50,7 @@ last_updated: 2026-06-06
 - [ ] F5.2 Q4 deployment pricing rate confirmation(per W11 prep deck §6.1 Stakeholder Option A vs Option B decision):
   - **Option A path**:Update `backend/observability/realtime_cost.py::_PRICING_TABLE` with confirmed Beta tenant rates → flip `PRICING_BASELINE_LABEL`
   - **Option B path**(Karpathy §1.2 favoured):placeholder rates preserved + `cost_spike` rule × 1.5x ceiling preserved + 7-day re-baseline scheduled
-- [ ] F5.3 Tier 2 trigger metric review(per W11 prep deck §3 W11.F5)— signal-driven decision on GraphRAG / multi-agent / multi-modal trigger gates(per architecture.md §11)
+- [x] F5.3 Tier 2 trigger metric review(per W11 prep deck §3 W11.F5)— signal-driven decision on GraphRAG / multi-agent / multi-modal trigger gates(per architecture.md §11)✅ W11 D1 — `docs/03-implementation/tier-2-trigger-review-W11.md` 7 sections + 3 risks;0/8 capability triggers fired + 0/5 GraphRAG triggers fired;decision frame for post-W12 monthly evaluation gate cycle
 
 ## F6 — Phase Gate closeout + W11 retro + W12-production-launch phase folder kickoff
 

@@ -4,7 +4,7 @@ name: "Staged Rollout 25% — Track A LIVE deploy cascade trigger window + cohor
 sprint_week: W11
 start_date: 2026-06-09           # tentative — assumes W10 closed 2026-06-06 + Track A IT cred event fires W10/W11 boundary
 end_date: 2026-06-13             # 5 working days
-status: draft                    # `draft` 自 2026-06-06 W10 D5 closeout cascade(per PROCESS.md §2.3 rolling-JIT kickoff)
+status: active                   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-off authorization + Track B IT-cred-independent items 即時 start;Track A 仍等 IT cred populate event(real-calendar 2026-06-08 re-escalation deadline 1-day buffer)
 spec_refs:
   - architecture.md §6.1 W11 row             # Staged rollout 25% → 50% trigger
   - architecture.md §6.2 Beta + Rollout      # W7-W12 timeline
