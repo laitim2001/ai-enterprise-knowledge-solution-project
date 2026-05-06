@@ -238,7 +238,8 @@ status: active   # `draft → active` flipped 2026-06-02 W10 D1 Track B kickoff(
 
 ### Commit reference
 
-- W10 D3 commit:_(pending — will backfill after `feat` + `docs(planning)` pair)_
+- W10 D3 commit `d656b03`(feat — F5.2 cost dashboard real-time wire;C07 + C08)
+- W10 D3 backfill commit `_(pending — this docs(planning) commit)_` will land hash to this entry
 
 ---
 
