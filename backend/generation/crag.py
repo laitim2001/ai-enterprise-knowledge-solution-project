@@ -41,6 +41,7 @@ from tenacity import (
 )
 
 from generation.synthesizer import SynthesisResult, Synthesizer
+from observability.observe import observe_async
 from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult, RetrievedChunk
 
 logger = structlog.get_logger(__name__)
@@ -257,6 +258,16 @@ class CragLoop:
         self._max_corrections = max_corrections
         self._expanded_top_k = expanded_top_k
 
+    @observe_async(
+        name="crag.refine",
+        capture_attrs=(
+            "triggered",
+            "iterations",
+            "confidence_before",
+            "confidence_after",
+            "fallback_used",
+        ),
+    )
     async def refine(
         self,
         query: str,

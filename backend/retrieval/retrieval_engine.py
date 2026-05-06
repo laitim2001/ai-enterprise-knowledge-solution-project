@@ -20,6 +20,7 @@ from dataclasses import dataclass
 import structlog
 
 from ingestion.embedding.base import Embedder
+from observability.observe import observe_async
 from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
 
@@ -73,6 +74,16 @@ class RetrievalEngine:
         self._reranker = reranker
         self._hybrid_overfetch = hybrid_overfetch_for_rerank
 
+    @observe_async(
+        name="retrieval.retrieve",
+        capture_attrs=(
+            "embed_latency_ms",
+            "search_latency_ms",
+            "rerank_latency_ms",
+            "total_latency_ms",
+            "reranked",
+        ),
+    )
     async def retrieve(
         self,
         query: str,

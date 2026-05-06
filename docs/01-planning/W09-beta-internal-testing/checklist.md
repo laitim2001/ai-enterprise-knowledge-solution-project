@@ -1,8 +1,8 @@
 ---
 phase: W09-beta-internal-testing
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-05-23
+status: active
+last_updated: 2026-05-26
 ---
 
 # Phase W09 — Checklist
@@ -45,7 +45,7 @@ last_updated: 2026-05-23
 ## F5 — Real query log collection scaffolding + progressive @observe decoration
 
 - [ ] F5.1 Q6 owner identification:Chris confirm with Stakeholder W9 D1
-- [ ] F5.2 Progressive `@observe` decoration on query/synthesizer/crag stages → wire Langfuse SDK accessor to per-stage trace capture
+- [x] F5.2 Progressive `@observe` decoration on query/synthesizer/crag stages — **W9 D1 done 2026-05-26** — `backend/observability/observe.py` NEW thin wrapper(`observe_async` decorator + `_emit_trace_safe` helper);3-stage decoration:`Synthesizer.synthesize`(capture `input_tokens` + `output_tokens` + `latency_ms` + `refused`)+ `RetrievalEngine.retrieve`(capture embed/search/rerank/total latency + reranked flag)+ `CragLoop.refine`(capture triggered + iterations + confidence_before/after + fallback_used);`backend/tests/test_observe.py` 10 unit tests(happy paths + Langfuse emit failure swallowed + tenacity retry compose + signature preservation);wrapper degrade-graceful when Langfuse client absent(local dev / CI no-op);**W9 D2+ progressive scope = upgrade `client.trace()` → `client.generation()` for LLM-stage so cost-attribution dashboard flows real-time USD per query**(seam ready);322/322 pytest pass
 - [ ] F5.3 Real query log scaffolding:audit_log → `docs/03-implementation/beta-real-queries-W9-W10.yaml`(deduplicated;PII-stripped per H5)
 - [ ] F5.4 Daily query distribution review(W9 D2-D5 + W10 daily):surface frequent-query patterns + failed queries
 

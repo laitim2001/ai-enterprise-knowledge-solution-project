@@ -4,7 +4,7 @@ name: "Beta Internal Testing — Chris IT/infra/DNS apply cascade + LIVE deploy 
 sprint_week: W9
 start_date: 2026-05-26          # tentative — assumes W8 closed 2026-05-23
 end_date: 2026-05-30            # 5 working days
-status: draft                   # `draft` 自 2026-05-23 W8 D5 closeout cascade(per PROCESS.md §2.3 rolling-JIT kickoff)
+status: active                  # flipped draft→active 2026-05-26 W9 D1 kickoff(W8 D5 closeout PARTIAL PASS cascade;A+B parallel deliverable batch — alignment memo + observe wrapper landed before 三方 session per Karpathy §1.1 prep-while-blocked)
 spec_refs:
   - architecture.md §6.1 W9 row             # Beta internal testing + real query log collection + UX iteration
   - architecture.md §6.2 Beta + Rollout     # W7-W12 timeline
@@ -189,6 +189,7 @@ Carry-overs from `W08-beta-deploy-sprint2/progress.md` retro § Carry-overs C1-C
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-23 | Initial draft(W8 D5 末 closeout cascade)| Per PROCESS.md §2.3 rolling-JIT kickoff;status=draft pending Chris W8 closeout sign-off + W9 D1 三方 alignment outcome | Chris(pending approve to flip active) |
+| 2026-05-26 | status `draft → active` | W9 D1 kickoff cascade — A+B parallel deliverables landed pre-session(R-B1 alignment memo for Chris + F5.2-kickoff observe wrapper + 3-stage decoration);F1.1 三方 session itself is human-coordinated external work | Chris implicit(W8 closeout sign-off cascade) |
 
 ---
 
