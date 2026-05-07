@@ -16,10 +16,13 @@ Per W10 plan §2 F5.2 + architecture.md §7.4 Day-2 Readiness + §9 cost rows
     accessor swappable via fixture(`fetch_realtime_usage(client_or_fetcher)`)
   - **No DB**:aggregation in-memory each request;cache-as-needed in W11+
     when real cohort traffic exposes per-request hot path latency
-  - **Pricing table = placeholder**:per-1k-token / per-call rates documented
-    as「pricing_baseline=placeholder_publicly_quoted_rates_2026-Q2」;real
-    Q4 deployment rates land before Beta cohort spend gates per W10 plan
-    §2 F5.4 stakeholder go/no-go review
+  - **Pricing table = placeholder, Option B path active(W11 D1 2026-06-09)**:
+    per-1k-token / per-call rates documented as
+    「pricing_baseline=placeholder_publicly_quoted_rates_2026-Q2」;
+    Stakeholder decision W11 D1 = Option B(Karpathy §1.2 simplicity-first
+    per W11 prep deck §6.1)— placeholder rates preserved + `cost_spike`
+    rule × 1.5x ceiling preserved(`alerts.py` existing rule)+ 7-day
+    re-baseline post real cohort traffic W11+ scheduled
   - **Graceful degradation**:absent client → empty list + status="no_client";
     SDK method missing → status="sdk_method_missing";fetch raises →
     status="fetch_failed"。Endpoint always returns 200,never blocks dashboard
@@ -38,18 +41,23 @@ _logger = structlog.get_logger("ekp.realtime_cost")
 
 
 # ---------------------------------------------------------------------------
-# Pricing baseline — placeholder pending Q4 deployment rate confirmation
+# Pricing baseline — placeholder Option B path active(W11 D1 2026-06-09)
 # ---------------------------------------------------------------------------
 #
 # Rates expressed as USD per 1000 tokens(Azure OpenAI)or per 1000 calls
 # (Cohere)。Source = publicly quoted Azure OpenAI rates 2026-Q2 + Cohere
-# Marketplace v3.5 catalog;**SUBJECT TO CHANGE** when Chris confirms Beta
-# tenant deployment-specific rates W10 D4-D5 per F5.4 prep deck。
+# Marketplace v3.5 catalog。
+#
+# **Stakeholder decision W11 D1 2026-06-09 = Option B**(per W11 prep deck
+# §6.1;Karpathy §1.2 simplicity-first):placeholder rates preserved +
+# `cost_spike` rule × 1.5x ceiling preserved(`alerts.py` existing rule;
+# rolling 7-day avg comparison serves anomaly detection intent for first
+# week)+ 7-day re-baseline post real cohort traffic W11+ scheduled。
 #
 # Architecture.md §9 Beta column is the ANCHOR;these per-token rates are
 # back-derived from monthly aggregates 加 Beta usage assumptions(50 user ×
 # 5 q/day × ~2k input + ~500 output GPT-5.5 per query)。Real cohort traffic
-# W11+ will calibrate(per F5.4 review cycle)。
+# W11+ will calibrate per Option B 7-day re-baseline cycle。
 
 @dataclass(frozen=True)
 class _DeploymentRate:

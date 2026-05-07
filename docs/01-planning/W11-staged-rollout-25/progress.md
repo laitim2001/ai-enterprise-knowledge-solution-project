@@ -85,13 +85,28 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 - Karpathy §1.2:doc 唔重複 architecture.md §11 內容,只記錄 cumulative signal status + decision frame;~190 lines lean
 - H4 Tier boundary reminder:呢份 doc 屬 governance review only,**唔係 Tier 2 implementation**;trigger 透過呢份 doc 累積 signal → post-W12 retro Stakeholder + Chris(Q12 owner)正式 kickoff
 
+### F5.2 — Q4 deployment pricing rate Option B path active(W11 D1 same-day batch)
+
+- ✅ Stakeholder authorization 2026-06-09 → **Option B chosen**(Karpathy §1.2 simplicity-first per W11 prep deck §6.1)
+- Production code touchpoint(Karpathy §1.3 surgical — stale comment cleanup only,**zero logic change**):
+  - `backend/observability/realtime_cost.py` docstring + inline comment update — stale W10 D4-D5 / F5.4 reference cleanup;reflect Option B path active + 7-day re-baseline schedule
+  - `_PRICING_TABLE` **不變**(已 placeholder per design)+ `PRICING_BASELINE_LABEL` **不變**(`placeholder_publicly_quoted_rates_2026-Q2` retained)
+  - `backend/observability/alerts.py` `cost_spike` rule × 1.5x ceiling **preserved unchanged**(W8 D5 F5.4 baseline rule;rolling 7-day avg comparison serves anomaly detection intent for first-week period)
+- Governance docs sync(R4 binding):
+  - `docs/decision-form.md` Q4 entry — append W11 D1 operational follow-up sub-entry(pricing rate baseline gate Option B)+ Date 2026-06-09 + Status note pricing rate operational follow-up via spend cap proxy(non-blocking);Q4 overall `Resolved (full)` preserved
+  - `docs/03-implementation/w11-staged-rollout-25-prep-deck.md` §6.1 — Decision recorded entry added(Option B chosen + Option A NOT CHOSEN rationale)+ Update history 2026-06-09 W11 D1 entry added
+- Tests:456 unchanged(comment-only edits + governance docs);pytest sweep not re-run;ruff check not re-run(comment-only changes)
+- Karpathy §1.2 self-check pass:**zero new feature added**(Option B 本身 = preserve existing system + schedule re-baseline as governance item);no production code logic change;Beta timeline preserved
+- Karpathy §1.3 self-check pass:**surgical** stale comment cleanup only(W10 D4-D5 reference outdated post W10 closeout);every edit traces to user "Option B chosen" instruction
+- 7-day re-baseline schedule:W11+ post real cohort traffic accumulation;trigger window = first cohort feedback day + 7 calendar days;outcome = either(a)refresh `_PRICING_TABLE` with calibrated rates from real cohort billing data → flip `PRICING_BASELINE_LABEL` to `calibrated_2026-Q2-tenant-eastus2_W11_re-baseline`,OR(b)maintain placeholder if cohort billing data confirms publicly-quoted rates within ±10% accuracy(no flip needed)
+
 ### Decisions / OQ summary
 
 - Chris W10 closeout sign-off authorization → W11 plan/checklist/progress frontmatter `draft → active` flip executed
 - Track B IT-cred-independent items start authorization → F4.1-F4.4 + F5.3 commit batch as W11 D1 deliverable
 - Track A IT cred populate event chase-through commitment(Chris IT helpdesk follow-up;real-calendar 2026-06-08 re-escalation deadline within 1-day buffer)
 - Q12 Tier 2 owner Chris(Resolved 2026-05-05)anchor — F5.3 Tier 2 review draft frames post-W12 monthly evaluation gate cycle
-- Q4 pricing rate gate item NEW per W10 D3 F5.2 — preserved as W11 F5.2 Stakeholder Option A vs B decision pending;not affected by today's batch
+- Q4 pricing rate gate item NEW per W10 D3 F5.2 — **resolved same-day W11 D1**:Stakeholder authorization 2026-06-09 = **Option B**(Karpathy §1.2 simplicity-first per W11 prep deck §6.1);placeholder rates preserved + `cost_spike` 1.5x ceiling preserved + 7-day re-baseline scheduled W11+;Q4 overall `Resolved (full)` status preserved per decision-form.md sync
 
 ### Open / blocked
 
@@ -101,7 +116,7 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 - ⏸ F2.1-F2.4 25% rollout activation cascade — blocked on Track A
 - ⏸ F3.1-F3.5 daily metric monitor + 50% EoW conditional gate — blocked on F2(Track A)
 - ⏸ F5.1 Q15 first weekly signal report — needs F2 cohort traffic(W11 EoW)
-- ⏸ F5.2 Q4 deployment pricing rate confirmation — Stakeholder Option A vs B decision pending W11 prep deck §6.1
+- ⏳ F5.2 7-day re-baseline schedule — W11+ post real cohort traffic accumulation trigger window;outcome = refresh `_PRICING_TABLE` if cohort billing data diverges > ±10% from publicly-quoted rates,else maintain placeholder(non-blocking governance follow-up)
 
 ### Tests / discipline
 

@@ -47,9 +47,7 @@ last_updated: 2026-06-09
 ## F5 — Q15 first weekly signal report + Q4 deployment pricing rate confirm
 
 - [ ] F5.1 Q15 first weekly signal report W11 EoW:`python -m observability.weekly_signal_report --queries <real-cohort-corpus> --feedback <real-feedback-corpus> --week 2026-W24 --output reports/weekly-signal-W24.md`
-- [ ] F5.2 Q4 deployment pricing rate confirmation(per W11 prep deck §6.1 Stakeholder Option A vs Option B decision):
-  - **Option A path**:Update `backend/observability/realtime_cost.py::_PRICING_TABLE` with confirmed Beta tenant rates → flip `PRICING_BASELINE_LABEL`
-  - **Option B path**(Karpathy §1.2 favoured):placeholder rates preserved + `cost_spike` rule × 1.5x ceiling preserved + 7-day re-baseline scheduled
+- [x] F5.2 Q4 deployment pricing rate confirmation ✅ W11 D1 — **Option B path chosen**(Karpathy §1.2 favoured per W11 prep deck §6.1 + Stakeholder authorization 2026-06-09):placeholder rates preserved(`backend/observability/realtime_cost.py::_PRICING_TABLE` 不變;label `placeholder_publicly_quoted_rates_2026-Q2`)+ `cost_spike` rule × 1.5x ceiling preserved(`backend/observability/alerts.py` existing rule;rolling 7-day avg comparison serves anomaly detection intent)+ 7-day re-baseline post real cohort traffic W11+ scheduled。Option A NOT CHOSEN(spec-completeness ROI 不及 Beta timeline pressure;real cohort traffic 第一週自然校準)
 - [x] F5.3 Tier 2 trigger metric review(per W11 prep deck §3 W11.F5)— signal-driven decision on GraphRAG / multi-agent / multi-modal trigger gates(per architecture.md §11)✅ W11 D1 — `docs/03-implementation/tier-2-trigger-review-W11.md` 7 sections + 3 risks;0/8 capability triggers fired + 0/5 GraphRAG triggers fired;decision frame for post-W12 monthly evaluation gate cycle
 
 ## F6 — Phase Gate closeout + W11 retro + W12-production-launch phase folder kickoff

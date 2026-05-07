@@ -149,6 +149,8 @@ W10 Beta iteration closes(real-calendar 2026-06-06)。Track B implementation pol
 **Owner**:Chris(IT pricing follow-up)+ Stakeholder(spend gate sign-off)
 **Resolution path**:Update `backend/observability/realtime_cost.py::_PRICING_TABLE` with confirmed rates → flip `PRICING_BASELINE_LABEL` from `placeholder_publicly_quoted_rates_2026-Q2` to `confirmed_2026-Q2-tenant-eastus2`(or similar)
 
+**Decision recorded — W11 D1 2026-06-09**:**Option B chosen**(Stakeholder authorization)— placeholder rates preserved + `cost_spike` rule × 1.5x ceiling preserved(`backend/observability/alerts.py` existing rule;rolling 7-day avg comparison serves anomaly detection intent;wording 「static projection × 1.5x」 was approximate — actual rule = dynamic rolling avg comparison,functionally equivalent for first-week anomaly detection)+ 7-day re-baseline post real cohort traffic W11+ scheduled。Option A NOT CHOSEN(spec-completeness ROI 不及 Beta timeline pressure;real cohort traffic 第一週自然校準到 confirmed-rate accuracy through usage signal)。`docs/decision-form.md` Q4 entry sync per R4 binding(W11 D1 operational follow-up sub-entry added;Q4 status remains `Resolved (full)`)。
+
 ### 6.2 R-B1 Closure(per RISK_REGISTER R14)
 
 **Status**:🟡 Active monitor with confirmed deadline 2026-05-26(W9 D1 三方 outcome de-escalation);**re-escalation trigger 2026-06-08** if real-calendar IT 仍未 deliver。
@@ -228,6 +230,7 @@ Day-2 handover acknowledge:[ ] Yes
 | Date | Change | Author |
 |---|---|---|
 | 2026-06-05 | Initial draft(W10 D4 F5.4)| AI |
-| _(pending)_ | Stakeholder review approve cycle | Stakeholder + Chris |
+| 2026-06-09(W11 D1)| §6.1 Q4 pricing rate Stakeholder decision recorded — Option B path chosen(placeholder + `cost_spike` 1.5x ceiling + 7-day re-baseline);`decision-form.md` Q4 sync per R4 binding | Chris(Stakeholder authorization)+ AI(scribe)|
+| _(pending)_ | Stakeholder review approve cycle(other gate items GC1 / GC3 / GC4 / GC5 / GC6 / GC7)| Stakeholder + Chris |
 | _(pending)_ | Status flip `draft → active` post-approve | Chris |
 | _(pending)_ | Status flip `active → closed` post-W11 D1 trigger | Chris |
