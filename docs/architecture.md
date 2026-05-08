@@ -1,12 +1,19 @@
-# Enterprise Knowledge Platform (EKP) — Tier 1 Foundation 規格 v5.1
+# Enterprise Knowledge Platform (EKP) — Tier 1 Foundation 規格 v6
 
 **Codename**:EKP(Enterprise Knowledge Platform)
-**First Use Case**:Drive Project — Ricoh internal user manuals
-**Status**:**v5.1**(W6 D5 closeout stakeholder approval cycle increment 2026-05-05)— v5 frozen baseline + 2 surgical amendments(§3.2 reranker model upgrade v3.5 → v4.0-pro;§6.3 Gate 2 verdict landed PARTIAL PASS confirmed)
+**First Use Case**:Drive Project — Ricoh internal user manuals(D365 F&O ERP per W11 D2 cont scope clarification — see `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md`)
+**Status**:**v6**(W11 D2 cont stakeholder approval cycle increment 2026-06-10)— v5.1 baseline + Tier 1 UI expansion + hybrid auth model amendments
 **目標讀者**:Claude Code(實作執行)、Chris(技術 Lead)、Project Stakeholder
-**Timeline**:Tier 1 = 12 週(POC 6w + Beta 4w + Staged Rollout 2w)
-**最後更新**:2026-05-05(v5.1 stakeholder amendment cycle increment;v5 frozen 2026-04-27)
+**Timeline**:Tier 1 = ~17–18 週(POC 6w + Beta 4w + UI Foundation 4w + Staged Rollout 3-4w;原 12w 因 W11 D2 cont UI scope expansion + production launch defer to W16+)
+**最後更新**:2026-06-10(v6 stakeholder amendment cycle increment;v5.1 frozen 2026-05-05;v5 frozen 2026-04-27)
 
+> **v5.1 → v6 嘅 3 個 amendments**(scope expansion,實作影響重大 — 觸發 5-7 weeks production launch defer):
+> 1. **§5 UI Specifications expanded from 6 views → 9 views** — 新增 §5.9 View 7 Landing / §5.10 View 8 Login / §5.11 View 9 Register。觸發 W12 phase pivot from `production-launch` → `ui-foundation-discovery`(W11 D2 cont decision per stakeholder ack)。Reason:W3 D4 shadcn/ui upgrade deferral never resolved;W7-W8 「React polish」delivery 不足;current frontend completion ~15-20% vs §5 spec(per W11 D2 cont gap surface)。Multi-sprint UI sprint W12-W15 commits to Dify-leaning aesthetic + shadcn/ui foundation + tokens.ts consumption。
+> 2. **§2 Scope expanded for hybrid auth model**(SSO + self-service register)— Tier 1 keep Microsoft Entra ID per Q11 enterprise SSO,**新增** self-service email register flow(external partner / non-Entra-ID user)。觸發 §3 component list 新增 C13 Email Verification Service(Azure Communication Services 或 SendGrid;decision pending OQ-Q22)。詳見 ADR-0014。
+> 3. **§13 Decision Log 新增** §13.12 v5.1→v6 amendment 觸發 + ADR-0014 + ADR-0015 cross-ref。
+>
+> **註**:呢次 amendment **不變更** §3 RAG core(retrieval pipeline / embedding / reranker / synthesis)+ §4 application architecture (FastAPI + Next.js + Azure stack)+ §6 sprint plan POC W1-W6 actuals。新增 scope 屬 frontend layer + auth-side backend service。Cross-references update where needed。
+>
 > **v4 → v5 嘅 5 個 targeted patch**(內容補充,架構不變):
 > 1. **§1.7 新增 Business Impact Metrics**(time-to-answer reduction、shadow AI displacement、user satisfaction)
 > 2. **§6.3 新增 W2 + W4 Explicit Decision Gates**(early fail-fast,避免 sunk-cost continuation)
@@ -884,6 +891,56 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 | Step indicator with status badge | Dify Image 1, 6 | Pipeline wizard |
 | Side panel for document metadata | Dify Image 5 | KB detail page |
 
+### 5.9 View 7:Landing Page(`/`)— v6 amendment
+
+**Layout reference**:Modern SaaS landing(Vercel / Linear / Supabase aesthetic)+ Dify-leaning info hierarchy。Path change:原 `/` chat 路徑 → 移至 `/chat`(per §5.2 v6 amendment),`/` 變成 public landing。
+
+**Components**:
+- Header:logo + nav links(Features / Pricing(post-launch)/ Sign in / Get started)
+- Hero section:platform tagline + 1-line subheading + CTA buttons(「Start asking」→ `/login` / `/register`)
+- Feature highlights(3 cards):「Multi-format ingestion」/「Hybrid retrieval + CRAG」/「Citation-grounded answers」
+- 「How it works」(3 step):Upload → Ask → Verify(借 Dify Image 1 step indicator pattern)
+- Footer:status link / docs / contact / legal
+
+**Content discipline**:呢個 view 屬 marketing-style entry point,但**唔可以 leak** Tier 2 / future feature claims(per CLAUDE.md §5.4 H4)。所有 feature claim 必須 ground 在已實 Tier 1 capability。
+
+### 5.10 View 8:Login(`/login`)— v6 amendment
+
+**Layout reference**:Standard auth split layout(left brand panel / right form),visual hierarchy 借 Dify-leaning aesthetic 但 visual identity 100% EKP tokens。
+
+**Components**:
+- 左側 brand panel:logo + tagline + minimal pattern background
+- 右側 form area:
+  - Email input + Password input(self-register 用戶)
+  - 「Sign in」 button(POST `/auth/login` per Q11 hybrid path)
+  - 分隔線「or」
+  - 「Sign in with Microsoft」button(Entra ID SSO redirect per Q11 enterprise path)
+  - 「Forgot password?」link(self-register 用戶)
+  - 「Don't have an account? Register」link → `/register`
+
+**Auth flow**:
+- Internal staff(Entra ID):click「Sign in with Microsoft」→ MSAL redirect → Microsoft → callback → `/chat`
+- External partner(self-register):enter email + password → POST `/auth/login` → backend verify(C12 auth + C13 email verification)→ session token → `/chat`
+
+**Error states**:invalid cred / unverified email / locked account 全部由 backend `error.code` 對應前端 toast(per ApiError envelope §4.5)。
+
+### 5.11 View 9:Register(`/register`)— v6 amendment
+
+**Layout reference**:同 §5.10 split layout pattern + multi-step wizard(借 Dify 3-step 概念 pattern)。
+
+**Components**:
+- 左側 brand panel:同 §5.10
+- 右側 form area:Step indicator(1 → 2 → 3)+ 對應 step content
+  - **Step 1 — Account info**:email / password / confirm password(client-side strength indicator)/ display name
+  - **Step 2 — Email verify**:「Check your inbox at <email>」+ 6-digit code input + Resend(60s rate limit)
+  - **Step 3 — Welcome**:「Account created」+ optional first KB selection / tour CTA → `/chat`
+
+**Backend dependency**:
+- C13 Email Verification Service(v6 §3 component list 新增)— ACS / SendGrid 自簽 verification token,verify endpoint per OQ-Q22 vendor decision
+- C12 Auth Provider Pattern A 增 self-register branch(`POST /auth/register` + `POST /auth/verify-email`)
+
+**Tier boundary**:self-register 屬 Tier 1 v6 amendment scope。Reset password / 2FA / OAuth provider(Google / GitHub)defer Tier 2(per §11)。
+
 ---
 
 ## 6. Sprint Plan(12 週)
@@ -1338,6 +1395,38 @@ v4 全部 inherit)
 **Strategy 文件 §3.1 stance** 講「framework-agnostic via MCP」+「LangGraph for POC, MAF for production」。本規格嘅判斷:**MCP wrapper 喺 Tier 1 已 ready**(§4.4 endpoint design);LangGraph 對 Drive Project Tier 1 規模係 over-engineering,Tier 2 條件成熟先 migrate。Strategy 文件嘅 LangGraph commitment 反映 multi-BU long-term scale 嘅合理選擇,但唔應該 leak 入 Drive Project Tier 1 implementation。
 
 > 出處:Framework decision logic 來自本規格獨立分析,reconciliation 與 RAPO Drive Knowledge Agent POC Strategy 文件 §3.1 + §4.2 嘅 framework discussion。
+
+### 13.12 v5.1 → v6 Amendment 觸發(W11 D2 cont 2026-06-10)— UI Tier 1 expansion + Hybrid auth
+
+**Decision**:架構規格 v5.1 增量到 v6,**範圍擴充** UI Tier 1 6 views → 9 views(新增 Landing / Login / Register)+ auth model 由純 Microsoft Entra ID SSO → hybrid(SSO + self-service register)。觸發 W12 phase pivot from `production-launch` → `ui-foundation-discovery`,production launch defer to W16+(原 W12 → 推遲 5-7 weeks)。
+
+**Trigger**(by causation chain):
+1. **W3 D4 shadcn/ui upgrade deferral never resolved** — `frontend/app/page.tsx:6-8` self-acknowledged「shadcn upgrade deferred to W3 D5 F8 polish window per Karpathy §1.2 simplicity-first」,但 W3 D5 → W6 → W7-W8 (「React polish」delivery 不足)→ W9-W10 Beta internal testing focused on bugs not polish → W11 D2 surfaces gap
+2. **W11 D2 cont local dev unblock** — Mode B browser test surface barebones UI(322-line page.tsx,no shadcn,no tokens consume)→ User(acting as Stakeholder)evaluate completion ~15-20% vs §5 spec(6 views Dify pattern requirement)
+3. **Stakeholder explicit ack 2026-06-10**:scope expansion + production launch defer + version bump approval + ADR-0014/0015 promote
+
+**Reason**(why expansion不可 defer Tier 2):
+- 250-500 user 量級 production launch 嘅 UX impact,barebones UI 不可接受
+- spec §5 已 freeze 6 views Dify pattern as Tier 1 commitment,只是 implementation 未到 — 屬 delivery debt 而非 scope creep
+- 新增 Landing / Login / Register 屬 standard SaaS user journey 必需,原 spec 假設「 Entra ID SSO single auth path」忽略 external partner / public landing 入口需求 — 屬 v6 amendment 補足,而非 Tier 2 scope leak
+
+**Cross-references**:
+- ADR-0014 — Hybrid auth model(SSO + self-service register)— `docs/adr/0014-hybrid-auth-sso-plus-self-register.md`
+- ADR-0015 — UI Tier 1 expansion to Dify-leaning 9 views — `docs/adr/0015-ui-tier-1-expansion-dify-leaning.md`
+- W11 plan changelog 2026-06-10 entry — `docs/01-planning/W11-staged-rollout-25/plan.md` §7
+- W11 D2 cont progress entry — `docs/01-planning/W11-staged-rollout-25/progress.md`
+- W12 phase folder — `docs/01-planning/W12-ui-foundation-discovery/` (kickoff per §10 R1)
+
+**Implementation roadmap**(W12-W15 4-sprint UI initiative):
+- W12:Discovery + Foundation — spec amendment land + tokens.ts finalize + shadcn/ui setup + 12-15 base components + admin shell
+- W13:User-facing views — Landing(§5.9)+ Login(§5.10)+ Register(§5.11)+ Chat V1 expanded(§5.2)
+- W14:Admin views — Admin Dashboard(§5.3)+ KB List(§5.4)+ KB Detail 5-tab(§5.5)
+- W15:Eval / Debug + Polish — Eval Console(§5.6)+ Debug View(§5.7)+ responsive + a11y + Playwright E2E + pixel diff baseline
+- W16+:Production launch resume(F1.x Track A IT cred event-triggered + F2/F3 staged rollout per W11 plan)
+
+**Production launch implication**:從原 W12 → W16+(estimated 5-7 weeks delay)。Stakeholder explicit ack(user 2026-06-10)。
+
+> 出處:User explicit decision tree 2026-06-10 evening session(W11 D2 cont)。Stakeholder acting per past sessions authorization pattern。
 
 ---
 
