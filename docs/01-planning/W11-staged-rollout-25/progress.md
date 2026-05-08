@@ -360,7 +360,7 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 - W11 D2 backfill commit `a7a8f79`(Path A smoke addendum commit hash backfill)
 - W11 D2 Path B F4.5 Runbook live exercise commit `20f7f56`(F4.5 outcome sub-section + checklist F4.5 + F4.6 tick + runbook Update history 2026-06-10 entry;**🔴 AF3 critical drift finding** + 2 minor drift + 3 carry-overs to W11 D5 retro;ACA revision sequence `--0000003 → --0000004 → --0000005 → --0000006 RESTORE`)
 - W11 D2 backfill commit `34525be`(F4.5 commit hash backfill into F4.5 sub-section + runbook §10 history row)
-- W11 D2 Path C2 F4.5 AF3 Option B verify commit:_(filled post-commit per backfill pattern)_
+- W11 D2 Path C2 F4.5 AF3 Option B verify commit `4e390e6`(Option B verified NOT viable + W11 D5 retro decision narrowed Option A only path + runbook §2 AF3 LIVE EXERCISE WARNING + §10 history 2026-06-10 cont row;ACA revision sequence `--0000007 → --0000008 RESTORE`)
 
 ---
 
