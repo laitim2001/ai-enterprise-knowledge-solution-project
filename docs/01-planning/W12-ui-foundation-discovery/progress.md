@@ -512,7 +512,7 @@ Rationale:F1-F3 verifiable success criteria fully met within calendar-day collap
 
 ### Commit reference
 
-- W12 D5 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F5.1-F5.6 retro 7 sections complete + Phase Gate PASS WITH CAVEAT verdict + W13 phase folder kickoff + W12 frontmatter close cascade + checklist F5.1-F5.6 tick + plan changelog 2026-06-10 night cont 3 W12 D5 plan-day collapse + closeout entry)
+- W12 D5 batch commit `880099a`(F5.1-F5.6 retro 7 sections complete + Phase Gate PASS WITH CAVEAT verdict + W13 phase folder kickoff + W12 frontmatter close cascade + checklist F5.1-F5.6 tick + plan changelog 2026-06-10 night cont 3 W12 D5 plan-day collapse + closeout entry)
 
 ---
 
