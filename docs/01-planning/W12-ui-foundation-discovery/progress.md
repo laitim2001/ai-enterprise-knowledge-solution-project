@@ -272,7 +272,7 @@ last_updated: 2026-06-10
 
 ### Commit reference
 
-- W12 D3 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F3.1-F3.9 components.json + 19 shadcn primitives install + 6 missing tokens audit補齊 + admin page Button smoke + as const removal type-check fix + checklist F3.1-F3.9 tick + plan changelog 2026-06-10 night F3 scope adjustment entry + Day 3 entry initialize)
+- W12 D3 batch commit `1b5cb1e`(F3.1-F3.9 components.json + 19 shadcn primitives install + 6 missing tokens audit补齊 + admin page Button asChild smoke + as const removal type-check fix + checklist F3.1-F3.9 tick + plan changelog 2026-06-10 night F3 scope adjustment entry + Day 3 entry initialize)
 
 ---
 
