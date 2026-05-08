@@ -101,7 +101,7 @@ $ # 0 errors
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W13 D1 F1 routing restructure + theme provider + dark mode toggle + W13 active flip
+- `a15182e` feat(frontend,docs): W13 D1 F1 routing restructure + theme provider + dark mode toggle + W13 active flip
 
 ---
 
