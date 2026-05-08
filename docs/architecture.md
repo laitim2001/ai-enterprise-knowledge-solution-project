@@ -379,6 +379,29 @@ EKP Platform
 
 **Query 時 filter**:`enabled eq true and low_value_flag eq false`(default deboost low value chunks)
 
+### 3.7 C13 Email Verification Service(v6 amendment per ADR-0014 hybrid auth)
+
+> **Amendment trigger**:v5.1 → v6 amendment per §13.12(W11 D2 cont 2026-06-10)+ ADR-0014 hybrid auth(SSO + self-service register)+ OQ-Q22 vendor decision Resolved 2026-06-10 W12 D1。
+
+**Vendor**:**Azure Communication Services**(Email Service;default activated 2026-06-10 per OQ-Q22 + CLAUDE.md §5.2 H2 Azure-native preference)。SendGrid 屬 Tier 2 reconsideration trigger 候選(Beta cohort scale > 100/day OR feature gap surface)。
+
+**SDK**:`azure-communication-email` Python v1.0+(asyncio 支援 per FastAPI async-by-default per CLAUDE.md §3.1)。
+
+**Cost model**:Tier 1 cohort scope < 100 email/day(internal RAPO + 1-2 友好部門 + external partner 早期);Azure Email Service published rate ~$2.50/1k email = ~$7.50/month(Beta phase)。Cost dashboard per F5.2 placeholder rate baseline pattern + cost_spike rule × 1.5x ceiling preserved(`backend/observability/realtime_cost.py::_PRICING_TABLE` extension W13+ implementation phase)。
+
+**Integration pattern**(W13 implementation cascade per ADR-0014):
+- C12 Auth Provider extended:`POST /auth/register` + `POST /auth/verify-email` endpoints(per architecture.md v6 §5.11 register flow + §4.4 FastAPI endpoint contract extension)
+- C13 Email Service:`backend/api/auth/email_provider.py`(NEW W13)— ACS Email Client wrapper + verification token sign(`secrets.token_urlsafe(32)` for cryptographic randomness + 24h expiry)+ `users.verification_token` column store
+- Email template:plain text + HTML alternative(simple template embedded per W13 implementation;Tier 2 reconsideration trigger if dynamic template engine needed e.g. SendGrid template variables)
+- Sender domain:Tier 1 dev workstation `noreply@dev.ekp-beta.ricoh.com`(SPF/DKIM 自 Ricoh IT setup per Q11 IT cred event cascade — 同 `ekp-beta.ricoh.com` SWA custom domain trigger window;Beta phase real sender domain 待 IT cred populate event 後 `noreply@ekp-beta.ricoh.com` LIVE switch)
+- Failure mode:ACS API 5xx → `tenacity` retry(per CLAUDE.md §3.1 utility-lib 例外)+ fail-soft graceful(register flow surface "verification email pending — please check inbox or resend"button per §5.11 Step 2)
+
+**Tier boundary**:C13 屬 Tier 1 v6 amendment scope(per ADR-0014 §「Email Verification Service vendor decision」)。Forgot password / 2FA / OAuth provider(Google / GitHub)defer Tier 2 per §11 + ADR-0014 Consequences Neutral。
+
+**OQ status**:Q22 `Resolved`(default activated 2026-06-10;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface per OQ-Q22 decision rationale)。
+
+**RISK_REGISTER cross-ref**:non new risk(C13 fail-soft graceful design;Beta cohort < 100/day low volume;Azure Email Service GA 2024-Q1 deliverability concern monitored as W13 implementation operational signal,defer separate risk entry until real-cohort signal surface)。
+
 ---
 
 ## 4. Application Architecture
@@ -1416,6 +1439,8 @@ v4 全部 inherit)
 - W11 plan changelog 2026-06-10 entry — `docs/01-planning/W11-staged-rollout-25/plan.md` §7
 - W11 D2 cont progress entry — `docs/01-planning/W11-staged-rollout-25/progress.md`
 - W12 phase folder — `docs/01-planning/W12-ui-foundation-discovery/` (kickoff per §10 R1)
+- §3.7 C13 Email Verification Service component card(W12 D1 amendment cascade per OQ-Q22 Resolved 2026-06-10)
+- decision-form.md Q22 entry(NEW W12 D1 per ADR-0014;default Azure Communication Services activated 2026-06-10)
 
 **Implementation roadmap**(W12-W15 4-sprint UI initiative):
 - W12:Discovery + Foundation — spec amendment land + tokens.ts finalize + shadcn/ui setup + 12-15 base components + admin shell

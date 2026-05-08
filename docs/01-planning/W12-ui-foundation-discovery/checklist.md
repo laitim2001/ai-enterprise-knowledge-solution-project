@@ -1,24 +1,23 @@
 ---
 phase: W12-ui-foundation-discovery
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
 # Phase W12 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration)。
-> Status:`draft` 自 2026-06-10 W11 D2 cont rolling-JIT post stakeholder approve cycle for v5.1→v6 amendment。
-> 全 unchecked 至 W12 D1 implementation start。
+> Status:`active` 自 2026-06-10 evening W12 D1(W11 early closeout cascade same-session;Q22 email vendor F1 implementation start)。
 
 ## F1 — Q22 email vendor decision + W12 phase plan validate
 
-- [ ] F1.1 Q22 added to `decision-form.md` Section 1(Stakeholder Decisions)— Question / Why it matters / Default if unanswered / Decision pending fields populated per existing Q1-Q21 pattern
-- [ ] F1.2 Q22 trade-off table populated:Azure Communication Services vs SendGrid(billing / SDK maturity / verification token flow / email deliverability / monthly volume cap / cost per 1k email)
-- [ ] F1.3 Q22 default-if-unanswered = Azure Comm Service rationale documented(per ADR-0014 + spec §13 Azure-native preference per CLAUDE.md §5.2 H2)
-- [ ] F1.4 Q22 Resolved by W12 D2(stakeholder approve OR default activate per timing)
-- [ ] F1.5 architecture.md v6 §3 amendment — add C13 Email Verification Service component card per Q22 outcome(component name / vendor / SDK / cost model / integration pattern)
-- [ ] F1.6 W12 plan.md `status: draft → active` flip — based on(a) W11 D5 closeout PASS sign-off(b) Q22 Resolved(c) Stakeholder ack 2026-06-10 final sign-off
+- [x] F1.1 Q22 added to `decision-form.md` Section 1(Stakeholder Decisions)— Question / Why it matters / Default if unanswered / Decision pending fields populated per existing Q1-Q21 pattern ✅ W12 D1(2026-06-10 evening)
+- [x] F1.2 Q22 trade-off table populated:Azure Communication Services vs SendGrid(billing / SDK maturity / verification token flow / email deliverability / monthly volume cap / cost per 1k email)✅ W12 D1 — 8-row trade-off table embedded in decision-form.md Q22 entry
+- [x] F1.3 Q22 default-if-unanswered = Azure Comm Service rationale documented(per ADR-0014 + spec §13 Azure-native preference per CLAUDE.md §5.2 H2)✅ W12 D1 — 3 anchors per Q22 entry decision rationale(Azure-native billing integration + Python SDK asyncio + ADR-0014 default consistency + CLAUDE.md §5.2 H2)
+- [x] F1.4 Q22 Resolved by W12 D2(stakeholder approve OR default activate per timing)✅ W12 D1 — early default activation per User-as-Stakeholder same-session pattern Q7+Q9+Q10+Q11+Q12 W6 D5 cycle 重複(2026-06-10 evening)
+- [x] F1.5 architecture.md v6 §3 amendment — add C13 Email Verification Service component card per Q22 outcome ✅ W12 D1 — `docs/architecture.md §3.7 C13 Email Verification Service`(vendor + SDK + cost model + integration pattern + tier boundary + RISK_REGISTER cross-ref)+ §13.12 Cross-references row added
+- [x] F1.6 W12 plan.md `status: draft → active` flip — based on(a) W11 D5 closeout PASS sign-off(b) Q22 Resolved(c) Stakeholder ack 2026-06-10 final sign-off ✅ W12 D1 — 三條件全 cleared(W11 PARTIAL PASS commit `4ec56d5` + Q22 default activated + Stakeholder authorization 2026-06-10 evening session);plan + checklist + progress.md frontmatter `draft → active`
 
 ## F2 — Visual identity tokens.ts finalize + design reference doc
 

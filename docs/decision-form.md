@@ -12,13 +12,13 @@
 
 ### What this is
 
-EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條 decision resolve 之後就可以 W1 Day 1 啟動。**6 條屬 critical path,W1 Day 1 必須有答案**;其餘 15 條可以喺 W1–W4 內陸續 resolve。
+EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 22 條 decision resolve 之後就可以 W1 Day 1 啟動。**6 條屬 critical path,W1 Day 1 必須有答案**;其餘 16 條可以喺 W1–W4 內陸續 resolve(Q22 NEW W12 D1 per ADR-0014 hybrid auth amendment 後加)。
 
 ### Decision Volume
 
 | Owner | 條數 | 預期 turnaround |
 |---|---|---|
-| Stakeholder(Project Sponsor / Lead) | **13 條** | 1 sit-down meeting,~45 分鐘 |
+| Stakeholder(Project Sponsor / Lead) | **14 條** | 1 sit-down meeting,~45 分鐘(Q22 NEW W12 D1 per ADR-0014 hybrid auth)|
 | 領域專家(Subject Matter Expert) | 3 條 | Sync with stakeholder 同一 meeting |
 | 技術(Tech Lead / W1 自行 confirm) | 5 條 | W1 Day 1–W4 dev hands-on |
 
@@ -217,6 +217,20 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 
 ---
 
+### Q22 — Email Verification Service Vendor(NEW W12 D1 per ADR-0014 hybrid auth)
+
+| Field | Content |
+|---|---|
+| **Question** | ADR-0014 hybrid auth model(SSO + self-service register)新增 self-register flow,需要 email verification service 簽發 + verify email confirmation token。Azure Communication Services 定 SendGrid?抑或其他選項? |
+| **Why it matters** | W13 phase implementation cascade dependency — ADR-0014 backend `/auth/register` + `/auth/verify-email` endpoint 需要 email service SDK 集成 + sender domain 配置 + verification token flow + email template。冇 vendor decision = W13 D1 backend implementation block。Tier 1 cohort scope 預估 < 100 email/day(internal RAPO + 1-2 友好部門 + external partner 早期),volume 低成本 trade-off 主要 vendor lock-in 同 SDK developer ergonomics。 |
+| **Default if unanswered** | **Azure Communication Services**(per CLAUDE.md §5.2 H2 Azure-native preference + ADR-0014 §「Email Verification Service vendor decision (OQ-Q22 NEW)」)— Azure-native billing integration unified per Cohere v4.0-pro Path A pattern;Python SDK 支援;同 stack 一致。 |
+| **Decision** | **Azure Communication Services**(default activated 2026-06-10 W12 D1 evening per User-as-Stakeholder same-session authorization pattern;Q7+Q9+Q10+Q11+Q12 W6 D5 pattern 重複)。**Trade-off table**:<br><br>\| 維度 \| Azure Communication Services \| SendGrid \|<br>\|---\|---\|---\|<br>\| Billing integration \| ✅ Azure subscription unified(同 Cohere v4.0-pro Path A pattern;Cost 統一 dashboard per F5.2 placeholder rate baseline)\| ⚠ Separate Twilio account billing(non Azure-native)\|<br>\| Python SDK maturity \| 🟢 `azure-communication-email` v1.0+ stable;asyncio 支援(per FastAPI async-by-default per CLAUDE.md §3.1)\| 🟢 `sendgrid` v6 stable;sync-only(asyncio adapter via `httpx` 自寫)\|<br>\| Verification token flow \| ✅ Custom token generate + store 入 `users.verification_token` column;expiry validate 自 backend(架構 standard pattern)\| ✅ 同樣 pattern;SendGrid 提供 dynamic template variables 但 EKP 唔需要 \|<br>\| Email deliverability \| 🟡 Azure Email Service relatively new(GA 2024-Q1);SPF/DKIM 自 setup;Microsoft 365 deliverability 良好 \| 🟢 Industry-standard reputation;higher inbox placement vs cold IP \|<br>\| Monthly volume cap \| 🟢 Tier 1:免費 250/month + pay-as-go ~$0.0025/email;Beta cohort scope < 100/day = ~3000/month → ~$7.5/month \| 🟢 Free tier 100/day = 3000/month $0;paid Essentials $19.95/month for 50K \|<br>\| Cost per 1k email | 🟢 ~$2.50/1k(Azure Email Service published rate;included in PAYG)| 🟢 ~$0.40/1k(SendGrid Essentials \| free tier sufficient Tier 1)\|<br>\| Tier 2 escalation trigger \| Low — Beta cohort scale > 100/day OR feature gap surface(template engine / segment analytics / advanced deliverability tooling)→ Tier 2 reconsideration \| Same trigger reverse direction \|<br>\| ADR-0014 §「Email Verification Service」consistency \| ✅ Per ADR-0014 default-if-unanswered + CLAUDE.md §5.2 H2 \| ⚠ Departure from Azure-native preference \|<br><br>**Decision rationale**:Azure-native billing integration + Python SDK asyncio support + ADR-0014 default consistency + CLAUDE.md §5.2 H2 Azure-native preference 三條 anchor 集中指向 Azure Comm Service。Cost differential ~$2-7/month(low Tier 1 cohort scope);Azure Email Service GA 2024-Q1 deliverability concern 屬 minor risk(SPF/DKIM 自 setup 緩解;Microsoft 365 inbox placement 良好;若 surface 為 Tier 2 escalation trigger swap to SendGrid)。SendGrid free tier 100/day 雖然 Tier 1 cohort sufficient 但 Tier 2 scale 後無 Azure-native cost dashboard integration(per F5.2 placeholder rate baseline pattern + cost_spike rule × 1.5x ceiling)— Tier 1 lock-in Azure-native preserves Tier 2 friendly migration path。 |
+| **Decided By** | Chris(acting as Stakeholder per past sessions authorization pattern;User-as-Stakeholder same-session ack 2026-06-10 W12 D1 evening per Q7+Q9+Q10+Q11+Q12 W6 D5 pattern;default activation 2026-06-10) |
+| **Date** | 2026-06-10(W12 D1 evening default activation per ADR-0014 + CLAUDE.md §5.2 H2 Azure-native preference) |
+| **Status** | `Resolved` (default activated;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface) |
+
+---
+
 ### Q13 — Ground Truth Labeling Resource Allocation 🔴 CRITICAL
 
 | Field | Content |
@@ -379,8 +393,11 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 21 條
 | Q19 | Embedding dim | Dev | 2026-05-05 | C01 + C03 | Resolved(1024d baseline)| W2 D3 |
 | Q20 | LLM pick | Dev | | C05 | Open | W3 |
 | Q21 | Reranker pick | Dev | | C04 | `Resolved` (Cohere v4.0-pro;W6 D1 LIVE Azure 2-way reaffirm — faith Δ -11.76pp + rel Δ -9.81pp WORSE → Cohere baseline final) | 2026-05-05 (W6 D1) |
+| Q22 | Email Verification Service vendor(NEW W12 D1 per ADR-0014 hybrid auth) | Stakeholder | 2026-06-10 | C13 (NEW) + C12 (Auth Provider extended per ADR-0014) | `Resolved` (default Azure Communication Services activated;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface) | 2026-06-10 (W12 D1 evening) |
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
+
+**OQ status snapshot 2026-06-10 W12 D1 evening**:**17 / 22 Resolved**(Q1 / Q2 / Q3 / Q4 / Q5 / Q7 / Q9 / Q10 / Q11 / Q12 / Q13 / Q14 / Q17 / Q18 / Q19 / Q21 / **Q22 NEW**);**5 / 22 Open**(Q6 / Q8 / Q15 / Q16 / Q20 — 影響 Beta + Tier 2 trigger,unchanged from W6 D5 closeout)。
 
 **Pending implementation detail**(W1 D5 closeout 2026-05-02:全部 6 critical OQ full Resolved,zero outstanding minor):
 - ~~Q3~~ — ✅ Fully resolved W1 D5(2026-05-02):tier Standard S1 + region eastus2 confirmed by Chris;endpoint + admin key root `.env`(H5 commit `09138d4`);F9 index `ekp-kb-drive-v1` HTTP 201 created W1 D4(commit `349c33e`)

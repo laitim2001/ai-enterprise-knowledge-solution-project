@@ -4,7 +4,7 @@ name: "UI Foundation & Discovery — Phase 1 of 4 in W12-W15 UI Tier 1 expansion
 sprint_week: W12
 start_date: 2026-06-16             # tentative — assumes W11 D5 closeout 2026-06-13 + 1-day buffer
 end_date: 2026-06-20               # 5 working days(possibly +2 if W13 absorb 1-2 days kick-off carry)
-status: draft                      # `draft` — pending W11 D5 closeout sign-off + ADR-0014/0015 stakeholder ack final + Q22 email vendor decision land
+status: active                     # `active` 自 W12 D1 (2026-06-10 W11 early-closeout same-session) — W11 PARTIAL PASS landed (commit `4ec56d5`) + ADR-0014/0015 stakeholder ack final landed (`44a52cb`) + W12 D1 F1 Q22 email vendor implementation start
 spec_refs:
   - architecture.md v6 §5             # UI Specifications expanded(9 views)
   - architecture.md v6 §5.1           # Visual Identity Strategy(tokens.ts pattern)
@@ -201,7 +201,8 @@ W12 phase Gate **FAIL condition**:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-10 | Initial draft(W11 D2 cont rolling-JIT post stakeholder approve cycle for v5.1→v6 amendment + ADR-0014/0015)| Per CLAUDE.md §10 R1 rolling-JIT;W12 phase pivot from `production-launch` → `ui-foundation-discovery` per W11 plan changelog 2026-06-10 deviation entry;UI gap surface during W11 D2 cont Mode B local dev unblock | Chris(acting as Stakeholder per past sessions authorization pattern;explicit ack 2026-06-10 evening session)|
+| 2026-06-10 evening | Status `draft → active` flip + W12 D1 implementation start | W11 D2 cont evening early closeout cascade(commit `4ec56d5`)— W11 PARTIAL PASS landed + ADR-0014/0015 sister ADR cycle landed(`44a52cb`)+ architecture.md v6 amendment landed(`49a634b`)→ 3 pre-conditions cleared;W12 D1 F1 Q22 email vendor decision implementation start same-session per stakeholder authorization 2026-06-10 evening | Chris(stakeholder authorization 2026-06-10 evening session;same-session cascade per pivot momentum)|
 
 ---
 
-**Lifecycle reminder**:呢份 plan `status=draft`(等 W11 D5 closeout sign-off + Q22 email vendor decision land + W12 D1 active flip)。重大 deviation 入第 7 節 changelog。Sister sprint W13/W14/W15 phase folders **唔會** pre-create(per CLAUDE.md §10 R1 rolling-JIT — 每 phase kickoff 先建)。
+**Lifecycle reminder**:呢份 plan `status=active` 自 2026-06-10 evening W12 D1(W11 early closeout cascade same-session;Q22 email vendor implementation start same-commit-cycle)。重大 deviation 入第 7 節 changelog。Sister sprint W13/W14/W15 phase folders **唔會** pre-create(per CLAUDE.md §10 R1 rolling-JIT — 每 phase kickoff 先建)。
