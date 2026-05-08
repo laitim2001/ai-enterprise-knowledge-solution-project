@@ -2,7 +2,7 @@
 phase: W11-staged-rollout-25
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-06-09
+last_updated: 2026-06-10
 ---
 
 # Phase W11 — Checklist
@@ -41,8 +41,8 @@ last_updated: 2026-06-09
 - [x] F4.2 Runbook AF2 — `§2 step 2 Azure OpenAI tier-1` append `"+ ACA revision restart required (Settings env-var bound;not hot-reload)"` ✅ W11 D1
 - [x] F4.3 Runbook AF3 — `§2 step 2 Azure OpenAI tier-3` rewrite to use `OPENAI_API_KEY=''` env override(actual mechanism)instead of「set `app.state.synthesizer = None`」 ✅ W11 D1
 - [x] F4.4 Runbook AF4 — `§2 root cause investigation` add explicit「per-user block IS NOT IMPLEMENTED Tier 1;path is Slack ask user pause + Entra ID role removal via IT helpdesk」+ Tier 2 trigger flag ✅ W11 D1
-- [ ] F4.5 Runbook live exercise — Chris + AI walk through `runbook/README.md §1 + §2` against live ACA env within 72h post-Track A LIVE deploy
-- [ ] F4.6 Update `runbook/README.md` Update history with live exercise outcome
+- [x] F4.5 Runbook live exercise — AI solo walkthrough §1 + §2 against personal Azure dev tier ACA env(replaces W10 D5 tabletop substitute;Track A blockade workaround pattern unblocked exercise prerequisite per W11 D2 Batch 5 backend live)✅ W11 D2 — AF2 LIVE verify(restart cycle ~1.7 min,revision `--0000004`)+ §1 `/health` via `az containerapp exec` viable;**🔴 AF3 critical mechanism drift surfaced**(runbook 寫「synthesizer init fails gracefully retrieval-only fallback」 but actual lifespan gate `server.py:64` wraps both retrieval engine + synthesizer → removing `AZURE_OPENAI_API_KEY` → `/query` 503 instead of degraded retrieval-only;mitigation as written DOES NOT achieve documented degraded mode)+ AF1 + AF4 narrative-walked NIL drift。**Carry-over**:AF3 mitigation rewrite OR code fix(P2 governance);ADR-0013 candidate trigger
+- [x] F4.6 Update `runbook/README.md` Update history with live exercise outcome ✅ W11 D2 — F4.5 outcome entry appended(verified LIVE / drift findings / carry-overs)
 
 ## F5 — Q15 first weekly signal report + Q4 deployment pricing rate confirm
 

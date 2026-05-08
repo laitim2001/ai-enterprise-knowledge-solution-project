@@ -260,11 +260,72 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 - Smoke queries executed:**3**(off-corpus paper jam → corpus-aligned ledger allocation rule → /kb sanity)
 - Cumulative cost during smoke:negligible(~3 LLM calls × small completion tokens × gpt-5.5 rate)
 
+### F4.5 Runbook live exercise outcome(W11 plan G5 deliverable;2026-06-10 same-day after Path A smoke)
+
+**Goal**:Per W11 plan §F4.2 acceptance — AI solo walkthrough `runbook/README.md §1 + §2` against personal Azure dev tier ACA env(replaces W10 D5 tabletop substitute;Track A blockade workaround pattern unblocked F4.5 prerequisite per Batch 5 backend live)。
+
+#### LIVE-verified mechanisms
+
+- **AF2 ACA revision restart**(W11 D1 §2 tier-1 edit):`RATE_LIMIT_PER_MINUTE=25` env override → revision `--0000004`:Activating @ 36s → RunningAtMaxScale @ 103s,**total restart cycle ~1.7 min** for env-var-only change(image cached;cold image pull 應 +30-60s)。Mechanism verified end-to-end:env change → control plane queue → new revision provisioned → pod activates → lifespan re-init → ready;zero-downtime traffic-split during transition。
+- **§1 `/health` via `az containerapp exec`**:WebSocket through `management.azure.com` endpoint,**R8 corp proxy bypass viable**(vs `az containerapp logs show` data plane endpoint blocked)。Internal `curl http://127.0.0.1:8000/health` 返 `{"status":"ok"}` confirmed。
+
+#### Narrative walkthroughs(no LIVE trigger feasible solo)
+
+- **AF1 §1.A queue clarification**(Slack `#ekp-beta` thread tag + `bugs/BUG-{NNN}-doc-parse-skip-{kebab}` instance):**NIL drift** — narrative consistent with W11 D1 in-place edit + Beta plan v1 Slack channel cascade(Q11 IT cred event 連帶設立)。
+- **AF4 runaway client per-user revoke gap**(Slack tag + Entra ID role removal via IT helpdesk):**NIL drift** — narrative accurate Tier 1 gap acknowledgment;personal Azure dev tier 用 mock auth `_DEV_USER`,real Entra ID role removal Beta deploy 後 Track A LIVE switch 才 actual。
+
+#### 🔴 Critical drift finding — AF3 mitigation as written DOES NOT WORK
+
+**Runbook AF3 text**:「Tier-3 fallback:set `OPENAI_API_KEY=''` env override + ACA revision restart → synthesizer init fails gracefully in `lifespan` startup → `app.state.synthesizer` stays `None` → `query.py:79-92` retrieval-only fallback path active(W2 baseline preserved)」
+
+**LIVE outcome**:AZURE_OPENAI_API_KEY env var removed → revision `--0000005` Healthy → `POST /query` returned **`503 pipeline.synthesis_failed`** "RetrievalEngine not initialized" — **not** retrieval-only fallback。
+
+**Root cause**:`server.py:64` lifespan gate `if settings.azure_openai_api_key and settings.azure_search_admin_key:` wraps **BOTH** retrieval engine AND synthesizer construction。Removing AOAI key → BOTH `app.state.retrieval_engine = None` AND `app.state.synthesizer = None` → `query.py:_engine_or_503` line 39-49 raises 503 **BEFORE** reaching synthesizer = None retrieval-only fallback path(line 96-109)。
+
+**Operational impact**:if real production AOAI quota exhaustion oncall follows AF3 → service goes to 503 outage instead of degraded retrieval-only mode → **WORSE outcome than runbook documents**。
+
+**Action required**(W11 D5 retro Carry-overs):
+1. **Option A**(code fix):separate lifespan gates in `server.py` so removing `AZURE_OPENAI_API_KEY` only fails synthesizer construction(not retrieval engine which only needs `AZURE_SEARCH_ADMIN_KEY` + embedder client);**架構 H1 boundary check** — splitting lifespan gates 屬 architectural-adjacent decision per CLAUDE.md §5.1 H1,**ADR-0013 candidate trigger collision**(同 Personal Azure dev tier pattern formalization 一齊 W11 D5 closeout retro consolidate)
+2. **Option B**(runbook rewrite):AF3 用 alternative trigger e.g. `AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY=invalid-deployment-name` 觸發 synthesizer construction throw 但 retrieval engine OK(needs LIVE verify);simpler than code fix but mechanism fragility(deployment name validation is provider-dependent)
+
+**P2 governance severity**:不影響當前 personal Azure dev tier functional path,但影響 production AF3 reliability claim;Beta cohort cutover 前必須 resolve(per architecture.md §7.4 Day-2 Readiness operational acceptance)。
+
+#### Drift finding 2 — `az containerapp logs show` R8 alternative
+
+**Finding**:`az containerapp logs show --type console / system` 全部 hit `eastus2.azurecontainerapps.dev` data plane endpoint → R8 corp proxy SSL fail blocked。
+
+**Alternative proven W11 D2 morning batch**:**Log Analytics REST API direct via httpx truststore-mitigated**(`api.loganalytics.io/v1/workspaces/<id>/query` + bearer token from `az account get-access-token --resource https://api.loganalytics.io`)。
+
+**Carry-over**:add LA REST API fallback note 入 §2 Root cause investigation steps(minor doc enhancement;non-blocking);defer Beta cohort onboarding cascade window 一齊 commit。
+
+#### Drift finding 3(minor verbiage)
+
+AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup」technically inaccurate — actual mechanism 係 lifespan gate **skips synthesizer construction entirely**(net outcome 同 synthesizer = None,但 verbiage 可微調更精確 e.g.「lifespan gate skips synthesizer construction when API key missing」)。
+
+#### F4.5 outcome summary table
+
+| AF | Method | Outcome | Drift |
+|----|--------|---------|-------|
+| §1 `/health` via exec | LIVE via `az containerapp exec` | ✅ Mechanism viable corp proxy bypass | NIL |
+| AF1 §1.A queue | Narrative trace | ✅ Text intact W11 D1 edit | NIL |
+| AF2 §2 ACA restart | LIVE timing capture | ✅ ~1.7 min restart cycle confirmed | NIL |
+| AF3 §2 OPENAI_API_KEY override | LIVE trigger + outcome verify | 🔴 **503 instead of retrieval-only fallback** | **CRITICAL** — code fix OR runbook rewrite required |
+| AF4 §2 runaway revoke | Narrative trace | ✅ Tier 1 gap acknowledgment accurate | NIL |
+| `az containerapp logs show` | Smoke attempt earlier batch | 🟡 R8 blocked | LA REST API fallback proven alternative |
+
+#### F4.5/F4.6 deliverable status
+
+- F4.5 ✅ checklist ticked;G5 W11 plan deliverable closed
+- F4.6 ✅ runbook Update history entry appended(2026-06-10 row;5 governance/operational findings + carry-overs)
+- 🆕 **W11 D5 retro Carry-over candidate**:AF3 mitigation rewrite OR code fix(P2 governance;ADR-0013 candidate trigger collision with Personal Azure dev tier pattern)
+
 ### Commit reference
 
 - W11 D2 batch commit `fcd8c25`(progress.md Day 2 entry + plan.md changelog 2026-06-09 active flip + 2026-06-10 personal Azure dev tier pattern executed)
 - W11 D2 backfill commit `5462301`(commit hash backfill into Day 2 entry per W10 D5 pattern)
 - W11 D2 Path A `/query` smoke addendum commit `48008d8`(3 governance findings + auth env var addition + smoke metric snapshot;ACA revision `--0000003` `FEATURE_AUTH_MOCK=true` enabled for dev mode bypass)
+- W11 D2 backfill commit `a7a8f79`(Path A smoke addendum commit hash backfill)
+- W11 D2 Path B F4.5 Runbook live exercise commit:_(filled post-commit per backfill pattern)_
 
 ---
 
