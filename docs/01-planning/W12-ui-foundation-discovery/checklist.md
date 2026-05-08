@@ -21,16 +21,16 @@ last_updated: 2026-06-10
 
 ## F2 — Visual identity tokens.ts finalize + design reference doc
 
-- [ ] F2.1 `frontend/lib/theming/tokens.ts` populate:colors object(primary / accent / background / foreground / muted / border / success / warning / destructive — all oklch values per spec)
-- [ ] F2.2 `frontend/lib/theming/tokens.ts` populate:radius object(sm 0.25 / md 0.5 / lg 0.75rem per spec "更銳利感 vs Dify default")
-- [ ] F2.3 `frontend/lib/theming/tokens.ts` populate:fontFamily object(Inter sans + JetBrains Mono per spec — distinct from Dify SF Pro)
-- [ ] F2.4 `frontend/lib/theming/tokens.ts` populate:spacing(Tailwind default reference)+ shadow + motion tokens(extend per shadcn/ui v0)
-- [ ] F2.5 AI propose visual decisions doc — primary color OkLab proposal + accent + typography hierarchy + initial dark mode strategy(default deferred to W15 polish)
-- [ ] F2.6 User approve cycle 1 — primary + accent + typography sign-off(progress.md Day-N entry record approval)
-- [ ] F2.7 Design reference doc `docs/02-architecture/ui-design-reference-v6.md` create:9 views layout sketches(low-fi ASCII diagrams + key component inventory per view)
-- [ ] F2.8 Design reference doc — cross-view consistency rules section(sidebar / breadcrumb / toast / empty state pattern unification)
-- [ ] F2.9 Design reference doc — component-to-view mapping table(which shadcn primitives used where)
-- [ ] F2.10 Design reference doc — Dify reference path index(layout patterns to mirror per architecture.md v6 §5.5.1-§5.5.5 + §5.8 + §5.9-§5.11)
+- [x] F2.1 `frontend/lib/theming/tokens.ts` populate:colors object — light + **dark** variants(11 entries each;Option C "Warm Charcoal + Coral Accent" + dark mode parallel implement override)✅ W12 D2(2026-06-10)
+- [x] F2.2 `frontend/lib/theming/tokens.ts` populate:radius object(sm 0.25 / md 0.5 / lg 0.75rem)✅ W12 D2 — preserved per spec lock
+- [x] F2.3 `frontend/lib/theming/tokens.ts` populate:fontFamily object(Inter sans + JetBrains Mono with system fallback chain)✅ W12 D2 — preserved per spec lock
+- [x] F2.4 `frontend/lib/theming/tokens.ts` populate:spacing(Tailwind default reference comment)+ shadow(sm / DEFAULT / md / lg per shadcn v0)+ motion tokens(duration fast/base/slow + ease cubic-bezier)✅ W12 D2
+- [x] F2.5 AI propose visual decisions doc — 3-option proposal via AskUserQuestion(monospace previews):Forest Teal / Indigo-Plum / **Warm Charcoal+Coral**;dark mode strategy binary(defer W15 / start W12 D4)✅ W12 D2
+- [x] F2.6 User approve cycle 1 — Option C ratified + dark mode parallel implement override(progress.md Day 2 entry record approval)✅ W12 D2(2026-06-10 evening cont)
+- [x] F2.7 Design reference doc `docs/02-architecture/ui-design-reference-v6.md` create:9 views layout sketches(low-fi ASCII per architecture.md v6 §5.2-§5.11)✅ W12 D2 — V1 Chat / V2 Admin / V3 KB List / V4 KB Detail 5-tab(2.4.1-2.4.5)/ V5 Eval / V6 Debug / V7 Landing / V8 Login / V9 Register
+- [x] F2.8 Design reference doc — §3 cross-view consistency rules(sidebar / breadcrumb / toast / empty state / loading skeleton / focus + interaction states / spacing rhythm)✅ W12 D2
+- [x] F2.9 Design reference doc — §4 component-to-view mapping table(19 shadcn primitives × 9 views matrix + 4 custom EKP-built components)✅ W12 D2
+- [x] F2.10 Design reference doc — §5 Dify reference path index(per architecture.md v6 §5.5.1-§5.5.5 + §5.8 + §5.9-§5.11;layout source + NEVER copy visual identity per ADR-0010)+ §6 W12-W15 implementation sequencing + §7 maintenance protocol ✅ W12 D2
 
 ## F3 — shadcn/ui foundation setup + 12-15 base components
 
