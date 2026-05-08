@@ -325,7 +325,7 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 - W11 D2 backfill commit `5462301`(commit hash backfill into Day 2 entry per W10 D5 pattern)
 - W11 D2 Path A `/query` smoke addendum commit `48008d8`(3 governance findings + auth env var addition + smoke metric snapshot;ACA revision `--0000003` `FEATURE_AUTH_MOCK=true` enabled for dev mode bypass)
 - W11 D2 backfill commit `a7a8f79`(Path A smoke addendum commit hash backfill)
-- W11 D2 Path B F4.5 Runbook live exercise commit:_(filled post-commit per backfill pattern)_
+- W11 D2 Path B F4.5 Runbook live exercise commit `20f7f56`(F4.5 outcome sub-section + checklist F4.5 + F4.6 tick + runbook Update history 2026-06-10 entry;**🔴 AF3 critical drift finding** + 2 minor drift + 3 carry-overs to W11 D5 retro;ACA revision sequence `--0000003 → --0000004 → --0000005 → --0000006 RESTORE`)
 
 ---
 
