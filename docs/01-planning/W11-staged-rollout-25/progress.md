@@ -426,7 +426,7 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 2. Drive Project corpus = D365 F&O(Q14 SME labeling scope clarification)— ✅ **W11 D2 cont closed 2026-06-10 commit `9e94e01`** clarification memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` + decision-form Q14 Notes row + progress.md anchor
 3. KB Manager persistent backing(Beta production hardening)
 4. httpx redirect Authorization-strip + URL hygiene(Batch 4 frontend impl note)
-5. `az containerapp logs show` R8 fallback(LA REST API alt;minor doc enhancement)— ✅ **W11 D2 cont closed 2026-06-10** runbook §2 Root cause investigation 2 new bullets(primary CLI path + R8 corp proxy fallback w/ LA REST API + httpx truststore + KQL example + tradeoff + calibration)+ §10 update history row
+5. `az containerapp logs show` R8 fallback(LA REST API alt;minor doc enhancement)— ✅ **W11 D2 cont closed 2026-06-10 commit `2b4d8a1`** runbook §2 Root cause investigation 2 new bullets(primary CLI path + R8 corp proxy fallback w/ LA REST API + httpx truststore + KQL example + tradeoff + calibration)+ §10 update history row
 6. **Batch 4 frontend deploy** — Windows env remediation needed(move out of OneDrive OR long-path support OR GHA workflow);Dockerfile improvement preserved
 7. **`frontend/node_modules` reinstall task**(local dev partial-deleted state;`cd frontend && pnpm install` 下次 session)
 
