@@ -1,14 +1,14 @@
 ---
 phase: W12-ui-foundation-discovery
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
 # Phase W12 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration)。
-> Status:`active` 自 2026-06-10 evening W12 D1(W11 early closeout cascade same-session;Q22 email vendor F1 implementation start)。
+> Status:`closed` 自 2026-06-10 night cont 3 W12 D5 closeout(Phase Gate PASS WITH F4.13 USER-DEFERRED CAVEAT verdict per progress.md retro § F5.1)。
 
 ## F1 — Q22 email vendor decision + W12 phase plan validate
 
@@ -63,12 +63,12 @@ last_updated: 2026-06-10
 
 ## F5 — Phase Gate closeout + W13 phase folder kickoff
 
-- [ ] F5.1 W12 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL with explicit rationale per W11 F6.1 pattern)
-- [ ] F5.2 W12 progress.md retro 7 sections complete:What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec ref alignment
-- [ ] F5.3 `docs/01-planning/W13-user-facing-views/{plan,checklist,progress}.md` draft per architecture.md v6 §5.9-§5.11 + §5.2 Chat path move + ADR-0014 hybrid auth backend cascade
-- [ ] F5.4 W12 progress.md frontmatter status flipped to `closed`
-- [ ] F5.5 OQ Q22 sync to decision-form.md per outcome
-- [ ] F5.6 W12 retro carry-overs consolidated(future W13/W14/W15 / Tier 2 / external dependency items)
+- [x] F5.1 W12 phase Gate verdict landed:**🟢 PASS WITH F4.13 USER-DEFERRED CAVEAT** per plan §3 5 conditions evaluation(F1 ✅ Q22 + decision-form sync / F2 ✅ tokens.ts + design ref doc / F3 ✅ 19 shadcn primitives + 6 token补齊 + type-check / F4 ⚠ admin shell + 8 pages migration met except F4.13 user-deferred per CLAUDE.md §13 / F5 🟢 in progress this entry)✅ W12 D5(2026-06-10 night cont 3)
+- [x] F5.2 W12 progress.md retro 7 sections complete:What worked(7)/ What didn't(4)/ Surprises(5)/ Decisions(7)/ Carry-overs(19 categorized W13/W14/W15/W16+ Beta/external)/ Time tracking(7x under-budget calibration table)/ Spec ref alignment(7-row trace table)✅ W12 D5
+- [x] F5.3 `docs/01-planning/W13-user-facing-views/{plan,checklist,progress}.md` draft per architecture.md v6 §5.2 Chat path move + §5.9-§5.11 Landing/Login/Register + ADR-0014 hybrid auth backend cascade ✅ W12 D5 — 7 deliverables F1-F7(F1 routing restructure + theme provider / F2 V7 Landing / F3 V8 Login / F4 V9 Register 3-step wizard / F5 backend hybrid auth `/auth/register` + `/auth/verify-email` + `/auth/login` + users table + Argon2id / F6 C13 ACS integration / F7 closeout + W14 kickoff);plan + checklist + Day 0 progress entry initialized
+- [x] F5.4 W12 progress.md frontmatter status flipped to `closed`(plan + checklist + progress 三 files cascade)✅ W12 D5
+- [x] F5.5 OQ Q22 sync to decision-form.md per outcome ✅ already done W12 D1 commit `00a1dba`(Section 1 Q22 entry + Section 4 Dashboard row + Section 0 volume count update 13→14 stakeholder + 21→22 total)— no additional sync needed at F5
+- [x] F5.6 W12 retro carry-overs consolidated:19 items categorized(CO1-CO3 W13 immediate priority / CO4-CO9 W13 user-facing views scope / CO10-CO12 W14 admin views deferred / CO13-CO15 W15 polish + closeout / CO16-CO19 W16+ Beta deploy unchanged from W11)✅ W12 D5
 
 ---
 
