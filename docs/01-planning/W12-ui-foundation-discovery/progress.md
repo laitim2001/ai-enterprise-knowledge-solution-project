@@ -187,7 +187,7 @@ last_updated: 2026-06-10
 
 ### Commit reference
 
-- W12 D2 batch commit _(this entry;to be backfilled per W11 D2 housekeeping pattern)_(F2.1-F2.10 tokens.ts populate + globals.css wire + design reference doc create + checklist F2.1-F2.10 tick + plan changelog 2026-06-10 evening dark mode parallel override entry + Day 2 entry initialize)
+- W12 D2 batch commit `1ac17e6`(F2.1-F2.10 tokens.ts populate + globals.css wire + tailwind.config.ts CSS variable restructure + design reference doc create + checklist F2.1-F2.10 tick + plan changelog 2026-06-10 evening cont dark mode parallel override entry + Day 2 entry initialize)
 
 ---
 
