@@ -199,7 +199,7 @@ $ grep oklch frontend/app/login | wc -l
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W13 D3 F3 V8 Login UI shell + Toaster mount + auth wire deferral
+- `991e1aa` feat(frontend,docs): W13 D3 F3 V8 Login UI shell + Toaster mount + auth wire deferral
 
 ---
 
