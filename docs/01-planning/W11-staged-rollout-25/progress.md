@@ -207,10 +207,64 @@ status: active   # `active` 自 W11 D1(2026-06-09)— Chris W10 closeout sign-of
 - Storage egress:negligible(intra-Azure region)
 - **Estimated monthly**:~$30-90 if 24/7;cost-cutting option = `--min-replicas 0 --max-replicas 1` post-smoke(cooldownPeriod=300s scale-to-zero;trade-off = first-request cold start latency ~30-60s)
 
+### Path A `/query` end-to-end smoke addendum(2026-06-10 same-day)
+
+**Goal**:Personal Azure dev tier 真實 production-readiness verification — 唔止 lifespan init success,而係 real query end-to-end pipeline against company AI Search index `ekp-kb-drive-v1` + AOAI gpt-5.5 cross-tenant synthesis。
+
+#### Smoke matrix outcome
+
+| Test | Result | Verified signal |
+|------|--------|-----------------|
+| Cross-tenant AI Search retrieval | ✅ 5 chunks returned | Index `ekp-kb-drive-v1` admin-key cross-tenant read perms work;hybrid retrieval engine functional |
+| Cross-tenant AOAI synthesis | ✅ `model_used: gpt-5.5` 1509 chars structured | API key cross-tenant fully functional;`AZURE_OPENAI_API_VERSION=2024-12-01-preview` accepted |
+| Citation parser | ✅ 1 citation w/ chunk_id reference | `generation/citation_enrichment` 邏輯正常 |
+| Refusal mechanism(off-corpus query)| ✅ `refused: True`,answer = "I cannot find this in the available documentation" | Anti-hallucination 正確觸發 on低-relevance(top score 0.017)|
+| Answer quality(corpus-aligned query)| ✅ Step-by-step structured(D365 F&O 路徑 + sub-steps) | 質量 in line with W6 baseline |
+| Latency baseline | 5677ms full pipeline(retrieval + synthesis) | 接受 baseline;後續 cohort traffic 累計 7-day re-baseline 校準 |
+| `RERANKER_KIND=off` graceful | ✅ `reranker_used: off` | No Cohere call attempted;retrieval-only fallback path active per F4.3 runbook AF3 mechanism |
+
+#### 3 governance surprise findings
+
+1. **🆕 Drive Project corpus 真實內容 = D365 F&O ERP user manuals,不是 Ricoh MFP printer manuals**
+   - Top retrieved chunks 全部來自 `DRIVE_User_Manual_0605_GL_FNA-General_Ledger_Management` doc(General Ledger / Allocation Rules / Microsoft Dynamics 365 Finance & Operations 員工指引)
+   - eval-set-v0 placeholder 已 self-disclaim "validation_status: UNVALIDATED" + "domain_assumption.confidence: low" + "synthetic, pre-SME, validation_status: UNVALIDATED"
+   - **意義**:SME labeling 必須 redo based on D365 F&O domain 而非 MFP — Q14 ground truth labeler(Chris Lai,Resolved 2026-05-01)real labeling work scope clarified
+   - **W6 D5 final eval Recall@5=0.9722 baseline 仍 valid**:測量嘅係 retrieval pipeline mechanism correctness;真實 SME-labeled query distribution 後 metric 可能 variance(上下浮動 reasonable Beta cohort signal range)
+   - **Carry-over to W11 D5 retro**:promote 為 explicit Surprises / discoveries entry + carry-over candidate to Beta plan v1 §2 SME labeling task scope adjustment
+
+2. **🆕 KB Manager 喺 fresh ACA deploy = empty(`GET /kb` 返 `[]`)**
+   - Backend KB Manager **in-memory only**(per W1 baseline + architecture.md §4.3)— fresh personal ACA deploy = no KB registered
+   - **`/query` 仍 work** — engine 直接打 AI Search index,**唔經 KB Manager**(`payload.kb_id` schema-required 但 route 唔 enforce)
+   - **意義 for UI E2E**:Admin Console `KbStatus` view 會顯示 "No KB registered" visual state;F4.4 pixel diff harness baseline 應該 capture both empty + populated states
+   - **Beta cohort production deploy implication**:KB Manager 需要 persistent backing(SQLite / Postgres / Cosmos DB)— **W11 scope 之外**,但 carry-over candidate to Beta plan v1 §3 W12 production launch readiness 或 Tier 2 multi-tenancy planning
+   - **Tier boundary check**:呢個 carry-over 唔 trigger Tier 2(KB Manager persistence ≠ multi-tenancy);純粹 W12+ Beta production hardening 嘅一部分
+
+3. **🆕 httpx `follow_redirects=True` 會 strip `Authorization` header on 307 redirect(security feature,not bug)**
+   - `GET /kb/`(trailing slash)→ FastAPI 307 redirect → `/kb`,但 httpx 為防止 credential leak 跨 origin,**預設 strip `Authorization` header on redirect**
+   - **Confirmation**:Direct `GET /kb`(no slash)+ `Bearer dev-token` → 200 + body `[]` ✅
+   - **意義 for SWA frontend implementation**:Vercel AI SDK / TanStack Query 需要 explicit URL hygiene(全部 endpoint 唔 trailing slash)OR config redirect-replay-with-auth(only for same-origin)
+   - **Carry-over to Batch 4 SWA frontend deploy**:`frontend/lib/api/client.ts` URL constants check + `useChat` config note
+
+#### Auth env var addition(post initial Batch 5 deploy)
+
+- 原 Batch 5 ACA env vars 14 條 **冇** include `FEATURE_AUTH_MOCK` → backend 預設 `feature_auth_enabled=False` + `feature_auth_mock=False` 仍 require Bearer token(per `api/server.py:159 _PROTECTED_PREFIXES = ("/query", "/kb", "/feedback", "/auth")` middleware,unconditional bearer requirement)
+- **Smoke 期間新增 env var**:`FEATURE_AUTH_MOCK=true` via `az containerapp update --set-env-vars FEATURE_AUTH_MOCK=true`(revision `--0000003`)
+- **效果**:啟動 W7 D1 F1.2.1 dev mode → bypass real MSAL JWT validation,return `_DEV_USER` from `Settings.auth_mock_*` defaults → 接受 `Authorization: Bearer dev-token`(or any bearer per mock middleware unconditional pass)
+- **Production trajectory**:Beta cohort deploy 時 flip `FEATURE_AUTH_MOCK=false` + Track A IT cred populate event 提供 real Entra ID JWT(W7 D1 F1.2.1 design intent;CLAUDE.md §5 H5 security alignment preserved)
+- **R3 binding**:此 ACA env var 變動唔屬 plan deviation(原 deliverable F1 LIVE switch `feature_auth_mock=False` 等 Track A;personal Azure dev tier smoke 階段 enabled mock 屬 sidecar workaround pattern,plan §5 caveat already covers)
+
+#### Smoke session metric snapshot
+
+- Personal ACA Container App revision sequence:`--0000001`(initial,scale-to-zero recycle)→ `--0000002`(min/max=1 healthy)→ `--0000003`(`FEATURE_AUTH_MOCK=true` added)
+- Total ACA revisions today:**3**(Batch 5 deployment + scale fix + auth mock enable)
+- Smoke queries executed:**3**(off-corpus paper jam → corpus-aligned ledger allocation rule → /kb sanity)
+- Cumulative cost during smoke:negligible(~3 LLM calls × small completion tokens × gpt-5.5 rate)
+
 ### Commit reference
 
 - W11 D2 batch commit `fcd8c25`(progress.md Day 2 entry + plan.md changelog 2026-06-09 active flip + 2026-06-10 personal Azure dev tier pattern executed)
-- W11 D2 backfill commit:_(filled post-backfill commit)_
+- W11 D2 backfill commit `5462301`(commit hash backfill into Day 2 entry per W10 D5 pattern)
+- W11 D2 Path A smoke addendum commit:_(filled post-commit per backfill pattern)_
 
 ---
 
