@@ -421,14 +421,25 @@ AF3 W11 D1 edit text 寫「synthesizer init fails gracefully in lifespan startup
 
 **ACA revision sequence today**:`--0000001` → `--0000002` → `--0000003` → `--0000004` → `--0000005` → `--0000006 RESTORE` → `--0000007` → `--0000008 RESTORE`(8 revisions;backend currently `--0000008 RunningAtMaxScale Healthy`)
 
-**W11 D5 retro carry-overs consolidated(7 items;W11 D2 cont closures: #2 + #4 + #5)**:
+**W11 D2 cont Mode B local dev unblock(carry-over #6 partial closure)** — W11 D2 cont 2026-06-10 evening session 完成 frontend local dev environment unblock:
+- 環境問題 surface diagnosed: pnpm symlink chain runtime read fail under OneDrive Files-On-Demand reparse points → `.npmrc node-linker=hoisted` workaround successful
+- R8 corp proxy MITM cert issue surface for Next.js dev: undici rewrite proxy throws `SELF_SIGNED_CERT_IN_CHAIN`(Node 用 own CA bundle 唔識 Ricoh CA;browser/curl Windows truststore work)
+- Custom proxy route `frontend/app/api/backend/[...path]/route.ts`(137 lines)using `node:https.Agent({ rejectUnauthorized: !isDev })` env-conditional TLS reject;dev only,prod cloud-to-cloud unaffected
+- 3-file frontend refactor(api-client.ts + query.ts + kb.ts)→ 全部 use `/api/backend` prefix,browser fetch same-origin to Next.js → server-side proxy → backend
+- `next.config.mjs` rewrite removed(superseded by API route)
+- Dev server `pnpm dev` Ready in 6.7s + smoke tests `/api/backend/health` 200 OK + `/api/backend/kb` 200 OK 經 cloud ACA backend ✅
+- **🔴 UI quality gap surface (2026-06-10)**:User opened browser at localhost:3001 → barebones UI(322-line page.tsx,no shadcn/ui,no tokens consume,no KB selector / sidebar / citation panel per spec §5.2)→ surface architecture.md §5 spec **~15-20% completion** vs requirement(6 views Dify pattern). Decision: pivot W12 from production-launch → UI Tier 1 expansion sprint(Phase 1 of 4).Production launch 推到 W16+. Stakeholder ack(user)recorded
+- **W11 plan F6.3 deviation**:W12-production-launch phase folder kickoff → 改為 W12-ui-foundation-discovery phase folder kickoff(per W11 plan changelog entry 2026-06-10);production launch phase folder defer to W15 D5 retro
+
+**W11 D5 retro carry-overs consolidated(7 items;W11 D2 cont closures: #2 + #4 + #5;#6 partial — local dev unblock landed,Beta cohort frontend deploy still blocked)**:
 1. AF3 code fix Option A(P2 governance,sole viable path;ADR-0013 candidate trigger)
 2. Drive Project corpus = D365 F&O(Q14 SME labeling scope clarification)— ✅ **W11 D2 cont closed 2026-06-10 commit `9e94e01`** clarification memo `docs/03-implementation/drive-corpus-scope-clarification-W11-d2.md` + decision-form Q14 Notes row + progress.md anchor
 3. KB Manager persistent backing(Beta production hardening)
 4. httpx redirect Authorization-strip + URL hygiene(Batch 4 frontend impl note)— ✅ **W11 D2 cont closed 2026-06-10 commit `afec92e`** `frontend/lib/api-client.ts` top docstring URL hygiene rule added(no trailing slashes;FastAPI 307 redirect Auth-strip risk explicit);URL constants verified compliant `lib/api/kb.ts` + `lib/api/query.ts`(zero changes needed,already canonical);`useChat` config note moot(`frontend/lib/api/query.ts` already 用 native fetch streaming per Karpathy §1.2 simplicity,Vercel AI SDK NOT wired)
 5. `az containerapp logs show` R8 fallback(LA REST API alt;minor doc enhancement)— ✅ **W11 D2 cont closed 2026-06-10 commit `2b4d8a1`** runbook §2 Root cause investigation 2 new bullets(primary CLI path + R8 corp proxy fallback w/ LA REST API + httpx truststore + KQL example + tradeoff + calibration)+ §10 update history row
-6. **Batch 4 frontend deploy** — Windows env remediation needed(move out of OneDrive OR long-path support OR GHA workflow);Dockerfile improvement preserved
-7. **`frontend/node_modules` reinstall task**(local dev partial-deleted state;`cd frontend && pnpm install` 下次 session)
+6. **Batch 4 frontend deploy** — Windows env remediation 🟡 **partial closed(local dev unblocked W11 D2 cont)** — `.npmrc node-linker=hoisted` + custom proxy route bypass R8 MITM cert chain;**Beta cohort cloud frontend deploy 仍 blocked**(ACA need separate remediation:Linux-friendly hoisted layout works,but `az acr build` Windows MAX_PATH fail-mode preserved → carry-over 仍 valid for cloud deploy)
+7. **`frontend/node_modules` reinstall task** — ✅ **W11 D2 cont closed 2026-06-10**(`pnpm install --frozen-lockfile` after `.npmrc` hoisted config:1m 45s clean install + `pnpm dev` Ready 6.7s + browser smoke pass)
+8. **🆕 UI Tier 1 expansion sprint(W12-W15)** — pivot from W12-production-launch per stakeholder ack 2026-06-10:Spec §5 完成度 ~15-20% vs 6 views Dify pattern requirement → 4-sprint UI sprint W12-W15 + production launch defer to W16+;ADR-0014(hybrid auth)+ ADR-0015(UI expansion)+ architecture.md v5 → v6 amendment governance prerequisite
 
 ---
 

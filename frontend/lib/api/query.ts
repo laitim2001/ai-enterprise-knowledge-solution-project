@@ -14,7 +14,9 @@
  */
 import { ApiError } from '../api-client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+// Browser fetch goes through Next.js server-side rewrite (per api-client.ts
+// top docstring). NEXT_PUBLIC_API_URL is server-side only.
+const API_PREFIX = '/api/backend';
 
 export interface ImageRef {
   blob_url: string;
@@ -81,7 +83,7 @@ export async function* streamQuery(
   payload: QueryRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<SseEvent> {
-  const response = await fetch(`${API_URL}/query/stream`, {
+  const response = await fetch(`${API_PREFIX}/query/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

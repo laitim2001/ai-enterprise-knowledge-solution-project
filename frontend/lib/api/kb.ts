@@ -65,13 +65,12 @@ export const kbApi = {
   uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
     const form = new FormData();
     form.append('file', file);
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/kb/${kbId}/documents`,
-      {
-        method: 'POST',
-        body: form,
-      },
-    );
+    // Browser fetch goes through Next.js server-side rewrite (per api-client.ts
+    // top docstring). NEXT_PUBLIC_API_URL is server-side only.
+    const response = await fetch(`/api/backend/kb/${kbId}/documents`, {
+      method: 'POST',
+      body: form,
+    });
     if (!response.ok) {
       throw new Error(`upload failed: ${response.status} ${await response.text()}`);
     }

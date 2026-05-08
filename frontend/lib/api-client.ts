@@ -1,7 +1,16 @@
 /**
  * Backend API client (per architecture.md §4.4 — 18 endpoints).
  *
- * Reads `NEXT_PUBLIC_API_URL` from env (.env.example).
+ * Browser fetches hit `/api/backend/*` and are server-side proxied by
+ * Next.js (next.config.mjs rewrite → ${NEXT_PUBLIC_API_URL}/*). This:
+ *   1. Bypasses CORS (no backend middleware needed; same-origin from
+ *      browser perspective).
+ *   2. Delegates TLS chain verification to Node.js OpenSSL bundle, avoiding
+ *      browser truststore issues with corp proxy R8 (W11 D2 discovery —
+ *      schannel CRYPT_E_NO_REVOCATION_CHECK on direct browser fetch).
+ * `NEXT_PUBLIC_API_URL` is consumed only by next.config.mjs at server
+ * start; do not read it from client-side code.
+ *
  * W7 D2 F1.4: every request injects an Authorization Bearer header from
  * `lib/auth/index.ts` so /query/** + /kb/** + /feedback land authenticated.
  * Mock vs real MSAL is a `NEXT_PUBLIC_AUTH_MOCK` env-var flip — same single
@@ -24,7 +33,7 @@
 
 import { getBearer } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_PREFIX = '/api/backend';
 
 function buildAuthHeader(): Record<string, string> {
   try {
@@ -78,7 +87,7 @@ async function buildApiError(response: Response): Promise<ApiError> {
 }
 
 export class ApiClient {
-  constructor(private readonly baseUrl: string = API_URL) {}
+  constructor(private readonly baseUrl: string = API_PREFIX) {}
 
   async get<T>(path: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
