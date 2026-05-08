@@ -145,7 +145,7 @@ $ # 0 errors
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W13 D2 F2 V7 Landing page implementation
+- `7e283fb` feat(frontend,docs): W13 D2 F2 V7 Landing page implementation
 
 ---
 
