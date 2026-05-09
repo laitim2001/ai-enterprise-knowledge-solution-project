@@ -2,8 +2,8 @@
 phase: W16-beta-deploy
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft
-last_updated: 2026-06-10
+status: active                     # F5 partial-active flip 2026-05-10 — F1-F4 preserved draft pending Track A IT cred trigger
+last_updated: 2026-05-10
 ---
 
 # Phase W16 — Progress(Daily Journal + Decisions + Retro)
@@ -75,15 +75,56 @@ last_updated: 2026-06-10
 
 ---
 
-## Day 1 — _(W16 D1,2026-07-14,tentative — Track A IT cred populate event trigger blocking pre-condition)_
+## Day 1 — F5 partial-active flip + backend stub closure cascade(2026-05-10)
 
-_(placeholder — F1 Track A IT cred consumption begin + active flip + spec ref grep verification per CO_W14_process_grep_verify FORMALIZED)_
+> **Note**:Day 1 entry triggered by **Path A pivot**(post user prompt 2026-05-10 — F5 backend stub closure cascade AI fully controllable)。**F1-F4 sequence preserved draft** pending Track A IT cred populate event trigger + R-B1 closure(blocking external dependency per W11 retro CO16);**F5 partial-active flip** allowed per W16 plan §3 PARTIAL PASS condition + Path A scope decision。
+
+### F5 partial-active flip pre-checklist applied(CO_W14_process_grep_verify FORMALIZED 5-step)
+
+Per W15 retro decision empirical signal 9 cumulative occurrences + W16 D1 active flip pre-checklist requirement:
+
+1. **Read plan literal acceptance criteria** ✅ — F5.1-F5.5 + F5.x scope read from W16 plan.md §2
+2. **Grep code base for referenced files / functions / patterns** ✅ — comprehensive grep findings:
+   - F5.1 stubs identified:`documents.py:8` GET /kb/{id}/documents + `chunks.py:16` GET /kb/{id}/documents/{id}/chunks(both 501)
+   - F5.2 mismatch:`PATCH /kb/{id}/settings`(`kb.py:62`)接收 KbConfig 唔接收 name+description → new endpoint needed per Decision A.1
+   - F5.3 mismatches:`POST /kb/{id}/reindex` per-KB level NOT EXIST(only per-doc reindex `documents.py:41`)→ new endpoint needed;`DELETE /kb/{id}` 已 impl in-memory(`kb.py:45`)→ Azure cleanup defer Track A per Decision B.1
+   - F5.4 stubs identified:`eval.py:18` POST /eval/run + `eval.py:28` POST /eval/shootout(both 501)
+   - F5.5 stub identified:`debug.py:8` GET /debug/trace/{trace_id}(501)
+   - F5.x.1 finding:`docs/eval-set-v1.yaml` does NOT exist;`docs/eval-set-v1-draft.yaml` only → W17+ candidate
+   - F5.x.2 finding:`NEXT_PUBLIC_LANGFUSE_URL` 未 wired anywhere(only mentioned in W15+W16 planning docs)→ env var add needed
+3. **Surface mismatches via Karpathy §1.1 think-before-coding upfront** ✅ — 7 mismatches surfaced + 4 decision points proposed to user
+4. **Document deviations in plan §7 changelog at plan kickoff** ✅ — W16 plan §7 row 2026-05-10 added documenting partial-active flip + scope decisions
+5. **Adjust acceptance criteria per actual reality** ✅ — F5.1-F5.5 + F5.x checklist sub-items expanded inline per findings
+
+### Scope decisions confirmed(Path A)
+
+- **Decision A.1** — F5.2 NEW `PATCH /kb/{kb_id}` body={name, description} endpoint(separation of concern preserved;`/settings` reserve KbConfig)
+- **Decision B.1** — F5.3 DELETE Azure cleanup defer Track A IT cred trigger;in-memory baseline preserved
+- **Decision C.1** — F5.4 BOTH `/eval/run` + `/eval/shootout` full implementation(heavy work)
+- **Decision D.2** — F5.5 full Langfuse SDK integration(unblocks ADR-0020 frontend Session 2 Drift #3 V6 9-stage)
+- **Decision E.1** — single session F5.1-F5.5 ambitious(per V2 same-day collapse precedent W12-W15)
+
+### F5 implementation sequence(ordered by dependency)
+
+1. **F5.1** KB documents/chunks listing(no dep)
+2. **F5.2** KB metadata PATCH(no dep)
+3. **F5.3** KB-level reindex + DELETE annotate(no dep)
+4. **F5.4** eval/run + eval/shootout(heavy;wires existing `eval/runner.py` + `eval/ragas_runner.py`)
+5. **F5.5** debug/trace Langfuse(unblocks Drift #3 frontend Session 2)
+6. **F5.x.2** NEXT_PUBLIC_LANGFUSE_URL env var(F5.5 dependency satisfied)
+
+### Carry-overs preserved unchanged(F1-F4 still pending Track A trigger)
+
+- F1 Track A IT cred consumption + R-B1 closure verification — blocked external
+- F2 25% Beta cohort rollout activation — blocked F1
+- F3 Daily metric monitor + Q15 first weekly signal report — blocked F2
+- F4 User smoke first run(Playwright E2E baseline capture)— ADR-0017 R8 trigger candidate;blocked F4.1 install attempt
 
 ---
 
-## Day 2 → Day 10 — _(W16 D2-D10,2026-07-15 → 2026-07-25,tentative)_
+## Day 2 → Day 10 — _(W16 D2-D10 placeholders;F1-F4 sequence post Track A IT cred trigger;F5 closeout absorbed Day 1 per E.1 same-day collapse)_
 
-_(placeholders — detail at W16 D1 active flip per rolling JIT discipline;Track A IT cred dependency timing affects entire W16 schedule)_
+_(W16 D2+ entries deferred until F1 Track A IT cred trigger received;F5 partial-active closeout sub-entries appended Day 1 above as commits land)_
 
 ---
 

@@ -1,8 +1,8 @@
 ---
 phase: W16-beta-deploy
 plan_ref: ./plan.md
-status: draft
-last_updated: 2026-06-10
+status: active                     # F5 partial-active flip 2026-05-10 — F1-F4 preserved draft pending Track A IT cred trigger
+last_updated: 2026-05-10
 ---
 
 # Phase W16 — Checklist(thin skeleton)
@@ -35,15 +35,49 @@ last_updated: 2026-06-10
 - [ ] F4.3 `pnpm test:e2e` 13 tests pass + 0 regression
 - [ ] F4.4 W12+W13+W14+W15 manual smoke deferred backlog systematic subsume target actualized
 
-## F5 — Backend stub closure cascade
+## F5 — Backend stub closure cascade(detail expanded post-grep verification 2026-05-10)
 
-- [ ] F5.1 CO_F3a backend `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` W2 listing implementation
-- [ ] F5.2 CO_F3b backend KB name + description PATCH endpoint
-- [ ] F5.3 CO_F3c backend `POST /kb/{id}/reindex` + `DELETE /kb/{id}` Danger zone implementation
-- [ ] F5.4 CO_W15_F1_backend `POST /eval/run` + `POST /eval/shootout` W4 implementation per docs/eval-methodology.md
-- [ ] F5.5 CO_W15_F2_backend `GET /debug/trace/{trace_id}` W3+ Langfuse correlation
-- [ ] F5.x CO_W15_F1_eval_set_v1 `eval-set-v1`(W4+W5 +20 real-query 50 queries)file existence verify
-- [ ] F5.x CO_W15_F2_langfuse_url `NEXT_PUBLIC_LANGFUSE_URL` Beta production endpoint env var configuration
+### F5.1 CO_F3a — KB documents/chunks listing
+
+- [ ] F5.1.1 `GET /kb/{kb_id}/documents` — replace 501 stub `documents.py:8` with Azure AI Search index query(filter `kb_id eq` + group by `doc_id`;return list[DocumentSummary])
+- [ ] F5.1.2 `GET /kb/{kb_id}/documents/{doc_id}/chunks` — replace 501 stub `chunks.py:16` with index query(filter `kb_id eq + doc_id eq`;return list[ChunkSummary] + pagination if needed)
+- [ ] F5.1.3 New schemas `DocumentSummary` + `ChunkSummary` in `api/schemas/documents.py` + `api/schemas/chunks.py`(if not exist)
+- [ ] F5.1.4 Unit tests `test_documents_listing.py` + `test_chunks_listing.py`(mock searcher + happy path + empty KB + kb_not_found 404)
+
+### F5.2 CO_F3b — KB name+description PATCH(per Decision A.1 NEW endpoint)
+
+- [ ] F5.2.1 New schema `KbMetadataPatch` in `api/schemas/kb.py`(name + description fields,both Optional for partial PATCH)
+- [ ] F5.2.2 New endpoint `PATCH /kb/{kb_id}` in `routes/kb.py`(NOT replace existing `/settings` — separate concern;settings = config / kb-level = metadata)
+- [ ] F5.2.3 `KBService.update_metadata(kb_id, patch)` method + `KBStorageBackend.update_metadata` Protocol method + InMemory impl
+- [ ] F5.2.4 Unit tests `test_kb_metadata_patch.py`(happy path + 404 + partial fields)
+
+### F5.3 CO_F3c — KB-level reindex(NEW)+ DELETE annotate Azure cleanup defer
+
+- [ ] F5.3.1 New endpoint `POST /kb/{kb_id}/reindex` in `routes/kb.py`(NOT pre-existing — per-doc reindex `documents.py:41` exists separate);202 ACCEPTED per W2 pattern;trigger reindex of all docs in KB
+- [ ] F5.3.2 `KBService.trigger_reindex_all(kb_id)` method(returns task_id for tracking;in-memory impl returns mock task_id;real impl = Track A IT cred dependent W17+)
+- [ ] F5.3.3 `DELETE /kb/{kb_id}` annotate Decision B.1 docstring(in-memory baseline preserved;Azure AI Search index drop + per-KB Blob container drop **defer Track A IT cred trigger** per W16 plan §3 PARTIAL PASS allow + W17+ candidate)
+- [ ] F5.3.4 Unit tests `test_kb_reindex.py`(happy path + 404 + per-doc still-works regression)
+
+### F5.4 CO_W15_F1_backend — eval/run + eval/shootout(per Decision C.1 both full)
+
+- [ ] F5.4.1 `POST /eval/run` — wire `backend/eval/runner.py` + `backend/eval/ragas_runner.py`(existing modules);accept `EvalRunRequest`(eval_set_id + llm_model + reranker + enable_crag);return `EvalReport`(R@5 + faithfulness + correctness + image_assoc + p95_latency + failed_queries + crag_trigger_rate + cost)
+- [ ] F5.4.2 `POST /eval/shootout` — multi-reranker comparison(cohere-v4.0-pro + cohere-v3.5 + azure-semantic + off);return `ShootoutReport` schema with per-reranker `EvalReport` + delta table
+- [ ] F5.4.3 New schema `ShootoutReport` in `api/schemas/eval.py`(per-reranker EvalReport + winner declaration)
+- [ ] F5.4.4 Unit tests `test_eval_run.py`(happy path + invalid eval_set_id + reranker validation)+ `test_eval_shootout.py`(2-way comparison min;dual-rate cost preserved per ADR-0012)
+- [ ] F5.4.5 Background task option(eval run can take minutes;FastAPI BackgroundTasks OR poll-based async result)— **decision per F5.4.5 implementation**:synchronous initial(simpler;Beta cohort 50 queries × ~5s = ~4 min OK);background W17+ if scale issue
+
+### F5.5 CO_W15_F2_backend — debug/trace Langfuse correlation(per Decision D.2 full SDK)
+
+- [ ] F5.5.1 `GET /debug/trace/{trace_id}` — replace 501 stub `debug.py:8` with Langfuse SDK trace fetch
+- [ ] F5.5.2 New module `backend/observability/langfuse_trace.py` — `fetch_trace(trace_id)` async function + stage extraction(retrieval / rerank / context_expansion / synthesis / crag stages per V6 9-stage model)
+- [ ] F5.5.3 New schema `TraceDetail` in `api/schemas/observability.py`(or new `debug.py`)— per-stage timing + tokens + status + raw langfuse data ref
+- [ ] F5.5.4 Unit tests `test_debug_trace.py`(happy path + 404 trace_not_found + Langfuse client unavailable graceful degrade)
+- [ ] F5.5.5 **UNBLOCKS Drift #3 ADR-0020 frontend Session 2** — V6 6→9 stage `PipelineStageCollapsible` expansion can wire to this endpoint
+
+### F5.x sub-items
+
+- [x] F5.x.1 ~~CO_W15_F1_eval_set_v1 `eval-set-v1` file existence verify~~ — **finding 2026-05-10**:`docs/eval-set-v1.yaml` does NOT exist;`docs/eval-set-v1-draft.yaml` exists(draft only)→ **W17+ candidate**(eval-set-v1 finalization post Beta cohort real-query collection per Q6 + Q15 trigger)
+- [ ] F5.x.2 CO_W15_F2_langfuse_url `NEXT_PUBLIC_LANGFUSE_URL` env var configuration:add to `.env.example` + frontend `.env.local.example`(if frontend consumes);backend may also need `LANGFUSE_HOST` env(F5.5 dependency)
 
 ---
 

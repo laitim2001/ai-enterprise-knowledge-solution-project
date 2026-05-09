@@ -4,7 +4,7 @@ name: "Beta deploy production launch resume — post Tier 1 UI sprint cycle FINA
 sprint_week: W16
 start_date: 2026-07-14             # tentative — assumes W15 closeout 2026-07-11 + Track A IT cred populate event trigger
 end_date: 2026-07-25               # ~10 working days (Beta deploy with stakeholder + cohort coordination dependencies; non same-day collapse fit)
-status: draft                      # draft — pending W16 D1 active flip post Track A IT cred populate event trigger + R-B1 closure
+status: active                     # active 2026-05-10 — F5 partial-active flip per Path A pivot (F1-F4 preserved draft pending Track A IT cred populate event trigger + R-B1 closure)
 spec_refs:
   - architecture.md v6 §6.4              # Production launch sequencing
   - architecture.md v6 §13.12            # v5.1→v6 amendment (Tier 1 UI complete prerequisite)
@@ -96,14 +96,16 @@ W16 = **Beta deploy production launch resume sprint** — first sprint post Tier
 
 - **Component(s)**:**C02** KB Manager + **C06** Eval Framework + **C07** Observability Stack
 - **Spec ref**:W14 retro CO_F3a-c + W15 retro CO_W15_F1_backend + CO_W15_F2_backend
-- **Pre-condition**:F1+F2 cohort live(real query traffic for trace correlation)
-- **Acceptance criteria**:
-  - F5.1 CO_F3a backend `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` W2 listing implementation
-  - F5.2 CO_F3b backend KB name + description PATCH endpoint
-  - F5.3 CO_F3c backend `POST /kb/{id}/reindex` + `DELETE /kb/{id}` Danger zone implementation
-  - F5.4 CO_W15_F1_backend `POST /eval/run` + `POST /eval/shootout` W4 implementation per docs/eval-methodology.md
-  - F5.5 CO_W15_F2_backend `GET /debug/trace/{trace_id}` W3+ Langfuse correlation
-- **Effort estimate**:3 days(W16 D7-D9)
+- **Pre-condition**:**relaxed for F5 partial-active flip 2026-05-10**(F1+F2 cohort live no longer prereq for backend stub closure;pure backend implementation 可 proceed pre-Track-A trigger per Path A scope decision)
+- **Acceptance criteria**(adjusted post grep verification 2026-05-10 per CO_W14_process_grep_verify FORMALIZED):
+  - F5.1 CO_F3a backend `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` listing implementation(replace 501 stubs in `documents.py:8` + `chunks.py:16`;Azure AI Search index query by kb_id + doc_id filter)
+  - F5.2 CO_F3b backend **新 endpoint** `PATCH /kb/{kb_id}` body={name, description}(per Decision A.1 separation of concern;`PATCH /kb/{id}/settings` 仍 reserve KbConfig only;new endpoint NOT replace existing settings PATCH)
+  - F5.3 CO_F3c backend **新 endpoint** `POST /kb/{kb_id}/reindex` per-KB level(NOT pre-existing — only per-doc reindex `POST /kb/{id}/documents/{id}/reindex` in `documents.py:41`);`DELETE /kb/{kb_id}` already implemented in-memory `kb.py:45`(Azure AI Search index drop + per-KB Blob container drop **defer Track A IT cred trigger** per Decision B.1;in-memory delete cleanup preserved baseline)
+  - F5.4 CO_W15_F1_backend `POST /eval/run` + `POST /eval/shootout` W4 implementation per Decision C.1 full implementation(both endpoints;wire `backend/eval/runner.py` + `ragas_runner.py` modules;heavy work)
+  - F5.5 CO_W15_F2_backend `GET /debug/trace/{trace_id}` W3+ Langfuse correlation per Decision D.2 full SDK integration(Langfuse client query + stage data correlation;`/debug/trace` UNBLOCKS ADR-0020 frontend Session 2 Drift #3 V6 9-stage)
+  - F5.x CO_W15_F1_eval_set_v1 file existence verify — **finding**:`docs/eval-set-v1.yaml` does NOT exist;`docs/eval-set-v1-draft.yaml` exists(draft only)→ **W17+ candidate**(eval-set-v1 finalization post Beta cohort real-query collection per Q6 + Q15 trigger)
+  - F5.x CO_W15_F2_langfuse_url `NEXT_PUBLIC_LANGFUSE_URL` Beta production endpoint env var configuration(Step 6 absorb)
+- **Effort estimate**:**Path A E.1 ambitious single session ~ 1 day**(C.1 full eval implementation + D.2 full Langfuse SDK = heavy sub-items;session-collapse pattern per W12-W15 precedent)
 
 ## 3. Success Criteria(Phase Gate to W17+)
 
@@ -182,6 +184,7 @@ Carry-overs from `W15-polish-closeout/progress.md` retro § Carry-overs to W16+ 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-10 | Initial draft(W15 D5 F5 closeout cascade rolling-JIT)| Per CLAUDE.md §10 R1 rolling-JIT;W15 closeout cascade per F5.3 deliverable;W16 immediate scope = W15 retro Carry-overs to W16+ Beta deploy exact match;Tier 1 UI sprint cycle FINAL marker landed(architecture.md v6 §13.12 amendment 完整 implemented;ready for W16+ Beta deploy production launch per plan §F5.6) | Chris(stakeholder authorization same-session pivot momentum;W15 closeout PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict landed)|
+| 2026-05-10 | **F5 partial-active flip**(`status: draft → active` for F5 only;F1-F4 preserved draft pending Track A IT cred populate event trigger + R-B1 closure)+ acceptance criteria adjusted per CO_W14_process_grep_verify FORMALIZED 5-step findings + scope decisions A.1 + B.1 + C.1 + D.2 + E.1 | Per Path A pivot post user prompt 2026-05-10 — F5 backend stub closure cascade AI fully controllable scope(no external dep);grep verification surfaced 7 mismatches between W16 plan literal acceptance criteria and code reality(F5.2 endpoint design A.1 / F5.3 per-KB reindex new + DELETE Azure cleanup B.1 defer / F5.4 C.1 both endpoints / F5.5 D.2 full Langfuse SDK / F5.x eval-set-v1 W17+ candidate finding);scope decisions documented + acceptance criteria refined inline above;F1-F4 unchanged | AI(Path A pivot scope per user explicit 2026-05-10;Chris stakeholder authorization deferred to W16 D1 active flip post Track A IT cred trigger for F1-F4 sequence)|
 
 ---
 
