@@ -3,6 +3,11 @@
 W2 baseline: BM25 + vector hybrid via Azure AI Search built-in RRF (no custom fusion).
 Filter clause: `enabled eq true and low_value_flag eq false` per architecture.md §3.6.
 
+W16+ ADR-0018 Phase 3 multi-KB invariant: search() requires kb_id parameter; index_name
+dynamically constructed via kb_naming.kb_id_to_index_name (with self.index_name as Tier 1
+legacy alias for kb_id="drive_user_manuals"); kb_id eq filter clause prepended to any
+caller-supplied filter making per-KB scoping mandatory.
+
 Response shape (Azure AI Search /docs/search):
     {
       "value": [
@@ -28,6 +33,8 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+
+from storage.kb_naming import kb_id_filter_clause, kb_id_to_index_name
 
 _API_VERSION = "2024-07-01"
 _DEFAULT_FILTER = "enabled eq true and low_value_flag eq false"
@@ -84,13 +91,28 @@ class HybridSearcher:
         self,
         query_text: str,
         query_vector: list[float],
+        kb_id: str,
         top_k: int = 50,
         filter_clause: str | None = _DEFAULT_FILTER,
     ) -> list[HybridSearchHit]:
-        """Hybrid retrieval — BM25 (search) + vector (vectorQueries) → built-in RRF."""
+        """Hybrid retrieval — BM25 (search) + vector (vectorQueries) → built-in RRF.
+
+        kb_id required per ADR-0018 multi-KB invariant — index_name dynamically
+        constructed via kb_naming.kb_id_to_index_name with self.index_name as Tier 1
+        legacy alias for kb_id="drive_user_manuals". Per-KB filter clause prepended
+        making kb_id scoping mandatory on every search call.
+        """
         assert self._client is not None, "use 'async with' to manage searcher lifecycle"
+
+        # ADR-0018: dynamic per-KB index name (Option B b2 dynamic injection)
+        index_name = kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)
+
+        # ADR-0018: prepend kb_id eq clause to filter (multi-KB scoping mandatory)
+        kb_filter = kb_id_filter_clause(kb_id)
+        full_filter = f"{kb_filter} and {filter_clause}" if filter_clause else kb_filter
+
         url = (
-            f"{self.endpoint}/indexes/{self.index_name}"
+            f"{self.endpoint}/indexes/{index_name}"
             f"/docs/search?api-version={self.api_version}"
         )
         payload: dict = {
@@ -106,9 +128,8 @@ class HybridSearcher:
             "top": top_k,
             "queryType": "semantic",
             "semanticConfiguration": "ekp-semantic-config",
+            "filter": full_filter,
         }
-        if filter_clause:
-            payload["filter"] = filter_clause
 
         response = await self._client.post(url, content=json.dumps(payload))
 
@@ -127,7 +148,8 @@ class HybridSearcher:
 
         logger.debug(
             "hybrid_search_returned",
-            index=self.index_name,
+            index=index_name,
+            kb_id=kb_id,
             count=len(hits),
             top_k=top_k,
         )

@@ -74,6 +74,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     try:
         result = await engine.retrieve(
             query=payload.query,
+            kb_id=payload.kb_id,
             top_k=payload.top_k_rerank,
         )
     except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
@@ -125,7 +126,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     final_synth = synth
     final_chunks = result.chunks
     if crag_loop is not None and payload.enable_crag:
-        outcome = await crag_loop.refine(payload.query, result, synth)
+        outcome = await crag_loop.refine(payload.query, result, synth, kb_id=payload.kb_id)
         crag_triggered = outcome.triggered
         crag_iterations = outcome.iterations
         final_synth = outcome.synthesis
@@ -180,6 +181,7 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
     try:
         result = await engine.retrieve(
             query=payload.query,
+            kb_id=payload.kb_id,
             top_k=payload.top_k_rerank,
         )
     except Exception as exc:  # noqa: BLE001

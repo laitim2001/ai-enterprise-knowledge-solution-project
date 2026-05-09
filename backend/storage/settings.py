@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     azure_search_admin_key: str = ""
     azure_search_default_index: str = "ekp-kb-drive-v1"
 
+    # Multi-KB invariant per ADR-0018 (W16+ Phase 3 audit §CC-1 closure).
+    # kb_id_default = backwards-compat fallback when QueryRequest.kb_id omitted
+    # (legacy clients pre-ADR-0018). Tier 1 first KB per Q7 Resolved 2026-05-05.
+    # storage/kb_naming.py maps kb_id → index_name + blob container + filter clause.
+    kb_id_default: str = "drive_user_manuals"
+
     # Azure OpenAI
     azure_openai_endpoint: str = "https://ekp-openai-poc.openai.azure.com"
     azure_openai_api_key: str = ""

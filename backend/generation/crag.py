@@ -296,8 +296,13 @@ class CragLoop:
         query: str,
         initial_result: RetrievalResult,
         initial_synth: SynthesisResult,
+        kb_id: str,
     ) -> CragOutcome:
-        """Apply L2 correction if initial chunks insufficient; else return initial."""
+        """Apply L2 correction if initial chunks insufficient; else return initial.
+
+        kb_id required per ADR-0018 multi-KB invariant — re-retrieve via
+        RetrievalEngine.retrieve() needs kb_id to scope per-KB index + filter.
+        """
         crag_start = time.perf_counter()
 
         try:
@@ -351,6 +356,7 @@ class CragLoop:
         try:
             new_result = await self._engine.retrieve(
                 query=rewrite.rewritten_query,
+                kb_id=kb_id,
                 top_k=self._expanded_top_k,
             )
         except Exception as exc:  # noqa: BLE001

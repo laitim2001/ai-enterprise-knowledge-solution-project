@@ -31,14 +31,18 @@ async def test_hybrid_search_payload_shape_matches_spec() -> None:
         instance.aclose = AsyncMock()
 
         async with HybridSearcher("https://x", "k", "ekp-kb-drive-v1") as s:
-            await s.search("paper jam", [0.1] * 1024, top_k=50)
+            await s.search("paper jam", [0.1] * 1024, kb_id="drive_user_manuals", top_k=50)
 
     payload = json.loads(instance.post.await_args.kwargs["content"])
     assert payload["search"] == "paper jam"
     assert payload["top"] == 50
     assert payload["queryType"] == "semantic"
     assert payload["semanticConfiguration"] == "ekp-semantic-config"
-    assert payload["filter"] == "enabled eq true and low_value_flag eq false"
+    # ADR-0018 multi-KB invariant: kb_id eq prepended to default filter
+    assert (
+        payload["filter"]
+        == "kb_id eq 'drive_user_manuals' and enabled eq true and low_value_flag eq false"
+    )
     assert payload["vectorQueries"][0]["fields"] == "content_vector"
     assert payload["vectorQueries"][0]["k"] == 50
     assert len(payload["vectorQueries"][0]["vector"]) == 1024
@@ -69,7 +73,7 @@ async def test_hybrid_search_maps_response_to_hits_with_score() -> None:
         instance.aclose = AsyncMock()
 
         async with HybridSearcher("https://x", "k", "idx") as s:
-            hits = await s.search("query", [0.0] * 1024, top_k=2)
+            hits = await s.search("query", [0.0] * 1024, kb_id="drive_user_manuals", top_k=2)
 
     assert len(hits) == 2
     assert hits[0].score == 0.91
@@ -78,7 +82,8 @@ async def test_hybrid_search_maps_response_to_hits_with_score() -> None:
 
 
 @pytest.mark.asyncio
-async def test_hybrid_search_custom_filter_clause_honored() -> None:
+async def test_hybrid_search_custom_filter_clause_prepends_kb_id() -> None:
+    """ADR-0018: caller-supplied filter is conjuncted with mandatory kb_id eq clause."""
     with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
         instance = MockClient.return_value
         instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
@@ -86,25 +91,59 @@ async def test_hybrid_search_custom_filter_clause_honored() -> None:
 
         async with HybridSearcher("https://x", "k", "idx") as s:
             await s.search(
-                "q", [0.0] * 1024, filter_clause="kb_id eq 'drive_user_manuals'",
+                "q",
+                [0.0] * 1024,
+                kb_id="finance_dept",
+                filter_clause="enabled eq true",
             )
 
     payload = json.loads(instance.post.await_args.kwargs["content"])
-    assert payload["filter"] == "kb_id eq 'drive_user_manuals'"
+    assert payload["filter"] == "kb_id eq 'finance_dept' and enabled eq true"
 
 
 @pytest.mark.asyncio
-async def test_hybrid_search_no_filter_when_none_passed() -> None:
+async def test_hybrid_search_kb_id_only_filter_when_none_passed() -> None:
+    """ADR-0018: filter_clause=None still applies kb_id eq scoping (multi-KB invariant)."""
     with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
         instance = MockClient.return_value
         instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
         instance.aclose = AsyncMock()
 
         async with HybridSearcher("https://x", "k", "idx") as s:
-            await s.search("q", [0.0] * 1024, filter_clause=None)
+            await s.search("q", [0.0] * 1024, kb_id="rapo_internal", filter_clause=None)
 
     payload = json.loads(instance.post.await_args.kwargs["content"])
-    assert "filter" not in payload
+    assert payload["filter"] == "kb_id eq 'rapo_internal'"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_dynamic_index_name_for_new_kb() -> None:
+    """ADR-0018: kb_id != legacy → URL uses ekp-kb-{kb_id}-v1 per ADR-0005 convention."""
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher("https://x", "k", "ekp-kb-drive-v1") as s:
+            await s.search("q", [0.0] * 1024, kb_id="finance_dept")
+
+    url_called = instance.post.await_args.args[0]
+    assert "/indexes/ekp-kb-finance_dept-v1/" in url_called
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_legacy_alias_preserves_deployed_index() -> None:
+    """ADR-0018: kb_id='drive_user_manuals' uses self.index_name (Tier 1 legacy alias)."""
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher("https://x", "k", "ekp-kb-drive-v1") as s:
+            await s.search("q", [0.0] * 1024, kb_id="drive_user_manuals")
+
+    url_called = instance.post.await_args.args[0]
+    assert "/indexes/ekp-kb-drive-v1/" in url_called
 
 
 @pytest.mark.asyncio
@@ -124,7 +163,7 @@ async def test_hybrid_search_retries_on_5xx() -> None:
         instance.aclose = AsyncMock()
 
         async with HybridSearcher("https://x", "k", "idx") as s:
-            hits = await s.search("q", [0.0] * 1024)
+            hits = await s.search("q", [0.0] * 1024, kb_id="drive_user_manuals")
 
     assert hits == []
     assert instance.post.await_count == 2
@@ -151,7 +190,7 @@ async def test_retrieval_engine_empty_query_returns_empty_no_calls() -> None:
     searcher.search = AsyncMock()
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher)
-    result = await engine.retrieve(query="   ", top_k=10)
+    result = await engine.retrieve(query="   ", kb_id="drive_user_manuals", top_k=10)
 
     assert isinstance(result, RetrievalResult)
     assert result.chunks == []
@@ -159,7 +198,7 @@ async def test_retrieval_engine_empty_query_returns_empty_no_calls() -> None:
 
 
 @pytest.mark.asyncio
-async def test_retrieval_engine_calls_embedder_then_searcher() -> None:
+async def test_retrieval_engine_calls_embedder_then_searcher_with_kb_id() -> None:
     embedder = _FakeEmbedder()
     searcher = MagicMock()
     searcher.search = AsyncMock(
@@ -170,7 +209,7 @@ async def test_retrieval_engine_calls_embedder_then_searcher() -> None:
     )
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher)
-    result = await engine.retrieve(query="how to recover", top_k=5)
+    result = await engine.retrieve(query="how to recover", kb_id="drive_user_manuals", top_k=5)
 
     assert len(result.chunks) == 2
     assert result.chunks[0].score == 0.9
@@ -178,6 +217,7 @@ async def test_retrieval_engine_calls_embedder_then_searcher() -> None:
     searcher.search.assert_awaited_once()
     call_kwargs = searcher.search.await_args.kwargs
     assert call_kwargs["query_text"] == "how to recover"
+    assert call_kwargs["kb_id"] == "drive_user_manuals"  # ADR-0018 propagation
     assert len(call_kwargs["query_vector"]) == 1024
     assert call_kwargs["top_k"] == 5
 
@@ -189,7 +229,7 @@ async def test_retrieval_engine_default_filter_clause_applied() -> None:
     searcher.search = AsyncMock(return_value=[])
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher)
-    await engine.retrieve(query="q")
+    await engine.retrieve(query="q", kb_id="drive_user_manuals")
 
     call_kwargs = searcher.search.await_args.kwargs
     assert call_kwargs["filter_clause"] == "enabled eq true and low_value_flag eq false"
@@ -202,10 +242,24 @@ async def test_retrieval_engine_custom_filter_clause_passes_through() -> None:
     searcher.search = AsyncMock(return_value=[])
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher)
-    await engine.retrieve(query="q", filter_clause="kb_id eq 'foo'")
+    await engine.retrieve(query="q", kb_id="finance_dept", filter_clause="tags/any(t: t eq 'public')")
 
     call_kwargs = searcher.search.await_args.kwargs
-    assert call_kwargs["filter_clause"] == "kb_id eq 'foo'"
+    assert call_kwargs["filter_clause"] == "tags/any(t: t eq 'public')"
+
+
+@pytest.mark.asyncio
+async def test_retrieval_engine_kb_id_propagates_to_searcher() -> None:
+    """ADR-0018 multi-KB invariant: kb_id explicitly forwarded to HybridSearcher.search()."""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[])
+
+    engine = RetrievalEngine(embedder=embedder, searcher=searcher)
+    await engine.retrieve(query="q", kb_id="rapo_internal", top_k=5)
+
+    call_kwargs = searcher.search.await_args.kwargs
+    assert call_kwargs["kb_id"] == "rapo_internal"
 
 
 @pytest.mark.asyncio
@@ -215,7 +269,7 @@ async def test_retrieval_engine_records_latencies() -> None:
     searcher.search = AsyncMock(return_value=[])
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher)
-    result = await engine.retrieve(query="q", top_k=10)
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=10)
 
     assert result.embed_latency_ms >= 0
     assert result.search_latency_ms >= 0
@@ -243,7 +297,7 @@ async def test_retrieval_engine_overfetches_when_reranker_present() -> None:
     engine = RetrievalEngine(
         embedder=embedder, searcher=searcher, reranker=reranker, hybrid_overfetch_for_rerank=50
     )
-    result = await engine.retrieve(query="q", top_k=5)
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5)
 
     assert searcher.search.await_args.kwargs["top_k"] == 50
     assert reranker.rerank.await_count == 1
@@ -261,7 +315,7 @@ async def test_retrieval_engine_no_rerank_call_when_hits_empty() -> None:
     reranker.rerank = AsyncMock()
 
     engine = RetrievalEngine(embedder=embedder, searcher=searcher, reranker=reranker)
-    result = await engine.retrieve(query="q", top_k=5)
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5)
 
     reranker.rerank.assert_not_awaited()
     assert result.reranked is False

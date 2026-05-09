@@ -67,11 +67,23 @@ class EvalReport:
 
 
 class EvalRunner:
-    """Run a YAML eval set against a RetrievalEngine, emit EvalReport."""
+    """Run a YAML eval set against a RetrievalEngine, emit EvalReport.
 
-    def __init__(self, engine: RetrievalEngine, top_k: int = 5) -> None:
+    W16+ ADR-0018 multi-KB invariant: kb_id parameter required by RetrievalEngine.
+    EvalRunner defaults to "drive_user_manuals" (Tier 1 single-KB Q7 Resolved baseline);
+    individual queries can override via `q.get("kb_id")` in eval-set YAML for multi-KB
+    eval sets (W16+ deliverable per `eval_set_augmentor.py` extension).
+    """
+
+    def __init__(
+        self,
+        engine: RetrievalEngine,
+        top_k: int = 5,
+        kb_id: str = "drive_user_manuals",
+    ) -> None:
         self._engine = engine
         self._top_k = top_k
+        self._kb_id = kb_id
 
     async def run(
         self,
@@ -114,8 +126,12 @@ class EvalRunner:
         is_oos = bool(ground_truth.get("expected_refusal", False))
         validated = bool(q.get("annotation", {}).get("validated", False))
 
+        # ADR-0018 multi-KB invariant: per-query kb_id override OR runner default.
+        kb_id = str(q.get("kb_id") or self._kb_id)
         try:
-            retrieval = await self._engine.retrieve(query=query_text, top_k=self._top_k)
+            retrieval = await self._engine.retrieve(
+                query=query_text, kb_id=kb_id, top_k=self._top_k,
+            )
         except Exception as exc:  # noqa: BLE001 — surface error per query
             return QueryEvalResult(
                 query_id=query_id,

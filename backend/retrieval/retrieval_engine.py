@@ -1,11 +1,17 @@
 """Retrieval engine public API (per architecture.md §3.1 + components/C04 §1).
 
-W3 D2 pipeline (rerank wired W3 D1 後段 + D2):
+W3 D2 pipeline (rerank wired W3 D1 後段 + D2; W16+ ADR-0018 kb_id propagation):
     query string + kb_id + top_k
         → embed query (Azure OpenAI text-embedding-3-large 1024d)
-        → hybrid search (Azure AI Search BM25 + vector RRF) top hybrid_overfetch
+        → hybrid search (Azure AI Search BM25 + vector RRF + kb_id-scoped)
+            top hybrid_overfetch
         → optional Cohere Rerank (Path A Marketplace) → top top_k
         → return list[RetrievedChunk]
+
+W16+ ADR-0018 multi-KB invariant: retrieve() requires kb_id parameter. kb_id
+propagates to HybridSearcher for dynamic index_name + filter clause scoping
+(audit-W15-d5-vs-spec.md §CC-1 closure). Reranker signature unchanged — chunks
+arrive already KB-scoped from searcher per Karpathy §1.2 simplicity-first.
 
 When reranker is None, engine returns hybrid hits directly (W2 baseline behavior
 preserved for local dev / tests / pre-procurement). Live rerank engages once
@@ -87,13 +93,14 @@ class RetrievalEngine:
     async def retrieve(
         self,
         query: str,
+        kb_id: str,
         top_k: int = 50,
         filter_clause: str | None = None,
     ) -> RetrievalResult:
         """Embed query + hybrid search + optional rerank; return ordered chunks + timings.
 
-        kb_id is implicit via the searcher's index_name (caller wires per-KB
-        searcher when multi-KB lands; W2 baseline = single Drive KB).
+        kb_id required per ADR-0018 multi-KB invariant — propagates to HybridSearcher
+        for dynamic index_name + kb_id eq filter clause (per-KB scoping mandatory).
         """
         if not query or not query.strip():
             return RetrievalResult(
@@ -121,6 +128,7 @@ class RetrievalEngine:
         hits = await self._searcher.search(
             query_text=query,
             query_vector=query_embedding.vector,
+            kb_id=kb_id,
             top_k=fetch_k,
             filter_clause=filter_clause if filter_clause is not None
             else "enabled eq true and low_value_flag eq false",
@@ -150,6 +158,7 @@ class RetrievalEngine:
 
         logger.info(
             "retrieval_complete",
+            kb_id=kb_id,
             query_chars=len(query),
             top_k=top_k,
             fetch_k=fetch_k,

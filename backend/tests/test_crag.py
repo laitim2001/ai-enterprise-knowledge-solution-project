@@ -168,7 +168,7 @@ async def test_refine_skips_correction_when_confidence_above_threshold() -> None
 
     initial_result = _retrieval_result()
     initial_synth = _synth()
-    outcome = await loop.refine("question?", initial_result, initial_synth)
+    outcome = await loop.refine("question?", initial_result, initial_synth, kb_id="drive_user_manuals")
 
     assert outcome.triggered is False
     assert outcome.iterations == 0
@@ -203,7 +203,7 @@ async def test_refine_triggers_correction_when_confidence_below_threshold() -> N
 
     initial_result = _retrieval_result()
     initial_synth = _synth()
-    outcome = await loop.refine("original question?", initial_result, initial_synth)
+    outcome = await loop.refine("original question?", initial_result, initial_synth, kb_id="drive_user_manuals")
 
     assert outcome.triggered is True
     assert outcome.iterations == 1
@@ -215,8 +215,11 @@ async def test_refine_triggers_correction_when_confidence_below_threshold() -> N
     assert outcome.fallback_used is False
     assert outcome.extra_synth_input_tokens == new_synth.input_tokens
 
+    # ADR-0018: re-retrieve must propagate kb_id (multi-KB invariant per CragLoop.refine signature)
     engine.retrieve.assert_awaited_once_with(
-        query="rewritten question with more keywords", top_k=20,
+        query="rewritten question with more keywords",
+        kb_id="drive_user_manuals",
+        top_k=20,
     )
     synthesizer.synthesize.assert_awaited_once_with(
         "rewritten question with more keywords", new_chunks,
@@ -239,7 +242,7 @@ async def test_refine_fallback_when_resynth_fails() -> None:
 
     initial_result = _retrieval_result()
     initial_synth = _synth()
-    outcome = await loop.refine("q?", initial_result, initial_synth)
+    outcome = await loop.refine("q?", initial_result, initial_synth, kb_id="drive_user_manuals")
 
     assert outcome.triggered is True
     assert outcome.iterations == 1
@@ -276,7 +279,7 @@ async def test_refine_fallback_when_grader_fails_outright() -> None:
                     grader=grader, threshold=0.70)
     initial_result = _retrieval_result()
     initial_synth = _synth()
-    outcome = await loop.refine("q?", initial_result, initial_synth)
+    outcome = await loop.refine("q?", initial_result, initial_synth, kb_id="drive_user_manuals")
 
     assert outcome.triggered is False  # no-op outcome since grader failed
     assert outcome.fallback_used is True
@@ -298,7 +301,7 @@ async def test_refine_fallback_when_rewrite_returns_empty() -> None:
                     grader=grader, threshold=0.70)
     initial_result = _retrieval_result()
     initial_synth = _synth()
-    outcome = await loop.refine("q?", initial_result, initial_synth)
+    outcome = await loop.refine("q?", initial_result, initial_synth, kb_id="drive_user_manuals")
 
     assert outcome.triggered is True
     assert outcome.fallback_used is True
