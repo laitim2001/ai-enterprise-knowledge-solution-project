@@ -350,7 +350,7 @@ Rationale:F1-F4 verifiable success criteria fully met within real-calendar 2026-
 
 ### Commit reference
 
-- `<hash>` W14 D5 F5 batch commit(F5.1-F5.5 retro 7 sections + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W15 phase folder kickoff + W14 frontmatter close cascade + checklist F5.1-F5.5 + cross-cutting tick + plan changelog 2026-06-10 (D5) W14 D1-D5 plan-day collapse + closeout entry)
+- `4b202ce` W14 D5 F5 batch commit(F5.1-F5.5 retro 7 sections + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W15 phase folder kickoff + W14 frontmatter close cascade + checklist F5.1-F5.5 + cross-cutting tick + plan changelog 2026-06-10 (D5) W14 D1-D5 plan-day collapse + closeout entry)
 
 ---
 
