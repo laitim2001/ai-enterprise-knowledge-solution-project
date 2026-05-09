@@ -20,13 +20,13 @@ last_updated: 2026-06-10
 
 ## F2 — V3 KB List card grid refactor
 
-- [ ] F2.1 `frontend/app/admin/kb/page.tsx` rebuild from plain-table(W12 F4.6 baseline)to card grid per design ref §2.3;Card shows kb_id / display_name / description / doc_count / last_indexed_at / status badge
-- [ ] F2.2 Sort dropdown(shadcn Select)— sort by name / created_at / last_indexed_at
-- [ ] F2.3 Filter Input search(name / description text match;optional W14 D2 if scope allows)
-- [ ] F2.4 Create CTA(shadcn Button + Link)→ `/admin/kb/new`
-- [ ] F2.5 Loading state(shadcn Skeleton)while TanStack Query fetching;empty state per design ref §3.4
-- [ ] F2.6 Card click navigates to `/admin/kb/[id]` V4 detail
-- [ ] F2.7 Responsive — `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
+- [x] F2.1 `frontend/app/admin/kb/page.tsx` rebuild from plain-table(W12 F4.6 baseline)to card grid;Card shows kb_id(font-mono small)+ name(CardTitle line-clamp-1)+ description(CardDescription line-clamp-2 min-h)+ doc_count + chunks_count + last_indexed_at + derived status badge
+- [x] F2.2 Sort dropdown(shadcn Select)— **deviation logged plan §7 changelog 2026-06-10 (D2)** — sort by name / **last_indexed(recent first;null at end)** / **documents(most first)**;`created_at` plan-literal 缺乏 KbStatus API field;采 3 useful operational dimensions
+- [x] F2.3 Filter Input search(name / kb_id / description text match case-insensitive)+ Search lucide icon as adornment;state-driven via useMemo + useState;empty filter shows all
+- [x] F2.4 Create CTA(shadcn Button asChild + Link)at page header right + Plus lucide icon → `/admin/kb/new`;empty state secondary Create CTA
+- [x] F2.5 Loading state — `KbGridSkeleton`(6 Skeleton cards w/ matching shape per design ref §3.5);Empty state — `KbEmpty` per design ref §3.4(Database / Search icon + heading + subtext + CTA);Error state — destructive boundary preserved from W12 baseline
+- [x] F2.6 Card click navigates to `/admin/kb/[id]` V4 detail — **deviation logged plan §7 changelog 2026-06-10 (D2)** — entire Card wrapped in Link(best accessibility + middle-click new tab support);Upload secondary action dropped from Card to avoid nested-anchor HTML invalid(user navigates into KB detail page for Upload)
+- [x] F2.7 Responsive — `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`;Toolbar `flex-col sm:flex-row` collapse mobile;Header CTA stack `flex-col sm:flex-row` mobile
 
 ## F3 — V4 KB Detail 5-tab nav
 

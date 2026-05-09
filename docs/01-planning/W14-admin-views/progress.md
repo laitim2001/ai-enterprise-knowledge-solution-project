@@ -108,9 +108,53 @@ $ # 0 hits across both files (no docstring oklch mentions either)
 
 ---
 
-## Day 2 — _(W14 D2,2026-07-01,tentative)_
+## Day 2 — W14 D2 F2 V3 KB List card grid refactor(real-calendar 2026-06-10 same-day collapse cycle 3 of 4 cont)
 
-_(placeholder — F2 V3 KB List finalize + F3 V4 KB Detail Documents + Chunks tabs)_
+> **Calendar note**:plan §5 tentative date 2026-07-01 superseded by real-calendar 2026-06-10 same-day collapse(D1 → D2 cycle continue post user authorization "A:continue W14 D2 — F2 V3 KB List card grid refactor")。Time tracking calibration:plan ~1 day budget vs actual ~30 min(consistent with W12+W13 7-9x under-budget pattern)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F2.1 | KB List card grid refactor | REWRITE `frontend/app/admin/kb/page.tsx`(plain-table → KbCard component;name + description line-clamp + doc + chunks + last_indexed + status badge + kb_id mono small)| ✅ |
+| F2.2 | Sort dropdown | shadcn Select + ArrowDownAZ lucide;3 options(name / last_indexed recent / documents most);`makeComparator` helper for typed sort logic;**deviation logged plan §7 changelog (D2)** — `created_at` plan-literal 缺乏 KbStatus field 采 documents 替代 | ✅ (deviation noted) |
+| F2.3 | Filter search | shadcn Input + Search lucide adornment;`useMemo + useState` state machine;case-insensitive substring match across name + kb_id + description | ✅ |
+| F2.4 | Create CTA | header right shadcn Button asChild + Link + Plus icon;empty state secondary Create CTA | ✅ |
+| F2.5 | Loading + empty + error states | `KbGridSkeleton`(6 Skeleton cards matching shape per design ref §3.5)+ `KbEmpty`(2 variants:no-KBs vs no-search-match per design ref §3.4)+ destructive error boundary preserved | ✅ |
+| F2.6 | Card → KB detail navigation | **deviation logged plan §7 changelog (D2)** — entire Card wrapped in Link(accessibility + middle-click new tab);Upload secondary dropped(user enters KB detail to Upload — avoids nested-anchor HTML invalid)| ✅ (deviation noted) |
+| F2.7 | Responsive layout | `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` cards;Toolbar `flex-col sm:flex-row`;Header CTA + count stack mobile;Card内 stats row自然 wrap | ✅ |
+
+### Decisions
+
+1. **Sort options reduce from plan-literal `created_at` to existing API fields**:KbStatus 唔有 `created_at`;采 documents 提供 useful operational dimension(useful for finding "biggest" KBs)+ last_indexed/name preserved per plan;Karpathy §1.2 simplicity-first 唔 add backend just for sort proxy
+2. **Whole Card as Link vs nested anchors**:plan F2.6「Card click navigates」+ plan F2.4「Create CTA」+ W12 baseline Upload secondary 唔可以 all 3 共存(nested anchors HTML invalid);采 single Link wrap Card + Create CTA at page header + Upload dropped from Card(navigation cost +1 click acceptable Tier 1)
+3. **Status badge 3-state derivation**:`failed_documents > 0` → warning「Degraded」;`total_documents == 0` → muted「Empty」;else → success「Indexed」;mirrors W14 F1 system status pattern + design ref §3.6 focus state expectations
+4. **Skeleton shape matches Card layout**:6 Skeleton cards in same `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`;avoids spinner-only per design ref §3.5(jarring vs Notion-leaning editorial);CardHeader Skeleton + CardContent Skeleton stripes match real Card spacing
+5. **Empty state 2-variant design**:no-KBs(Database icon + Create CTA prompts user creation)vs no-search-match(Search icon + clear-filter hint);separating these 提升 UX(user knows whether to clear search OR create);per design ref §3.4 empty state pattern
+6. **Client-side sort + filter Tier 1 cohort scale**:no backend pagination;`useMemo` over query.data with comparator + filter predicate;rolls forward to Beta hardening trigger when KB count grows OR persistent backing migrates(W11 retro CO18)
+7. **`description || italic No description` placeholder**:CardDescription `min-h-[2.5rem]` keeps card heights consistent across rows even when descriptions vary in length;Karpathy §1.4 verifiable goal達成 = visual rhythm preserved per design ref §3.7
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/admin/kb/page.tsx | wc -l
+0
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;no hardcoded oklch;all colors via Tailwind tokens(`bg-success/15` / `bg-warning/15` / `bg-muted` / `text-foreground` / `text-muted-foreground`)。shadcn primitives reused(Card + Badge + Button + Input + Select + Skeleton + lucide icons)— no new vendor。
+
+### Carry-overs to W14 D3
+
+- 🚧 F2 user smoke deferred per CLAUDE.md §13(`! pnpm dev` + `! uvicorn`;`/admin/kb` card grid + sort by name/last_indexed/documents + filter search + responsive collapse mobile + dark mode toggle still works;empty state when no KB OR when search term miss)
+- ⏳ W14 D3 focus per plan §5:F3 V4 KB Detail 5-tab(largest deliverable — Documents + Chunks + Pipeline + Retrieval Testing + Settings tabs;Stepper rule-of-3 evaluation trigger if Pipeline tab introduces state machine)
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W14 D2 F2 V3 KB List card grid refactor
 
 ---
 
