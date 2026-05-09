@@ -1,0 +1,108 @@
+# Playwright E2E + pixel diff baseline harness
+
+Tier 1 baseline test infrastructure landed W15 D4 F4 (per architecture.md v6
+§5.8 + design ref §6 W15 scope + ADR-0015 UI Tier 1 expansion 9 views).
+
+## Coverage scope
+
+| Test file | Deliverable | Views covered |
+|---|---|---|
+| `golden-path.spec.ts` | F4.2 — public + chat E2E | V7 Landing, V8 Login, V9 Register, V1 Chat |
+| `admin-path.spec.ts` | F4.3 — KB management + eval + debug | V2 Admin, V3 KB List, V5 Eval, V6 Debug + sidebar nav |
+| `visual-baseline.spec.ts` | F4.4 — pixel diff harness | V7 + V8 + V9 + V2 + V5 (empty state baselines) |
+
+V4 KB Detail 5-tab interactive flow + KB seeding tests = Beta hardening trigger
+(non-blocker per W15 plan F4.5 PARTIAL PASS acceptance "local-only baseline OK
+Tier 1").
+
+## Prerequisites
+
+Run once:
+
+```bash
+# 1. Install Playwright browser binaries (~300MB Chromium download)
+cd frontend
+npx playwright install chromium
+```
+
+If R8 corp proxy blocks the binary CDN download, see ADR-0017 trigger candidate
+or use personal Azure dev tier per W11 retro CO17 pattern.
+
+## Running tests
+
+E2E tests need both servers running. Per CLAUDE.md §13 dev server policy,
+backend uvicorn is user-driven separately; Playwright auto-starts the frontend
+dev server via `webServer` config.
+
+```bash
+# Terminal 1 — backend (one-time per session)
+cd backend
+.venv/Scripts/python.exe -m uvicorn api.server:app --port 8000
+
+# Terminal 2 — Playwright (auto-starts pnpm dev on port 3001)
+cd frontend
+pnpm test:e2e               # Run all tests
+pnpm test:e2e:ui            # Interactive UI mode (Playwright Inspector)
+pnpm test:e2e:update-snapshots  # Capture / update pixel diff baseline
+```
+
+## First-time pixel diff baseline capture
+
+Before pixel diff tests can pass on diff comparison, baseline screenshots must
+be captured:
+
+```bash
+pnpm test:e2e:update-snapshots
+```
+
+This runs `visual-baseline.spec.ts` + writes baseline PNGs to:
+
+```
+frontend/tests/e2e/visual-baseline.spec.ts-snapshots/
+├── v7-landing-chromium-win32.png
+├── v8-login-chromium-win32.png
+├── v9-register-step1-chromium-win32.png
+├── v2-admin-dashboard-chromium-win32.png
+└── v5-eval-console-chromium-win32.png
+```
+
+Commit these baselines to git (they form the visual regression contract).
+Subsequent `pnpm test:e2e` runs diff against them with 1% pixel tolerance.
+
+When intentional UI changes happen (e.g., V2 Admin Dashboard refactor),
+re-run `--update-snapshots` after visual approval and re-commit.
+
+## Authentication
+
+Tests assume `NEXT_PUBLIC_AUTH_MOCK=true` (set automatically via
+`playwright.config.ts` webServer env) so Entra ID SSO is bypassed via mock
+MSAL. No real Azure AD round-trip needed in test mode.
+
+If backend is run with `feature_auth_mock=true` (default Tier 1), the mock
+bearer is accepted directly.
+
+## Backend stub endpoints
+
+V5 Eval Console and V6 Debug View test against backend stub endpoints (501
+NOT_IMPLEMENTED) per W15 plan §3 PARTIAL PASS acceptance:
+
+- `POST /eval/run` — W4 stub (eval-methodology.md cascade)
+- `POST /eval/shootout` — W4 stub
+- `GET /debug/trace/{trace_id}` — W3+ stub (Langfuse correlation)
+
+Tests assert UI handles 501 gracefully via stub mitigation pattern (empty
+state + AlertCircle + stub note + retry: false on TanStack Query).
+
+## CI integration
+
+Deferred to W16+ Beta hardening per W15 plan F4.5. Local-only baseline OK
+for Tier 1 acceptance.
+
+## Troubleshooting
+
+| Symptom | Mitigation |
+|---|---|
+| `npx playwright install` blocked by R8 corp proxy | ADR-0017 trigger; use personal Azure dev tier per W11 retro CO17 |
+| Tests fail on first run with "Backend unreachable" | Start backend uvicorn on port 8000 |
+| Pixel diff fails after intentional UI change | Re-run `pnpm test:e2e:update-snapshots` + commit new baseline |
+| Webserver auto-start hangs | Set `reuseExistingServer: true` in `playwright.config.ts` + start `pnpm dev` manually |

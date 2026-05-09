@@ -212,9 +212,65 @@ $ grep -r "\[oklch" frontend/
 
 ---
 
-## Day 4 — _(W15 D4,2026-07-10,tentative)_
+## Day 4 — W15 D4 F4 Playwright E2E + pixel diff baseline harness(real-calendar 2026-06-10 same-day collapse cycle 4 of 4 final cont)
 
-_(placeholder — F4 Golden-path E2E + admin path E2E + pixel diff baseline)_
+> **Calendar note**:plan §5 tentative date 2026-07-10 superseded by real-calendar 2026-06-10 same-day collapse(W15 D3 F3 → W15 D4 F4 cycle continue post user authorization "A:continue W15 D4 — F4 Playwright E2E + pixel diff baseline harness")。Time tracking calibration:plan ~1.5 day budget(largest deliverable W15)vs actual ~1 hr 10 min(install + 7 NEW files + governance docs;consistent with W12+W13+W14+W15 D1-D3 7-16x under-budget pattern;budget-largest deliverable still under by ~12x)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F4.1 | Playwright install + config | `pnpm add -D @playwright/test` ✅ landed `@playwright/test ^1.59.1`(1m 3s install w/ 4 packages added;R8 proxy 唔 block npm registry — different endpoint vs azure-communication-email which IS blocked per W13 F6);NEW `frontend/playwright.config.ts`(Chromium-only Tier 1 simplicity drop firefox/webkit + sequential exec + trace/screenshot/video retain-on-failure + webServer auto-start `pnpm dev` w/ NEXT_PUBLIC_AUTH_MOCK=true env);NEW `frontend/tests/e2e/` directory + NEW `frontend/tests/e2e/README.md`(7-section user smoke instructions);**deviation logged plan §7 (D4)** — plan F4 spec ref "CLAUDE.md §3.2 Vitest + RTL baseline preserved;Playwright additive" stale(no Vitest infrastructure exists);Playwright independent setup per Karpathy §1.3 surgical scope hold | ✅ (deviation noted) |
+| F4.2 | Golden-path E2E | NEW `frontend/tests/e2e/golden-path.spec.ts`(4 tests:V7 Landing + V8 Login + V9 Register Step 1 + V1 Chat — render assertions only Tier 1;subsumes manual smoke deferred backlog across W12+W13+W14 cycles per plan §F4 systematic subsume goal) | ✅ |
+| F4.3 | Admin path E2E | NEW `frontend/tests/e2e/admin-path.spec.ts`(5 tests:V2 Admin Dashboard + V3 KB List + V5 Eval Console + V6 Debug View + Sidebar nav navigates between admin views;assumes NEXT_PUBLIC_AUTH_MOCK=true bypasses login;backend stub endpoints (501) handled via stub mitigation UI per W15 D1+D2 implementation) | ✅ |
+| F4.4 | Pixel diff baseline | NEW `frontend/tests/e2e/visual-baseline.spec.ts`(5 representative views:V7 Landing + V8 Login + V9 Register Step 1 + V2 Admin Dashboard empty + V5 Eval Console empty);**deviation logged plan §7 (D4)** — plan literal "frontend/tests/e2e/screenshots/baseline/" custom path → Playwright convention `*.spec.ts-snapshots/` next to test files(简简 tool-default per Karpathy §1.2);maskedDiff config for dynamic regions(timestamps + KB IDs in mono font masked via `mask: [page.locator('time'), page.locator('.font-mono')]`);1% maxDiffPixelRatio anti-aliasing tolerance | ✅ (deviation noted) |
+| F4.5 | CI integration plan | DEFER to W16+ Beta hardening per plan F4.5 PARTIAL PASS acceptance "local-only baseline OK Tier 1";`reuseExistingServer: !process.env.CI` config flag ready for CI flip + `forbidOnly: Boolean(process.env.CI)` guards test.only() leftover;documented in `tests/e2e/README.md` § CI integration "Deferred to W16+ Beta hardening per W15 plan F4.5" | ✅ |
+| INFRA | package.json scripts + .gitignore | `frontend/package.json` add 3 scripts(`test:e2e` / `test:e2e:ui` / `test:e2e:update-snapshots`);root `.gitignore` add 3 Playwright artifact patterns(`/frontend/test-results/` + `/frontend/playwright-report/` + `/frontend/playwright/.cache/`)per CLAUDE.md root .gitignore convention "唔好 individual `.gitignore` 散喺 sub-folder" | ✅ |
+
+### Decisions
+
+1. **Playwright independent setup per Karpathy §1.3 surgical scope hold** — plan F4 spec ref "Vitest + RTL baseline preserved;Playwright additive" stale per Glob check(no Vitest infrastructure exists);Playwright installed standalone without coupling to non-existent Vitest baseline;Vitest infrastructure setup = out of W15 F4 strict scope(W16+ Beta hardening trigger if surface)
+2. **R8 proxy mitigation strategy split** — `pnpm add -D @playwright/test` ✅ install via npm registry succeeded 1m 3s(npm registry endpoint generally working per W12 D3 shadcn primitive installs precedent);BUT `npx playwright install chromium` browser binary download(~300MB CDN download via playwright.azureedge.net)deferred to user smoke per CLAUDE.md §13 + plan F4.5 PARTIAL PASS acceptance("local-only baseline OK Tier 1")— if user CDN blocked,ADR-0017 trigger candidate per W11 retro CO17 personal Azure dev tier pattern
+3. **Chromium-only Tier 1 simplicity drop** — Karpathy §1.2 simplicity-first(firefox/webkit cross-browser testing scope expansion = Beta hardening fit per plan §4 risks);config `projects` array shows only `name: 'chromium'` with `Desktop Chrome` device emulation;extension to firefox/webkit = additive non-breaking when triggered
+4. **Sequential test execution(`fullyParallel: false`)** — in-memory KB state per W11 retro CO18 baseline(no persistent backing yet for KB Manager + users_repo);parallel execution = race conditions on shared state;sequential = simpler + reliable for Tier 1;persistent backing W16+ Beta hardening = enables parallel safe
+5. **5 representative views pixel diff baseline scope hold** — Karpathy §1.2 simplicity-first(all 9 views baseline = scope expansion vs Tier 1 PARTIAL PASS acceptance "local-only baseline OK Tier 1");V7 + V8 + V9 + V2 + V5 covers public-facing + admin entry + eval flow;V1 Chat / V3 KB List / V4 KB Detail / V6 Debug = covered by golden-path + admin-path E2E render assertions(complementary coverage layer)
+6. **maskedDiff dynamic regions defensive design** — timestamps(<time>)+ KB IDs / chunk IDs(font-mono)dynamic per render → mask via `mask: [page.locator('time'), page.locator('.font-mono')]`;preserves baseline stability vs false-positive pixel diff failures on every test run;`maxDiffPixelRatio: 0.01` 1% tolerance for sub-pixel anti-aliasing jitter
+7. **webServer config auto-start frontend only** — `pnpm dev` port 3001 auto-start by Playwright;backend uvicorn port 8000 = user-driven separately per CLAUDE.md §13 dev server policy(Claude Code can't run long-lived servers);`reuseExistingServer: !process.env.CI` allows local dev re-run + CI fresh-start;tests assume both servers running per `tests/e2e/README.md` Prerequisites section
+8. **Tier 1 = render assertions only;interactive flow defer Beta hardening** per plan §4 risks F3 a11y verification scope expand mitigation;golden-path tests assert form fields visible / buttons clickable / pages load — not actual register/login round-trip(would require backend wiring + mock email verification + state cleanup);interactive E2E assertions = Beta hardening fit when ACS email service productionized + backend persistent backing landed
+9. **9th occurrence of plan literal vs actual code grep verification gap pattern accelerating** — W13 F1.5 + W14 F1.1 + W14 F2.2 + W15 F1.1 baseline + W15 F1.3 metric naming + W15 F2.1 NEW route + W15 F2.2 9-vs-6 stage + W15 F2.3 Accordion not installed + W15 F4 Vitest baseline non-existent;CO_W14_process_grep_verify call-out further reinforced;**process improvement candidate confirmed for W15 D5 retro decision**(formalize "spec ref grep verification" step pre-active flip checklist for W16+ Beta deploy phase folder rolling JIT trigger)
+
+### Verification
+
+```
+$ cd frontend && pnpm add -D @playwright/test
++ @playwright/test ^1.59.1
+Done in 1m 3s using pnpm v10.19.0
+
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors (Playwright spec files compile clean)
+
+$ ls frontend/tests/e2e/
+admin-path.spec.ts
+golden-path.spec.ts
+README.md
+visual-baseline.spec.ts
+```
+
+✅ Playwright @playwright/test 1.59.1 installed(R8 proxy 唔 block npm registry);TypeScript strict mode clean(0 errors;Playwright spec files compile + use shared types);no `any` / no @ts-ignore;3 NEW spec files(13 tests total — 4 golden-path + 5 admin-path + 5 visual baseline) + 1 NEW README + 1 NEW playwright.config.ts;package.json + 3 scripts;root .gitignore + 3 artifact patterns;**Tier 1 baseline harness ready for user smoke** — `npx playwright install chromium` + `pnpm test:e2e` + `pnpm test:e2e:update-snapshots` 3-step user workflow documented。
+
+### Carry-overs to W15 D5
+
+- 🚧 F4 user smoke deferred per CLAUDE.md §13 + plan F4.5 PARTIAL PASS — user runs:(a)`! cd frontend && npx playwright install chromium`(one-time browser binary install ~300MB CDN download via playwright.azureedge.net — ADR-0017 trigger if R8 blocks);(b)`! cd backend && .venv/Scripts/python.exe -m uvicorn api.server:app --port 8000`;(c)`! cd frontend && pnpm test:e2e:update-snapshots`(capture pixel diff baseline + commit `tests/e2e/*.spec.ts-snapshots/`);(d)`! cd frontend && pnpm test:e2e`(verify 13 tests pass + 0 regression)
+- ⏳ W15 D5 focus per plan §5:F5 W15 phase Gate verdict + retro 7 sections + **Tier 1 UI sprint cycle final closeout retrospective**(W12+W13+W14+W15 cumulative learnings)+ W16+ Beta deploy phase folder rolling JIT trigger
+- 📝 **CO_W15_F4_browser_binaries** `npx playwright install chromium` browser binary CDN download ADR-0017 trigger candidate if R8 blocks(W11 retro CO17 personal Azure dev tier pattern fallback)— Beta hardening trigger fit
+- 📝 **CO_W15_F4_baseline_capture** Pixel diff baseline screenshots capture deferred to user smoke first run(`pnpm test:e2e:update-snapshots` → commits 5 PNG to `tests/e2e/visual-baseline.spec.ts-snapshots/`)— Tier 1 baseline harness wired but baseline empty until first run
+- 📝 **CO_W15_F4_vitest_baseline_gap** CLAUDE.md §3.2 "Vitest + RTL baseline" never set up + plan F4 spec ref stale(9th occurrence of plan literal vs actual code grep verification gap)— Beta hardening trigger candidate(formalize unit test infrastructure beyond Playwright E2E layer)
+- 📝 **CO_W15_F4_interactive_flow_E2E** Tier 1 = render assertions only;interactive flow E2E(register/login round-trip + KB upload + Pipeline wizard 3-step + Settings save + Danger zone confirm)= Beta hardening trigger fit when backend persistent backing + ACS email productionized
+
+### Commit
+
+- `<hash>` feat(frontend,docs): W15 D4 F4 Playwright E2E + pixel diff baseline harness — install + config + 13 tests + 7 NEW files + 2 deviations
 
 ---
 
