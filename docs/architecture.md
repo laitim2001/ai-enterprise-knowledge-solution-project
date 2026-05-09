@@ -197,7 +197,7 @@ User Query
  ├─ BM25 search top 50
  └─ RRF fusion → top 50 candidates
     ↓
-[Cohere Rerank v3.5] → top 5
+[Cohere Rerank v4.0-pro] → top 5
     ↓
 [Confidence Judge]    ← L2 CRAG: 評估 retrieval quality
     ↓                   ↓
@@ -645,8 +645,8 @@ class QueryRequest(BaseModel):
     top_k_retrieval: int = 50
     top_k_rerank: int = 5
     llm_model: Literal["gpt-5.5", "gpt-5.4-mini"] = "gpt-5.5"
-    reranker: Literal["cohere-v3.5", "voyage-rerank-2.5",
-                      "zeroentropy-zerank-1", "azure-semantic", "off"] = "cohere-v3.5"
+    reranker: Literal["cohere-v4.0-pro", "cohere-v3.5", "voyage-rerank-2.5",
+                      "zeroentropy-zerank-1", "azure-semantic", "off"] = "cohere-v4.0-pro"
     enable_crag: bool = True
     enable_intent_routing: bool = False  # W5 stretch
 
@@ -1155,7 +1155,7 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 | Azure OpenAI GPT-5.5(synthesis) | ~$80 | ~$120 | ~$300–800 |
 | Azure OpenAI GPT-5.4-mini(CRAG judge) | ~$5 | ~$10 | ~$30 |
 | Azure OpenAI GPT-5.5 Pro(eval judge) | ~$30 | ~$10 | ~$10 |
-| Cohere Rerank v3.5 | ~$15 | ~$25 | ~$30–50 |
+| Cohere Rerank v4.0-pro | ~$15 | ~$25 | ~$30–50 |
 | Voyage / ZeroEntropy(W4 only) | ~$5 | $0 | $0 |
 | Azure Blob | ~$5 | ~$5 | ~$10 |
 | Azure Container Apps(2 containers) | ~$45 | ~$60 | ~$80 |
@@ -1388,7 +1388,7 @@ Dify modified Apache 2.0 嘅 commercial restriction:
 
 ### 13.10 其他保留 v3 嘅決定
 
-(Azure AI Search、text-embedding-3-large、Cohere Rerank v3.5、GPT-5.5、
+(Azure AI Search、text-embedding-3-large、Cohere Rerank v4.0-pro、GPT-5.5、
 Screenshot self-host、Beta+ Microsoft Entra ID auth — 詳情參 v3 規格附錄,
 v4 全部 inherit)
 
@@ -1471,7 +1471,7 @@ v4 全部 inherit)
 │                      | (3072d → 1024d MRL)            │
 │ Vector + BM25 Index  | Azure AI Search Std S1         │
 │                      | (multi-KB,index per KB)       │
-│ Reranker             | Cohere Rerank v3.5             │
+│ Reranker             | Cohere Rerank v4.0-pro         │
 │                      | (via Azure Marketplace)        │
 │ LLM(synthesis)       | Azure OpenAI GPT-5.5           │
 │ LLM(CRAG judge)      | Azure OpenAI GPT-5.4-mini      │
