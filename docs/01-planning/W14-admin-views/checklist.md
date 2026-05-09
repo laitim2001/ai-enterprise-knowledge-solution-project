@@ -1,23 +1,22 @@
 ---
 phase: W14-admin-views
 plan_ref: ./plan.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
 # Phase W14 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration)。
-> Status:`draft` 自 2026-06-10 W13 D5 cont F7 closeout cascade rolling-JIT。
-> 全 unchecked 至 W14 D1 implementation start post stakeholder authorization。
+> Status:`active` 自 2026-06-10 W14 D1 implementation start(real-calendar same-day collapse cycle 3 of 4 per pivot momentum continuation of W13 closeout)。
 
 ## F1 — V2 Admin Dashboard refactor + CO_F5d-cont session-token mode
 
-- [ ] F1.1 Stats card row(4 shadcn Card)at top of `frontend/app/admin/page.tsx`:KB count / doc count / query count / system status badge;data via TanStack Query(existing W12 baseline)or static placeholder if backend endpoint pending
-- [ ] F1.2 Recent ingestion log(table OR list)below stats — last 10 ingestion events(doc_id / kb_id / status / timestamp);pull from existing observability API if available;empty state if none
-- [ ] F1.3 Quick actions row(3 shadcn Button asChild + Link):Create KB → `/admin/kb/new` + Test query → `/chat` + View eval → `/eval`
-- [ ] F1.4 Responsive layout — stats cards `grid-cols-1 sm:grid-cols-2 md:grid-cols-4`;Recent ingestion horizontal-scroll mobile;Quick actions stack vertical mobile
-- [ ] F1.5 CO_F5d-cont session-token mode:extend `frontend/lib/auth/index.ts` with session-token branch(read `SESSION_TOKEN_STORAGE_KEY` from localStorage;return as bearer if present;else fall through to existing mock/MSAL switching);parallel to backend `dependency.get_current_user` session branch architecture;non-breaking if localStorage empty
+- [x] F1.1 Stats card row(4 shadcn Card)at top of `frontend/app/admin/page.tsx`:**deviation logged plan §7 changelog 2026-06-10 (D1)** — KB count / doc count / **chunks count(W12 baseline preserved)** / system status badge(plan said "query count" but no backend endpoint readily available;chunks count 仍 useful Tier 1 ingestion KPI;Karpathy §1.2 simplicity-first 不 add backend endpoint just for stat card)
+- [x] F1.2 Recent ingestion log → **deviation logged plan §7 changelog 2026-06-10 (D1)** — 采「Failed ingestion」derived from `kbApi.list .failed_documents` arrays(W7 baseline data structure already returns failure rows per KB);empty state w/ CheckCircle2 「No failed ingestion」;Skeleton placeholder during loading;Table 顯示 first 10 failures w/ KB / Doc id / Stage Badge / Error message
+- [x] F1.3 Quick actions row(3 shadcn Button outline asChild + Link):Create KB → `/admin/kb/new` w/ Plus icon + Test query → `/chat` w/ MessageSquare icon + View eval → `/eval` w/ FlaskConical icon;ActionButton component pattern(icon + label + description)
+- [x] F1.4 Responsive layout — stats cards `grid-cols-1 sm:grid-cols-2 md:grid-cols-4`;Failed ingestion table horizontal-scroll mobile via `<table>` natural overflow;Quick actions `grid-cols-1 sm:grid-cols-3`;Section spacing `space-y-8` per design ref §3.7
+- [x] F1.5 CO_F5d-cont session-token mode:`SESSION_TOKEN_STORAGE_KEY` 移去 `lib/auth/index.ts`(canonical auth domain;`lib/api/auth.ts` re-exports to break api-client → auth → api/auth circular import);**`getBearer()` 加 session branch BEFORE mock/MSAL fork** via `readSessionBearer()` helper(reads localStorage;returns `{scheme,token}` if present;else null fall-through);non-breaking when localStorage empty;defensive `try/catch` for privacy/sandbox modes;parallel to backend `dependency.get_current_user` session branch architecture(W13 D5 F5.6)
 
 ## F2 — V3 KB List card grid refactor
 

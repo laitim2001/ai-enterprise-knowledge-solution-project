@@ -2,14 +2,14 @@
 phase: W14-admin-views
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: draft
+status: active
 last_updated: 2026-06-10
 ---
 
 # Phase W14 — Progress(Daily Journal + Decisions + Retro)
 
 > Daily progress entries per CLAUDE.md §10 R2(每 commit reference progress.md Day-N entry)。
-> Status:`draft` 自 2026-06-10 W13 D5 cont F7 closeout cascade rolling-JIT post stakeholder authorization pivot momentum。
+> Status:`active` 自 2026-06-10 W14 D1 implementation start(real-calendar same-day collapse cycle 3 of 4 per pivot momentum continuation of W13 closeout)。
 
 ---
 
@@ -61,16 +61,50 @@ last_updated: 2026-06-10
 
 ---
 
-## Day 1 — _(W14 D1,2026-06-30,tentative)_
+## Day 1 — W14 D1 active flip + F1 V2 Admin Dashboard + CO_F5d-cont(real-calendar 2026-06-10 same-day collapse cycle 3 of 4 cont)
 
-_(W14 D1 implementation start placeholder — populate at session 2026-06-30 kickoff per CLAUDE.md §10 R2;OR earlier if calendar-day-collapse cont per pivot momentum)_
+> **Calendar note**:plan §5 tentative date 2026-06-30 superseded by real-calendar 2026-06-10 same-day collapse(W13 D5 cont F7 closeout → W14 D1 same-session per pivot momentum continuation;cycle 3 of 4 UI sprint cycle begins)。Time tracking calibration:plan ~0.5 day budget vs actual ~30 min(F1 stat-card refactor + Failed ingestion section + Quick actions + CO_F5d-cont session-token branch)。
 
-### Planned focus(per plan.md §5 Day-by-Day)
+### What landed
 
-- F1 V2 Admin Dashboard refactor(stats card row + recent ingestion + quick actions + responsive)
-- F1.5 CO_F5d-cont session-token mode extension(`frontend/lib/auth/index.ts`)
-- F2 V3 KB List card grid begin
-- W14 plan/checklist/progress frontmatter `draft → active` flip post stakeholder authorization
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F1.1 | 4-card stats row | UPDATE `frontend/app/admin/page.tsx`(KB count + Doc count + Chunks count + System status badge;**deviation logged plan §7 changelog (D1)** — chunks preserved over plan-literal "query count" since no backend endpoint readily available;Karpathy §1.2 simplicity-first)| ✅ |
+| F1.2 | Failed ingestion section | derive from existing `kbApi.list .failed_documents` arrays(W7 baseline data structure);**deviation logged plan §7 changelog (D1)** — 采「Failed ingestion」not「Recent ingestion log」(no recent ingestion endpoint;failed docs informational symmetry preserved);Skeleton loading + CheckCircle2 empty state + Table first-10 w/ KB / Doc id / Stage Badge / Error | ✅ |
+| F1.3 | 3-button quick actions row | ActionButton pattern(icon + label + description outline Button asChild + Link):Create KB(Plus)→ `/admin/kb/new` + Test query(MessageSquare)→ `/chat` + View eval(FlaskConical)→ `/eval` | ✅ |
+| F1.4 | Responsive layout | stats `grid-cols-1 sm:grid-cols-2 md:grid-cols-4`;Failed table natural overflow horizontal-scroll mobile;Quick actions `grid-cols-1 sm:grid-cols-3`;`space-y-8` section spacing per design ref §3.7 | ✅ |
+| F1.5 | CO_F5d-cont session-token mode | NEW `readSessionBearer()` helper + extended `getBearer()` in `frontend/lib/auth/index.ts`;`SESSION_TOKEN_STORAGE_KEY` moved to canonical auth domain + re-exported via `lib/api/auth.ts`(breaks api-client → auth → api/auth circular import);non-breaking when localStorage empty;defensive try/catch for privacy/sandbox modes;parallel to backend `dependency.get_current_user` session branch architecture(W13 D5 F5.6) | ✅ |
+
+### Decisions
+
+1. **F1.1 stat-card scope adjustment**:plan said 4 cards including "query count";采 4 cards = KB+doc+**chunks(W12 baseline preserved)**+status — chunks count 仍 useful Tier 1 ingestion KPI;Karpathy §1.2 simplicity-first 唔 add backend endpoint just for query count stat;deviation logged plan §7 changelog (D1)
+2. **F1.2 "Failed ingestion" interpretation**:plan said「Recent ingestion log」需要 backend endpoint not readily available;采 derived data from existing `kbApi.list .failed_documents`(已 W7 baseline data structure)— informational symmetry preserved(operations focus = "what's broken now")+ Karpathy §1.2 minimum data plumbing;deviation logged plan §7 changelog (D1)
+3. **System status derivation from existing query state**:if `query.isLoading` → loading badge;if `query.isError` → destructive 「Backend unreachable」;if `failures.length > 0` → warning 「Degraded」;else → success 「Operational」;avoids new `/health` endpoint call(`computeStatus` helper)— Karpathy §1.4 verifiable goal達成 via existing data
+4. **CO_F5d-cont SESSION_TOKEN_STORAGE_KEY relocation to lib/auth**:lib/api/auth.ts → lib/auth/index.ts canonical auth domain location;lib/api/auth.ts re-exports to keep login form import path unchanged(zero touch on `frontend/app/login/page.tsx`)— breaks `api-client → auth → api/auth` circular import path;single source of truth principle preserved
+5. **`readSessionBearer()` defensive try/catch**:localStorage may throw in privacy/sandbox/iframe modes;return null on any throw → fall through to mock/MSAL path keeps app functional vs uncaught exception breaking auth wire entirely
+6. **ActionButton component pattern over plain Button**:icon + label + description w/ accent-tinted icon background — better UX affordance vs plain text Button + matches V2 wireframe design ref §2.2 quick-actions pattern(non scope creep — 5-line component reuse)
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/admin/page.tsx frontend/lib/auth/index.ts
+$ # 0 hits across both files (no docstring oklch mentions either)
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;no hardcoded oklch;all colors via Tailwind tokens(`bg-success/15` / `bg-warning/15` / `bg-destructive/15` / `bg-accent/10` / `text-foreground` / `text-muted-foreground`)。shadcn primitives reused(Card + Badge + Button + lucide icons CheckCircle2 / FileWarning / FlaskConical / MessageSquare / Plus)— no new vendor。
+
+### Carry-overs to W14 D2
+
+- 🚧 F1 user smoke deferred per CLAUDE.md §13(`! pnpm dev` + `! uvicorn` smoke;`/admin` page renders 4-card stats + system status badge / Failed ingestion empty or table / Quick actions 3 buttons + responsive collapse mobile / dark mode toggle still works;CO_F5d-cont session token persistence verifiable post `/auth/login` localStorage check)
+- ⏳ W14 D2 focus per plan §5:F2 V3 KB List card grid begin
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W14 D1 F1 V2 Admin Dashboard refactor + CO_F5d-cont session-token mode + W14 active flip
 
 ---
 

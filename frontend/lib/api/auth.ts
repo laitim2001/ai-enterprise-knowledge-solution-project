@@ -13,6 +13,11 @@
 
 import { apiClient } from '../api-client';
 
+// Re-exported so the login form keeps its existing import surface; the
+// canonical declaration lives in `lib/auth/index.ts` to break the
+// api-client → auth → api/auth circular import (W14 D1 F1.5 / CO_F5d-cont).
+export { SESSION_TOKEN_STORAGE_KEY } from '../auth';
+
 export interface UserPublic {
   oid: string;
   email: string;
@@ -73,8 +78,6 @@ export const AuthErrorCodes = {
   INVALID_EMAIL: 'validation.invalid_email',
   WEAK_PASSWORD: 'validation.weak_password',
 } as const;
-
-export const SESSION_TOKEN_STORAGE_KEY = 'ekp_session_token';
 
 export const authApi = {
   register: (payload: RegisterPayload) =>

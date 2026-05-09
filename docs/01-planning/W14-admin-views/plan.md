@@ -4,7 +4,7 @@ name: "Admin Views — Phase 3 of 4 in W12-W15 UI Tier 1 expansion sprint cycle 
 sprint_week: W14
 start_date: 2026-06-30             # tentative — assumes W13 closeout 2026-06-27 + 1-day buffer
 end_date: 2026-07-04               # 5 working days(possibly +1-2 if F5 cross-cutting refactor absorbs)
-status: draft                      # `draft` — pending W14 D1 active flip post stakeholder authorization + W13 closeout PASS WITH CAVEAT verdict landed
+status: active                     # `active` — W14 D1 implementation start landed 2026-06-10 (real-calendar same-day collapse cycle 3 of 4 per pivot momentum continuation of W13 closeout)
 spec_refs:
   - architecture.md v6 §5.3           # V2 Admin Dashboard
   - architecture.md v6 §5.4           # V3 KB List
@@ -187,6 +187,7 @@ Carry-overs from `W13-user-facing-views/progress.md` retro § Carry-overs(W13 D5
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-10 | Initial draft(W13 D5 cont F7 closeout cascade rolling-JIT)| Per CLAUDE.md §10 R1 rolling-JIT;W13 closeout cascade per F7.3 deliverable;W14 immediate scope = W12 retro CO10-CO12 + W13 retro CO_W14_F1-F4 exact match | Chris(stakeholder authorization same-session pivot momentum;W13 closeout PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict landed) |
+| 2026-06-10 (D1) | `status: draft → active` flip + F1.1 stat-card scope adjustment(plan said 4 cards: KB+doc+query+status;采 KB+doc+chunk+status)+ F1.2 deliverable interpretation(plan said "recent ingestion log";采「failed ingestion」derived from existing kbApi.list .failed_documents arrays)| (1)Stakeholder authorization landed(user instruction "continue W14 D1 — F1 V2 Admin Dashboard + CO_F5d-cont" pivot momentum cycle 3 of 4)。(2)Plan F1.1 "query count" 缺乏 backend endpoint readily available;W12 baseline 已有 chunks count(useful Tier 1 ingestion KPI);采 KB+doc+chunk+status 4-card preserve existing baseline + add system status badge per Karpathy §1.2 simplicity-first(no backend endpoint changes required)。(3)Plan F1.2 "Recent ingestion log" 需要 backend endpoint not readily available;采「failed ingestion」derived from kbApi.list .failed_documents arrays(已 W7 baseline data structure)— informational symmetry preserved + Karpathy §1.2 minimum data plumbing | Chris(user instruction option A "F1 V2 Admin Dashboard + CO_F5d-cont" + technical decision per Karpathy §1.1 think-before-coding)|
 
 ---
 
