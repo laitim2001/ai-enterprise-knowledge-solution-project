@@ -1,5 +1,6 @@
 """Knowledge Base management endpoints (per architecture.md §4.4 #4-8 + §3.4)."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -46,9 +47,20 @@ async def get_kb(kb_id: str, service: KbServiceDep) -> KbStatus:
 async def delete_kb(kb_id: str, service: KbServiceDep) -> None:
     """Delete KB + cleanup (architecture.md §4.4 #7).
 
-    W1: in-memory backend — purges only the KB record.
-    W2 D1: Azure AI Search backend — cleanup will also drop the index
-    `ekp-kb-{kb_id}-v{version}` and the per-KB Blob container.
+    Current behavior: in-memory backend purges the KB record only.
+
+    Per W16 F5.3 Decision B.1 (Beta hardening minimal — Azure cleanup defer
+    Track A IT cred trigger):
+    - In-memory delete cleanup preserved as Beta baseline (kb_management.storage)
+    - Azure AI Search index drop `ekp-kb-{kb_id}-v{version}` — defer Track A
+      W17+ candidate (requires admin-key + index-management permissions)
+    - Per-KB Blob container drop — defer Track A W17+ candidate (requires
+      storage-account-management permissions)
+
+    Per architecture.md §3.4 multi-KB notes: W2 D1 Azure backend promise was
+    documented but Beta-blocking on Track A IT cred populate event trigger
+    (W11 retro CO16);real cleanup wiring deferred to W17+ housekeeping per
+    W16 plan §3 PARTIAL PASS allowance.
     """
     try:
         await service.delete(kb_id)
@@ -74,6 +86,37 @@ async def update_kb_settings(kb_id: str, config: KbConfig, service: KbServiceDep
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/kb/{kb_id}/reindex", status_code=status.HTTP_202_ACCEPTED)
+async def reindex_kb(kb_id: str, service: KbServiceDep) -> dict:
+    """W16 F5.3.1 — trigger reindex of all documents in KB (per-KB level).
+
+    Distinct from `POST /kb/{kb_id}/documents/{doc_id}/reindex` which is per-doc.
+
+    Current Tier 1 baseline: returns mock `task_id` for tracking; KBService
+    side-effect = no-op stub (Beta minimal per Decision B.1 + W16 plan §3
+    PARTIAL PASS). Real reindex trigger (Azure AI Search index rebuild + per-KB
+    Blob container re-ingest cascade) deferred Track A IT cred trigger →
+    W17+ housekeeping per architecture.md §3.4 multi-KB rebuild semantics.
+
+    Returns 202 ACCEPTED + {"task_id", "status": "queued", "kb_id"}.
+    """
+    try:
+        await service.get(kb_id)  # 404 guard before queueing
+    except KBNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    task_id = f"reindex-{uuid.uuid4().hex[:12]}"
+    return {
+        "task_id": task_id,
+        "status": "queued",
+        "kb_id": kb_id,
+        "note": "Beta baseline mock — real reindex trigger pending Track A IT cred (W17+)",
+    }
 
 
 @router.patch("/kb/{kb_id}", response_model=KbStatus)
