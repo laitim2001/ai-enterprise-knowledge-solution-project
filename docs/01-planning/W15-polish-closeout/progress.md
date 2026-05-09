@@ -108,7 +108,7 @@ $ grep -r "\[oklch" frontend/app/eval/ frontend/lib/api/eval.ts
 
 ### Commit
 
-- `<hash>` feat(frontend,docs): W15 D1 F1 V5 Eval Console implementation + W15 active flip + 6 deviations + admin shell wrap
+- `bf01091` feat(frontend,docs): W15 D1 F1 V5 Eval Console implementation + W15 active flip + 6 deviations + admin shell wrap
 
 ---
 
