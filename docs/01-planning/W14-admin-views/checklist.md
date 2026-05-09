@@ -30,15 +30,16 @@ last_updated: 2026-06-10
 
 ## F3 — V4 KB Detail 5-tab nav
 
-- [ ] F3.1 `frontend/app/admin/kb/[id]/page.tsx` rebuild with shadcn Tabs primitive — 5 tabs:Documents / Chunks / Pipeline / Retrieval Testing / Settings
-- [ ] F3.2 Documents tab — file listing table(doc_id / filename / format / chunk_count / status / uploaded_at)+ Upload Button → existing `/admin/kb/[id]/upload`(W12 F4.7 baseline preserved);empty state
-- [ ] F3.3 Chunks tab — chunk listing(chunk_id / doc_id / section_path / token_count / preview);click chunk → shadcn Dialog modal w/ full chunk text in JetBrains Mono(custom Code block per design ref §4)
-- [ ] F3.4 Pipeline tab — pipeline config visualization(reranker / LLM / CRAG threshold / top_k);read-only display Tier 1;inline tuning defer W15 if backend not support PATCH
-- [ ] F3.5 Retrieval Testing tab — test query Textarea + Run Button → POST `/query`(non-streaming for testing simplicity);display retrieved chunks + relevance scores
-- [ ] F3.6 Settings tab — display_name / description Input(editable;PATCH `/kb/[id]`)+ KB ID readonly + danger zone(Re-index Button + Delete Button with shadcn Dialog confirm)
-- [ ] F3.7 Tab state via Next.js searchParams(`?tab=documents`)URL bookmark-friendly;default tab = Documents;tab change pushes URL
-- [ ] F3.8 Stepper rule-of-3 evaluation:if Pipeline tab introduces wizard-style state machine(reset → re-test → save → re-index)= 3rd state-machine wizard;extract `frontend/components/ui/stepper.tsx` shared per design ref §4 Custom Step indicator listing;else inline retention preserved(W13 D4 decision)
-- [ ] F3.9 Responsive — tabs collapse mobile via Select fallback OR Sheet drawer(stacking 5 horizontal tabs unworkable < md)
+- [x] F3.1 `frontend/app/admin/kb/[id]/page.tsx` rebuild with shadcn Tabs primitive(W12 D3 installed)— 5 tabs:Documents / Chunks / Pipeline / Retrieval Testing / Settings;TabsTrigger w/ lucide icon + label;header 加 back-to-KBs Link + Upload CTA
+- [x] F3.2 Documents tab — **deviation logged plan §7 changelog 2026-06-10 (D3)** — backend `GET /kb/{id}/documents` 仍 W2 stub 501;采 stats card row(total docs/chunks/storage)+ existing kb.failed_documents list + BackendStubNote + Upload CTA(empty/dashed state pattern per design ref §3.4)
+- [x] F3.3 Chunks tab — **deviation logged plan §7 changelog 2026-06-10 (D3)** — backend `GET /kb/{id}/documents/{id}/chunks` 仍 W2 stub 501;采 stats card(chunks + screenshots)+ BackendStubNote + cross-reference Card directing user to Retrieval Testing tab(citation cards 提供 chunk_id / section_path drill-down via其他 path)
+- [x] F3.4 Pipeline tab — **deviation logged plan §7 changelog 2026-06-10 (D3)** — read-only ConfigRow display(Indexing card + Retrieval card);inline tuning defer W15+;Pipeline 唔 introduce wizard state machine = F3.8 Stepper rule-of-3 trigger NOT fired
+- [x] F3.5 Retrieval Testing tab — Textarea + Run Button → `streamQuery` SSE generator + AbortController;collect citations + answer + reranker_used;Synthesized answer Card + Retrieved chunks list w/ chunk_title / doc_title / section_path / relevance_score Badge;refused / error states;ApiError envelope branching via toast.error
+- [x] F3.6 Settings tab — **deviation logged plan §7 changelog 2026-06-10 (D3)** — name + description display-only(`kbApi.patchSettings` 只 takes `Partial<KbConfig>`);Identity card readonly + Indexing config card editable(embedding_model + dimension + chunk_strategy Select + top_k + rerank_k);Save persists via PATCH;CO_W15 follow-up trigger noted for backend name/description PATCH endpoint
+- [x] F3.7 Tab state via Next.js searchParams(`?tab=documents`)URL bookmark-friendly;`activeTab` derived from `searchParams.get('tab')` w/ fallback to 'documents';`handleTabChange` pushes new URL via `router.push` w/ `scroll: false`(prevents scroll jump on tab switch)
+- [x] F3.8 Stepper rule-of-3 evaluation:**NOT triggered** — Pipeline tab implemented read-only ConfigRow display 唔 introduce wizard state machine;Pipeline wizard W12 + Register W13 仍 = 2 active state-machine wizards;**inline retention preserved** per W13 D4 decision;next wizard usage emergence trigger preserved for W15+ OR future
+- [x] F3.9 Responsive — TabsList wrapped in `overflow-x-auto` div for mobile horizontal-scroll(simpler than Sheet/Select fallback per Karpathy §1.2);Header `flex-col sm:flex-row` collapse;StatCards `grid-cols-1 sm:grid-cols-2 sm:grid-cols-3` natural responsive
+- [x] Danger zone Re-index/Delete shadcn Dialog confirm + structured backend status disclosure + toast info「pending backend stub」 — non-blocking UI wire test;`DangerAction` reusable component pattern
 
 ## F4 — Cross-cutting refactors + token cleanup
 

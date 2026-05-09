@@ -158,9 +158,59 @@ $ grep oklch frontend/app/admin/kb/page.tsx | wc -l
 
 ---
 
-## Day 3 — _(W14 D3,2026-07-02,tentative)_
+## Day 3 — W14 D3 F3 V4 KB Detail 5-tab nav(real-calendar 2026-06-10 same-day collapse cycle 3 of 4 cont)
 
-_(placeholder — F3 V4 Pipeline + Retrieval Testing + Settings tabs;F3.8 Stepper rule-of-3 evaluate)_
+> **Calendar note**:plan §5 tentative date 2026-07-02 superseded by real-calendar 2026-06-10 same-day collapse(D2 → D3 cycle continue post user authorization "A:continue W14 D3 — F3 V4 KB Detail 5-tab nav")。Time tracking calibration:plan ~1.5 day budget(largest deliverable)vs actual ~1 hr(5 tab content + Dialog danger zone + URL state machine)。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| F3.1 | 5-tab structure | UPDATE `frontend/app/admin/kb/[id]/page.tsx`(shadcn Tabs primitive + 5 TabsTrigger w/ lucide icons + 5 TabsContent)| ✅ |
+| F3.2 | Documents tab | **deviation logged plan §7 changelog (D3)** — backend `GET /kb/{id}/documents` 501 stub;stats card row + failed_documents Card list + Upload CTA dashed-empty-state + BackendStubNote | ✅ (deviation noted) |
+| F3.3 | Chunks tab | **deviation logged plan §7 changelog (D3)** — backend `GET /kb/{id}/documents/{id}/chunks` 501 stub;stats card + chunk inspection placeholder Card + cross-reference to Retrieval Testing tab(chunk drill-down via citation cards) | ✅ (deviation noted) |
+| F3.4 | Pipeline tab | **deviation logged plan §7 changelog (D3)** — read-only ConfigRow display(Indexing card embedding model/dim/strategy + Retrieval card top_k/rerank_k);inline tuning defer W15+;non state-machine wizard | ✅ (deviation noted) |
+| F3.5 | Retrieval Testing tab | streamQuery SSE collector + AbortController;Textarea + Run Button + Synthesized answer Card + Retrieved chunks list w/ chunk_title + doc_title + section_path + relevance_score Badge;refused state + error toast | ✅ |
+| F3.6 | Settings tab | **deviation logged plan §7 changelog (D3)** — Identity card readonly KB ID + name + description(no backend PATCH);Indexing config card editable form(Input + Select)+ Save Button + toast feedback | ✅ (deviation noted) |
+| F3.7 | URL-based tab state | `useSearchParams` + `router.push` w/ `scroll: false`;activeTab derived w/ default 'documents';bookmark-friendly URLs | ✅ |
+| F3.8 | Stepper rule-of-3 evaluation | **NOT triggered** — Pipeline tab read-only display non-wizard;Pipeline wizard W12 + Register W13 仍 = 2 active state-machine usages;inline retention preserved per W13 D4 decision | ✅ (preserved) |
+| F3.9 | Responsive | TabsList wrap in `overflow-x-auto` for mobile horizontal-scroll(simpler than Sheet/Select fallback per Karpathy §1.2);Header `flex-col sm:flex-row`;StatCards natural grid responsive | ✅ |
+| Danger zone | Re-index + Delete via shadcn Dialog | `DangerAction` reusable pattern + Dialog confirm + structured backend status disclosure(`POST /kb/{id}/reindex` + `DELETE /kb/{id}` stubs)+ toast.info 「pending backend stub」(non-blocking UI wire test)| ✅ |
+
+### Decisions
+
+1. **5 deviations all due to Tier 1 constraints**:F3.2/F3.3 backend stubs(W2 implementation defer)+ F3.4 read-only Tier 1 + F3.6 backend PATCH endpoint not exposed + F3.8 Stepper rule-of-3 NOT fired — all surfaced upfront via Karpathy §1.1 think-before-coding;solutions via existing data + clear stub disclosure;UI wire intact + ready for backend completion
+2. **BackendStubNote helper component**:reusable inline note component标明 stub status + W2 implementation defer rationale;avoids manual repetition across 3 tabs(Documents + Chunks + future)+ explicit communication of "incomplete state but visible" to admin user(transparency over hidden gaps)
+3. **Retrieval Testing reuses streamQuery**:shared SSE generator + Citation type + ApiError envelope already established W3 + W13 baselines;non-streaming variant 唔需要 new(streaming UI同 admin context fits well — admin sees real-time retrieval feedback)
+4. **DangerAction pattern**:shared component for Re-index + Delete(both gated by Dialog confirm + structured backend status note + toast.info on confirm);keeps Dialog state local per action;variant prop("outline" / "destructive")drives Button styling
+5. **TabsList horizontal-scroll over Select fallback**:Karpathy §1.2 simplicity-first — overflow-x-auto wrap is 1-line solution + native mobile UX(swipe scroll feels web-native);Sheet/Select fallback would add stateful complexity for marginal UX gain at Tier 1
+6. **URL searchParams state machine**:`?tab=documents` etc — bookmark-friendly + browser back-button works + deep-linking from external docs;activeTab derived via `useSearchParams` + fallback to 'documents';tab change pushes new URL with `scroll: false` to prevent scroll jump on tab switch
+7. **Settings split Identity vs Indexing config**:two-Card structure separates readonly metadata(KB ID / name / description)from editable config(embedding / chunk strategy / top_k / rerank_k);clearer mental model than W12 baseline single-form混在一起;CO_W15 follow-up trigger noted for backend name/description PATCH endpoint
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/admin/kb/\[id\]/page.tsx | wc -l
+0
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;no hardcoded oklch;all colors via Tailwind tokens;shadcn primitives reused(Tabs / Card / Badge / Button / Input / Label / Select / Dialog + lucide icons)— no new vendor。
+
+### Carry-overs to W14 D4
+
+- 🚧 F3 user smoke deferred per CLAUDE.md §13(`! pnpm dev` + `! uvicorn`;`/admin/kb/[id]?tab=...` 5 tabs functional + URL bookmark-friendly + Retrieval Testing returns chunks for indexed KB + Settings save persists + Danger zone Dialog confirm + responsive horizontal-scroll mobile)
+- ⏳ W14 D4 focus per plan §5:F4 cross-cutting refactors + token cleanup audit + Stepper rule-of-3 evaluation(F3.8 outcome confirmed NOT triggered → inline retention preserved + sidebar consistency review)
+- 📝 **CO_F3a**:backend `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` W2 listing implementation(Beta hardening trigger when backend lands)
+- 📝 **CO_F3b**:backend name + description PATCH endpoint(W15+ candidate per Settings tab Identity card readonly note)
+- 📝 **CO_F3c**:backend `POST /kb/{id}/reindex` + `DELETE /kb/{id}` Danger zone implementation(W15+ candidate)
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W14 D3 F3 V4 KB Detail 5-tab nav
 
 ---
 
