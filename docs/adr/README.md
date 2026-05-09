@@ -21,9 +21,11 @@
 | [0014](./0014-hybrid-auth-sso-plus-self-register.md) | Hybrid auth model — Microsoft Entra ID SSO + self-service email register | Accepted | W11 D2 cont stakeholder approval cycle 2026-06-10(`architecture.md` v5.1 → v6 amendment;sister ADR with 0015) |
 | [0015](./0015-ui-tier-1-expansion-dify-leaning.md) | UI Tier 1 expansion — 6 views → 9 views + shadcn/ui foundation commit + Dify-leaning aesthetic | Accepted | W11 D2 cont stakeholder approval cycle 2026-06-10(`architecture.md` v5.1 → v6 amendment;sister ADR with 0014) |
 | [0016](./0016-password-hash-scrypt-stdlib.md) | Password hashing — argon2-cffi → hashlib.scrypt(Python stdlib)| Accepted | W13 D5 F5 implementation 2026-06-10(R8 corp proxy `pip install argon2-cffi` blocker;user instruction option 1 stdlib path;H2 vendor decision change ADR per strict reading)|
+| [0018](./0018-multi-kb-kb-id-propagation.md) | Multi-KB `kb_id` propagation — Tier 1 commit via dynamic `index_name` injection(reaffirm ADR-0005)| Accepted | W15 D5 closeout audit `audit-W15-d5-vs-spec.md` §CC-1 trigger 2026-05-09;P0.1 P0 batch decision(reaffirm not supersede ADR-0005;Option B b2 Dynamic injection chosen over Option A scope reversal + Option C hybrid + (b1) per-KB instance map);Phase 3 implementation W16+ active flip ~1.5-2 days |
 
 > §13.10 ("Other v3 inherits") 屬 meta-rollup,不單獨 promote。
 > ADR-0013 reserved for AF3 lifespan gate split fix(W11 D5 retro carry-over #1;defer per R5)。
+> ADR-0017 reserved for R8 corp proxy mitigation pattern formalization(currently 4 cumulative occurrences:Cohere W3 + argon2-cffi W13 + ACS SDK W13 + Playwright browser CDN W15 D5;trigger threshold 5th occurrence OR vendor-decision pivot needed per W15 plan §F4 risks)。
 
 ## Adding a new ADR
 
@@ -43,4 +45,4 @@ Per `CLAUDE.md` §6 — 任何違反 §5.1 H1 / §5.2 H2 嘅變動必須 ADR(app
 ## References
 ```
 
-**Next NNNN**:`0013` reserved for AF3 fix(W11 D5 retro);next available `0017`(per CLAUDE.md §6 sequential)。
+**Next NNNN**:`0013` reserved for AF3 fix(W11 D5 retro);`0017` reserved for R8 mitigation pattern;`0018` landed(Multi-KB kb_id propagation);next available `0019`(per CLAUDE.md §6 sequential — anticipated P0.2 PDF parser decision + P0.3 Context Expander decision per `audit-W15-d5-vs-spec.md` §6 W16+ Remediation Prioritization)。
