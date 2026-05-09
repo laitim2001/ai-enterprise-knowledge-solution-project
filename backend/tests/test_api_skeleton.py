@@ -91,12 +91,18 @@ def test_kb_list_route_returns_empty_in_memory(client: TestClient) -> None:
     assert response.json() == []
 
 
-def test_eval_run_route_registered_returns_501(client: TestClient) -> None:
+def test_eval_run_route_registered_returns_503_when_engine_absent(client: TestClient) -> None:
+    """W16 F5.4 closure (commit 4046b24): /eval/run no longer 501 stub.
+
+    With no app.state.retrieval_engine wired (W1 skeleton fixture), endpoint
+    returns 503 SERVICE_UNAVAILABLE per orchestrator pre-check guard. Real
+    eval execution validated in tests/test_eval_endpoints.py.
+    """
     response = client.post(
         "/eval/run",
-        json={"eval_set_id": "v0"},
+        json={"eval_set_id": "eval-set-v0"},
     )
-    assert response.status_code == 501
+    assert response.status_code == 503
 
 
 def test_screenshots_redirect_route_registered_returns_501(

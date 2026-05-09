@@ -57,3 +57,39 @@ class AlertsConfig(BaseModel):
     rules: list[AlertRule]
     routing: str
     spec_ref: str
+
+
+class TraceStage(BaseModel):
+    """One stage of a Langfuse trace (W16 F5.5 CO_W15_F2 Decision D.2).
+
+    Maps to Langfuse observation (SPAN / GENERATION / EVENT). Stage name
+    aligns with V6 9-stage Debug View per ADR-0020 (retrieval / rerank /
+    context_expansion / synthesis / crag / etc.).
+    """
+
+    name: str  # e.g. "retrieval.retrieve", "api.query.synthesizer", "crag.l2.grade"
+    type: str  # "SPAN" | "GENERATION" | "EVENT"
+    latency_ms: int
+    model: str | None = None  # populated for GENERATION observations
+    input_tokens: int = 0
+    output_tokens: int = 0
+    status: str = "ok"  # "ok" | "error" | "cancelled"
+
+
+class TraceDetail(BaseModel):
+    """W16 F5.5 trace detail response (Langfuse correlation per D.2).
+
+    Returned by GET /debug/trace/{trace_id}. Tier 1 baseline surfaces stage
+    breakdown for V6 Debug View consumer (ADR-0020 frontend Session 2).
+    Graceful degrade when Langfuse client unavailable: returns trace_url
+    pattern only with stages=[] + status="langfuse_not_configured".
+    """
+
+    trace_id: str
+    trace_url: str  # {langfuse_host}/trace/{trace_id}
+    status: str  # "ok" | "not_found" | "langfuse_not_configured" | "fetch_failed"
+    total_latency_ms: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    stages: list[TraceStage] = []
+    note: str = ""

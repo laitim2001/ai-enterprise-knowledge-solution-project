@@ -344,9 +344,15 @@ def test_admin_routes_pass_with_bearer_then_hit_route_logic(
 
     client = TestClient(app)
 
-    # /debug/trace/{id} is still a 501 stub — confirms auth passed THEN route fired.
+    # W16 F5.5 closure (commit pending): /debug/trace/{id} is now fully
+    # implemented (Decision D.2 full Langfuse SDK integration). Test
+    # validates auth passes THEN route fires + returns TraceDetail with
+    # status='langfuse_not_configured' (no Langfuse client wired in test).
     resp = client.get("/debug/trace/abc", headers=_bearer())
-    assert resp.status_code == 501, resp.text
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["trace_id"] == "abc"
+    assert body["status"] == "langfuse_not_configured"
 
     # /observability/cost-summary is fully implemented — 200 expected.
     resp = client.get("/observability/cost-summary", headers=_bearer())
