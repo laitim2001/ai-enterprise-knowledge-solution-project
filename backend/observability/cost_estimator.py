@@ -76,11 +76,11 @@ _BETA_MONTHLY_BASELINE: tuple[ServiceCostRow, ...] = (
         source="architecture.md §9 row 4 (CRAG trigger ~30%)",
     ),
     ServiceCostRow(
-        service="Cohere Rerank v3.5 (Marketplace)",
+        service="Cohere Rerank v4.0-pro (Marketplace)",
         component="C04 Retrieval Engine",
         projected_monthly_usd=20.0,
         projected_daily_usd=20.0 / 30,
-        source="architecture.md §9 row 5 (Path A Marketplace per Q5)",
+        source="architecture.md §9 row 5 (Path A Marketplace per Q5; v4.0-pro per ADR-0012)",
     ),
     ServiceCostRow(
         service="Azure Blob Storage (screenshots)",

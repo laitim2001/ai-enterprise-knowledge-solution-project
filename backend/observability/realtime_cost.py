@@ -46,7 +46,9 @@ _logger = structlog.get_logger("ekp.realtime_cost")
 #
 # Rates expressed as USD per 1000 tokens(Azure OpenAI)or per 1000 calls
 # (Cohere)。Source = publicly quoted Azure OpenAI rates 2026-Q2 + Cohere
-# Marketplace v3.5 catalog。
+# Marketplace catalog(v3.5 W3 baseline + v4.0-pro production lock per ADR-0012;
+# dual-rate row preserved for +5% bump verification + historical traffic
+# attribution)。
 #
 # **Stakeholder decision W11 D1 2026-06-09 = Option B**(per W11 prep deck
 # §6.1;Karpathy §1.2 simplicity-first):placeholder rates preserved +
