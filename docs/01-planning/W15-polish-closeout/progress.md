@@ -270,7 +270,7 @@ visual-baseline.spec.ts
 
 ### Commit
 
-- `<hash>` feat(frontend,docs): W15 D4 F4 Playwright E2E + pixel diff baseline harness — install + config + 13 tests + 7 NEW files + 2 deviations
+- `88320b9` feat(frontend,docs): W15 D4 F4 Playwright E2E + pixel diff baseline harness — install + config + 13 tests + 7 NEW files + 2 deviations
 
 ---
 
