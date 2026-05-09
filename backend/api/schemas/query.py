@@ -38,12 +38,13 @@ class QueryRequest(BaseModel):
     top_k_rerank: int = 5
     llm_model: Literal["gpt-5.5", "gpt-5.4-mini"] = "gpt-5.5"
     reranker: Literal[
+        "cohere-v4.0-pro",
         "cohere-v3.5",
         "voyage-rerank-2.5",
         "zeroentropy-zerank-1",
         "azure-semantic",
         "off",
-    ] = "cohere-v3.5"
+    ] = "cohere-v4.0-pro"  # ADR-0012 production lock; v3.5 retained for backwards-compat
     enable_crag: bool = True
     enable_intent_routing: bool = False
 

@@ -11,7 +11,7 @@ router = APIRouter()
 class EvalRunRequest(BaseModel):
     eval_set_id: str
     llm_model: str = "gpt-5.5"
-    reranker: str = "cohere-v3.5"
+    reranker: str = "cohere-v4.0-pro"  # ADR-0012 production lock; v3.5 W3 baseline → v4.0-pro upgrade
     enable_crag: bool = True
 
 

@@ -1,6 +1,8 @@
-"""Cohere Rerank v3.5 REST client (per architecture.md §3.2 + Q5 Path A).
+"""Cohere Rerank v4.0-pro REST client (per architecture.md §3.2 v5.1 + ADR-0012 + Q5 Path A).
 
-Q5 Resolved 2026-05-04 → Path A Azure Marketplace. Endpoint format:
+Q5 Resolved 2026-05-04 → Path A Azure Marketplace. Q21 Resolved 2026-05-05 →
+v3.5 (W3 D1 baseline) → v4.0-pro (W6 production lock per ADR-0012 same-vendor
+model upgrade; API contract backward-compatible). Endpoint format:
     POST {endpoint}/v2/rerank
     Authorization: Bearer {api_key}
 
@@ -8,7 +10,7 @@ Path B (direct API api.cohere.com/v2) uses identical body schema; toggle
 via factory.py based on `settings.cohere_procurement_path`.
 
 Body:
-    {"model": "rerank-v3.5", "query": "...", "documents": [...], "top_n": 5}
+    {"model": "rerank-v4.0-pro", "query": "...", "documents": [...], "top_n": 5}
 Response:
     {"results": [{"index": int, "relevance_score": float}, ...]}
 
@@ -35,13 +37,17 @@ logger = structlog.get_logger(__name__)
 
 
 class CohereReranker:
-    """Cohere Rerank v3.5 client — Marketplace (Path A) or direct API (Path B)."""
+    """Cohere Rerank v4.0-pro client — Marketplace (Path A) or direct API (Path B).
+
+    Default model = `rerank-v4.0-pro` per ADR-0012 W6 production lock; `rerank-v3.5`
+    accepted for backwards-compat (W3 D1 baseline) but no longer the production default.
+    """
 
     def __init__(
         self,
         endpoint: str,
         api_key: str,
-        model: str = "rerank-v3.5",
+        model: str = "rerank-v4.0-pro",
         timeout_s: float = 10.0,
         path: str = "A",
     ) -> None:

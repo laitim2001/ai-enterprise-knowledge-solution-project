@@ -92,7 +92,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
         )
         for c in result.chunks
     ]
-    reranker_used = "cohere-v3.5" if result.reranked else "off"
+    reranker_used = "cohere-v4.0-pro" if result.reranked else "off"  # ADR-0012 production lock
 
     if synthesizer is None:
         # Retrieval-only fallback (W2 baseline behavior preserved).

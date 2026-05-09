@@ -51,6 +51,6 @@ async def compose_query_stream(
                 "latency_ms": int(retrieval_result.total_latency_ms)
                 + int(event.get("latency_ms", 0) or 0),
                 "refused": bool(event.get("refused", False)),
-                "reranker_used": "cohere-v3.5" if retrieval_result.reranked else "off",
+                "reranker_used": "cohere-v4.0-pro" if retrieval_result.reranked else "off",  # ADR-0012
             }
             return  # result is terminal — no more events expected

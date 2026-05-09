@@ -89,7 +89,7 @@ async def test_compose_done_marks_reranker_used_when_reranked() -> None:
     out = [e async for e in compose_query_stream(_result(chunks, reranked=True), synth)]
 
     done = out[-1]
-    assert done["reranker_used"] == "cohere-v3.5"
+    assert done["reranker_used"] == "cohere-v4.0-pro"  # ADR-0012 production lock
     assert done["latency_ms"] == 600 + 100  # rerank-included retrieval total + synth
 
 

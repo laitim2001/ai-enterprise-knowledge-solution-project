@@ -50,10 +50,15 @@ class Settings(BaseSettings):
     azure_blob_container_screenshots: str = "ekp-kb-drive-screenshots"
 
     # Reranker selection — W4 D3 F3 4-way shootout per architecture.md §3.2
-    # cohere = Cohere v3.5 (W3 baseline; Path A Marketplace per Q5 Resolved)
-    # voyage = Voyage rerank-2.5 (direct API)
-    # zeroentropy = ZeroEntropy zerank-1 (direct API)
-    # azure = Azure AI Search built-in semantic ranker (no extra procurement)
+    # cohere = Cohere v4.0-pro (W6 production lock per ADR-0012 + Q21 Resolved;
+    #          W3 D1 baseline = v3.5 → W5 D1 same-vendor model upgrade → W6 D1 LIVE
+    #          Azure 2-way 互換 verify reaffirms Cohere lock via faith Δ -11.76pp +
+    #          rel Δ -9.81pp WORSE alternative-disprove frame)
+    # voyage = Voyage rerank-2.5 (direct API; W4 D3 scaffold preserved future-proof
+    #          but DROPPED Tier 1 per Karpathy §1.2 simplicity-first W5 D1)
+    # zeroentropy = ZeroEntropy zerank-1 (direct API; same DROPPED Tier 1 status)
+    # azure = Azure AI Search built-in semantic ranker (no extra procurement;
+    #         hot fallback path per architecture.md §7.3 E7 Cohere outage mitigation)
     # off = hybrid-only (W2 baseline behaviour preserved for local dev / CI)
     reranker_kind: Literal["cohere", "voyage", "zeroentropy", "azure", "off"] = "cohere"
 
@@ -62,7 +67,7 @@ class Settings(BaseSettings):
     # Path B fallback (direct API api.cohere.com/v2) selected via cohere_path_b flag
     cohere_endpoint: str = ""  # Marketplace endpoint base (e.g. https://...models.ai.azure.com)
     cohere_api_key: str = ""
-    cohere_rerank_model: str = "rerank-v3.5"
+    cohere_rerank_model: str = "rerank-v4.0-pro"  # ADR-0012 v3.5 → v4.0-pro same-vendor upgrade
     cohere_procurement_path: Literal["A", "B"] = "A"  # A=Marketplace, B=direct API
     cohere_request_timeout_s: float = 10.0
 
