@@ -210,7 +210,7 @@ $ grep oklch frontend/app/admin/kb/\[id\]/page.tsx | wc -l
 
 ### Commit
 
-- `<TBD>` feat(frontend,docs): W14 D3 F3 V4 KB Detail 5-tab nav
+- `84c8d39` feat(frontend,docs): W14 D3 F3 V4 KB Detail 5-tab nav
 
 ---
 
