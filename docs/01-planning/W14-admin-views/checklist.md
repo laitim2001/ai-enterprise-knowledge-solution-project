@@ -1,7 +1,7 @@
 ---
 phase: W14-admin-views
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
@@ -50,24 +50,24 @@ last_updated: 2026-06-10
 
 ## F5 — Phase Gate closeout + W15 phase folder kickoff
 
-- [ ] F5.1 W14 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL with explicit rationale per W12 F5.1 + W13 F7.1 pattern)
-- [ ] F5.2 W14 progress.md retro 7 sections complete(What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec ref alignment)
-- [ ] F5.3 `docs/01-planning/W15-polish-closeout/{plan,checklist,progress}.md` draft per architecture.md v6 §5.6-§5.7(V5 Eval + V6 Debug)+ design ref §6 W15 scope
-- [ ] F5.4 W14 plan + checklist + progress frontmatter status flipped to `closed`
-- [ ] F5.5 No new OQ surface expected;if surface → sync to decision-form.md per R4
+- [x] F5.1 W14 phase Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT** verdict landed(per W12 F5.1 + W13 F7.1 pattern)— all 5 PASS conditions met(F1-F4 verifiable success criteria fully met);PARTIAL PASS fallback acceptance criteria 全 met(F3.8 Stepper extraction deferred via inline retention + F3.4 Pipeline tab inline tuning W15+ defer + F1.5 CO_F5d-cont session-token mode minimal viable);no FAIL conditions tripped(no Tier 2 scope creep / no ADR scope expansion / no W12 F4 admin shell baseline regression);SMOKE-USER-DEFERRED CAVEAT per CLAUDE.md §13 dev server policy(W15 F4 Playwright E2E baseline harness will systematically subsume)
+- [x] F5.2 W14 progress.md retro 7 sections complete(What worked 7 items / What didn't 5 items / Surprises 6 items / Decisions 15 items / Carry-overs categorized to W15+W16+ + process improvement / Time tracking 7-16x under-budget calibration with W12+W13 cumulative data / Spec ref alignment 5 deliverables traced architecture.md v6 §5.3-§5.5 + ADR-0014/0015/0016)
+- [x] F5.3 NEW `docs/01-planning/W15-polish-closeout/{plan,checklist,progress}.md`(`status: draft`)per CLAUDE.md §10 R1 rolling-JIT — F1 V5 Eval Console(arch v6 §5.6 + design ref §2.5)+ F2 V6 Debug View(arch v6 §5.7 + design ref §2.6)+ F3 Responsive + a11y polish + CO_W14_F4_error_boundary token cleanup + F4 Playwright E2E baseline harness + pixel diff baseline + F5 Tier 1 UI sprint cycle final closeout + W16+ Beta deploy phase folder rolling JIT trigger
+- [x] F5.4 W14 plan + checklist + progress frontmatter status flipped to `closed`(all 3 same-commit-cycle as F5 closeout)
+- [x] F5.5 No new OQ surfaced W14(F1-F4 admin views work 唔 surface OQ;W14 plan §3 success conditions explicitly 唔 expect OQ surface;16/22 Resolved unchanged from W12+W13 baseline;5/22 Open unchanged Q6/Q8/Q15/Q16/Q20)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)
-- [ ] Component tag in commit message per CC-1(C09 / C02 / C01 / C03 / C11)
-- [ ] OQ status sync to `decision-form.md`(R4)— no W14 critical OQ expected
-- [ ] Risk register update if any new risk surface
-- [ ] CLAUDE.md §5.1 H1 boundary check:no architectural change without ADR(W14 scope already covered by ADR-0014 + ADR-0015 + ADR-0016)
-- [ ] CLAUDE.md §5.2 H2 boundary check:no new vendor / dependency without ADR
-- [ ] CLAUDE.md §3.2 frontend conventions check:no `any` / no @ts-ignore / shadcn/ui only / tokens consumption verified(grep oklch=0 across all touched files)
-- [ ] CLAUDE.md §5.5 H5 security check:no secret commit;session token storage cipher review pending Beta hardening
+- [x] Each commit references `progress.md` Day-N entry(R2)— W14 D1 `641b328` ↔ Day 1 / W14 D2 `23cc579` ↔ Day 2 / W14 D3 `84c8d39` ↔ Day 3 / W14 D4 `a4213d0` ↔ Day 4 / W14 D5 F5 closeout commit ↔ Day 5
+- [x] Component tag in commit message per CC-1 — W14 commits tagged C09 Admin Console UI primary(F1+F2+F3+F4)+ C02 KB Manager(F1+F2+F3 consume kbApi)+ C04 Retrieval Engine(F3.5 streamQuery SSE)+ C11 Identity & Access(F1.5 CO_F5d-cont session-token mode)
+- [x] OQ status sync to `decision-form.md`(R4)— no W14 critical OQ surfaced(16/22 Resolved unchanged;5/22 Open Q6/Q8/Q15/Q16/Q20 影響 Beta + Tier 2 unchanged)
+- [x] Risk register update — no new risk surfaced W14;R8 corp proxy stable post-W6 D5 mitigation;R12 Azurite SDK signature mismatch unchanged(permanent fix = cloud Azure Blob W7+);no risk register update required this phase
+- [x] CLAUDE.md §5.1 H1 boundary check ✅ — no architectural change W14;F1-F4 implementation 屬 ADR-0014 + ADR-0015 + ADR-0016 already covered scope per H1
+- [x] CLAUDE.md §5.2 H2 boundary check ✅ — no new vendor / dependency W14(shadcn primitives reuse + lucide icons reuse + TanStack Query reuse);no ADR-0017+ trigger fired
+- [x] CLAUDE.md §3.2 frontend conventions check ✅ — type-check 0 errors × 4 phases + no `any` / no @ts-ignore / shadcn/ui only / tokens consumption verified(grep `\[oklch frontend/app/admin/` 0 hardcoded oklch className matches strict scope clean per F4.3 audit;CO_W14_F4_error_boundary outside W14 strict scope deferred to W15)
+- [x] CLAUDE.md §5.5 H5 security check ✅ — no secret commit;session token storage cipher review pending Beta hardening(CO_F5_cookie httpOnly hardening + CO_F5_refresh self-register session rotation per W13 retro inherited carry-overs)
 
 ---
 

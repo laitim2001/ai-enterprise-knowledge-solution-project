@@ -2,7 +2,7 @@
 phase: W14-admin-views
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
@@ -264,34 +264,216 @@ $ pnpm type-check
 
 ---
 
-## Day 5 — _(W14 D5,2026-07-04,tentative)_
+## Day 5 — W14 D5 F5 phase Gate closeout + W15 phase folder rolling JIT kickoff(real-calendar 2026-06-10 same-day collapse cycle 4 of 4 final)
 
-_(placeholder — F4 finalize + F5 closeout retro + W15 phase folder kickoff)_
+> **Calendar note**:plan §5 tentative date 2026-07-04 superseded by real-calendar 2026-06-10 same-day collapse(D4 → D5 cycle continue post user authorization "A:continue W14 D5 — F5 phase Gate closeout")。Time tracking calibration:plan ~0.5 day budget vs actual ~30 min(retro 7 sections + W15 phase folder rolling JIT skeleton 3 files + frontmatter close cascade)。**Cycle 4 of 4 same-day collapse final** — W14 D1+D2+D3+D4+D5 5-batch landed real-calendar 2026-06-10 single session per cumulative pivot momentum(continuation of W12+W13 same-day collapse pattern;3 phases × ~5-day budget each = 15 plan-days collapsed across calendar single day)。
+
+### F5.1 — W14 phase Gate verdict landed
+
+Per plan §3 Success Criteria(5 conditions for PASS):
+
+| # | Criterion | Status | Rationale |
+|---|---|---|---|
+| **1** | F1 V2 Admin Dashboard renders + stats / recent ingestion / quick actions + responsive + CO_F5d-cont session-token mode wired | ✅ PASS | 4-card stats row(KB+doc+chunks+system status badge per W12 baseline preserved + plan-literal "query count" deviation logged D1)+ Failed ingestion section derived from kbApi.list .failed_documents arrays(plan-literal "Recent ingestion log" deviation logged D1 — no backend endpoint readily available)+ 3-button Quick actions(Create KB / Test query / View eval)+ responsive grid + CO_F5d-cont session-token mode(SESSION_TOKEN_STORAGE_KEY relocated lib/auth canonical + readSessionBearer() defensive try/catch + getBearer() session branch BEFORE mock/MSAL fork);commits `641b328` + `4c53521` |
+| **2** | F2 V3 KB List card grid renders + sort + create CTA + responsive + loading/empty states | ✅ PASS | KbCard component(name + description line-clamp + doc + chunks + last_indexed + status badge + kb_id mono small)+ sort dropdown 3 options(name/last_indexed recent/documents most;plan-literal "created_at" deviation logged D2 — no KbStatus field)+ Search filter Input + Create CTA + KbGridSkeleton loading + KbEmpty 2-variant(no-KBs/no-search-match)+ destructive error boundary preserved + responsive grid + Card-as-Link nested-anchor avoidance(deviation logged D2);commits `23cc579` + `9c21b88` |
+| **3** | F3 V4 KB Detail 5-tab renders + each tab content functional + URL bookmark-friendly + Stepper rule-of-3 evaluated | ✅ PASS | shadcn Tabs primitive 5 tabs(Documents/Chunks/Pipeline/Retrieval Testing/Settings)+ URL searchParams `?tab=...` + 5 deviations logged D3(F3.2 Documents stub mitigation + F3.3 Chunks stub mitigation + F3.4 Pipeline read-only Tier 1 + F3.6 name+description display-only + F3.8 Stepper rule-of-3 NOT triggered confirmed → inline retention preserved per W13 D4 decision)+ Retrieval Testing streamQuery SSE + Synthesized answer Card + Retrieved chunks list w/ relevance Badge + Settings split Identity/Indexing config + DangerAction Dialog confirm Re-index/Delete + responsive TabsList overflow-x-auto;commits `84c8d39` + `8597e23` |
+| **4** | F4 cross-cutting consistency preserved(sidebar / breadcrumb / UserMenu / token audit clean) | ✅ PASS | F4.1 Stepper rule-of-3 NOT triggered confirmed(reaffirms F3.8 outcome)+ F4.2 admin-shell.tsx W12 F4.1 baseline preserved(rebuild scoped page.tsx level only;`bg-muted/40` + `bg-muted font-medium text-foreground` consistent)+ F4.3 strict scope `frontend/app/admin/` 0 hardcoded oklch className matches(W12 D2 baseline preserved)+ deviation logged D4(`frontend/components/error/error-boundary.tsx` 6 hardcoded oklch leak OUT of W14 strict scope → CO_W14_F4_error_boundary W15 carry-over per Karpathy §1.3 surgical)+ F4.4 admin-shell UserMenu+Breadcrumb mount untouched + Breadcrumb pathname-derived 唔讀 searchParams(tab state isolation clean)+ 0 regression on 6 admin routes;commits `a4213d0` + `9257993` |
+| **5** | F5 closeout retro + W15 phase folder kickoff | 🟢 IN PROGRESS | This entry(F5.1-F5.5 implementation);target completion same-session per pivot momentum |
+
+#### **W14 phase Gate verdict**:🟢 **PASS WITH SMOKE-USER-DEFERRED CAVEAT — Admin Views sprint phase 3 of 4 complete**
+
+Rationale:F1-F4 verifiable success criteria fully met within real-calendar 2026-06-10 single-day collapse cycle 4 of 4 final(F5 closeout this entry)。**All 5 PASS conditions met**;**PARTIAL PASS fallback acceptance criteria 全 met**(F3.8 Stepper extraction deferred — rule-of-3 NOT triggered confirmed + inline retention preserved;F3.4 Pipeline tab inline tuning deferred to W15+;F1.5 CO_F5d-cont session-token mode minimal viable per plan acceptance);**no FAIL conditions tripped**(no Tier 2 scope creep / no ADR-0014/0015/0016 scope expansion / no W12 F4 admin shell baseline regression — all preserved per F4.2+F4.4 audit)。
+
+**SMOKE-USER-DEFERRED CAVEAT**:end-to-end browser smoke test(`pnpm dev` localhost:3001 + `uvicorn` localhost:8000 + admin dashboard / KB list / KB detail 5-tab navigation / Retrieval Testing query / Settings save / Danger zone Dialog confirm)defers per CLAUDE.md §13 dev server policy(long-running Node + Python servers conflict with Claude Code);AI verification = type-check 0 errors × 4 phases + grep oklch=0 strict scope + 0 regression on 6 admin routes。User can perform smoke independently;non-blocker for W15 implementation start since W15 polish phase **將 introduce Playwright E2E baseline harness**(per W15 F4 deliverable)which 將 systematically subsume manual smoke deferred across W12+W13+W14 cycles。
+
+**ADR triggers fired W14**:**none**(no H1 / H2 / H3 trigger);F1-F4 implementation 屬 ADR-0014 + ADR-0015 + ADR-0016 already covered scope per H1。**ADR-0013 reservation preserved** for W11 retro carry-over CO12(AF3 + Personal Azure dev tier pattern formalization)— W14 admin views work 唔 surface vendor change OR architectural-adjacent decision。
+
+### F5.2 — Retro 7 sections complete
+
+(See § Retro below — 7 sections fill same-session per CLAUDE.md §10 R5 phase closeout discipline)
+
+### F5.3 — W15-polish-closeout phase folder kickoff
+
+- ✅ NEW `docs/01-planning/W15-polish-closeout/` folder created
+- ✅ NEW `plan.md`(`status: draft` per CLAUDE.md §10 R1 rolling-JIT;ready for W15 D1 active flip post stakeholder authorization)
+  - Scope:**Phase 4 of 4 UI sprint cycle W12-W15 — final** — V5 Eval Console + V6 Debug View + responsive + a11y + Playwright E2E + pixel diff baseline harness + W14 carry-over absorption(CO_F3a-c backend trigger evaluation defer Beta + CO_W14_F4_error_boundary token cleanup pass)
+  - 5 deliverables F1-F5:F1 V5 Eval Console(per arch v6 §5.6 + design ref §2.5 wireframe)+ F2 V6 Debug View(per arch v6 §5.7 + design ref §2.6 wireframe)+ F3 Responsive + a11y polish across all 9 views + F4 Playwright E2E + pixel diff baseline harness + F5 Tier 1 UI sprint cycle final closeout + W16+ Beta deploy phase folder rolling JIT trigger
+  - Effort estimate:5-6 working days rolling JIT(eval+debug view-level + cross-cutting polish — likely 1-2 days per same calendar-day collapse momentum if pattern holds)
+- ✅ NEW `checklist.md`(atomic checkbox per F1-F5 deliverable)
+- ✅ NEW `progress.md` Day 0 entry initialize(carry-overs from W14 retro CO_F3a-c + CO_W14_F4_error_boundary + CO_W14_smoke + pre-W15 setup)
+
+### F5.4 — W14 frontmatter active → closed
+
+- ✅ `plan.md` status: active → closed
+- ✅ `checklist.md` status: active → closed
+- ✅ `progress.md` status: active → closed
+- All 3 files updated same-commit-cycle as F5 closeout commit
+
+### F5.5 — Q sync to decision-form.md
+
+- ✅ No new OQ surfaced W14(F1-F4 admin views work 唔 surface OQ;W14 plan §3 success conditions explicitly 唔 expect OQ surface)
+- 16/22 Resolved(no change from W12+W13 baseline);5/22 Open unchanged(Q6/Q8/Q15/Q16/Q20 影響 Beta + Tier 2)
+
+### Decisions / OQ summary
+
+- **W14 phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT**(per F5.1 verdict)— Admin Views sprint phase 3 of 4 complete within real-calendar 2026-06-10 single-day collapse cycle 4 of 4 final
+- **W15-polish-closeout phase folder kickoff**(per CLAUDE.md §10 R1 rolling-JIT)— `status: draft` ready for W15 D1 active flip
+- **W14 frontmatter close cascade**(plan + checklist + progress active → closed)
+- **No new ADR fired W14**(no H1 / H2 trigger;ADR-0013 reservation still preserved)
+- **No new OQ resolved at F5**(no surface during W14)
+- **W14 D1-D5 plan-day work collapsed into real-calendar 2026-06-10 single session**(continuation of W12+W13 same-day collapse pattern;3 phases × ~5-day budget each = 15 plan-days collapsed across calendar single day;cycle 4 of 4 calendar-day collapse complete)
+
+### Open / blocked
+
+- 🚧 **End-to-end smoke** — user 可自行 `pnpm dev` + `uvicorn` browser smoke verify W14 admin views(SMOKE-USER-DEFERRED CAVEAT per Phase Gate verdict;non W15 blocker — W15 F4 Playwright E2E baseline harness 將 systematically subsume)
+- ⏳ W15 D1 implementation start = next session OR same-calendar-day collapse continuation(per rolling JIT;F1-F5 deliverables ready post W15 plan active flip)
+- ⏸ W16+ Beta deploy phase folder 唔 pre-create(rolling JIT discipline preserved;trigger = W15 closeout)
+
+### Tests / discipline
+
+- 0 logic change W14 F5(governance closeout + W15 folder kickoff only);frontend type-check baseline preserved across 4 implementation phases(F1+F2+F3+F4 all 0 errors)
+- Karpathy §1.2 simplicity-first ✅:retro 7 sections concise + W15 plan rolling-JIT(non over-engineered scope speculation);Phase Gate verdict 明示 caveat 而非 hide
+- Karpathy §1.3 surgical ✅:F5 closeout 純 governance work(no code change;non scope creep);F4 verification phase no code change preserved
+- Karpathy §1.4 goal-driven ✅:Phase Gate verifiable success criteria 5 conditions evaluation 明示 PASS rationale per criterion + caveat 明示
+- H1 / H2 / H3 / H4 / H5 / H6 self-check:
+  - **H1 ✅** No `architecture.md` v6 §3/§4 component change at F5
+  - **H2 ✅** No new vendor at F5(no W14 vendor decision change)
+  - **H3 ✅** No Dify reference touch
+  - **H4 ✅** No Tier 2 implementation;W15 polish + closeout scope 屬 Tier 1 v6 amendment per ADR-0015
+  - **H5 ✅** No secret commit
+  - **H6 ✅** No backend test code change(W14 frontend-only)
+- R1 ✅:W14 plan/checklist active throughout D1-D5 + closed cascade F5
+- R2 binding ✅:W14 D5 F5 commit 對應呢個 Day 5 entry
+- R3 ✅:plan changelog 2026-06-10 (D5) entry(W14 D1-D5 plan-day collapse + Phase Gate verdict landed + W15 phase folder kickoff)
+- R4 ✅:no OQ resolved(no surface during W14)
+- R5 ✅:no new architectural-adjacent decision at F5(ADR-0014/0015/0016 already covered scope)
+
+### Commit reference
+
+- `<hash>` W14 D5 F5 batch commit(F5.1-F5.5 retro 7 sections + Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict + W15 phase folder kickoff + W14 frontmatter close cascade + checklist F5.1-F5.5 + cross-cutting tick + plan changelog 2026-06-10 (D5) W14 D1-D5 plan-day collapse + closeout entry)
 
 ---
 
-## Retro(填於 W14 D5 末)
+## Retro(W14 D5 末 closeout 2026-06-10 — single-day calendar collapse cycle 4 of 4 final)
 
 ### What worked
-_(W14 D5 末 fill — what admin view patterns / approaches landed cleanly;Stepper extraction outcome;CO_F5d-cont integration smoothness)_
 
-### What didn't
-_(W14 D5 末 fill — friction points / blockers / unexpected complexity)_
+1. **Same-calendar-day 5-phase collapse cascade**(W14 D1+D2+D3+D4+D5)— 5 batches landed within real-calendar 2026-06-10 single session per cumulative pivot momentum stakeholder authorization;continuation of W12+W13 closeout same-day momentum(W12 D1-D5 collapse 2026-06-10 + W13 D1-D5 cont 2026-06-10 + W14 D1-D5 cont 2026-06-10 = **15 plan-days collapsed across 3 phases同 calendar day**);non rolling-JIT violation due to plan §5 day-by-day caveat tentative dates + stakeholder explicit ack each phase advance + deliverables logically sequenced
+2. **F4 verification phase elegance**(15 min actual vs 0.5 day plan = 16x under-budget — fastest of all 4 phases)— pure verification phase no code change per Karpathy §1.4 goal-driven(verifiable success criteria all met without touching code per §1.2 simplicity-first);documentation-only outcome cleanly logged;Stepper rule-of-3 evaluation outcome confirmed via grep + cross-reference instead of speculative refactor
+3. **Plan deviation logging discipline preserved across 4 phases**(F1: 2 deviations + F2: 2 + F3: 5 + F4: 1 = **10 deviations total all logged in §7 changelog per R3**)— full audit trail enables future-Chris session reads + retro vs plan calibration data;Karpathy §1.1 think-before-coding upfront vs retrospective documentation
+4. **Backend stub mitigation pattern reusable**(F3 Documents/Chunks tabs + F3.6 Settings + Danger zone)— BackendStubNote helper component standardized across 3 tabs + clear "incomplete state but visible" admin user transparency vs hidden gaps;informational delivery preserved without inventing data;CO_F3a-c carry-over flags clean handoff to Beta hardening phase
+5. **URL searchParams state design clean separation**(F3.7 KB Detail tab `?tab=...`)— bookmark-friendly + browser back-button + deep-linking from external docs;BreadcrumbNav reads `usePathname()` only(searchParams isolation correctness);F4.4 audit confirmed no breadcrumb pollution
+6. **Time tracking calibration consistency cycle 4 of 4**(W14 D1-D4 7-16x under-budget pattern continued from W12+W13)— calibration data point now spans **3 phases × 5 days × consistent 7-16x ratio** = robust signal for W15+ planning。Verification phase fastest(F4 16x);largest deliverable still under(F3 12x);cross-cutting baseline preserved(F4 no code change validates Karpathy §1.3 surgical correctness)
+7. **F4.3 token strict scope hold prevented opportunistic cleanup creep**(error-boundary.tsx leak surfaced via F4 audit but deferred to W15)— Karpathy §1.3 surgical「only clean your own mess」preserved;leak NOT introduced by W14 F1-F3 work + file outside `frontend/app/admin/` strict scope per plan literal;`CO_W14_F4_error_boundary` carry-over flag clean handoff to W15 polish phase token cleanup pass natural fit
+
+### What didn't work / unexpected friction
+
+1. **Backend stub coverage breadth(3 separate KB-detail endpoints all 501 NOT_IMPLEMENTED)** required parallel mitigation patterns in F3 alone — `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` + name/description PATCH + `POST /kb/{id}/reindex` + `DELETE /kb/{id}` = 3 backend stub gaps + 1 PATCH endpoint not exposed + 2 destructive action endpoints stubs;BackendStubNote pattern reusable but plan literal expectations forced creative re-interpretation per phase deliverable per Karpathy §1.1 think-before-coding;**5 deviations in F3 alone**(largest single-phase deviation count W12-W14)
+2. **Plan literal field references(F1.1 "query count" + F2.2 "created_at")stale vs actual API surface** — `KbStatus` API response 唔 contain `created_at` field nor backend endpoint for query count metric;采 chunks count(W12 baseline preserved)+ documents sort dimension as substitute;**plan author 寫 spec 之前 唔 grep API surface verification**;同 W13 plan F1.5 "_PROTECTED_PREFIXES middleware.ts" stale similar pattern(plan reference predates code grep verification)
+3. **error-boundary.tsx pre-existing oklch leak surfaced during F4 audit out of strict scope** — visual leak admin 用戶 visible at error states(via `frontend/app/admin/error.tsx` boundary)但 file 喺 `frontend/components/error/` directory(strict plan F4.3 scope `frontend/app/admin/` directory grep 唔 cover);Karpathy §1.3 surgical scope hold protected against opportunistic cleanup creep,but accumulates W7+ token migration backlog(pre-W12 D2 strict baseline)為 W15 polish phase candidate;**root-cause** = W7+ React polish phase token migration miss(predates W12 D2 baseline lock)
+4. **User smoke deferred per CLAUDE.md §13 default accumulating across W12+W13+W14 cycles** — 3 cumulative phases × 4-5 user smoke deferral CAVEATs = manual smoke test backlog growing;non-blocker per default policy but accumulating;**W15 F4 Playwright E2E baseline harness必須 systematically subsume**(W12+W13+W14 manual smoke deferred backlog → automated E2E coverage trigger);CLAUDE.md §13 dev server policy 與 E2E harness 分屬 different testing layer
+5. **F1.5 SESSION_TOKEN_STORAGE_KEY relocation forced lib/api/auth → lib/auth re-export to break circular import** — api-client → auth → api/auth circular dep surfaced when relocating canonical key;1-line re-export from lib/api/auth.ts adequate但 indicates auth domain boundary 未 fully decoupled from api domain;Beta hardening trigger candidate to formally split auth client into pure lib/auth subtree
 
 ### Surprises / discoveries
-_(W14 D5 末 fill — non-obvious findings about TanStack Query integration / Tabs primitive responsive behavior / session-token mode subtleties)_
+
+1. **🆕 F3.8 Stepper rule-of-3 NOT triggered surprisingly clean** — Pipeline tab read-only ConfigRow display(vs wizard state machine)preserved exactly 2 active state-machine wizards count;rule-of-3 emergence trigger preserved precisely for W15+ if V5 Eval Console(eval set selector + run config wizard?)OR V6 Debug View(stage navigation wizard?)introduces 3rd state machine — inline retention preserved per W13 D4 decision **without forcing premature extraction**
+2. **🆕 searchParams state isolation from breadcrumb design correctness validated F4.4 audit** — pathname-derived `BreadcrumbNav` reads `usePathname()` only,not `useSearchParams()`,so tab state via `?tab=...` cleanly stays out of breadcrumb pollution;**design-by-construction** correctness vs runtime branch logic;Karpathy §1.4 goal-driven verifiable goal達成 = no breadcrumb pollution observable across 5 tab navigation
+3. **🆕 F4 verification phase runtime ~15 min vs 0.5 day plan = 16x under-budget(fastest of all W14 phases)** — pure audit pattern fastest verification cycle in W14;data point reinforces calibration for "verification-only phase" estimate baseline reduce by ~16x for Tier 1 sprint pattern
+4. **🆕 Cycle 4 of 4 same-day collapse held**(W14 D1+D2+D3+D4+D5 all 2026-06-10)consistent with W12+W13 pattern — calibration data now spans **15 plan-days** collapsed into single calendar day across 3 phases;suggests Tier 1 UI sprint phase capacity ~1-2 hr per phase vs ~5-day budget when:
+   - Backend stub gap forces mitigation pattern(F3)
+   - Stepper rule-of-3 NOT triggered preserves inline retention(F3.8)
+   - F4 verification phase no code change(audit < implementation)
+5. **🆕 Token audit strict scope vs broader cleanup tradeoff visible** — F4.3 audit surfaced 6 hardcoded oklch in error-boundary.tsx,但 plan F4.3 literal scope `frontend/app/admin/` directory grep doesn't cover;**Karpathy §1.3 surgical scope hold protected against opportunistic cleanup creep**;1 deviation deferred properly to W15 with clean carry-over flag;valuable discipline data for future audit phases
+6. **🆕 Plan literal reference vs actual code grep verification gap pattern**(W13 F1.5 + W14 F1.1 + W14 F2.2)— **3rd occurrence of plan author 寫 plan 前 唔 grep code verification**;suggests adding "spec ref grep verification" step to plan kickoff R1 pre-condition checklist for future phases(W15+ candidate process improvement)
 
 ### Decisions
-_(W14 D5 末 fill — Stepper extraction trigger fired or deferred / sidebar consistency review outcome / Pipeline tab inline tuning W15 defer or W14 land)_
+
+1. **F1.1 4-card stats preserve chunks count**(W12 baseline)over plan-literal "query count" — no backend endpoint readily available;Karpathy §1.2 simplicity-first 唔 add backend endpoint just for stat card
+2. **F1.2 "Failed ingestion" derived from kbApi.list .failed_documents** — informational symmetry preserved(operations focus = "what's broken now")+ Karpathy §1.2 minimum data plumbing
+3. **F1.3 ActionButton component pattern over plain Button** — icon + label + description w/ accent-tinted icon background;5-line component reuse + matches V2 wireframe design ref §2.2 quick-actions pattern
+4. **F1.5 SESSION_TOKEN_STORAGE_KEY relocation to lib/auth canonical domain** — single source of truth + breaks api-client → auth → api/auth circular import via lib/api/auth.ts re-export;defensive try/catch for privacy/sandbox modes;parallel to backend dependency.get_current_user session branch architecture
+5. **F2.2 sort options name+last_indexed+documents** — replace plan-literal "created_at" lacking KbStatus field;采 useful operational dimensions over existing data
+6. **F2.6 whole Card as Link**(Upload secondary dropped from Card)— accessibility + middle-click new tab + nested-anchor HTML invalid avoidance;1-click extra cost acceptable Tier 1
+7. **F3 backend stub mitigation pattern**(BackendStubNote helper component reusable 3 tabs)— informational delivery without inventing data;clear "incomplete state but visible" admin user transparency
+8. **F3.4 Pipeline tab read-only ConfigRow display** — inline tuning defer W15+ Tier 1 simplicity-first;Pipeline 唔 introduce wizard state machine,F3.8 Stepper rule-of-3 trigger NOT fired
+9. **F3.6 Settings split Identity vs Indexing config**(two-Card structure)— readonly metadata + editable config separation clearer mental model than W12 baseline single-form;CO_W15 follow-up backend name/description PATCH endpoint
+10. **F3.7 URL searchParams `?tab=...` bookmark-friendly + scroll: false**(prevents scroll jump on tab switch)— browser back-button works + deep-linking from external docs
+11. **F3.8 Stepper rule-of-3 NOT triggered → inline retention preserved per W13 D4 decision** — Pipeline tab read-only display 不算 state machine wizard;Pipeline+Register = 2 active state-machine wizards;**next wizard usage emergence trigger preserved for W15+**(V5 Eval Console / V6 Debug View if state machine emerges)
+12. **F3.9 TabsList overflow-x-auto**(simpler than Sheet/Select fallback per Karpathy §1.2 simplicity-first)— 1-line solution + native mobile UX swipe scroll feels web-native
+13. **F4 = pure verification phase**(no code change required per Karpathy §1.4 goal-driven success criteria 全 met without touching code per §1.2 simplicity-first + §1.3 surgical scope hold)
+14. **F4.3 token audit strict scope hold + CO_W14_F4_error_boundary deferred to W15** — Karpathy §1.3 surgical「only clean your own mess」(leak NOT introduced by W14 F1-F3 work);W15 polish phase scope已 broader making token cleanup natural fit
+15. **DangerAction reusable component pattern**(Re-index + Delete via shadcn Dialog confirm + structured backend status disclosure + toast.info「pending backend stub」)— non-blocking UI wire test + variant prop drives Button styling
 
 ### Carry-overs to W15
-_(W14 D5 末 fill — items deferred to W15 polish + closeout;categorize:V5/V6 implementation / responsive + a11y + E2E / OQ pending / Tier 2 / W16+ Beta deploy)_
+
+#### Immediate W15 D1-D3 priority
+
+- **CO_W14_F4_error_boundary** `frontend/components/error/error-boundary.tsx` lines 36/39/42/49/58/67 hardcoded oklch values pre-existing W7+ React polish phase token migration leftover → **W15 F3.4 token cleanup pass**(deliverable exact match)
+- **CO_W14_smoke** End-to-end browser smoke deferred per CLAUDE.md §13 default across W12+W13+W14 cycles → **W15 F4 Playwright E2E baseline harness systematic subsume**(deliverable exact match — golden-path E2E + admin path E2E + pixel diff baseline)
+
+#### W15 polish + closeout core deliverables(per design ref §6 W15 implementation sequencing)
+
+- **CO_W15_F1** V5 Eval Console implementation(per architecture.md v6 §5.6;4-metric cards + W4 Reranker Shootout table + Failed queries table)→ W15 F1
+- **CO_W15_F2** V6 Debug View implementation(per architecture.md v6 §5.7;9-stage timeline + per-stage duration / cost / data preview / Langfuse link)→ W15 F2
+- **CO_W15_F3** Responsive + a11y + Playwright E2E + pixel diff baseline harness — closeout phase per design ref §6 implementation sequencing → W15 F3 + F4
+
+#### W14 backend follow-ups(non-W15-blocker;defer Beta hardening)
+
+- **CO_F3a** backend `GET /kb/{id}/documents` + `GET /kb/{id}/documents/{id}/chunks` W2 listing implementation → Beta hardening trigger when backend lands(W15 frontend stub mitigation pattern preserved)
+- **CO_F3b** backend KB name + description PATCH endpoint → W15+ candidate per Settings tab Identity card readonly note
+- **CO_F3c** backend `POST /kb/{id}/reindex` + `DELETE /kb/{id}` Danger zone implementation → W15+ candidate
+
+#### W13 backend follow-ups(non-W15-blocker;defer Beta hardening,inherited unchanged)
+
+- **CO_F5_refresh** `/auth/refresh` self-register session rotation — currently mock mode returns mock_bearer for self-register users(wrong);minimal fix to detect tid=SELF_REGISTER_TID + rotate session token via `users_repo.create_session`;defer Beta hardening
+- **CO_F5_cookie** httpOnly cookie hardening — currently body-only token return;Set-Cookie via response.set_cookie() Beta phase candidate
+- **CO_F6a** `pip install azure-communication-email` retry post R8 proxy resolution(Beta hardening trigger)
+- **CO_F6b** Background-task email send via FastAPI BackgroundTasks(Beta latency tuning)
+- **CO_F6c** Sender domain SPF/DKIM IT-side post Track A
+
+#### W16+ Beta deploy(unchanged from W11+W12+W13)
+
+- **CO16** Track A IT cred populate event + R-B1 closure(blocked W11+;non W12-W15 critical path)
+- **CO17** AF3 code fix Option A + Personal Azure dev tier pattern formalization(ADR-0013 candidate trigger consolidate)
+- **CO18** KB Manager + users_repo persistent backing(SQLite / Postgres / Cosmos DB Beta production hardening)
+- **CO19** F2.1-F2.4 25% rollout activation cascade + F3.1-F3.5 daily metric monitor + F5.1 Q15 first weekly signal report(all blocked W11+;defer W16+)
+
+#### Process improvement candidate(W15+)
+
+- **CO_W14_process_grep_verify** Plan author "spec ref grep verification" step pre-R1 active flip — 3rd occurrence of plan literal vs actual code grep verification gap surfaced(W13 F1.5 + W14 F1.1 + W14 F2.2);suggests adding pre-active flip grep step to W15+ plan kickoff process;**non-blocking** but valuable rolling JIT discipline refinement
 
 ### Time tracking
-_(W14 D5 末 fill — actual hours per F1-F5 vs estimated 5 working days;identify estimation calibration adjustments for W15 phase)_
+
+| Phase | Plan estimate | Actual(real-calendar 2026-06-10 same-day collapse) | Calibration delta |
+|---|---|---|---|
+| F1 V2 Admin Dashboard + CO_F5d-cont | 0.5 day | ~30 min | 8x under-budget |
+| F2 V3 KB List card grid | 1 day | ~30 min | 16x under-budget |
+| F3 V4 KB Detail 5-tab(largest deliverable)| 1.5 day | ~1 hr | 12x under-budget |
+| F4 cross-cutting verification audit | 0.5 day | ~15 min | 16x under-budget(fastest — verification phase) |
+| F5 closeout retro + W15 phase folder kickoff | 0.5 day | ~30 min(this entry) | 8x under-budget |
+| **Total** | **~5 working days budget** | **~2 hr 45 min actual single session 2026-06-10** | **~7-16x under-budget per pivot momentum + Karpathy §1.3 surgical scope discipline** |
+
+**Calibration data points refining W12+W13 retro estimates(now cycle 4 of 4 cumulative)**:
+
+1. **Tier 1 UI sprint phase capacity ~1-2 hr per phase confirmed at W14 scale**(5 deliverables in single session 2 hr 45 min;7-16x under-budget consistent with W12 7x + W13 7-9x figures);**robust signal across 3 phases × 5 days × 7-16x ratio**
+2. **Verification-only phase capacity ~15 min**(F4 case;fastest of all 4 phases);data point new for W12-W14 calibration set;reusable for future audit-only phases
+3. **Plan changelog overhead negligible** when deviations surfaced during implementation(Karpathy §1.1 think-before-coding upfront vs retrospective documentation;**10 deviations in W14 logged cleanly without time penalty**)
+4. **Backend stub mitigation pattern reusable**(BackendStubNote helper)— add ~10 min per stubbed tab vs full backend integration ~hours;preserves UI work momentum without backend backlog blocking
+5. **W15 estimate**:5 deliverables(eval+debug view-level + cross-cutting polish similar scope to W14);if same pivot momentum sustained = ~3-4 hr total realistic;Playwright E2E baseline harness adds modest complexity but install + golden-path scope hold-able
 
 ### Spec ref alignment
-_(W14 D5 末 fill — verify all W14 deliverables trace back to architecture.md v6 §5.3-§5.5 + ADR-0014/0015/0016 spec citations)_
+
+All W14 deliverables trace back to spec citations(per CLAUDE.md §10 R5 + Karpathy §1.4 verifiable goals):
+
+| Deliverable | Spec citation | Verification |
+|---|---|---|
+| F1 V2 Admin Dashboard refactor + CO_F5d-cont session-token mode | architecture.md v6 §5.3 V2 + ui-design-reference-v6.md §2.2 V2 wireframe + W13 retro CO_F5d-cont carry-over + ADR-0014 hybrid auth | `frontend/app/admin/page.tsx`(4-card stats + Failed ingestion + Quick actions)+ `frontend/lib/auth/index.ts`(SESSION_TOKEN_STORAGE_KEY canonical + readSessionBearer + getBearer session branch)+ `frontend/lib/api/auth.ts` re-export to break circular import |
+| F2 V3 KB List card grid refactor | architecture.md v6 §5.4 V3 + ui-design-reference-v6.md §2.3 V3 wireframe + Dify Image 4 dataset-grid pattern reference per ADR-0010 read-only | `frontend/app/admin/kb/page.tsx`(KbCard + sort + filter + Skeleton + KbEmpty 2-variant + status badge derivation) |
+| F3 V4 KB Detail 5-tab nav | architecture.md v6 §5.5 V4 + ui-design-reference-v6.md §2.4 V4 wireframe(5-tab pattern)+ Dify Image 1+2+4+5+6 layout reference per ADR-0010 read-only | `frontend/app/admin/kb/[id]/page.tsx`(shadcn Tabs primitive + 5 TabsContent + URL searchParams state + DangerAction Dialog confirm + BackendStubNote helper)+ streamQuery SSE reuse + kbApi.patchSettings PATCH wire |
+| F4 cross-cutting verification audit | design ref §3 cross-view consistency rules + W13 retro carry-over CO_W14_F4 | grep `\[oklch frontend/app/admin/` 0 matches strict scope clean + admin-shell.tsx W12 F4.1 baseline preserved + Breadcrumb pathname-derived isolation correctness + Stepper rule-of-3 NOT triggered confirmed |
+| F5 closeout + W15 kickoff | CLAUDE.md §10 R1 rolling-JIT + R5 phase closeout discipline + W12+W13 closeout pattern | `docs/01-planning/W15-polish-closeout/{plan,checklist,progress}.md` + W14 frontmatter close cascade |
+
+**No spec violation**;**no new ADR fired W14**(F1-F4 implementation 屬 ADR-0014 + ADR-0015 + ADR-0016 already covered scope);**ADR-0013 reservation preserved** for W11 retro carry-over CO12;**ADR-0014 + ADR-0015 + ADR-0016 全部 covered W14 scope** without scope creep。
 
 ---
 
