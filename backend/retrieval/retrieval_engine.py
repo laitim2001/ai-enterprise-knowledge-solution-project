@@ -195,3 +195,19 @@ class RetrievalEngine:
         from generation.context_expander import expand_context  # noqa: PLC0415
 
         return await expand_context(chunks, kb_id=kb_id, searcher=self._searcher)
+
+    async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:
+        """W16 F5.1.1 — delegate to searcher.list_documents (encapsulation preserved).
+
+        Returns aggregated doc-level metadata for kb_id-scoped chunks. See
+        HybridSearcher.list_documents for shape + Beta-scale assumptions.
+        """
+        return await self._searcher.list_documents(kb_id, max_chunks=max_chunks)
+
+    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+        """W16 F5.1.2 — delegate to searcher.list_chunks (encapsulation preserved).
+
+        Returns chunk-level metadata for kb_id+doc_id-scoped chunks ordered by
+        chunk_index. See HybridSearcher.list_chunks for shape.
+        """
+        return await self._searcher.list_chunks(kb_id, doc_id, top=top)

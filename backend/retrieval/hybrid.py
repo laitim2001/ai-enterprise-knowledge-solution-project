@@ -222,3 +222,144 @@ class HybridSearcher:
             top_k=top_k,
         )
         return hits
+
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TransportError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        reraise=True,
+    )
+    async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:
+        """W16 F5.1.1 — aggregate doc-level metadata from kb_id-scoped chunks.
+
+        Single Azure AI Search query (search="*" + kb_id filter) returns up to
+        max_chunks rows; Python aggregates by doc_id. Beta-scale assumption:
+        Tier 1 KB has < 1000 chunks total (W17+ scale needs facet API or
+        pagination via $skip/$top per architecture.md §3.4 multi-KB notes).
+
+        Returns list[dict] with doc_id, doc_title, doc_format, total_chunks
+        (from chunk_total field), last_indexed_at (max ingested_at observed),
+        source_url, tags. Empty kb_id or empty index → empty list.
+        """
+        if not kb_id:
+            return []
+        assert self._client is not None, "use 'async with' to manage searcher lifecycle"
+
+        index_name = kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)
+        kb_filter = kb_id_filter_clause(kb_id)
+
+        url = (
+            f"{self.endpoint}/indexes/{index_name}"
+            f"/docs/search?api-version={self.api_version}"
+        )
+        payload: dict = {
+            "search": "*",
+            "filter": kb_filter,
+            "top": max_chunks,
+            "select": (
+                "doc_id,doc_title,doc_format,chunk_total,"
+                "ingested_at,source_url,tags"
+            ),
+        }
+
+        response = await self._client.post(url, content=json.dumps(payload))
+        if response.status_code >= 500 or response.status_code == 429:
+            response.raise_for_status()
+        if response.status_code != 200:
+            response.raise_for_status()
+
+        body = response.json()
+        docs: dict[str, dict] = {}
+        for item in body.get("value", []):
+            doc_id = str(item.get("doc_id", ""))
+            if not doc_id:
+                continue
+            ingested_at = str(item.get("ingested_at", ""))
+            if doc_id not in docs:
+                docs[doc_id] = {
+                    "doc_id": doc_id,
+                    "doc_title": str(item.get("doc_title", "")),
+                    "doc_format": str(item.get("doc_format", "")),
+                    "total_chunks": int(item.get("chunk_total", 0) or 0),
+                    "last_indexed_at": ingested_at,
+                    "source_url": item.get("source_url"),
+                    "tags": list(item.get("tags") or []),
+                }
+            elif ingested_at > docs[doc_id]["last_indexed_at"]:
+                docs[doc_id]["last_indexed_at"] = ingested_at
+
+        logger.debug(
+            "hybrid_list_documents",
+            index=index_name,
+            kb_id=kb_id,
+            docs_count=len(docs),
+            chunks_observed=len(body.get("value", [])),
+        )
+        return list(docs.values())
+
+    @retry(
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TransportError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        reraise=True,
+    )
+    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+        """W16 F5.1.2 — list all chunks of a doc (kb_id + doc_id filter;
+        ordered by chunk_index ascending).
+
+        Returns list[dict] with chunk_id, chunk_index, chunk_total, chunk_title,
+        section_path, enabled, low_value_flag. chunk_text excluded — Beta
+        client uses /query for text. Empty filter returns empty list.
+        """
+        if not kb_id or not doc_id:
+            return []
+        assert self._client is not None, "use 'async with' to manage searcher lifecycle"
+
+        index_name = kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)
+        kb_filter = kb_id_filter_clause(kb_id)
+        # OData escapes single quotes by doubling — defensive against doc_id with quote
+        doc_id_escaped = doc_id.replace("'", "''")
+        full_filter = f"{kb_filter} and doc_id eq '{doc_id_escaped}'"
+
+        url = (
+            f"{self.endpoint}/indexes/{index_name}"
+            f"/docs/search?api-version={self.api_version}"
+        )
+        payload: dict = {
+            "search": "*",
+            "filter": full_filter,
+            "top": top,
+            "select": (
+                "chunk_id,chunk_index,chunk_total,chunk_title,"
+                "section_path,enabled,low_value_flag"
+            ),
+            "orderby": "chunk_index asc",
+        }
+
+        response = await self._client.post(url, content=json.dumps(payload))
+        if response.status_code >= 500 or response.status_code == 429:
+            response.raise_for_status()
+        if response.status_code != 200:
+            response.raise_for_status()
+
+        body = response.json()
+        chunks: list[dict] = []
+        for item in body.get("value", []):
+            chunks.append({
+                "chunk_id": str(item.get("chunk_id", "")),
+                "chunk_index": int(item.get("chunk_index", 0) or 0),
+                "chunk_total": int(item.get("chunk_total", 0) or 0),
+                "chunk_title": str(item.get("chunk_title", "")),
+                "section_path": list(item.get("section_path") or []),
+                "enabled": bool(item.get("enabled", True)),
+                "low_value_flag": bool(item.get("low_value_flag", False)),
+            })
+
+        logger.debug(
+            "hybrid_list_chunks",
+            index=index_name,
+            kb_id=kb_id,
+            doc_id=doc_id,
+            chunks_count=len(chunks),
+        )
+        return chunks
