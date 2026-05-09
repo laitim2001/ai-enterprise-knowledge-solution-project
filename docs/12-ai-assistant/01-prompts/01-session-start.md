@@ -49,26 +49,29 @@ Ricoh internal user manual(Word + PPT + PDF 混合 format)散落 SharePoint / Dr
 
 ---
 
-## 第三部分:EKP 12 Components(架構骨架)
+## 第三部分:EKP 13 Components(架構骨架)
 
-EKP 嚴格按以下 12 component 組織代碼,**禁止跨 component 雜湊**:
+EKP 嚴格按以下 13 component 組織代碼,**禁止跨 component 雜湊**:
 
-| ID | Component | 首次接觸 | Status(2026-05-04 W2 closeout) |
+| ID | Component | 首次接觸 | Status(2026-05-09 W15 D5 closeout) |
 |---|---|---|---|
-| **C01** | Ingestion Pipeline(Docling + python-pptx + embedder)| W2 | 🟢 Active(F1-F5 W2 D1-D4 done;PPT parser W3 D5)|
-| **C02** | Knowledge Base Manager(FastAPI in-memory)| W1 D2 | ✅ Implemented |
-| **C03** | Indexing Service(Azure AI Search S1)| W2 D1 | 🟢 Active(`ekp-kb-drive-v1` index 1024d created)|
-| **C04** | Retrieval Engine(Hybrid + Cohere Rerank v3.5)| W2 D5 | 🟡 Hybrid done;Cohere Rerank W3 D1 critical |
-| **C05** | Generation Pipeline(GPT-5.5 + custom CRAG)| W3 D1 | ⏳ Not started |
-| **C06** | Eval Framework(RAGAs + custom gate)| W1 D1 | 🟢 Validator + scaffold + F7 framework done |
-| **C07** | Observability Stack(Langfuse + structlog)| W1 D1 | 🟢 Init done(BUG-001 closed)|
-| **C08** | API Gateway(FastAPI + uvicorn + Pydantic v2)| W1 D1 | 🟢 18 stub scaffold;`/query` wired W2 D4 |
-| **C09** | Admin Console UI(Next.js + shadcn/ui)| W1 D1 | 🟢 6 routes scaffold;4 views W2 D5 partial |
-| **C10** | Chat Interface UI(Next.js + Vercel AI SDK)| W3 D2 | ⏳ Not started |
-| **C11** | Identity & Access(MSAL + Entra ID)| W7 D1 | ⏳ Beta+ scope |
-| **C12** | DevOps & Infra(Docker + Azurite + ACA + GHA)| W1 D1 | 🟢 Local stack done |
+| **C01** | Ingestion Pipeline(Docling + python-pptx + embedder + layout-aware chunker + screenshot pipeline)| W2 | ✅ Implemented(W2 F1-F5 + W3 D5 PPT parser)|
+| **C02** | Knowledge Base Manager(FastAPI in-memory)| W1 D2 | ✅ Implemented(in-memory;**CO18 persistent backing Beta hardening W17+**)|
+| **C03** | Indexing Service(Azure AI Search S1)| W2 D1 | ✅ Implemented(`ekp-kb-drive-v1` 1024d HNSW;W2 Gate 1 PASS R@5=0.9722)|
+| **C04** | Retrieval Engine(Hybrid + Cohere Rerank v4.0-pro)| W2 D5 | ✅ Implemented(W3 Cohere wired + W6 D1 Azure 2-way reaffirmed v4.0-pro production lock per Q21 Resolved + ADR-0012)|
+| **C05** | Generation Pipeline(GPT-5.5 + custom CRAG L2)| W3 D1 | ✅ Implemented(W3 synthesis + citation + SSE streaming + W4 CRAG L2 + W5 threshold KEEP 0.70 NON-STICKY + W6 prompt tweak +0.85pp aggregate)|
+| **C06** | Eval Framework(RAGAs + custom gate)| W1 D1 | ✅ Implemented(W1 validator + W2 F7 framework + W4 shootout 2-way + W5 Gate 2 PARTIAL PASS + W6 reaffirmed;**CO_W15_F1_eval_set_v1 file existence verify W16 F5.x**)|
+| **C07** | Observability Stack(Langfuse + structlog + cost dashboard + alerts)| W1 D1 | ✅ Implemented(W1 init + BUG-001 closed + W8 Langfuse SDK + cost dashboard + feedback + alerts + W10 D3 real-time wire + W11 D1 pricing rate Option B placeholder)|
+| **C08** | API Gateway(FastAPI + uvicorn + Pydantic v2)| W1 D1 | 🟡 Mostly Implemented(18 endpoints wired;`/query` + `/chat` SSE + `/auth/*` hybrid auth + admin auth;**4 stub closure cascade pending W16 F5** — `eval/run` + `eval/shootout` + `debug/trace/{id}` + KB document listing)|
+| **C09** | Admin Console UI(Next.js + shadcn/ui)| W1 D1 | ✅ Implemented(W2 partial → **W12-W15 UI Tier 1 expansion 9 views per ADR-0015** — V1 Dashboard + V2-V4 KB tabs + V5 Eval Console + V6 Debug View + Pipeline wizard + responsive/a11y + **entire frontend `[oklch(...)]` = 0 milestone**)|
+| **C10** | Chat Interface UI(Next.js + Vercel AI SDK)| W3 D2 | ✅ Implemented(W3 streaming + Citation + W13 routing restructure + theme provider + dark mode toggle + W15 token cleanup)|
+| **C11** | Identity & Access(MSAL + Entra ID + hybrid auth per ADR-0014 + scrypt password hash per ADR-0016)| W7 D1 | 🟡 Mostly Implemented(W7 mock auth bridge + W11 D2 cont hybrid auth model amendment + W13 register/verify/login backend + scrypt password hash;**Track A IT cred consumption pending W16 F1** for operational `Resolved` Q11 + **CO_F5_refresh / CO_F5_cookie hardening W16+**)|
+| **C12** | DevOps & Infra(Docker + Azurite + ACA + GHA)| W1 D1 | ✅ Implemented(W1 local stack + W11 staged rollout 25% activation;Azure Blob persistent backing W16+ Track A)|
+| **C13** | Email Verification Service(Azure Communication Services per Q22 + ADR-0014;NEW W12 D1 v6 amendment)| W12 D1 | ✅ Implemented(W13 D5 ACS Email Client wrapper + verification token sign `secrets.token_urlsafe(32)` + 24h expiry per architecture.md v6 §3.7;`backend/api/auth/email_provider.py`;**CO_F6a-c retry post R8 + BackgroundTasks + SPF/DKIM IT-side W16+**)|
 
-完整 spec:[`docs/02-architecture/COMPONENT_CATALOG.md`](../../02-architecture/COMPONENT_CATALOG.md) + per-component design notes `docs/02-architecture/components/Cn-*.md`(rolling JIT)。
+完整 spec:[`docs/02-architecture/COMPONENT_CATALOG.md`](../../02-architecture/COMPONENT_CATALOG.md) + per-component design notes `docs/02-architecture/components/Cn-*.md`(rolling JIT;C11 + C13 design notes pending)。
+
+> **Note**:`COMPONENT_CATALOG.md §11 Tier 2 trigger matrix` 仍引用 hypothetical "C13 Workflow Engine"(Tier 2 future);**Tier 1 actual C13 = Email Verification Service** per architecture.md v6 §3.7(authoritative)— catalog amendment 屬 W17+ housekeeping。
 
 ---
 
@@ -451,11 +454,11 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 ### 何時退役
 
 - Tier 1 完成(W12 production launch 後)→ Tier 2 規劃啟動,本 prompt 變歷史紀念物,改用 Tier 2 對應 prompt(如有)
-- 中途若 §3 12 component spine 大改,本 prompt §3 + §13 全部重寫
+- 中途若 §3 13 component spine 大改,本 prompt §3 + §13 全部重寫
 
 ---
 
-**Last Updated**:2026-05-09(W15 D5 closeout housekeeping catch-up — Tier 1 UI sprint cycle FINAL marker landed;§9 OQ status 16→17 Resolved + Q22 NEW added(22 total)+ §10 sprint table extended W7-W16+ + UI sprint pivot context + §11 carry-overs replaced W6 → W15 D5 + R8 4 occurrences cumulative + ADR-0017 reservation candidate + §12 milestones added 9 rows W7-W15;架構 v5.1 → v6 amendment + ADR-0014/0015/0016 landed;**W16 status:draft**;累計 15 phase closed)
+**Last Updated**:2026-05-09(W15 D5 closeout housekeeping catch-up — Tier 1 UI sprint cycle FINAL marker landed;**§3 12 → 13 components + C13 Email Verification Service NEW + C04/C05/C06/C09/C10 Implemented status + C08/C11 Mostly Implemented status**;§9 OQ status 16→17 Resolved + Q22 NEW added(22 total)+ §10 sprint table extended W7-W16+ + UI sprint pivot context + §11 carry-overs replaced W6 → W15 D5 + R8 4 occurrences cumulative + ADR-0017 reservation candidate + §12 milestones added 9 rows W7-W15;架構 v5.1 → v6 amendment + ADR-0014/0015/0016 landed;**W16 status:draft**;累計 15 phase closed)
 **Maintainer**:Chris(技術 Lead)+ AI 助手共同維護
 **File location**:`docs/12-ai-assistant/01-prompts/01-session-start.md`
 **Companion**:`02-compact-session.md`(每個 session `/compact` 之前用)
@@ -470,3 +473,4 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 | 2026-05-05 | W06 D5 closeout housekeeping | §9 OQ status updated 7→11 Resolved + 14→10 Open(Q5 / Q17 / Q18 / Q21 closed cycle);§10 Sprint table all W1-W6 closed + Gates verdict landed(Gate 1 PASS R@5=0.9722 / Gate 2 PARTIAL PASS confirmed / Gate 3 READY);§11 W6 carry-overs C1-C10 replaces stale W2 carry-overs;§12 milestones W3-W6 rows added 累計 6/12;ADR status update(0001-0011 batch created W2 D5 cont 2026-05-04;ADR-0012 reservation status documented per W6 retro)|
 | 2026-05-05 | W06 D5 stakeholder approval cycle cascade | §9 OQ status 11→16 Resolved + 10→5 Open(Q7+Q9+Q10+Q11+Q12 stakeholder approve 落地);§10 Sprint table W7-8 row updated active;§12 milestones W7 row updated active;Last Updated reflect amendment + ADR-0012 formal record + Beta plan v1 active + W7 active |
 | 2026-05-09 | W15 D5 closeout housekeeping catch-up(Tier 1 UI sprint cycle FINAL)| §9 OQ status 16→17 Resolved + Q22 NEW added(total 21→22)+ Q11 W9 D1 三方 alignment + Q14 W11 D2 corpus scope clarification context;§10 Sprint table extended W7-W16+ rows + Tier 1 UI sprint cycle FINAL gate added + Production launch gate added;§11 carry-overs replaced W6 D5 → W15 D5 closeout(Track A IT cred + R-B1 closure + 4-sprint user smoke deferred backlog + W14/W15 CO_* + R8 4 occurrences cumulative + ADR-0017 reservation candidate + ADR-0013 reserved AF3);§12 milestones added 9 rows W7-W15 + W16 draft + W17+ rolling JIT discipline preserved;架構 v5.1 → v6 amendment + ADR-0014/0015/0016 landed;**W16 status:draft**(rolling JIT thin skeleton);累計 6→15 phase closed |
+| 2026-05-09 | W15 D5 component status follow-up(post §9-§12 catch-up)| §3 component count 12 → 13 + C13 Email Verification Service NEW row added(ACS per Q22 + ADR-0014;W12 D1 v6 amendment + W13 D5 implementation);C04/C05/C06/C09/C10 status 🟢/🟡/⏳ → ✅ Implemented(post-W6/W3/W4/W12-W15/W3-W15 milestones);C08/C11 → 🟡 Mostly Implemented(C08 4-stub closure W16 F5 pending;C11 Track A IT cred consumption W16 F1 pending);Status header date 2026-05-04 W2 → 2026-05-09 W15 D5;§14 退役 line 12 → 13 component spine;Note added re COMPONENT_CATALOG.md §11 Tier 2 trigger matrix stale "C13 Workflow Engine"(catalog amendment W17+ housekeeping)|
