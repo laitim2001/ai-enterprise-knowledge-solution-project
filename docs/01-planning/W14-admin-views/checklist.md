@@ -43,10 +43,10 @@ last_updated: 2026-06-10
 
 ## F4 — Cross-cutting refactors + token cleanup
 
-- [ ] F4.1 Stepper rule-of-3 trigger evaluation(F3.8 outcome);if extracted,refactor W12 F4.9 KB wizard + W13 F4 Register + F3 Pipeline tab to consume shared component
-- [ ] F4.2 Sidebar consistency review — verify `bg-muted/40` + active state `bg-muted text-foreground` consistent across all admin pages(W12 F4.1 baseline)
-- [ ] F4.3 Token consumption audit — `grep oklch frontend/app/admin/` should remain 0 hits(W12 D2 strict baseline);fix any leak Karpathy §1.3 surgical
-- [ ] F4.4 Cross-view UserMenu / Breadcrumb behavior verify(no regression vs W12 F4.2 baseline)
+- [x] F4.1 Stepper rule-of-3 trigger evaluation(F3.8 outcome);**NOT triggered confirmed** — F3.4 Pipeline tab read-only ConfigRow display 不 introduce state machine wizard;W12 KB Pipeline wizard + W13 Register 仍 = 2 active state-machine wizards;**inline retention preserved** per W13 D4 decision;next emergence trigger preserved W15+(V5 Eval Console OR V6 Debug View if state machine emerges)
+- [x] F4.2 Sidebar consistency review — `frontend/components/nav/admin-shell.tsx` W12 F4.1 baseline 完全 preserved(W14 D1-D3 rebuild scoped at page.tsx level only);desktop sidebar `bg-muted/40` ✓ + active `bg-muted font-medium text-foreground` ✓ + hover `hover:bg-muted hover:text-foreground` ✓ consistent across `/admin` + `/admin/kb` + `/admin/kb/[id]`;NavLinks `pathname.startsWith('/admin/kb/')` correctly activates "Knowledge Bases" sidebar entry for both list + detail routes
+- [x] F4.3 Token consumption audit — **deviation logged plan §7 changelog 2026-06-10 (D4)** — `grep \[oklch frontend/app/admin/` 0 className arbitrary value matches strict scope clean(W12 D2 baseline preserved);newly-touched W14 files(admin/page.tsx + kb/page.tsx + kb/[id]/page.tsx + lib/auth/index.ts + lib/api/auth.ts)0 hardcoded oklch verified — all colors via Tailwind tokens;`frontend/components/error/error-boundary.tsx` lines 36/39/42/49/58/67 pre-existing W7+ token migration leftover oklch leak surfaced during F4 audit BUT **out of W14 F4.3 strict scope** `frontend/app/admin/` per plan literal → `CO_W14_F4_error_boundary` W15 polish phase carry-over per Karpathy §1.3 surgical(leak NOT introduced by W14 F1-F3 work)
+- [x] F4.4 Cross-view UserMenu / Breadcrumb behavior — admin-shell.tsx mount untouched W14 D1-D3;Breadcrumb pathname-derived only(searchParams `?tab=...` correctly stays out → no breadcrumb pollution per F3.7 URL state design);SEGMENT_LABELS dynamic KB id truncation works for `/admin/kb/[id]` deep route;UserMenu mock badge + sign-out flow preserved;0 regression vs W12 F4.2 baseline across 6 admin routes(`/admin` + `/admin/kb` + `/admin/kb/new` + `/admin/kb/[id]` + `/admin/kb/[id]/upload` + `/eval`)
 
 ## F5 — Phase Gate closeout + W15 phase folder kickoff
 

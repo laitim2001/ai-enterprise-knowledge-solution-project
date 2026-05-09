@@ -214,9 +214,53 @@ $ grep oklch frontend/app/admin/kb/\[id\]/page.tsx | wc -l
 
 ---
 
-## Day 4 — _(W14 D4,2026-07-03,tentative)_
+## Day 4 — W14 D4 F4 cross-cutting verification audit(real-calendar 2026-06-10 same-day collapse cycle 3 of 4 cont)
 
-_(placeholder — F3 V4 finalize + responsive verify;F4 cross-cutting refactors + token audit)_
+> **Calendar note**:plan §5 tentative date 2026-07-03 superseded by real-calendar 2026-06-10 same-day collapse(D3 → D4 cycle continue post user authorization "A:continue W14 D4 — F4 cross-cutting refactors + token cleanup")。Time tracking calibration:plan ~0.5 day budget vs actual ~15 min(verification phase + audit + carry-over flag — F4 documentation-only outcome per Karpathy §1.4 goal-driven success criteria all met without code change)。
+
+### What landed
+
+| F# | Deliverable | Outcome | Status |
+|---|---|---|---|
+| F4.1 | Stepper rule-of-3 trigger evaluation | **NOT triggered confirmed** — F3.4 Pipeline tab read-only ConfigRow display 不 introduce state machine wizard;W12 KB Pipeline wizard + W13 Register 仍 = 2 active state-machine wizards;**inline retention preserved** per W13 D4 decision;next emergence trigger preserved W15+(V5 Eval Console OR V6 Debug View if state machine emerges)| ✅ (preserved) |
+| F4.2 | Sidebar consistency review | **W12 F4.1 baseline preserved** — `frontend/components/nav/admin-shell.tsx` untouched W14 D1-D3(rebuild scoped at page.tsx level only);desktop sidebar `bg-muted/40` ✓ + active `bg-muted font-medium text-foreground` ✓ + hover `hover:bg-muted hover:text-foreground` ✓ consistent;NavLinks `pathname.startsWith('/admin/kb/')` correctly activates "Knowledge Bases" sidebar entry for both list + detail routes | ✅ |
+| F4.3 | Token consumption audit | **strict scope clean** — `grep \[oklch frontend/app/admin/` 0 className arbitrary value matches(W12 D2 baseline preserved);**deviation logged plan §7 changelog (D4)** — `frontend/components/error/error-boundary.tsx` 6 hardcoded oklch values W7+ token migration leftover surfaced during F4 audit BUT out of W14 F4.3 strict scope per plan literal → `CO_W14_F4_error_boundary` W15 polish phase carry-over per Karpathy §1.3 surgical | ✅ (deviation noted) |
+| F4.4 | Cross-view UserMenu / Breadcrumb behavior | **W12 F4.2 baseline preserved** — admin-shell.tsx UserMenu + Breadcrumb mount untouched W14 D1-D3;Breadcrumb pathname-derived only(searchParams `?tab=...` correctly stays out of breadcrumb pollution per F3.7 URL state design);SEGMENT_LABELS dynamic KB id truncation works for `/admin/kb/[id]` deep route;UserMenu mock badge + sign-out flow preserved;0 regression across 6 admin routes(`/admin` + `/admin/kb` + `/admin/kb/new` + `/admin/kb/[id]` + `/admin/kb/[id]/upload` + `/eval`)| ✅ |
+
+### Decisions
+
+1. **Stepper rule-of-3 inline retention preserved**:F3.8 outcome confirmed F4.1 — no extraction in W14;Pipeline tab read-only ConfigRow display non-wizard so 第 3 次 emergence trigger 唔 fire;next opportunity = W15+ if V5 Eval Console OR V6 Debug View introduces wizard state machine(per architecture.md v6 §5.6-§5.7)
+2. **F4.3 token audit strict scope hold**:plan F4.3 literal scope = `grep oklch frontend/app/admin/`;newly-touched W14 files(F1-F3 page.tsx rebuilds + F1.5 lib/auth touch)all clean Tailwind tokens;`frontend/components/error/error-boundary.tsx` 6 hardcoded oklch values pre-existing W7+ leftover OUT of W14 strict scope per Karpathy §1.3 surgical「only clean your own mess」(leak NOT introduced by W14 F1-F3 work);**`CO_W14_F4_error_boundary`** carry-over flag to W15 polish phase token cleanup pass(W15 design ref §6 broader scope makes natural fit)
+3. **F4 = pure verification phase, no code change required**:per Karpathy §1.4 goal-driven(verifiable success criteria all met without touching code)+ §1.2 simplicity-first(don't add code for hypothetical scope expansion)+ §1.3 surgical(F4.1+F4.2+F4.4 baselines preserved by W14 F1-F3 page.tsx-scoped rebuilds);documentation-only outcome — checklist tick + plan §7 changelog deviation entry + this Day 4 progress entry
+4. **Breadcrumb searchParams isolation correctness**:tab state via `?tab=...` 正確 stays out of pathname-derived breadcrumb(clean separation;BreadcrumbNav reads `usePathname()` only,not `useSearchParams()`)— pathname-only design intentional per F3.7 URL bookmark state design
+5. **NavLinks active state for KB detail routes**:`pathname.startsWith('/admin/kb/')` activates "Knowledge Bases" sidebar entry for both list (`/admin/kb`) AND detail (`/admin/kb/[id]`) AND nested (`/admin/kb/[id]/upload`) routes per startsWith semantics — consistent visual feedback as user drills into KB detail tabs
+6. **Error boundary scope decision asymmetry**:`frontend/components/error/error-boundary.tsx` 用於 `frontend/app/admin/error.tsx` segment boundary,意思 admin 用戶會 SEE the leak when error happens BUT file itself 喺 `frontend/components/error/` directory(strict plan F4.3 scope `frontend/app/admin/` directory grep 唔 cover);per Karpathy §1.3 surgical 不單方面 expand scope — log as `CO_W14_F4_error_boundary` 等 W15 token cleanup natural-fit window
+
+### Verification
+
+```
+$ grep -r "\[oklch" frontend/app/admin/ frontend/lib/auth/ frontend/components/nav/
+(no matches — 0 hardcoded oklch className arbitrary values)
+
+$ grep -c "\[oklch" frontend/components/error/error-boundary.tsx
+6  # pre-existing leak — CO_W14_F4_error_boundary flag
+
+$ pnpm type-check
+> tsc --noEmit
+0 errors  # baseline preserved post-W14 D1-D3 (no W14 D4 code change)
+```
+
+✅ Token strict scope clean(0 hardcoded oklch className arbitrary values in `frontend/app/admin/`);F4.1 Stepper rule-of-3 NOT triggered confirmed;F4.2 sidebar baseline preserved;F4.4 UserMenu+Breadcrumb baseline preserved;0 regression on 6 admin routes(`/admin` + `/admin/kb` + `/admin/kb/new` + `/admin/kb/[id]` + `/admin/kb/[id]/upload` + `/eval`);no code change required this day per Karpathy §1.4 goal-driven verification.
+
+### Carry-overs to W14 D5
+
+- 🚧 F4 user smoke deferred per CLAUDE.md §13(non-blocker — verification phase 唔 introduce new behavior)
+- ⏳ W14 D5 focus per plan §5:F5 phase Gate closeout(verdict PASS / PARTIAL PASS / FAIL with explicit rationale per W12 F5.1 + W13 F7.1 pattern)+ W14 progress.md retro 7 sections(What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec ref alignment)+ W15 phase folder rolling JIT kickoff(`docs/01-planning/W15-polish-closeout/{plan,checklist,progress}.md` draft per architecture.md v6 §5.6-§5.7 V5 Eval + V6 Debug + design ref §6 W15 scope responsive + a11y + Playwright E2E + pixel diff baseline harness)
+- 📝 **CO_W14_F4_error_boundary**:`frontend/components/error/error-boundary.tsx` lines 36/39/42/49/58/67 hardcoded oklch values pre-existing W7+ React polish phase token migration leftover → W15 polish phase token cleanup candidate(scope outside `frontend/app/admin/` strict W14 F4.3 audit boundary per plan literal;file used by `frontend/app/admin/error.tsx` segment boundary so admin 用戶 visible at error states — visual leak but functionality intact)
+
+### Commit
+
+- `<hash>` docs(planning): W14 D4 F4 cross-cutting verification — Stepper preserved + token audit pass + sidebar/UserMenu/Breadcrumb baseline preserved + CO_F4_error_boundary W15 follow-up
 
 ---
 
