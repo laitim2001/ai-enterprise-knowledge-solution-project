@@ -336,6 +336,51 @@ Success: no issues found in 6 source files
 
 ---
 
+## Day 5 cont — CO_F5d frontend wire batch(real-calendar 2026-06-10 same-day collapse cycle 2 of 4 cont)
+
+> **Calendar note**:user authorization option C "C:continue W13 D5 cont — Frontend wire batch (CO_F5d)" — close 「auth flow wire 留 F5 lands」deferred from D3+D4 now that F5 backend cascade landed (`054679d`)。Time tracking calibration:plan 0(out-of-scope deviation closeout)vs actual ~30 min。
+
+### What landed
+
+| F# | Deliverable | Files | Status |
+|---|---|---|---|
+| Auth API client(typed)| NEW `frontend/lib/api/auth.ts`(UserPublic + RegisterPayload + VerifyEmailPayload + LoginPayload + ResendPayload + 4 response types + AuthErrorCodes constants + SESSION_TOKEN_STORAGE_KEY + `authApi` namespace 4 functions)| ✅ |
+| F3.6 V8 Login wire | UPDATE `frontend/app/login/page.tsx`(replaced `F5_PENDING_*` stubs;handleSelfSubmit → `authApi.login` + localStorage save + router.push('/chat');handleSsoClick → existing `useAuthStore.signIn()` per W7 baseline + router.push;ApiError envelope branching via `AuthErrorCodes.INVALID_CREDENTIALS` / `EMAIL_NOT_VERIFIED` per F3.7 acceptance)| ✅ |
+| F4.6 V9 Register wire | UPDATE `frontend/app/register/page.tsx`(replaced `F5_PENDING_*` stubs;handleStep1Submit → `authApi.register`;handleStep2Submit → `authApi.verifyEmail`;handleResend → `authApi.resendVerification`;ApiError envelope branching via 6 AuthErrorCodes constants per F4.7 acceptance)| ✅ |
+
+### Decisions
+
+1. **Session token persistence to localStorage**:minimal `SESSION_TOKEN_STORAGE_KEY` write on `/auth/login` success;`api-client.ts.getBearer()` 唔 yet read from this key — **CO_F5d-cont follow-up** = extend frontend `lib/auth/index.ts` with session-token mode that reads from localStorage(parallel to backend `dependency.get_current_user` session branch architecture);for W13 scope,token persistence at minimum so the value is preserved across reloads + ready for follow-up consumption
+2. **MSAL SSO Button wired to `useAuthStore.signIn()`**:per F3.6 plan original acceptance criteria(uses existing W7 baseline);mock mode works without AuthProvider mount(mock_msal.loginMock returns hardcoded user without init);real MSAL deferred until `/login/layout.tsx` AuthProvider mount + Q11 IT cred(Beta)— W13 acceptable Tier 1 dev path
+3. **ApiError envelope branching via constants vs string-equal**:`AuthErrorCodes` typed const exported from `lib/api/auth.ts` provides single source of truth alongside backend `api/schemas/errors.py` constants;avoids stringly-typed switch + decoupled drift between frontend / backend constants
+4. **`handleAuthError` / `handleRegisterError` / `handleVerifyError` / `handleResendError` standalone helpers**:per Karpathy §1.2 — extract function vs inline switch statement keeps form handlers readable + each error branch testable;reused pattern across login + register
+
+### Verification
+
+```
+$ cd frontend && pnpm type-check
+> tsc --noEmit
+$ # 0 errors
+
+$ grep oklch frontend/app/login/page.tsx frontend/app/register/page.tsx frontend/lib/api/auth.ts | wc -l
+0  # all 3 files token-clean (no docstring oklch mentions either)
+```
+
+✅ TypeScript strict mode clean(0 errors);no `any` / no @ts-ignore;no hardcoded oklch;all colors via Tailwind tokens preserved。
+
+### Carry-overs to W13 D5 cont(F6 + F7)
+
+- ⏳ **CO_F5d-cont follow-up**:extend `lib/auth/index.ts` with session-token mode that reads `SESSION_TOKEN_STORAGE_KEY` from localStorage so api-client `getBearer()` can lift session bearer for protected calls;defer to next phase(non-W13-blocker since dev mock mode works for protected calls)
+- ⏳ **W13 D5 F6**:C13 ACS Email Verification Service integration(real ACS Email Client wrapper replace ConsoleEmailProvider stub)
+- ⏳ **W13 D5 F7**:phase Gate verdict + retro 7 sections + W14-admin-views phase folder kickoff
+- 🚧 user smoke for CO_F5d:`! pnpm dev` localhost:3001 + `! cd backend && .venv/Scripts/python.exe -m uvicorn api.server:app --port 8000` → end-to-end /register → email code(check console log for ConsoleEmailProvider output)→ /verify-email → /login → /chat redirect
+
+### Commit
+
+- `<TBD>` feat(frontend,docs): W13 D5 cont CO_F5d frontend wire batch + ApiError envelope branching
+
+---
+
 ## Retro(填於 W13 D5 末)
 
 ### What worked

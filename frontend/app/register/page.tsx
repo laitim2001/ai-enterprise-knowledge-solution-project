@@ -3,10 +3,12 @@
 /**
  * V9 Register page (`/register`) — public entry per architecture.md v6 §5.11 + ADR-0014.
  *
- * 3-step wizard: Account info → Email verify → Welcome. All backend wire deferred
- * to W13 F5 cascade per user instruction (plan §7 changelog 2026-06-10 D4) — same
- * pattern as F3 V8 Login. Stub handlers + sonner toast feedback demonstrate flow
- * without backend dependency.
+ * 3-step wizard: Account info → Email verify → Welcome.
+ *
+ * W13 D5 cont CO_F5d: auth wire deferral resolved — F5 backend cascade landed
+ * (commit 054679d). Step submit handlers POST to /auth/register +
+ * /auth/verify-email; resend hits /auth/resend-verification. Error.code from
+ * the ApiError envelope drives toast variants per F4.7 acceptance.
  *
  * Layout: V8 BrandPanel (shared) left + form area right (split via flex-col
  * md:flex-row). Stepper visual pattern parallel to W12 F4.9 Pipeline wizard
@@ -45,14 +47,9 @@ import { BrandPanel } from '@/components/auth/brand-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ApiError } from '@/lib/api-client';
+import { AuthErrorCodes, authApi } from '@/lib/api/auth';
 import { cn } from '@/lib/utils';
-
-const F5_PENDING_REGISTER =
-  'Auth wire pending W13 F5 backend. POST /auth/register endpoint not yet live; verification email mocked.';
-const F5_PENDING_VERIFY =
-  'Auth wire pending W13 F5 backend. POST /auth/verify-email endpoint not yet live; advancing for UI demo.';
-const F5_PENDING_RESEND =
-  'Verification email resent (mock — F5 ACS integration pending).';
 
 const RESEND_COOLDOWN_SEC = 60;
 const CODE_LENGTH = 6;
@@ -95,13 +92,20 @@ export default function RegisterPage() {
     event.preventDefault();
     if (Object.keys(errors).length > 0) return;
     setIsPending(true);
-    // TODO(W13 F5): replace with POST /auth/register call (Argon2id hash +
-    // verification_token sign + ACS email send via C13 service).
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsPending(false);
-    toast.info(F5_PENDING_REGISTER);
-    setStep(2);
-    setResendCooldown(RESEND_COOLDOWN_SEC);
+    try {
+      await authApi.register({
+        email: info.email,
+        password: info.password,
+        display_name: info.displayName,
+      });
+      toast.success('Verification email sent — check your inbox.');
+      setStep(2);
+      setResendCooldown(RESEND_COOLDOWN_SEC);
+    } catch (err) {
+      handleRegisterError(err);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   async function handleStep2Submit(event: FormEvent<HTMLFormElement>) {
@@ -111,20 +115,29 @@ export default function RegisterPage() {
       return;
     }
     setIsPending(true);
-    // TODO(W13 F5): replace with POST /auth/verify-email call (validate token
-    // + update user verified=True + clear verification_token).
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsPending(false);
-    toast.info(F5_PENDING_VERIFY);
-    setStep(3);
+    try {
+      await authApi.verifyEmail({
+        email: info.email,
+        code: code.join(''),
+      });
+      toast.success('Email verified!');
+      setStep(3);
+    } catch (err) {
+      handleVerifyError(err);
+    } finally {
+      setIsPending(false);
+    }
   }
 
-  function handleResend() {
+  async function handleResend() {
     if (resendCooldown > 0) return;
-    setResendCooldown(RESEND_COOLDOWN_SEC);
-    // TODO(W13 F5): replace with POST /auth/resend-verification (re-trigger
-    // ACS email + new verification_token).
-    toast.info(F5_PENDING_RESEND);
+    try {
+      await authApi.resendVerification({ email: info.email });
+      setResendCooldown(RESEND_COOLDOWN_SEC);
+      toast.info('Verification email resent.');
+    } catch (err) {
+      handleResendError(err);
+    }
   }
 
   function handleStartAsking() {
@@ -217,6 +230,56 @@ function passwordStrength(password: string): { label: string; score: number } {
 
   const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong', 'Very strong'];
   return { label: labels[Math.min(score, labels.length - 1)] ?? 'Strong', score };
+}
+
+function handleRegisterError(err: unknown): void {
+  if (err instanceof ApiError) {
+    if (err.code === AuthErrorCodes.EMAIL_ALREADY_EXISTS) {
+      toast.error('An account with that email already exists.', {
+        description: err.actionableHint ?? 'Sign in instead, or use a different email.',
+      });
+    } else if (err.code === AuthErrorCodes.INVALID_EMAIL) {
+      toast.error('Email format is invalid.');
+    } else if (err.code === AuthErrorCodes.WEAK_PASSWORD) {
+      toast.error(err.message);
+    } else {
+      toast.error(err.message, { description: err.actionableHint ?? undefined });
+    }
+    return;
+  }
+  toast.error('Registration failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
+}
+
+function handleVerifyError(err: unknown): void {
+  if (err instanceof ApiError) {
+    if (err.code === AuthErrorCodes.VERIFICATION_EXPIRED) {
+      toast.error('Verification code has expired.', {
+        description: err.actionableHint ?? 'Request a new code via Resend.',
+      });
+    } else if (err.code === AuthErrorCodes.VERIFICATION_FAILED) {
+      toast.error('Verification code is incorrect.');
+    } else {
+      toast.error(err.message);
+    }
+    return;
+  }
+  toast.error('Verification failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
+}
+
+function handleResendError(err: unknown): void {
+  if (err instanceof ApiError && err.code === AuthErrorCodes.RESEND_RATE_LIMITED) {
+    toast.error('Resend rate limit hit.', {
+      description: err.actionableHint ?? 'Wait a bit before trying again.',
+    });
+    return;
+  }
+  toast.error('Resend failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
 }
 
 function Stepper({ current }: { current: Step }) {

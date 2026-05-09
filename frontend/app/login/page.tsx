@@ -7,22 +7,16 @@
  * area right (split layout). Brand panel collapses < md per F3.8 responsive
  * acceptance.
  *
- * W13 D3 F3 scope: UI shell only. All auth wire deferred to W13 F5 cascade per
- * user instruction (plan §7 changelog 2026-06-10 D3) — both internal MSAL SSO
- * (existing useAuthStore W7 baseline) and external self-register POST /auth/login
- * stub w/ toast feedback ("auth wire pending F5"). F5 implementation will tie
- * the dual auth flows cleanly.
- *
- * Local state drives loading + error UX so visual polish (Loader2 spinner,
- * disabled buttons) demonstrates the flow without real backend dependency.
- *
- * Layout reference Dify Image 9 split auth (no code copy per ADR-0010); EKP
- * visual identity via tokens.ts Option C (brand panel uses bg-primary warm
- * charcoal).
+ * W13 D5 cont CO_F5d: auth wire deferral resolved — F5 backend cascade landed
+ * (commit 054679d). Self-register path POSTs `/auth/login` and stores the
+ * session bearer in localStorage; SSO path delegates to existing useAuthStore
+ * (mock_msal in dev / real MSAL Beta+ via Q11 IT cred). Error.code from the
+ * ApiError envelope drives toast variants per F3.7 acceptance.
  */
 
 import { Building2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
@@ -31,13 +25,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-
-const F5_PENDING_MESSAGE =
-  'Auth wire pending W13 F5 backend hybrid auth cascade. Self-register endpoint not yet live.';
-const F5_PENDING_SSO_MESSAGE =
-  'Auth wire pending W13 F5 cascade. MSAL SSO redirect will land via existing useAuthStore W7 baseline.';
+import { ApiError } from '@/lib/api-client';
+import {
+  AuthErrorCodes,
+  SESSION_TOKEN_STORAGE_KEY,
+  authApi,
+} from '@/lib/api/auth';
+import { useAuthStore } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const ssoSignIn = useAuthStore((s) => s.signIn);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isFormPending, setIsFormPending] = useState(false);
@@ -50,21 +49,36 @@ export default function LoginPage() {
       return;
     }
     setIsFormPending(true);
-    // TODO(W13 F5): replace with real POST /auth/login self-register endpoint
-    // call. Error.code → toast variant per ApiError envelope (invalid_cred /
-    // unverified_email / locked_account) per checklist F3.7.
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsFormPending(false);
-    toast.info(F5_PENDING_MESSAGE);
+    try {
+      const response = await authApi.login({ email, password });
+      // W13 D5 cont — minimal localStorage persistence so subsequent protected
+      // calls can lift the bearer once getBearer() learns about session-token
+      // mode (CO_F5d-cont follow-up). For now, stored as ground truth even if
+      // not yet consumed by api-client.ts.
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, response.access_token);
+      }
+      toast.success(`Welcome back, ${response.user.display_name}!`);
+      router.push('/chat');
+    } catch (err) {
+      handleAuthError(err, 'Sign in failed.');
+    } finally {
+      setIsFormPending(false);
+    }
   }
 
   async function handleSsoClick() {
     setIsSsoPending(true);
-    // TODO(W13 F5): replace with useAuthStore.signIn() → MSAL redirect cascade
-    // (existing W7 baseline ties cleanly via F5 batch).
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSsoPending(false);
-    toast.info(F5_PENDING_SSO_MESSAGE);
+    try {
+      await ssoSignIn();
+      toast.success('Signed in with Microsoft.');
+      router.push('/chat');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error('Microsoft sign-in failed.', { description: message });
+    } finally {
+      setIsSsoPending(false);
+    }
   }
 
   const anyPending = isFormPending || isSsoPending;
@@ -167,3 +181,24 @@ export default function LoginPage() {
   );
 }
 
+function handleAuthError(err: unknown, fallbackMessage: string): void {
+  if (err instanceof ApiError) {
+    const code = err.code;
+    if (code === AuthErrorCodes.INVALID_CREDENTIALS) {
+      toast.error('Email or password is incorrect.', {
+        description: 'Check your credentials and try again.',
+      });
+    } else if (code === AuthErrorCodes.EMAIL_NOT_VERIFIED) {
+      toast.error('Verify your email first.', {
+        description: err.actionableHint ?? 'Check your inbox or resend the code.',
+      });
+    } else {
+      toast.error(err.message, {
+        description: err.actionableHint ?? undefined,
+      });
+    }
+    return;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  toast.error(fallbackMessage, { description: message });
+}
