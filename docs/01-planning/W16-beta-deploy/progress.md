@@ -104,14 +104,32 @@ Per W15 retro decision empirical signal 9 cumulative occurrences + W16 D1 active
 - **Decision D.2** — F5.5 full Langfuse SDK integration(unblocks ADR-0020 frontend Session 2 Drift #3 V6 9-stage)
 - **Decision E.1** — single session F5.1-F5.5 ambitious(per V2 same-day collapse precedent W12-W15)
 
-### F5 implementation sequence(ordered by dependency)
+### F5 implementation sequence(ordered by dependency)— ✅ ALL COMPLETED 2026-05-10
 
-1. **F5.1** KB documents/chunks listing(no dep)
-2. **F5.2** KB metadata PATCH(no dep)
-3. **F5.3** KB-level reindex + DELETE annotate(no dep)
-4. **F5.4** eval/run + eval/shootout(heavy;wires existing `eval/runner.py` + `eval/ragas_runner.py`)
-5. **F5.5** debug/trace Langfuse(unblocks Drift #3 frontend Session 2)
-6. **F5.x.2** NEXT_PUBLIC_LANGFUSE_URL env var(F5.5 dependency satisfied)
+| # | Deliverable | Commit | Tests | Status |
+|---|---|---|---|---|
+| 0 | F5 partial-active flip governance prep | `61eba52` | — | ✅ |
+| 1 | F5.1 KB documents/chunks listing(CO_F3a)| `507cbff` | 10 passed | ✅ |
+| 2 | F5.2 KB name+description PATCH(CO_F3b;Decision A.1 NEW endpoint)| `cb30e8e` | 6 passed | ✅ |
+| 3 | F5.3 KB-level reindex + DELETE annotate(CO_F3c;Decision B.1 defer Track A)| `5a357e7` | 4 passed | ✅ |
+| 4 | F5.4 eval/run + eval/shootout(CO_W15_F1;Decision C.1 + W17+ RAGAs deferral)| `4046b24` | 9 passed | ✅ |
+| 5 | F5.5 debug/trace Langfuse(CO_W15_F2;Decision D.2 full SDK)+ F5.x.2 env var + skeleton fixups | `1dbcdf3` | 6 passed | ✅ |
+
+### F5 closeout snapshot 2026-05-10
+
+- **6 commits landed**(governance + 5 implementation)
+- **35 NEW tests passed**(10 F5.1 + 6 F5.2 + 4 F5.3 + 9 F5.4 + 6 F5.5)
+- **Full backend regression**:**578 passed + 7 skipped**(was 553 baseline post Phase 4 P1;+25 NEW;0 regressions including 2 skeleton-test fixups for stub-asserting tests cascaded with F5.4 + F5.5 implementation)
+- **ruff**:All checks passed across all touched files
+- **Drift #3 frontend Session 2 unblocked** — ADR-0020 V6 6→9 stage `PipelineStageCollapsible` can now wire to `GET /debug/trace/{trace_id}`(F5.5 closure cascading benefit per audit-W15-d5-vs-spec.md §10)
+
+### W17+ deferred items captured in code
+
+- F5.4 RAGAs 4-metric full integration(faithfulness / answer_relevancy / context_precision / context_recall)— `backend/eval/orchestrator.py` docstring
+- F5.4 voyage/zeroentropy/azure shootout via endpoint — point to `scripts/run_reranker_shootout.py` CLI driver
+- F5.3 Azure cleanup(index drop + Blob container drop)on DELETE — Decision B.1 deferral note in `routes/kb.py:delete_kb` docstring
+- F5.x.1 eval-set-v1.yaml finalization — pending Beta cohort real-query collection per Q6 + Q15 trigger
+- F5.4 background task pattern(FastAPI BackgroundTasks)— scale escape hatch if synchronous eval response exceeds Beta UX tolerance
 
 ### Carry-overs preserved unchanged(F1-F4 still pending Track A trigger)
 
