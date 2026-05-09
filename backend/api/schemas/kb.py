@@ -28,6 +28,18 @@ class KbCreate(BaseModel):
     config: KbConfig = Field(default_factory=KbConfig)
 
 
+class KbMetadataPatch(BaseModel):
+    """PATCH /kb/{kb_id} input — KB metadata partial update (W16 F5.2 CO_F3b).
+
+    Per Decision A.1 (separation of concern): metadata = name + description;
+    config remains in PATCH /kb/{kb_id}/settings (KbConfig-only). All fields
+    Optional for partial PATCH (omitted = preserve existing value).
+    """
+
+    name: str | None = None
+    description: str | None = None
+
+
 class FailureRecord(BaseModel):
     doc_id: str
     error: str

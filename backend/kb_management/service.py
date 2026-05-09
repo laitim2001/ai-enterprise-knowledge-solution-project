@@ -44,6 +44,12 @@ class KBService:
     async def update_config(self, kb_id: str, config: KbConfig) -> KbStatus:
         return await self._backend.update_config(kb_id, config)
 
+    async def update_metadata(
+        self, kb_id: str, name: str | None = None, description: str | None = None,
+    ) -> KbStatus:
+        """W16 F5.2 CO_F3b — partial PATCH of name + description (Decision A.1)."""
+        return await self._backend.update_metadata(kb_id, name=name, description=description)
+
 
 @lru_cache(maxsize=1)
 def get_kb_service() -> KBService:

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from api.schemas.kb import KbConfig, KbCreate, KbStatus
+from api.schemas.kb import KbConfig, KbCreate, KbMetadataPatch, KbStatus
 from kb_management import KBAlreadyExistsError, KBNotFoundError, KBService, get_kb_service
 
 router = APIRouter()
@@ -69,6 +69,28 @@ async def update_kb_settings(kb_id: str, config: KbConfig, service: KbServiceDep
     try:
         updated = await service.update_config(kb_id, config)
         return updated.config
+    except KBNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch("/kb/{kb_id}", response_model=KbStatus)
+async def update_kb_metadata(
+    kb_id: str, patch: KbMetadataPatch, service: KbServiceDep,
+) -> KbStatus:
+    """W16 F5.2 CO_F3b — partial PATCH of KB name + description fields.
+
+    Per Decision A.1 (separation of concern): this endpoint covers metadata
+    only (name + description); KbConfig settings remain in
+    `PATCH /kb/{kb_id}/settings`. All fields Optional — omitted = preserve
+    existing value (true partial PATCH semantics).
+    """
+    try:
+        return await service.update_metadata(
+            kb_id, name=patch.name, description=patch.description,
+        )
     except KBNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

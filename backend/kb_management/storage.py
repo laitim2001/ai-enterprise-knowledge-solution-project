@@ -31,6 +31,10 @@ class KBStorageBackend(Protocol):
 
     async def update_config(self, kb_id: str, config: KbConfig) -> KbStatus: ...
 
+    async def update_metadata(
+        self, kb_id: str, name: str | None = None, description: str | None = None,
+    ) -> KbStatus: ...  # W16 F5.2 CO_F3b — partial PATCH name+description
+
 
 class InMemoryKBBackend:
     """Process-local KB store. W1 development only — not durable across restart."""
@@ -61,5 +65,25 @@ class InMemoryKBBackend:
     async def update_config(self, kb_id: str, config: KbConfig) -> KbStatus:
         kb = await self.get(kb_id)
         updated = kb.model_copy(update={"config": config})
+        self._kbs[kb_id] = updated
+        return updated
+
+    async def update_metadata(
+        self, kb_id: str, name: str | None = None, description: str | None = None,
+    ) -> KbStatus:
+        """W16 F5.2 CO_F3b — partial PATCH of name + description fields only.
+
+        Omitted fields (None) preserve existing values. Per Decision A.1
+        separation of concern — config update goes through update_config.
+        """
+        kb = await self.get(kb_id)
+        updates: dict = {}
+        if name is not None:
+            updates["name"] = name
+        if description is not None:
+            updates["description"] = description
+        if not updates:  # both None — no-op (still return current state)
+            return kb
+        updated = kb.model_copy(update=updates)
         self._kbs[kb_id] = updated
         return updated
