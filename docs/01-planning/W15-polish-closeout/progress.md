@@ -160,7 +160,7 @@ $ grep -r "\[oklch" frontend/app/debug/ frontend/lib/api/debug.ts
 
 ### Commit
 
-- `<hash>` feat(frontend,docs): W15 D2 F2 V6 Debug View implementation + 4 deviations + admin shell wrap + custom Collapsible
+- `00b2262` feat(frontend,docs): W15 D2 F2 V6 Debug View implementation + 4 deviations + admin shell wrap + custom Collapsible
 
 ---
 
