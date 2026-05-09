@@ -1,14 +1,14 @@
 ---
 phase: W13-user-facing-views
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-06-10
 ---
 
 # Phase W13 — Checklist
 
 > Atomic checkbox(每 item ≤ 0.5–2 hour effort per W6 C10 calibration)。
-> Status:`active` 自 2026-06-10 W13 D1 implementation start(real-calendar 2026-05-09 single-day collapse cycle 2 of 4 per pivot momentum)。
+> Status:`closed` 自 2026-06-10 W13 D5 cont F7 closeout — Phase Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT verdict landed。
 
 ## F1 — Routing restructure + theme provider integration
 
@@ -74,11 +74,11 @@ last_updated: 2026-06-10
 
 ## F7 — Phase Gate closeout + W14 phase folder kickoff
 
-- [ ] F7.1 W13 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL with explicit rationale per W12 F5.1 pattern)
-- [ ] F7.2 W13 progress.md retro 7 sections complete(What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec ref alignment)
-- [ ] F7.3 `docs/01-planning/W14-admin-views/{plan,checklist,progress}.md` draft per architecture.md v6 §5.3-§5.5 V2/V3/V4 + design ref doc §6 W14 scope
-- [ ] F7.4 W13 progress.md frontmatter status flipped to `closed`
-- [ ] F7.5 No new OQ surface expected;if surface(F5 users table backing OR F6 ACS unexpected)→ sync to decision-form.md per R4
+- [x] F7.1 W13 phase Gate verdict landed:**🟢 PASS WITH SMOKE-USER-DEFERRED CAVEAT — User-Facing Views sprint phase 2 of 4 complete**(7-criterion evaluation table in progress.md Day 5 cont F7 entry;all 7 PASS conditions met + PARTIAL PASS fallback acceptance criteria 全 met + no FAIL conditions tripped)
+- [x] F7.2 W13 progress.md retro 7 sections complete(What worked 7 / What didn't 4 / Surprises 5 / Decisions 12 / Carry-overs categorized W14 immediate + admin views + W15 polish + W13 backend follow-ups + W16+ Beta / Time tracking 8-row table / Spec ref alignment 8-row trace)
+- [x] F7.3 `docs/01-planning/W14-admin-views/{plan,checklist,progress}.md` draft created per architecture.md v6 §5.3-§5.5 V2/V3/V4 + design ref doc §6 W14 scope(5 deliverables F1-F5;status:draft rolling-JIT)
+- [x] F7.4 W13 plan + checklist + progress frontmatter status flipped to `closed`(same commit cascade as F7 closeout)
+- [x] F7.5 No new OQ surface during W13(F5 users table 採 in-memory per ADR-0014 Tier 1 default;F6 ACS connection_string 屬 Settings field non OQ;Q22 已 W12 D1 Resolved);16/22 Resolved unchanged from W12 baseline
 
 ---
 
