@@ -186,9 +186,39 @@ User chose **(A)**:keep `psycopg` + defer local Postgres-path verification(CRUD 
 
 ---
 
-## Day 5 → Day 6 — _(implementation entries appended below as work lands)_
+## Day 5 — F3: RAGAs 4-metric integration into /eval/run + /eval/shootout(2026-05-10, same-calendar-day)
 
-_(Next:F3 RAGAs 4-metric integration → F5 a11y/dark-mode browser smoke V1-V9 → F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2;same-calendar-day collapse continuing.)_
+> F3 verdict = **PASS (structural; live-verify deferred)** — landed `7f446fb` `feat(eval,api)`. C06 Eval Framework + C08 API Gateway. **CO_W15_F1_eval_set_v1 stays OPEN** (F3.4 finding).
+
+### What landed
+
+- **NEW `backend/eval/ragas_evaluator.py`** — `make_ragas_evaluator(settings) -> Callable[[RagasQuerySample], dict] | None` + `patch_for_gpt5(client)`. Extracted from `scripts/run_ragas_eval.py`'s `_make_real_evaluator` + `_patch_for_gpt5` so `/eval/*` can reuse them (`backend/` can't import from `scripts/`). The evaluator builds the 4 RAGAs 0.4.3 `collections` metrics (`Faithfulness` / `AnswerRelevancy` / `ContextPrecision` / `ContextRecall`) bound to the Azure OpenAI judge (`azure_openai_deployment_llm_judge`, same model as the CRAG grader) + embeddings (Q19 `text-embedding-3-large` for AnswerRelevancy cosine sim); `patch_for_gpt5` is the GPT-5-reasoning-judge shim (`max_tokens → max_completion_tokens` floor 4096 — so faithfulness statement-extraction JSON doesn't truncate — + drop `temperature`/`logprobs`; patches the live instance so `instructor.from_openai`'s `isinstance` check still matches). The sync `RagasRunner` contract is preserved (the async `ascore` calls are bridged via `asyncio.run` in a worker thread). **Returns `None` when no Azure judge key** → callers fall back to the Recall@5-only `EvalReport` (same shape as the existing `_engine_or_503` 503-without-Azure pattern). `scripts/run_ragas_eval.py` now re-exports `patch_for_gpt5` (back-compat alias `_patch_for_gpt5` — `test_run_ragas_eval_patch.py` unchanged) and `_make_real_evaluator` is a thin wrapper of `make_ragas_evaluator`.
+- **`backend/eval/orchestrator.py`** — `run_eval_pipeline` gains optional `synthesizer` + `ragas_evaluator` (+ `judge_deployment`). NEW `build_ragas_samples(eval_set_path, engine, synthesizer, kb_id, max_main_queries)` — runs the RAG pipeline per main (non-OOS) query (`engine.retrieve(query, kb_id, top_k=5)` per ADR-0018 → `synthesizer.synthesize(question, chunks).answer`) to assemble `RagasQuerySample`s. When `synthesizer` AND `ragas_evaluator` are both supplied: build samples → `RagasRunner(judge_deployment, ragas_evaluator).evaluate(samples)` → `EvalReport.faithfulness` ← `faithfulness` mean, `EvalReport.correctness` ← `answer_relevancy` mean (**「Answer-Correctness」approximated by RAGAs answer-relevancy** — proper `answer_correctness` needs SME reference answers per Q14, which the eval-set doesn't carry yet, see F3.4); per-query RAGAs errors + below-`0.70`-attention-threshold scorers → `failed_queries`. `image_association` / `crag_trigger_rate` / `avg_cost_per_query_usd` stay `0.0` (custom image-text-correlation metric + CRAG-loop integration + cost-table — out of F3 scope; documented `_metrics_deferred_note` in `failed_queries`). When `synthesizer`/`ragas_evaluator` are `None` → Recall@5-only report + `_ragas_not_run` note. **The W16 F5.4「RAGAs deferred to W17+」placeholder is gone.**
+- **`backend/api/routes/eval.py`** — `_ragas_wiring(request) -> (synthesizer, ragas_evaluator, judge_deployment)` reads `request.app.state.synthesizer` (None unless server booted with Azure keys) + `make_ragas_evaluator(get_settings())` (None unless Azure judge key) and threads them through `/eval/run` + `/eval/shootout`'s `run_eval_pipeline` calls — synchronous, bounded by the existing `max_main_queries` cap (no job-id shape was introduced W16, so synchronous-with-cap stays). 502 on eval failure / 503 on no `RetrievalEngine` unchanged. Module docstring records the **F3.4 finding** (eval-set ids: `eval-set-v0` real + `eval-set-v1-draft` WIP; `docs/eval-set-v1.yaml` final does NOT exist).
+- **NEW `backend/tests/test_eval_ragas.py`** — 4 cases: `make_ragas_evaluator` → `None` without Azure key (always runs); `run_eval_pipeline` Recall@5-only fallback shape (`faithfulness == 0.0`, `correctness is None`, `_ragas_not_run` + `_metrics_deferred_note` in `failed_queries`); `run_eval_pipeline` populates RAGAs metrics with a stub `ragas_evaluator` + fake engine + fake synthesizer (`faithfulness == 0.92`, `correctness == 0.88`); below-threshold queries surface in `failed_queries` (mixed-score stub). **The stub `ragas_evaluator` IS the LLM-judge boundary — no live Azure in CI.** Existing `test_orchestrator.py` / `test_eval_endpoints.py` / `test_ragas_runner.py` / `test_run_ragas_eval_patch.py` / `test_eval_runner.py` unchanged + pass.
+
+### F3.4 finding — eval-set-v1
+
+`docs/eval-set-v1.yaml` (final) does **NOT** exist. `docs/eval-set-v1-draft.yaml` is the WIP. Finalizing v1 = adding Chris's SME **reference answers** per Q14 — without those, RAGAs `answer_correctness` proper can't be scored (hence the answer-relevancy approximation for `EvalReport.correctness`). **CO_W15_F1_eval_set_v1 stays OPEN** pending the SME label cascade. No ground truth fabricated (per the plan F3.4 directive). The orchestrator + routes happily run RAGAs against `eval-set-v0` (the validated subset) when an Azure judge is available.
+
+### 🚧 Deferred — F3.5b RAGAs live-verify
+
+The structural integration is complete + CI-tested at the LLM-judge boundary, but the **real judge run** (`scripts/run_ragas_eval.py` or `POST /eval/run` against a populated Azure index + judge) needs Azure OpenAI keys + a populated `ekp-kb-drive-v1` index — **deferred to a non-proxy env / personal Azure dev tier (same CO17 pattern as F1.5b)**. So F3, like F1, is "PASS structural / live-verify deferred".
+
+### Verification
+
+`ruff check` clean on `backend/eval/` + `backend/api/routes/eval.py` + the new test (the `scripts/run_ragas_eval.py` E402 + `import json` orphan are pre-existing — `scripts/` isn't in the `backend/pyproject.toml` ruff scope; not touched). `mypy -p eval` — my files add only an `import yaml` `import-untyped` in `orchestrator.py` (consistent with `runner.py` / `ragas_runner.py`; no `types-PyYAML` installed); the prior `ragas_evaluator.py:55` `int()` overload error fixed by matching the original untyped-`**kwargs` shape. **Backend pytest 613 passed / 11 skipped** (was 609/11 — +4 new `test_eval_ragas` cases).
+
+### Day 5 commits
+
+- **`7f446fb`** `feat(eval,api)` — W17 F3 RAGAs integration (5 files; + NEW `backend/eval/ragas_evaluator.py` + `backend/tests/test_eval_ragas.py`)
+- **`(this docs commit)`** `docs(planning)` — W17 checklist F3.1–F3.6 ticked (verdict PASS structural / F3.5b 🚧 / F3.4 finding) + Day-5 progress entry + plan §7 changelog D5
+
+---
+
+## Day 6 — _(implementation entries appended below as work lands)_
+
+_(Next:F5 a11y/dark-mode browser smoke V1-V9 → F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
 
 ---
 
