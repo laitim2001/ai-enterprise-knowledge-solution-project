@@ -121,23 +121,25 @@ async def retrieve(
 
 ## Implementation Deliverables
 
+> **Status（2026-05-10 closeout）**：ADR 文件 + README = `1ea08b0`；implementation = `9582fa4`；audit §10 帳本 #25-26 + 偏差 #5 FULLY CLOSED + 本 checkbox tick + W16 progress = closeout commit。**593 passed + 7 skipped**（was 583+7；0 regressions）；ruff clean；`tsc --noEmit` EXIT_CODE=0；eslint clean on changed files。
+
 ### Backend
-- [ ] `backend/retrieval/hybrid.py` — `HybridSearcher.search()` 加 `mode: Literal["hybrid","vector","fulltext"]="hybrid"`；payload 按 mode 組裝（hybrid 不變 / vector = `search="*"` + vectorQueries / fulltext = `search=query_text` + `queryType="simple"`）
-- [ ] `backend/retrieval/retrieval_engine.py` — `RetrievalEngine.retrieve()` 加 `mode` + `rerank: bool=True`；fulltext mode 跳過 embed；rerank=False 跳過 reranker
-- [ ] `backend/api/schemas/retrieval_test.py` — NEW：`RetrievalTestRequest` / `RetrievalTestChunk` / `RetrievalTestResult`
-- [ ] `backend/api/routes/retrieval_test.py` — NEW：`POST /kb/{kb_id}/retrieval-test`（404 / 503 / happy path；score_threshold 過濾 vector/hybrid only）
-- [ ] `backend/api/server.py` — register `retrieval_test.router`
+- [x] `backend/retrieval/hybrid.py`（`9582fa4`）— `HybridSearcher.search()` 加 `mode: Literal["hybrid","vector","fulltext"]="hybrid"`；payload 按 mode 組裝（hybrid 不變 = search + vectorQueries + semantic config / vector = `search="*"` + vectorQueries / fulltext = `search=query_text` + `queryType="simple"`）
+- [x] `backend/retrieval/retrieval_engine.py`（`9582fa4`）— `RetrievalEngine.retrieve()` 加 `mode` + `rerank: bool=True`；fulltext mode 跳過 embed；rerank=False 跳過 reranker；default 不變 → `/query` 主流程未動
+- [x] `backend/api/schemas/retrieval_test.py` — NEW（`9582fa4`）：`RetrievalTestRequest` / `RetrievalTestChunk` / `RetrievalTestResult`
+- [x] `backend/api/routes/retrieval_test.py` — NEW（`9582fa4`）：`POST /kb/{kb_id}/retrieval-test`（404 / 503 / 502 / happy path；score_threshold 過濾 vector/hybrid only；reuse W16 F5.1 `_engine_or_503` / `Depends(get_kb_service)` pattern）
+- [x] `backend/api/server.py`（`9582fa4`）— register `retrieval_test.router`
 
 ### Frontend
-- [ ] `frontend/lib/api/retrieval-test.ts` — NEW typed client
-- [ ] `frontend/app/admin/kb/[id]/page.tsx` — `RetrievalTab` 重寫（mode radio + Top K slider + Score Threshold slider + Rerank toggle + Reranker Select + ranked preview；「end-to-end query」子區保留現有流程 + CRAG toggle + LLM selector）
-- [ ] `frontend/lib/api/query.ts` — `QueryRequest` interface 補 optional `llm_model?` / `enable_crag?`
+- [x] `frontend/lib/api/retrieval-test.ts` — NEW typed client（`9582fa4`）：`RetrievalMode` / `RetrievalTestRequest` / `RetrievalTestChunk` / `RetrievalTestResult`
+- [x] `frontend/app/admin/kb/[id]/page.tsx`（`9582fa4`）— `RetrievalTab` 重寫成兩個 panel：「Retrieval test」（mode Select + Top K Slider + Score Threshold Slider（fulltext 時 disabled）+ Rerank Switch（Cohere v4.0-pro locked label）→ ranked chunks + scores + timings；用 `useMutation`）+「End-to-end query」（query textarea + CRAG Switch + LLM Select（gpt-5.5 / gpt-5.4-mini）→ synthesis + citations；reuse `/query/stream`）。Reranker dropdown 只列 Cohere v4.0-pro + "None"（Voyage/ZeroEntropy dropped per ADR-0012；§5.5.4 not amended）
+- [x] ~~`frontend/lib/api/query.ts` — `QueryRequest` interface 補 optional `llm_model?` / `enable_crag?`~~ — **already present**（W3+ 已加；無需改動）
 
 ### Tests
-- [ ] `backend/tests/test_hybrid_search.py`（或新檔）— mode 參數 payload shape：hybrid（不變）/ vector（`search="*"`、有 vectorQueries、無 semantic config）/ fulltext（有 search text、無 vectorQueries、`queryType="simple"`）
-- [ ] `backend/tests/test_retrieval_test_endpoint.py` — NEW：404（KB 不存在）/ 503（engine absent）/ happy path（mode 傳遞 + score_threshold 過濾 + reranked flag）
-- [ ] full backend regression + ruff + frontend `tsc --noEmit` + eslint changed files
+- [x] `backend/tests/test_retrieval.py`（非 `test_hybrid_search.py` — 實際檔名）+2 cases（`9582fa4`）— mode='vector' payload shape（`search="*"` + vectorQueries，無 semantic config）/ mode='fulltext' payload shape（`queryType="simple"`，無 vectorQueries）；hybrid default 不變由現有 `test_hybrid_search_payload_shape_matches_spec` 覆蓋
+- [x] `backend/tests/test_retrieval_test_endpoint.py` — NEW 8 cases（`9582fa4`）：happy path（mode+rerank forwarded）/ mode+rerank-off forwarded / score_threshold filters vector（ranks re-numbered）/ threshold ignored for fulltext / 404（engine not called）/ 503（engine absent）/ 502（engine raises）/ 422（empty query）
+- [x] full backend regression（593 passed + 7 skipped，0 regressions）+ ruff clean（`server.py` 18 pre-existing E402 from truststore-inject pattern NOT touched）+ frontend `tsc --noEmit` EXIT_CODE=0 + eslint clean on changed files；RetrievalTab interactive browser smoke 受限（local dev server's Azure backend 無 seeded KB → KB-detail page 渲染唔到個 tab；`/admin/kb` list 渲染正常，page.tsx module loads）
 
 ### Docs / governance
-- [ ] `docs/adr/README.md` — index 加 ADR-0021 row；next-NNNN 註腳更新（0021 used → cookie migration / KB persistent backing 候選順延）
-- [ ] `docs/02-architecture/audit-W15-d5-vs-spec.md` — §10 帳本 append + 偏差 #5 → FULLY CLOSED（5/5）+ closure verdict 更新 + ADR-0017 cumulative count 確認（本改動無 R8）
+- [x] `docs/adr/README.md` — index 加 ADR-0021 row + next-NNNN 註腳更新（0021 landed → next available 0022；cookie migration / KB persistent backing 候選順延 0022/0023）
+- [x] `docs/02-architecture/audit-W15-d5-vs-spec.md` — §10 帳本 #25-26 append + 偏差 #5 → FULLY CLOSED（5/5 major drifts closed）+ closure verdict 更新 + ADR-0017 cumulative count 確認（本改動無 install 新 dependency，R8 count 仍 4）+ handoff section update
