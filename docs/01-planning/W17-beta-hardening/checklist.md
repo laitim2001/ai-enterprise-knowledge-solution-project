@@ -12,9 +12,9 @@ last_updated: 2026-05-10
 
 ## F0 — ADRs(H1/H2 gate — must land before F1/F2 implementation)
 
-- [ ] F0.1 NEW `docs/adr/0022-auth-transport-hardening.md`(httpOnly cookie + CSRF double-submit + `/auth/refresh` rotation;dual-path `get_current_user`;amends ADR-0014 transport layer)— Status `Accepted`
-- [ ] F0.2 NEW `docs/adr/0023-kb-manager-persistent-backing.md`(Postgres via `psycopg`;reuse docker-compose postgres + dedicated `ekp` DB;`PostgresKBBackend` satisfies `KBStorageBackend` Protocol;in-memory fallback when `DATABASE_URL` empty)— Status `Accepted`
-- [ ] F0.3 `docs/adr/README.md` index — add ADR-0022 + ADR-0023 rows;「Next NNNN」→ `0024`
+- [x] F0.1 NEW `docs/adr/0022-auth-transport-hardening.md`(httpOnly cookie + CSRF double-submit + `/auth/refresh` rotation;dual-path `get_current_user`;amends ADR-0014 transport layer)— Status `Accepted` — `6edd9ef`
+- [x] F0.2 NEW `docs/adr/0023-kb-manager-persistent-backing.md`(Postgres via `psycopg`;reuse docker-compose postgres + dedicated `ekp` DB;`PostgresKBBackend` satisfies `KBStorageBackend` Protocol;in-memory fallback when `DATABASE_URL` empty)— Status `Accepted` — `6edd9ef`
+- [x] F0.3 `docs/adr/README.md` index — add ADR-0022 + ADR-0023 rows;「Next NNNN」→ `0024` — `6edd9ef`
 
 ## F1 — Postgres persistent backing for KB Manager + users_repo(per ADR-0023)
 
@@ -47,12 +47,12 @@ last_updated: 2026-05-10
 - [ ] F3.5 Tests — NEW `backend/tests/test_eval_ragas.py`(mock the LLM-judge boundary — no live Azure OpenAI in CI;assert score plumbing + EvalReport shape + failed_queries population);existing eval tests pass
 - [ ] F3.6 V5 Eval Console — verify in browser smoke(F5)that the 4-metric cards + Failed queries table render real RAGAs data(no frontend code change expected — consumes `EvalReport` already)
 
-## F4 — Frontend hardening bundle
+## F4 — Frontend hardening bundle — `9ee636c`
 
-- [ ] F4.1 `frontend/app/admin/kb/[id]/page.tsx` Documents tab — wire `GET /kb/{id}/documents`(real per W16 F5.1.1;add `frontend/lib/api/documents.ts` typed client if absent → `DocumentSummary`);render doc list(title / doc_id / chunk count etc);**drop the stale「Backend status: GET /kb/{id}/documents — W2 listing implementation (501 stub)」copy**;empty state preserved
-- [ ] F4.2 `frontend/app/admin/page.tsx` — remove unused `CardTitle` import(`npm run lint` green globally — Karpathy §1.3 only this orphan)
-- [ ] F4.3 `frontend/.env.example` — add `NEXT_PUBLIC_LANGFUSE_URL=`(commented Beta-production endpoint placeholder);verify `frontend/app/debug/[traceId]/page.tsx` reads it(already does via `LANGFUSE_FALLBACK_BASE` per ADR-0020 frontend Session 2);CO_W15_F2_langfuse_url → CLOSED
-- [ ] F4.4 Cohere reranker naming canonicalization — canonical model identifier = `Cohere-rerank-v4.0-pro`(actual Azure Marketplace deployment name per `.env`);align `backend/storage/settings.py` `cohere_rerank_model` default + `backend/.env.example` to it;keep human display label `"Cohere v4.0-pro"` for UI(`frontend/app/admin/kb/[id]/page.tsx` RetrievalTab + V5 Eval Console);grep-verify no stray code mismatch(`cohere-rerank-v4-pro` / unqualified `rerank-v4.0-pro` in code);ADR / audit doc historical references left per anti-pattern「keep historical narrative」
+- [x] F4.1 `frontend/app/admin/kb/[id]/page.tsx` Documents tab — wired `GET /kb/{id}/documents`(real per W16 F5.1.1);NEW `frontend/lib/api/documents.ts`(`DocumentSummary` + `documentsApi.list`);renders a doc table(title + tags / format / chunks / last-indexed / doc_id)via `useQuery`;loading skeleton + error banner + empty-index Upload prompt;**dropped the stale「Backend status: GET /kb/{id}/documents — W2 listing implementation (501 stub)」copy**(`BackendStubNote` component itself preserved — still used by ChunksTab);top-of-file docstring F3.2 line updated to reflect W17 wiring — `9ee636c`
+- [x] F4.2 `frontend/app/admin/page.tsx` — removed unused `CardTitle` import;`npm run lint` now green globally(it was the only ESLint error)— `9ee636c`
+- [x] F4.3 `NEXT_PUBLIC_LANGFUSE_URL` — **already present** in `.env.example`(line ~101,added W16 F5.x.2 `1dbcdf3`);`frontend/app/debug/[traceId]/page.tsx` reads it via `LANGFUSE_FALLBACK_BASE`(ADR-0020 Session 2);effectively closed — no change needed;CO_W15_F2_langfuse_url → CLOSED
+- [x] F4.4 Cohere reranker naming canonicalization — canonical model identifier = `Cohere-rerank-v4.0-pro`(Azure Marketplace deployment name,matches the live `.env`);aligned `backend/storage/settings.py` `cohere_rerank_model` default + `backend/retrieval/reranker/cohere.py` default + docstrings + `.env.example` `COHERE_RERANK_MODEL`;human display label `"Cohere v4.0-pro"` kept for UI;grep-verified no stray code mismatch(`cohere-rerank-v4-pro` / unqualified `rerank-v4.0-pro` — empty);ADR / audit doc historical references left per anti-pattern「keep historical narrative」— `9ee636c`
 
 ## F5 — a11y + dark-mode verification pass
 

@@ -65,14 +65,39 @@ NOT addressed(stay W16 / W18+ / Tier 2):CO16 Track A IT cred(W16 F1)/ CO19 25% r
 
 ### Day 0 commits
 
-- **`(this docs commit)`** `docs(planning)` — W17-beta-hardening phase folder kickoff(plan + checklist + progress.md Day 0;rolling-JIT per CLAUDE.md §10 R1)
-- **`(ADR commit)`** `docs(adr)` — ADR-0022 auth-transport hardening + ADR-0023 KB Manager persistent backing + README index(next NNNN → 0024)
+- **`86a4403`** `docs(planning)` — W17-beta-hardening phase folder kickoff(plan + checklist + progress.md Day 0;rolling-JIT per CLAUDE.md §10 R1)
+- **`6edd9ef`** `docs(adr)` — ADR-0022 auth-transport hardening(`Accepted`)+ ADR-0023 KB Manager persistent backing(`Accepted`)+ README index(next NNNN → 0024) — **F0 complete**(H1/H2 gate cleared)
 
 ---
 
-## Day 1 → Day 6 — _(implementation entries appended below as work lands)_
+## Day 1 — F4 frontend hardening bundle(2026-05-10)
 
-_(W17 D1+ entries:F0 ADRs → F1 Postgres → F2 cookie → F3 RAGAs → F4 frontend bundle → F5 a11y/dark-mode → F6 Vitest → F7 closeout;each commit ↔ Day-N entry per R2;same-day collapse possible per W12-W15 calibration — the `start_date`/`end_date` window is not a commitment.)_
+> Same-calendar-day as Day 0 — F4 is the「trivials first」start per the user directive「(A) 直接開工(F4 trivials 先,然後 F1)」。F0 ADRs landed Day 0;F1 Postgres starts after F4.
+
+### F4 — landed `9ee636c` `feat(frontend,api)`
+
+- **F4.1** — KB-detail Documents tab(`frontend/app/admin/kb/[id]/page.tsx`)now calls the real `GET /kb/{id}/documents`(backend already implemented W16 F5.1.1 / CO_F3a — Azure AI Search chunk aggregation by doc_id;the「501 stub」was stale *frontend* copy, not a missing backend route — surfaced upfront per the Day-0 pre-kickoff exploration). NEW `frontend/lib/api/documents.ts`(`DocumentSummary` interface + `documentsApi.list(kbId)`). `DocumentsTab` rewritten:`useQuery(['kb', kb_id, 'documents'])` → `DocumentsTable`(title + tags / format Badge / chunks tabular-nums / last-indexed slice(0,10) / doc_id mono)+ `DocumentsSkeleton` loading + destructive error banner + empty-index Upload prompt(the old「Add a document」CTA, now gated on `data.length === 0`). `BackendStubNote` component preserved(still used by ChunksTab). Top-of-file docstring F3.2 line updated to reflect the W17 wiring.
+- **F4.2** — `frontend/app/admin/page.tsx`:removed the unused `CardTitle` import → `npm run lint` now **green globally**(it was the only ESLint error;Karpathy §1.3 surgical — only this orphan).
+- **F4.3** — `NEXT_PUBLIC_LANGFUSE_URL` is **already** in `.env.example`(line ~101,added W16 F5.x.2 `1dbcdf3`);`frontend/app/debug/[traceId]/page.tsx` already reads it via `LANGFUSE_FALLBACK_BASE`(ADR-0020 Session 2). No change needed — effectively closed. **CO_W15_F2_langfuse_url → CLOSED.**
+- **F4.4** — Cohere reranker naming canonicalized to `Cohere-rerank-v4.0-pro`(the Azure Marketplace deployment name — matches the live `.env` `COHERE_RERANK_MODEL`, which is what actually works per the W16 backend smoke):aligned `backend/storage/settings.py` `cohere_rerank_model` default + `backend/retrieval/reranker/cohere.py` `model` default + both docstrings + `.env.example` `COHERE_RERANK_MODEL`. Human display label `"Cohere v4.0-pro"` kept for UI. Grep-verified no stray `rerank-v4.0-pro`(unqualified)/ `cohere-rerank-v4-pro` in code(empty). ADR / audit-doc historical `cohere-v4.0-pro` references left per anti-pattern「keep historical narrative」. Note:Path B(direct `api.cohere.com`)would need a Cohere-native model name — flagged in the `settings.py` comment, out of W17 scope.
+- **Verification**:`tsc --noEmit` clean;`next lint`(whole frontend)green;`ruff check` clean on changed backend files;mypy unaffected(string-literal + docstring changes only — no type changes). Browser smoke of the Documents tab deferred to F5(needs a local backend + seeded KB + a doc actually indexed;the W16 seeded KB had 0 in-memory docs but the Azure index `ekp-kb-drive-v1` has chunks → the real `list_documents` would return the AP/AR/FA manuals — to be confirmed in F5).
+
+### Carry-overs closed by F4
+
+- CO_W15_F2_langfuse_url → CLOSED(F4.3 — already-present env var verified)
+- `admin/page.tsx` `CardTitle` lint orphan(W16 progress Day 1 note)→ CLOSED(F4.2)
+- Cohere reranker naming inconsistency(session-start.md §11)→ CLOSED(F4.4)
+
+### Day 1 commits
+
+- **`9ee636c`** `feat(frontend,api)` — W17 F4 Documents-tab real backend wire + admin lint fix + Cohere naming canon(6 files;+ NEW `frontend/lib/api/documents.ts`)
+- **`(this docs commit)`** `docs(planning)` — W17 checklist F0+F4 ticked + this Day-1 progress entry + Day-0 commit hashes back-filled
+
+---
+
+## Day 2 → Day 6 — _(implementation entries appended below as work lands)_
+
+_(Next:F1 Postgres backing → F2 cookie/CSRF → F3 RAGAs → F5 a11y/dark-mode → F6 Vitest → F7 closeout;each commit ↔ Day-N entry per R2;same-day collapse possible per W12-W15 calibration — the `start_date`/`end_date` window is not a commitment.)_
 
 ---
 
