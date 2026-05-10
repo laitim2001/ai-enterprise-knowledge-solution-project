@@ -1,14 +1,20 @@
 """Evaluation endpoints (per architecture.md §4.4 #15-16).
 
-W16 F5.4 closure (CO_W15_F1) — replace 501 stubs:
-- POST /eval/run wires eval/orchestrator.run_eval_pipeline (Recall@5 + W17+
-  RAGAs deferred per orchestrator docstring)
+- POST /eval/run wires eval/orchestrator.run_eval_pipeline (Recall@5 always;
+  RAGAs 4-metric faithfulness/correctness when an Azure OpenAI judge key +
+  app.state.synthesizer are both available — W17 F3 per orchestrator docstring).
 - POST /eval/shootout iterates rerankers via per-reranker engine swap pattern;
-  returns ShootoutReport schema
+  returns ShootoutReport schema.
 
-Per Decision C.1 (Both endpoints full implementation) + W16 plan §3 PARTIAL
-PASS allowance for RAGAs full deferral. CLI alternative for full multi-reranker
-shootout: scripts/run_reranker_shootout.py (W4-era driver).
+CLI alternatives: scripts/run_ragas_eval.py (standalone RAGAs driver),
+scripts/run_reranker_shootout.py (W4-era multi-reranker driver).
+
+eval-set ids (W17 F3.4 finding): `eval-set-v0` (real, validated subset) +
+`eval-set-v1-draft` (WIP — the v1 *final* file `docs/eval-set-v1.yaml` does
+NOT exist yet; finalizing it needs Chris's SME reference-answer labels per Q14,
+without which `answer_correctness` proper can't be scored — `correctness` here
+is approximated by RAGAs answer-relevancy. CO_W15_F1_eval_set_v1 stays open
+pending the SME label cascade — no ground truth fabricated).
 """
 
 from datetime import UTC, datetime
@@ -19,7 +25,9 @@ from pydantic import BaseModel
 
 from api.schemas.eval import EvalReport, RerankerShootoutEntry, ShootoutReport
 from eval.orchestrator import run_eval_pipeline
+from eval.ragas_evaluator import make_ragas_evaluator
 from retrieval.retrieval_engine import RetrievalEngine
+from storage.settings import get_settings
 
 router = APIRouter()
 
@@ -60,6 +68,20 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
     return engine
 
 
+def _ragas_wiring(request: Request) -> tuple[object | None, object | None, str]:
+    """`(synthesizer, ragas_evaluator, judge_deployment)` for the RAGAs pass.
+
+    `synthesizer` is `None` unless the server booted with Azure keys (server.py
+    lifespan); `ragas_evaluator` is `None` unless an Azure judge key is set
+    (`make_ragas_evaluator`). When either is `None` the orchestrator falls back
+    to the Recall@5-only report — so /eval/run still works in local dev / CI.
+    """
+    settings = get_settings()
+    synthesizer = getattr(request.app.state, "synthesizer", None)
+    ragas_evaluator = make_ragas_evaluator(settings)
+    return synthesizer, ragas_evaluator, settings.azure_openai_deployment_llm_judge
+
+
 def _resolve_eval_set_path(eval_set_id: str) -> Path:
     """Map eval_set_id → absolute file path (project-root anchored).
 
@@ -93,6 +115,7 @@ async def run_eval(payload: EvalRunRequest, request: Request) -> EvalReport:
     """
     engine = _engine_or_503(request)
     eval_set_path = _resolve_eval_set_path(payload.eval_set_id)
+    synthesizer, ragas_evaluator, judge_deployment = _ragas_wiring(request)
 
     try:
         report = await run_eval_pipeline(
@@ -100,6 +123,9 @@ async def run_eval(payload: EvalRunRequest, request: Request) -> EvalReport:
             engine=engine,
             kb_id="drive_user_manuals",  # Tier 1 single-KB Q7 Resolved baseline
             max_main_queries=payload.max_main_queries,
+            synthesizer=synthesizer,
+            ragas_evaluator=ragas_evaluator,
+            judge_deployment=judge_deployment,
         )
     except Exception as exc:  # noqa: BLE001 — surface eval errors as 502
         raise HTTPException(
@@ -131,6 +157,7 @@ async def run_shootout(payload: EvalShootoutRequest, request: Request) -> Shooto
     engine = _engine_or_503(request)
     eval_set_path = _resolve_eval_set_path(payload.eval_set_id)
     rerankers = payload.rerankers or _SHOOTOUT_DEFAULT_RERANKERS
+    synthesizer, ragas_evaluator, judge_deployment = _ragas_wiring(request)
 
     started_at = datetime.now(UTC).isoformat()
     entries: list[RerankerShootoutEntry] = []
@@ -166,6 +193,9 @@ async def run_shootout(payload: EvalShootoutRequest, request: Request) -> Shooto
                 engine=engine,
                 kb_id="drive_user_manuals",
                 max_main_queries=payload.max_main_queries,
+                synthesizer=synthesizer,
+                ragas_evaluator=ragas_evaluator,
+                judge_deployment=judge_deployment,
             )
             entries.append(RerankerShootoutEntry(
                 reranker=reranker_label,

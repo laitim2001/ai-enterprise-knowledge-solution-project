@@ -39,6 +39,7 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
 
+from eval.ragas_evaluator import make_ragas_evaluator, patch_for_gpt5  # noqa: E402
 from eval.ragas_runner import (  # noqa: E402
     RagasQuerySample,
     RagasRunner,
@@ -46,6 +47,11 @@ from eval.ragas_runner import (  # noqa: E402
     report_to_json,
 )
 from generation.synthesizer import Synthesizer  # noqa: E402
+
+# Back-compat alias — `tests/test_run_ragas_eval_patch.py` imports this name.
+# The implementation now lives in `backend/eval/ragas_evaluator.py` (W17 F3)
+# so `/eval/run` + `/eval/shootout` can reuse it.
+_patch_for_gpt5 = patch_for_gpt5
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder  # noqa: E402
 from retrieval.hybrid import HybridSearcher  # noqa: E402
 from retrieval.reranker.factory import make_reranker  # noqa: E402
@@ -151,163 +157,16 @@ def _build_samples_via_cache(
     return samples
 
 
-def _patch_for_gpt5(client) -> None:
-    """Monkey-patch chat.completions.create on a live AsyncAzureOpenAI client to
-    translate GPT-5-incompatible params before forwarding。
-
-    GPT-5 reasoning models(GPT-5.5 / GPT-5.4-mini / GPT-5.5-pro)reject:
-    - `max_tokens` → must use `max_completion_tokens` instead(rename)
-    - `temperature` ≠ default 1 → drop the param entirely
-    - `logprobs` / `top_logprobs` → not supported on reasoning models(defensive)
-
-    Why monkey-patch and not subclass / proxy:`instructor.from_openai`(used by
-    ragas 0.4.3 LLM factory)does `isinstance(client, openai.AsyncOpenAI)` check
-    and falls back to sync path on non-matching types。Patching the live instance's
-    `chat.completions.create` preserves type identity while intercepting kwargs。
-
-    This is the W5 D1 Path A surgical fix per Bug F+H — keeps ragas 0.4.3 working
-    with GPT-5 deployments without forking ragas or swapping judge model。
-    """
-    drop_params = ("temperature", "logprobs", "top_logprobs")
-    # W5 D4 Bug I fix:ragas faithfulness statement extraction can produce many
-    # JSON-bound statements per claim → default ragas max_tokens(usually 1024)
-    # too small for complex multi-statement answers,causing finish_reason=length
-    # → instructor JSON parse fail。Bump to 4096 floor(GPT-5.4-mini supports up
-    # to 16k completion tokens)。Surfaced W5 D2 Phase 1 on Q013+Q016 errored
-    # rows;fix lets caller still override with larger value if needed.
-    min_max_completion_tokens = 4096
-    inner_create = client.chat.completions.create
-
-    async def patched_create(**kwargs):
-        if "max_tokens" in kwargs:
-            kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
-        if kwargs.get("max_completion_tokens", 0) < min_max_completion_tokens:
-            kwargs["max_completion_tokens"] = min_max_completion_tokens
-        for p in drop_params:
-            kwargs.pop(p, None)
-        return await inner_create(**kwargs)
-
-    client.chat.completions.create = patched_create
-
-
-def _make_real_evaluator(judge_deployment: str):
-    """Build a per-sample callable wrapping ragas v0.4.3 collections metrics.
-
-    Returns a callable that takes RagasQuerySample and returns:
-        {"faithfulness": float, "answer_relevancy": float,
-         "context_precision": float, "context_recall": float,
-         "input_tokens": int, "output_tokens": int}
-
-    W5 D1 F1.7 refactor (per ragas 0.4.3 deprecation):
-    - LangchainLLMWrapper / LangchainEmbeddingsWrapper RETIRED → use llm_factory
-      + RagasOpenAIEmbeddings with sync openai.AzureOpenAI client
-    - `from ragas.metrics.collections import faithfulness` 而家 imports MODULE
-      not class → import classes(Faithfulness/AnswerRelevancy/...)directly
-    - Per-metric ascore signatures diverge:Faithfulness(user_input, response,
-      retrieved_contexts);AnswerRelevancy(user_input, response);
-      ContextPrecision(user_input, reference, retrieved_contexts);
-      ContextRecall(user_input, retrieved_contexts, reference)
-    """
-    # Defer ragas import so unit tests don't need ragas installed.
-    # W5 D1 F1.7 Bug G fix:ragas metric.ascore() internally calls agenerate()
-    # which requires AsyncAzureOpenAI(sync AzureOpenAI client raises "Cannot
-    # use agenerate() with a synchronous client")。
-    from openai import AsyncAzureOpenAI  # noqa: PLC0415
-    from ragas.embeddings import OpenAIEmbeddings as RagasOpenAIEmbeddings  # noqa: PLC0415
-    from ragas.llms import llm_factory  # noqa: PLC0415
-    from ragas.metrics.collections.answer_relevancy import AnswerRelevancy  # noqa: PLC0415
-    from ragas.metrics.collections.context_precision import ContextPrecision  # noqa: PLC0415
-    from ragas.metrics.collections.context_recall import ContextRecall  # noqa: PLC0415
-    from ragas.metrics.collections.faithfulness import Faithfulness  # noqa: PLC0415
-
-    settings = get_settings()
-    # W5 D1 F1.7 fix: GPT-5 reasoning judge rejects non-default temperature
-    # → 唔 pass(model default 1)。RAGAs judge precision relies on prompt
-    # engineering + JSON-schema-bound output, not sampling determinism。
-    judge_client = AsyncAzureOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        api_version=settings.azure_openai_api_version,
-    )
-    # W5 D1 Path A: monkey-patch chat.completions.create to translate ragas's
-    # hardcoded max_tokens → max_completion_tokens + drop temperature(GPT-5
-    # reasoning model compat per Bug F+H)。Preserves AsyncAzureOpenAI type
-    # identity so instructor.from_openai isinstance check passes。
-    _patch_for_gpt5(judge_client)
-    wrapped_llm = llm_factory(judge_deployment, client=judge_client)
-
-    # Embeddings reuse Q19 text-embedding-3-large baseline for cosine sim
-    # in AnswerRelevancy。Same AzureOpenAI sync client.
-    embed_client = AsyncAzureOpenAI(
-        azure_endpoint=settings.azure_openai_endpoint,
-        api_key=settings.azure_openai_api_key,
-        api_version=settings.azure_openai_api_version,
-    )
-    wrapped_embed = RagasOpenAIEmbeddings(
-        client=embed_client,
-        model=settings.azure_openai_deployment_embedding,
-    )
-
-    faithfulness_m = Faithfulness(llm=wrapped_llm)
-    answer_relevancy_m = AnswerRelevancy(llm=wrapped_llm, embeddings=wrapped_embed)
-    context_precision_m = ContextPrecision(llm=wrapped_llm)
-    context_recall_m = ContextRecall(llm=wrapped_llm)
-
-    async def _ascore_all(sample: RagasQuerySample) -> dict:
-        reference = sample.reference or " ".join(sample.expected_keywords) or sample.answer
-        scores: dict[str, float] = {}
-        try:
-            r = await faithfulness_m.ascore(
-                user_input=sample.question,
-                response=sample.answer,
-                retrieved_contexts=sample.contexts,
-            )
-            scores["faithfulness"] = float(r.value)
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"faithfulness failed: {exc}") from exc
-        try:
-            r = await answer_relevancy_m.ascore(
-                user_input=sample.question,
-                response=sample.answer,
-            )
-            scores["answer_relevancy"] = float(r.value)
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"answer_relevancy failed: {exc}") from exc
-        try:
-            r = await context_precision_m.ascore(
-                user_input=sample.question,
-                reference=reference,
-                retrieved_contexts=sample.contexts,
-            )
-            scores["context_precision"] = float(r.value)
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"context_precision failed: {exc}") from exc
-        try:
-            r = await context_recall_m.ascore(
-                user_input=sample.question,
-                retrieved_contexts=sample.contexts,
-                reference=reference,
-            )
-            scores["context_recall"] = float(r.value)
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"context_recall failed: {exc}") from exc
-        scores["input_tokens"] = 0  # ragas 0.4.3 doesn't expose per-metric tokens;
-        scores["output_tokens"] = 0  # cost via Langfuse trace correlation per arch §7
-        return scores
-
-    # W5 D1 F1.7: ragas 0.4.3 metric.score() raises when called from async
-    # context. RagasRunner.evaluate is sync and tests rely on sync interface
-    # (13 unit tests with sync stub evaluators)— so wrap async ascore via
-    # asyncio.run in a separate thread to avoid loop-already-running error
-    # without breaking the sync RagasRunner contract.
-    import asyncio  # noqa: PLC0415
-    import concurrent.futures  # noqa: PLC0415
-
-    def _sync_eval(sample: RagasQuerySample) -> dict:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(asyncio.run, _ascore_all(sample)).result()
-
-    return _sync_eval
+def _make_real_evaluator(judge_deployment: str):  # noqa: ARG001 — reads judge from settings
+    """Build the Azure-judge-bound RAGAs evaluator (now lives in
+    `backend/eval/ragas_evaluator.make_ragas_evaluator` so `/eval/*` shares it).
+    Raises `SystemExit` if no Azure judge credential is configured."""
+    evaluator = make_ragas_evaluator(get_settings())
+    if evaluator is None:
+        raise SystemExit(
+            "missing AZURE_OPENAI_API_KEY — populate .env to run the RAGAs judge",
+        )
+    return evaluator
 
 
 async def _amain() -> int:
