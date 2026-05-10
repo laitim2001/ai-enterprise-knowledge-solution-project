@@ -1,15 +1,17 @@
 """KB service — translates request payloads to backend calls.
 
-Backend is injected so W2 D1 can swap to Azure AI Search-backed impl
-without touching service or route layer.
+Backend is injected (via `make_kb_backend`) so the storage layer can swap
+between in-memory and Postgres (ADR-0023) without touching service or route.
 """
 
 from datetime import UTC, datetime
 from functools import lru_cache
 
 from api.schemas.kb import KbConfig, KbCreate, KbStatus
+from storage.settings import get_settings
 
-from .storage import InMemoryKBBackend, KBStorageBackend
+from .factory import make_kb_backend
+from .storage import KBStorageBackend
 
 
 class KBService:
@@ -53,9 +55,10 @@ class KBService:
 
 @lru_cache(maxsize=1)
 def get_kb_service() -> KBService:
-    """FastAPI dependency — process-singleton wired to in-memory backend.
+    """FastAPI dependency — process-singleton wired via `make_kb_backend`.
 
-    W2 D1: route this through `app.dependency_overrides[get_kb_service]`
-    or replace the cached instance after deploying the Azure AI Search backend.
+    Backend = Postgres when `DATABASE_URL` is set (ADR-0023), else in-memory
+    (W1 behaviour — local dev / CI). Tests still swap a fresh in-memory service
+    in via `app.dependency_overrides[get_kb_service]`.
     """
-    return KBService(InMemoryKBBackend())
+    return KBService(make_kb_backend(get_settings()))

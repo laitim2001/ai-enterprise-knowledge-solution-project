@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     # storage/kb_naming.py maps kb_id → index_name + blob container + filter clause.
     kb_id_default: str = "drive_user_manuals"
 
+    # W17 F1 — KB Manager + users_repo persistent backing (ADR-0023).
+    # Empty → in-memory backend (local dev / CI — W1 behaviour, restart-wipes).
+    # Set → PostgresKBBackend + Postgres users store, e.g.
+    #   postgresql://langfuse:langfuse_local_dev_only@localhost:5432/ekp
+    # (the docker-compose postgres service, dedicated `ekp` database). Schema
+    # auto-created via CREATE TABLE IF NOT EXISTS on connect.
+    database_url: str = ""
+
     # Azure OpenAI
     azure_openai_endpoint: str = "https://ekp-openai-poc.openai.azure.com"
     azure_openai_api_key: str = ""

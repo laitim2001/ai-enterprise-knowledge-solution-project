@@ -32,6 +32,11 @@ dependencies = [
     # + cost dashboard data source). Lazy init when public/secret keys present;
     # no-op when missing so local dev / CI work unchanged.
     "langfuse>=2.50",
+    # W17 F1 — KB Manager + users_repo persistent backing (ADR-0023). Async
+    # Postgres driver (psycopg 3); connection-per-op (Tier 1 KB ops infrequent —
+    # no pool). Only used when DATABASE_URL is set; PostgresKBBackend is lazily
+    # imported (kb_management/factory.py) so an unset DATABASE_URL never touches it.
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,13 @@
+-- W17 F1 / ADR-0023 — dedicated `ekp` database for the EKP backend's KB Manager
+-- + users_repo persistent backing (separate from the `langfuse` DB on the same
+-- Postgres instance). Runs once, on a fresh `ekp-postgres-data` volume, via the
+-- postgres image's /docker-entrypoint-initdb.d/ hook.
+--
+-- Existing volume (Langfuse already running)? This script does NOT re-run — create
+-- the DB manually:
+--   docker compose exec postgres createdb -U langfuse ekp
+-- (Or just point DATABASE_URL at the `langfuse` DB — PostgresKBBackend creates
+--  its tables via CREATE TABLE IF NOT EXISTS regardless of which DB it connects to.)
+--
+-- Tables themselves are auto-created by the backend on first connect — no DDL here.
+CREATE DATABASE ekp;

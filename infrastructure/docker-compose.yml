@@ -90,21 +90,28 @@ services:
 
 
   # --------------------------------------------------------------------------
-  # Postgres — Langfuse backend store
+  # Postgres — Langfuse backend store + (W17 F1 / ADR-0023) EKP backend store
   # --------------------------------------------------------------------------
-  # 唔暴露 port 5432 出宿主(internal network only)
-  # 若需要 direct access,啟動 pgadmin profile
+  # Hosts two databases on one instance: `langfuse` (Langfuse) + `ekp` (EKP
+  # backend's KB Manager + users_repo persistent backing, per ADR-0023).
+  # The `ekp` DB is created on a *fresh* volume by ./postgres-init/; on an
+  # existing volume run: `docker compose exec postgres createdb -U langfuse ekp`.
+  # Port 5432 exposed so the host-run backend (`uv run uvicorn`) can connect via
+  #   DATABASE_URL=postgresql://langfuse:langfuse_local_dev_only@localhost:5432/ekp
   postgres:
     image: postgres:16-alpine
     container_name: ekp-postgres
     restart: unless-stopped
     networks: [ekp-local]
+    ports:
+      - "5432:5432"   # W17 F1 — host access for the EKP backend (ADR-0023)
     environment:
       POSTGRES_DB: langfuse
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: langfuse_local_dev_only
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro   # W17 F1 — creates the `ekp` DB on fresh volume
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
       interval: 10s
