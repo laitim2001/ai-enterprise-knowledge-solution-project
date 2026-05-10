@@ -1,7 +1,7 @@
 # ADR-0024: Unified application shell IA — `<AppShell>` (top bar + left sidebar + main content) across all authenticated views; no public marketing landing; no "admin" framing; login → `/dashboard`
 
 **Date**: 2026-05-10
-**Status**: **Proposed** — Q1–Q5 answered by Chris 2026-05-10 (this revision reflects them); Q6 = the ADR-0015 relationship, explained in detail below; moves to **Accepted** on Chris's confirmation of this revised ADR. H1 layout-philosophy change per CLAUDE.md §5.1; **amends ADR-0015**.
+**Status**: **Accepted** — Q1–Q6 resolved by Chris 2026-05-10 (Q1–Q5 answered + this revision reflects them; Q6 = the ADR-0015 relationship, explained in detail below); confirmed 2026-05-10 — Chris directed the post-acceptance cascade: `W18-app-shell-ia` phase kickoff (`plan.md` per CLAUDE.md §10 R1) + `architecture.md v6 §5` amendment (inline-tagged, doc version held — same convention as the §3.4 / §3.7 ADR tags) + ADR-0015 amended-by note. H1 layout-philosophy change per CLAUDE.md §5.1; **amends ADR-0015**. Implementation = the `W18-app-shell-ia` phase.
 **Approver**: Chris
 
 ---
@@ -46,7 +46,7 @@ In dev `FEATURE_AUTH_MOCK=true` / `NEXT_PUBLIC_AUTH_MOCK=true` mode, the fronten
 
 ---
 
-## Decision (proposed; reflects Chris's Q1–Q5 answers 2026-05-10)
+## Decision (accepted; reflects Chris's Q1–Q5 answers 2026-05-10)
 
 Adopt a **unified application shell IA**: a single `<AppShell>` chrome — persistent top bar + collapsible left sidebar + right main content — wrapping **all authenticated views**; a login-gate; `login → /dashboard` (a new real overview view); **no public marketing landing** (`/` redirects to `/login`, or `/dashboard` if already authenticated); **no "admin" framing** (the URLs flatten — no `/admin/` prefix; the platform is one thing, not "user area + admin area"). The public auth pages (`/login`, `/register`, `/verify`) stay outside the shell.
 
@@ -161,7 +161,7 @@ ADR-0015 (W11 D2 cont, `architecture.md` v5.1 → v6 amendment) made four commit
 
 ## Implementation Deliverables (for the W18 phase, on approval)
 
-> Not implemented by this ADR. The `W18-app-shell-ia` phase carries these, with a `plan.md` per CLAUDE.md §10 R1 (folder **not** pre-created until this ADR is Accepted).
+> Not implemented by this ADR. The `W18-app-shell-ia` phase carries these, with a `plan.md` per CLAUDE.md §10 R1 (folder **created on acceptance — 2026-05-10**; the phase `plan.md` maps these D1–D10 onto its F-numbered scope — D10's `architecture.md v6 §5` amendment landed at W18 kickoff alongside this ADR's acceptance, so the W18 doc-deliverable narrows to the `COMPONENT_CATALOG.md` C09/C10 + `session-start.md` hygiene catch-up at closeout).
 
 - [ ] D1 — `frontend/components/nav/app-shell.tsx` (generalize `admin-shell.tsx`): collapsible left sidebar (5 modules: Dashboard / Chat / Knowledge Bases / Eval Console / Traces) + top bar (app name → `/dashboard`, global search Cmd+K, language toggle [disabled], `<ThemeToggle>`, `<UserMenu>`) + main content slot + responsive hamburger + focus-mode toggle; 100% `tokens.ts`, no hardcoded colours
 - [ ] D2 — `app/(app)/layout.tsx` route group: `<AuthProvider><QueryProvider><AppShell>{children}</AppShell></QueryProvider></AuthProvider>` + the login-gate guard; remove `app/admin/layout.tsx` / `app/eval/layout.tsx` / `app/debug/layout.tsx` / `app/admin/page.tsx`

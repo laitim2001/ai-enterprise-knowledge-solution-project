@@ -1,7 +1,7 @@
 # ADR-0015: UI Tier 1 Expansion — 6 views → 9 views, Dify-leaning aesthetic, shadcn/ui foundation commit
 
 **Date**: 2026-06-10
-**Status**: Accepted
+**Status**: Accepted（**amended by ADR-0024 2026-05-10** — unified application shell IA：V7 Landing removed / per-view layout-regime split → single `<AppShell>`(top bar + left sidebar + main content) / "admin" framing & `/admin/` URL-prefix dropped / V2「Admin Dashboard」placeholder → real `/dashboard` overview。Preserves the V8/V9 auth-page designs + shadcn/ui foundation + EKP-native visual identity(`tokens.ts`、Notion-leaning aesthetic)+ the W12-W15 implementation(re-parent + re-route, not rebuild)。See ADR-0024 §"Relationship to ADR-0015"。）
 **Approver**: Chris(acting as Stakeholder per past sessions authorization pattern;explicit ack 2026-06-10 evening session W11 D2 cont)
 
 ## Context
@@ -158,6 +158,7 @@ UI sprint W12-W15 + hybrid auth(ADR-0014)combined under single v6 amendment cycl
 - ADR-0006 — Next.js + shadcn/ui from Day 1(promise being fulfilled by this ADR)
 - ADR-0010 — Dify read-only reference(visual identity rule preserved)
 - ADR-0014(sister ADR same amendment cycle — hybrid auth)
+- ADR-0024 — Unified application shell IA — **amends this ADR** in 3 specific ways（V7 Landing removed；per-view layout-regime split → single `<AppShell>`(top bar + left sidebar + main content) + "admin" framing/URL-prefix dropped；V2「Admin Dashboard」→ real `/dashboard` overview as the post-login home）。Does **not** supersede：the V8/V9 auth-page designs、the shadcn/ui foundation、the EKP-native visual identity（`tokens.ts`、Notion-leaning aesthetic、dark-mode inverted-button pattern）、the W12-W15 implementation。The "Dify-leaning" label narrows to "Dify-inspired *aesthetic ergonomics*" — the *IA* becomes a unified-shell model（Linear / Notion / ChatGPT-app-like），no longer Dify's chrome-less-chat-vs-admin-shell split + outward marketing `/`. `architecture.md v6 §5` amended accordingly（§5.0 Application Shell added；§5.9 Landing removed；§5.3「Admin Dashboard」→「Dashboard」；§5.7「Debug View」→「Traces」；`/admin/*` → `/kb/*`）
 - W11 plan changelog 2026-06-10(production launch defer record)
 - W11 D2 progress.md cont entry(2026-06-10 stakeholder ack)
 - W12 phase folder — `docs/01-planning/W12-ui-foundation-discovery/`(kickoff per CLAUDE.md §10 R1)

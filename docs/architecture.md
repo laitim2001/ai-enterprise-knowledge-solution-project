@@ -14,6 +14,8 @@
 >
 > **註**:呢次 amendment **不變更** §3 RAG core(retrieval pipeline / embedding / reranker / synthesis)+ §4 application architecture (FastAPI + Next.js + Azure stack)+ §6 sprint plan POC W1-W6 actuals。新增 scope 屬 frontend layer + auth-side backend service。Cross-references update where needed。
 >
+> **§5 amendment(per ADR-0024,2026-05-10 — inline-tagged,doc version held;同 §3.4 ADR-0023 / §3.7 ADR-0022 嘅 convention)**:**unified application shell IA** — 新增 **§5.0 Application Shell**(統一 top bar + 左側可摺疊 sidebar + 右側 main content,wrap 所有 authenticated views;login-gate;global search Cmd+K + disabled language toggle[i18n 仍 Tier 2 per §11]+ theme toggle + user menu);**§5.3「Admin Dashboard」placeholder → 真「Dashboard」overview**(`/admin` → `/dashboard`;login/register 成功 land 喺度,原 `/chat`);**§5.9 V7 Landing 移除**(EKP internal-only;`/` → redirect `/login`｜`/dashboard`);`/admin/*` URL prefix flatten(→ `/kb/*`);**§5.7「Debug View」→「Traces」**(`/debug/[traceId]` → `/traces/[traceId]`);新增小 view `/settings`。**Amends ADR-0015** — 3 ways(V7 Landing removed / per-view layout-regime split → single `<AppShell>` + drop "admin" framing / V2「Admin Dashboard」→ real `/dashboard`);保留 V8/V9 auth pages、shadcn/ui foundation、EKP visual identity(`tokens.ts`)、W12-W15 implementation(re-parent + re-route, not rebuild)。ADR-0024 係 authoritative record。Implementation = `W18-app-shell-ia` phase(`plan.md` per CLAUDE.md §10 R1)。
+>
 > **v4 → v5 嘅 5 個 targeted patch**(內容補充,架構不變):
 > 1. **§1.7 新增 Business Impact Metrics**(time-to-answer reduction、shadow AI displacement、user satisfaction)
 > 2. **§6.3 新增 W2 + W4 Explicit Decision Gates**(early fail-fast,避免 sunk-cost continuation)
@@ -745,6 +747,38 @@ Document Upload
 
 ## 5. UI Specifications
 
+### 5.0 Application Shell(amendment per ADR-0024 — unified application shell IA;2026-05-10)
+
+> **Amendment**:per ADR-0024(W17-beta-hardening closeout local-dev-test session 2026-05-10 — stakeholder IA-expectation gap vs the ADR-0015 Dify-leaning 3-regime split)。**Amends ADR-0015**(see ADR-0024 §"Relationship to ADR-0015"):(1) §5.9 V7 Landing **移除**;(2) per-view layout-regime split(chat = chrome-less / admin = `<AdminShell>`)→ 單一 `<AppShell>`;(3) §5.3「Admin Dashboard」placeholder → 真「Dashboard」overview。Inline-tagged amendment(doc version held — 同 §3.4 ADR-0023 / §3.7 ADR-0022 嘅 convention);ADR-0024 係 authoritative record。Implementation = `W18-app-shell-ia` phase(`plan.md` per CLAUDE.md §10 R1)。
+
+所有 **已登入 view** 共用一個 `<AppShell>` chrome — **頂部 top bar + 左側可摺疊 sidebar + 右側 main content**。Auth pages(`/login` / `/register` / `/verify`)留喺 shell **之外**(pre-auth 無 app chrome;`brand-panel.tsx` auth-page brand splash 保留 — 佢唔係 marketing page)。`<AppShell>` 由既有 `frontend/components/nav/admin-shell.tsx` generalize 而成(reuse hamburger collapse + `<UserMenu>` + `<ThemeToggle>` + responsive — 唔係 from-scratch build)。
+
+**Left sidebar — 功能模組**(active route highlighted;可摺疊 "focus mode" 隱藏 sidebar 作 chat-immersive 用,ChatGPT / Claude.ai pattern):
+- **Dashboard**(`/dashboard`)— overview / home(§5.3)
+- **Chat**(`/chat`)— RAG query interface(§5.2)
+- **Knowledge Bases**(`/kb`)— KB list → detail(5-tab:Documents / Chunks / Pipeline / Retrieval Testing / Settings,§5.4 + §5.5;Retrieval Testing tab + `mode` param per ADR-0021)
+- **Eval Console**(`/eval`)— RAGAs 4-metric runs + reranker shootout(§5.6)
+- **Traces**(`/traces/[traceId]`)— Langfuse trace inspection / per-query 9-stage timeline(§5.7;前稱「Debug View」`/debug/[traceId]`)
+
+(5 個 module — flat list 抑或 sectioned headers 屬 W18 polish detail,唔係 blocking decision。)
+
+**Top bar**:
+- **App name / logo**(左)— link → `/dashboard`(無 marketing tagline — internal tool)
+- **Global search**(中)— command-palette(Cmd/Ctrl+K)。**Tier 1 scope = quick-jump**:filter KB names / recent documents / recent traces + 「Ask in chat: …」action → `/chat?q=…`。(更 rich 嘅「semantic search-as-you-type across all chunks」屬 Tier 2 candidate — Tier 1 keep lightweight。)
+- **Language toggle** — **present-but-disabled affordance**。i18n(multi-language JP/ZH)係 **Tier 2** per §11;Tier 1 唔起 i18n machinery(per CLAUDE.md §5.4 H4),呢個 toggle 同 login page 嘅 disabled「Forgot password?」一樣係 coming-soon control(ADR-0014 pattern)
+- **Theme toggle**(`<ThemeToggle>` — Light / Dark / System,已實)
+- **User profile / settings**(`<UserMenu>` — avatar + display name;menu:Profile / Settings(→ `/settings`)/ Sign out)
+
+**Main content**(右)— render 當前 route 嘅 page。
+
+**Responsive**:sidebar < `md` 摺成 hamburger drawer(reuse 既有 `AdminShell` hamburger pattern)。
+
+**Tokens**:100% `tokens.ts` consumption — 無 hardcoded 顏色(保持 W15 `[oklch(...)]`=0 milestone)。
+
+**Login-gate**:`(app)/` route group 下所有 route 受 route guard 保護 — 未登入 → redirect `/login`。**Mock-auth dev mode**(`FEATURE_AUTH_MOCK=true` / `NEXT_PUBLIC_AUTH_MOCK=true`)因 mock provider auto-authenticate,無 redirect — 實際「未登入 → /login」只喺 real MSAL / production build 出現。`/login` 成功 → `/dashboard`(原 `/chat`);`/register` → verify-email auto-login(per ADR-0022)→ `/dashboard`(原 `/chat`)。`/` = thin redirect:有 session → `/dashboard`,否則 → `/login`(§5.9 Landing 移除)。
+
+**Routing(flattened — 無 `/admin/` prefix per ADR-0024 Q4)**:Next.js route group `app/(app)/layout.tsx` = `<AuthProvider><QueryProvider><AppShell>{children}</AppShell></QueryProvider></AuthProvider>` + login-gate;pages:`app/(app)/{dashboard,chat,kb,kb/[id],kb/new,kb/[id]/upload,eval,traces/[traceId],settings}/page.tsx`。原 `app/admin/layout.tsx` / `app/eval/layout.tsx` / `app/debug/layout.tsx` 併入 `(app)/layout.tsx`;原 `app/admin/page.tsx` placeholder 由 `/dashboard` 取代;root `app/layout.tsx` 只保留 `<ThemeProvider>` + `<Toaster>`(auth pages 唔受 app chrome)。
+
 ### 5.1 Visual Identity Strategy(D5 Decision)
 
 **Principle**:Layout / interaction pattern 抄 Dify;visual identity / design tokens 100% 自訂。
@@ -796,7 +830,9 @@ export const ekpTokens = {
 
 **呢個 layer 嘅 implication**:**任何 dev clone Dify code 學 layout 之後**,寫自己 component 時用 `ekpTokens` 而非 hardcoded value,可確保視覺自動 distinct。
 
-### 5.2 View 1:End User Chat(`/`)
+### 5.2 View 1:End User Chat(`/chat`)— path moved per ADR-0015 v6;rendered inside `<AppShell>` per ADR-0024
+
+> **Per ADR-0024**:render 喺 `<AppShell>` 內(§5.0)— chat-immersive 用 sidebar 嘅 "focus mode" toggle 隱藏 sidebar(取代原 ADR-0015 嘅 full-bleed chrome-less surface)。原 in-page header 嘅 logo 移去 AppShell top bar;in-page header 只剩 KB selector dropdown。
 
 **Layout reference**:抄 Claude.ai / ChatGPT,**唔係 Dify**(Dify 唔係 chat tool)。
 
@@ -813,22 +849,25 @@ export const ekpTokens = {
 
 **Streaming UX**:用 Vercel AI SDK 嘅 `useChat` hook,Day 1 native 支援 SSE。
 
-### 5.3 View 2:Admin Dashboard(`/admin`)
+### 5.3 View 2:Dashboard(`/dashboard`)— renamed + relocated per ADR-0024(was「Admin Dashboard」`/admin`)
 
-**Layout**:Sidebar(Knowledge / Eval / Settings)+ main content area。
-**Layout reference**:**Dify Image 4 嘅 layout pattern**。
+> **Amendment per ADR-0024**:原 §5.3「Admin Dashboard」係 minimal placeholder(own sidebar + top stats card row)。ADR-0024 將 sidebar 提升為 `<AppShell>` 共用 chrome(§5.0),「admin」framing 取消(Q4 — URL `/admin` → `/dashboard`),呢個 view 收窄為「post-login home — 真 overview dashboard」(Q2)。Login / register 成功後 land 喺度(原本 land `/chat`)。
 
-**Page content**:
-- Top stats card row:Total KBs、Total Documents、Total Chunks、Last Activity
-- Recent ingestion log
-- Quick actions:Create KB、View Eval Console
+**Layout**:render 喺 `<AppShell>` 內(§5.0);main content = cards grid(clean internal-tool dashboard — **唔係** router-to-chat)。
 
-### 5.4 View 3:KB List(`/admin/kb`)
+**Page content**(per ADR-0024 Q2;v1 全部 data 來自既有 endpoints,無需新 backend):
+- **KB summary** — KB count + total documents / chunks / storage size(off `GET /kb`)
+- **Recent queries** — 最近 N 條 query(若無 → 「Ask something」CTA → `/chat`)
+- **Latest eval status** — Recall@5 / Faithfulness / Correctness(最近一次 `POST /eval/run` cached result)+ link → `/eval`
+- **System health** — Azure AI Search / Azure OpenAI / Cohere / Langfuse connectivity(off `GET /health` + component statuses)
+- **Quick actions** — New KB / Upload Document / Run Eval / Open Chat
+
+### 5.4 View 3:KB List(`/kb`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`
 
 **Layout**:Card grid + create button。
 **Per-card**:KB name、document count、storage size、last updated、last query rate。
 
-### 5.5 View 4:KB Detail(`/admin/kb/[id]`)
+### 5.5 View 4:KB Detail(`/kb/[id]`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`
 
 **Layout**:同 Dify Image 4(Sidebar:Documents / Pipeline / Retrieval Testing / Settings)。
 
@@ -877,7 +916,7 @@ export const ekpTokens = {
 
 KB-level config:embedding model lock、chunk strategy default、retrieval default、KB description。
 
-### 5.6 View 5:Eval Console(`/eval`)
+### 5.6 View 5:Eval Console(`/eval`)— rendered inside `<AppShell>` per ADR-0024(own `app/eval/layout.tsx` folded into `app/(app)/layout.tsx`;route unchanged)
 
 **Layout**:Top filter bar + main content split(left config + right results)。
 
@@ -889,7 +928,9 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 - Failed queries table(Q-id / query / expected / got / inspect)
 - W4 Reranker Shootout section(4-way table + recommendation card)
 
-### 5.7 View 6:Debug View(`/debug/[traceId]`)
+### 5.7 View 6:Traces(`/traces/[traceId]`)— renamed + re-routed per ADR-0024(was「Debug View」`/debug/[traceId]`);rendered inside `<AppShell>`
+
+> **Per ADR-0024**:「Traces」更貼切 operations-facing 用途(唔淨係 debug);own `app/debug/layout.tsx` folded into `app/(app)/layout.tsx`;sidebar item = "Traces"。stage 內容(下文 9 stages)不變。
 
 **Layout**:Top trace summary + vertical timeline + expandable stages。
 
@@ -918,20 +959,15 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 | Step indicator with status badge | Dify Image 1, 6 | Pipeline wizard |
 | Side panel for document metadata | Dify Image 5 | KB detail page |
 
-### 5.9 View 7:Landing Page(`/`)— v6 amendment
+### 5.9 View 7:Landing Page — REMOVED(amendment per ADR-0024,2026-05-10)
 
-**Layout reference**:Modern SaaS landing(Vercel / Linear / Supabase aesthetic)+ Dify-leaning info hierarchy。Path change:原 `/` chat 路徑 → 移至 `/chat`(per §5.2 v6 amendment),`/` 變成 public landing。
+> **Removed per ADR-0024 Q1**:EKP 係 internal tool,**唔係**對外推銷產品 → 無 public marketing surface。原 §5.9 public landing(`/` hero + 3 feature cards + 「How it works」)刪除;`app/page.tsx` 變 thin redirect:有 session → `/dashboard`,否則 → `/login`(per §5.0 Login-gate)。原 ADR-0015 嘅「§5.2 Chat 由 `/` → `/chat`」path move 仍然 stands(now per §5.0 + §5.2)。`brand-panel.tsx`(auth-page brand splash)保留 — 佢唔係 marketing page。
+>
+> **View-count impact**:ADR-0015 嘅「6 views → 9 views」變成「out goes Landing,in comes Dashboard」— 仍 ≈9 views,但 set 改咗(§5.0 Application Shell 係 chrome 唔計 view;§5.3「Admin Dashboard」placeholder → 真「Dashboard」overview;新增小 view `/settings`)。詳見 ADR-0024 §"Relationship to ADR-0015"。
 
-**Components**:
-- Header:logo + nav links(Features / Pricing(post-launch)/ Sign in / Get started)
-- Hero section:platform tagline + 1-line subheading + CTA buttons(「Start asking」→ `/login` / `/register`)
-- Feature highlights(3 cards):「Multi-format ingestion」/「Hybrid retrieval + CRAG」/「Citation-grounded answers」
-- 「How it works」(3 step):Upload → Ask → Verify(借 Dify Image 1 step indicator pattern)
-- Footer:status link / docs / contact / legal
+### 5.10 View 8:Login(`/login`)— v6 amendment(redirect target updated per ADR-0024)
 
-**Content discipline**:呢個 view 屬 marketing-style entry point,但**唔可以 leak** Tier 2 / future feature claims(per CLAUDE.md §5.4 H4)。所有 feature claim 必須 ground 在已實 Tier 1 capability。
-
-### 5.10 View 8:Login(`/login`)— v6 amendment
+> **Per ADR-0024**:呢個 page 留喺 `<AppShell>` **之外**(pre-auth 無 app chrome;§5.0)。Sign-in 成功 → redirect `/dashboard`(原 `/chat`)。「Forgot password?」link 維持 disabled affordance(reset password 仍 Tier 2 per §11)。
 
 **Layout reference**:Standard auth split layout(left brand panel / right form),visual hierarchy 借 Dify-leaning aesthetic 但 visual identity 100% EKP tokens。
 
@@ -946,12 +982,14 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
   - 「Don't have an account? Register」link → `/register`
 
 **Auth flow**:
-- Internal staff(Entra ID):click「Sign in with Microsoft」→ MSAL redirect → Microsoft → callback → `/chat`
-- External partner(self-register):enter email + password → POST `/auth/login` → backend verify(C12 auth + C13 email verification)→ session token → `/chat`
+- Internal staff(Entra ID):click「Sign in with Microsoft」→ MSAL redirect → Microsoft → callback → `/dashboard`(per ADR-0024;原 `/chat`)
+- External partner(self-register):enter email + password → POST `/auth/login` → backend verify(C12 auth)→ httpOnly session cookie(per ADR-0022)→ `/dashboard`(per ADR-0024;原 `/chat`)
 
 **Error states**:invalid cred / unverified email / locked account 全部由 backend `error.code` 對應前端 toast(per ApiError envelope §4.5)。
 
-### 5.11 View 9:Register(`/register`)— v6 amendment
+### 5.11 View 9:Register(`/register`)— v6 amendment(redirect target updated per ADR-0024)
+
+> **Per ADR-0024**:呢個 page 留喺 `<AppShell>` **之外**(§5.0)。Step 3 完成後(verify-email auto-login per ADR-0022 → Step 3 land 喺 authenticated state)→ `/dashboard`(原 `/chat`)。
 
 **Layout reference**:同 §5.10 split layout pattern + multi-step wizard(借 Dify 3-step 概念 pattern)。
 
@@ -960,7 +998,7 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 - 右側 form area:Step indicator(1 → 2 → 3)+ 對應 step content
   - **Step 1 — Account info**:email / password / confirm password(client-side strength indicator)/ display name
   - **Step 2 — Email verify**:「Check your inbox at <email>」+ 6-digit code input + Resend(60s rate limit)
-  - **Step 3 — Welcome**:「Account created」+ optional first KB selection / tour CTA → `/chat`
+  - **Step 3 — Welcome**:「Account created」+ optional first KB selection / tour CTA → `/dashboard`(per ADR-0024;原 `/chat`)
 
 **Backend dependency**:
 - C13 Email Verification Service(v6 §3 component list 新增)— ACS / SendGrid 自簽 verification token,verify endpoint per OQ-Q22 vendor decision
