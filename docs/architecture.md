@@ -400,6 +400,8 @@ EKP Platform
 
 **Tier boundary**:C13 屬 Tier 1 v6 amendment scope(per ADR-0014 §「Email Verification Service vendor decision」)。Forgot password / 2FA / OAuth provider(Google / GitHub)defer Tier 2 per §11 + ADR-0014 Consequences Neutral。
 
+**Auth transport**(W17 F2 amendment — per ADR-0022):self-register session token 嘅 primary transport = httpOnly `ekp_session` cookie(`SameSite=Lax`,`Secure` when `environment != "local"`)+ `ekp_csrf` double-submit cookie(SPA echo via `X-CSRF-Token` on non-GET);`get_current_user` dual-path(cookie OR `Authorization: Bearer` — mock-auth / API clients keep Bearer,Bearer is CSRF-exempt);`POST /auth/refresh` rotates the token + cookies;`POST /auth/verify-email` 嘅 verified-transition auto-logs-in(sets the cookie)。SSO/MSAL branch 嘅 JWT transport 不變。呢個係 ADR-0014 hybrid-auth model 嘅 transport-layer 硬化,model 本身不變。
+
 **OQ status**:Q22 `Resolved`(default activated 2026-06-10;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface per OQ-Q22 decision rationale)。
 
 **RISK_REGISTER cross-ref**:non new risk(C13 fail-soft graceful design;Beta cohort < 100/day low volume;Azure Email Service GA 2024-Q1 deliverability concern monitored as W13 implementation operational signal,defer separate risk entry until real-cohort signal surface)。

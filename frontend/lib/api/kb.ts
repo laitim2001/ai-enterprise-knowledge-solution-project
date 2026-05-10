@@ -5,7 +5,7 @@
  * (POST /kb → POST /kb/{id}/documents).
  */
 
-import { ApiClient } from '../api-client';
+import { ApiClient, getCsrfHeaders } from '../api-client';
 
 const client = new ApiClient();
 
@@ -69,6 +69,8 @@ export const kbApi = {
     // top docstring). NEXT_PUBLIC_API_URL is server-side only.
     const response = await fetch(`/api/backend/kb/${kbId}/documents`, {
       method: 'POST',
+      credentials: 'include',
+      headers: { ...getCsrfHeaders() },
       body: form,
     });
     if (!response.ok) {

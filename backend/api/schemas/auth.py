@@ -70,8 +70,20 @@ class RegisterResponse(BaseModel):
 
 
 class VerifyEmailResponse(BaseModel):
+    """Issued by `POST /auth/verify-email`. On the verified-transition the user
+    is auto-logged-in (per ADR-0022 §1 "the email-verify step ... set ekp_session"):
+    `access_token` + `expires_in` are populated and an `ekp_session` cookie is
+    set on the response. On the idempotent already-verified branch both are None
+    (no new session minted)."""
+
     user: UserPublic
     message: str = Field(default="Email verified. You can sign in now.")
+    access_token: str | None = Field(
+        default=None, description="Session token (also set as the ekp_session cookie); None if already verified"
+    )
+    expires_in: int | None = Field(
+        default=None, description="Seconds until access_token expires (7 days); None if already verified"
+    )
 
 
 class LoginResponse(BaseModel):

@@ -618,14 +618,19 @@ def test_logout_revokes_session_token(
     )
     token = login.json()["access_token"]
 
-    # Logout with the session bearer
+    # W17 F2: login set the ekp_session cookie (TestClient stores it), so the
+    # logout POST is cookie-authenticated → must carry the CSRF double-submit.
+    csrf = client.cookies.get("ekp_csrf")
+    assert csrf is not None
     logout = client.post(
-        "/auth/logout", headers={"Authorization": f"Bearer {token}"}
+        "/auth/logout",
+        headers={"Authorization": f"Bearer {token}", "X-CSRF-Token": csrf},
     )
     assert logout.status_code == 200
 
-    # Subsequent /protected with the same token now misses session lookup
-    # AND fails mock bearer check → 401.
+    # logout cleared the ekp_session cookie + revoked the token → subsequent
+    # /protected with the same token misses session lookup AND fails the mock
+    # bearer check → 401.
     response = client.get(
         "/protected", headers={"Authorization": f"Bearer {token}"}
     )

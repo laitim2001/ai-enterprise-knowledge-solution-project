@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
+from starlette.requests import Request
 
 from api.auth.dependency import get_current_user
 from api.auth.mock_msal import authenticate_mock
@@ -19,6 +20,11 @@ from storage.settings import Settings
 
 def _settings(*, mock: bool = True) -> Settings:
     return Settings(feature_auth_mock=mock)
+
+
+def _bare_request() -> Request:
+    """Minimal ASGI Request — GET, no cookies (W17 F2 `get_current_user` takes one)."""
+    return Request({"type": "http", "method": "GET", "headers": []})
 
 
 def test_authenticate_mock_accepts_dev_token_and_returns_dev_user() -> None:
@@ -67,7 +73,7 @@ def test_dependency_routes_to_mock_when_flag_true() -> None:
     settings = _settings(mock=True)
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="dev-token")
 
-    user = get_current_user(credentials=creds, settings=settings)
+    user = get_current_user(_bare_request(), credentials=creds, settings=settings)
 
     assert user.is_mock is True
 
@@ -76,5 +82,5 @@ def test_dependency_routes_to_msal_when_flag_false_and_fails_closed() -> None:
     settings = _settings(mock=False)
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="dev-token")
     with pytest.raises(HTTPException) as exc:
-        get_current_user(credentials=creds, settings=settings)
+        get_current_user(_bare_request(), credentials=creds, settings=settings)
     assert exc.value.status_code == 503

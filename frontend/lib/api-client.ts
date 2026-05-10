@@ -16,6 +16,14 @@
  * Mock vs real MSAL is a `NEXT_PUBLIC_AUTH_MOCK` env-var flip — same single
  * switching point as backend `Settings.feature_auth_mock`.
  *
+ * W17 F2 (per ADR-0022): self-register sessions are primarily transported via
+ * the httpOnly `ekp_session` cookie, so every request uses `credentials:'include'`
+ * and non-GET requests echo the `ekp_csrf` cookie back in `X-CSRF-Token` (the
+ * backend's CSRF double-submit). The Bearer header is still sent — it's the
+ * mock-auth dev-token + the SSO/MSAL JWT transport, and harmless on the public
+ * `/auth/*` endpoints. `getCsrfHeaders()` is exported for the raw-fetch callers
+ * (`lib/api/query.ts` SSE stream, `lib/api/kb.ts` upload) that bypass this class.
+ *
  * URL hygiene rule (W11 D2 discovery 2026-06-10): URL paths passed to
  * ApiClient methods MUST NOT have trailing slashes. FastAPI auto-redirects
  * `/path/` → `/path` with HTTP 307; the redirect hop CAN strip the
@@ -40,10 +48,23 @@ function buildAuthHeader(): Record<string, string> {
     const bearer = getBearer();
     return { Authorization: `${bearer.scheme} ${bearer.token}` };
   } catch {
-    // msal_provider skeleton throws until W8 D2-D3. Caller will see the 401
-    // from backend rather than a hard frontend crash.
+    // msal_provider skeleton throws until W8 D2-D3 (and the self-register
+    // cookie path has no Bearer at all). Caller relies on the ekp_session
+    // cookie / sees the 401 from backend rather than a hard frontend crash.
     return {};
   }
+}
+
+/**
+ * Read the `ekp_csrf` cookie and return it as the `X-CSRF-Token` header (the
+ * backend's CSRF double-submit, per ADR-0022). Empty when there's no cookie
+ * (Bearer-authenticated requests are CSRF-exempt server-side, so that's fine).
+ * Exported for raw-fetch callers that bypass `ApiClient` — apply on non-GET only.
+ */
+export function getCsrfHeaders(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
+  const match = document.cookie.match(/(?:^|;\s*)ekp_csrf=([^;]+)/);
+  return match ? { 'X-CSRF-Token': decodeURIComponent(match[1]) } : {};
 }
 
 /**
@@ -91,6 +112,7 @@ export class ApiClient {
 
   async get<T>(path: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
+      credentials: 'include',
       headers: { ...buildAuthHeader() },
     });
     if (!response.ok) {
@@ -102,9 +124,11 @@ export class ApiClient {
   async post<T>(path: string, body: unknown): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...buildAuthHeader(),
+        ...getCsrfHeaders(),
       },
       body: JSON.stringify(body),
     });
@@ -117,9 +141,11 @@ export class ApiClient {
   async patch<T>(path: string, body: unknown): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'PATCH',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...buildAuthHeader(),
+        ...getCsrfHeaders(),
       },
       body: JSON.stringify(body),
     });

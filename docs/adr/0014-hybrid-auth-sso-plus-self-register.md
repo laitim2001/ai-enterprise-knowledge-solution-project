@@ -103,6 +103,9 @@ Decision deferred to W12 D1-D2 W12 phase plan kickoff。Default-if-unanswered:Az
 - architecture.md v6 §5.10 + §5.11(Login / Register view spec)
 - architecture.md v6 §13.12(v5.1→v6 amendment trigger)
 - ADR-0015(UI Tier 1 expansion)— sister ADR for同 W12 amendment cycle
+- ADR-0016(scrypt password hash)— auth security baseline for the self-register branch
+- ADR-0022(auth-transport hardening — W17 F2)— amends the self-register branch's *transport* layer(httpOnly `ekp_session` cookie + CSRF double-submit + `/auth/refresh` rotation + dual-path `get_current_user`);the hybrid-auth *model* here is unchanged
+- ADR-0023(KB Manager + users_repo persistent backing — W17 F1)— the self-register `users` / `sessions` tables move from in-memory to Postgres
 - decision-form.md Q11(Entra ID SSO,Resolved)
 - decision-form.md Q22(NEW pending — email verification vendor)— W12 D1-D2 land
 - W11 D2 progress.md cont entry(2026-06-10 stakeholder ack)

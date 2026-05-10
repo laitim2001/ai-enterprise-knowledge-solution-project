@@ -19,12 +19,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-import structlog
-
 from api.auth import users_repo
+from api.auth.cookies import SESSION_COOKIE, clear_session_cookies, set_session_cookies
 from api.auth.dependency import get_current_user
 from api.auth.email_provider import (
     EmailProvider,
@@ -40,7 +40,7 @@ from api.auth.security import (
     validate_password_strength,
     verify_password,
 )
-from api.auth.users_repo import UserRecord
+from api.auth.users_repo import SELF_REGISTER_TID, UserRecord
 from api.schemas.auth import (
     LoginResponse,
     LogoutResponse,
@@ -102,19 +102,41 @@ def _api_error(
 
 @router.post("/refresh", response_model=RefreshResponse)
 async def refresh_token(
+    request: Request,
+    response: Response,
     user: CurrentUserDep,
     settings: SettingsDep,
+    credentials: LogoutBearerDep,
 ) -> RefreshResponse:
-    """Reissue a bearer token without re-prompting for credentials.
+    """Reissue the session credential without re-prompting for credentials.
 
-    Mock mode (W7) returns the same fixed dev-token + 1h expiry. Real MSAL
-    (W8 D4 onwards) calls `acquire_token_by_refresh_token` against Entra ID
-    and surfaces the new access_token claim.
+    W17 F2 (per ADR-0022) — for a self-register session (presented via the
+    `ekp_session` cookie or a legacy session bearer), rotate the token: revoke
+    the old one, mint a new one, and re-set both cookies. Requires a valid
+    existing session (the `Depends(get_current_user)` gate handles the 401 — no
+    unauthenticated session bootstrap). Closes carry-over CO_F5_refresh.
 
-    TODO(W13 F5 follow-up): self-register session rotation — currently a self-
-    register user calling /auth/refresh in mock mode receives the mock_bearer
-    string which won't match their session. Carry-over W13 retro item.
+    Mock dev mode returns the same fixed dev-token + 1h expiry (no cookie). Real
+    MSAL (W8 D4 onwards) would call `acquire_token_by_refresh_token` against
+    Entra ID — still 503 until that lands.
     """
+    if user.tid == SELF_REGISTER_TID and not user.is_mock:
+        old_token = request.cookies.get(SESSION_COOKIE)
+        if (
+            old_token is None
+            and credentials is not None
+            and credentials.scheme.lower() == "bearer"
+        ):
+            old_token = credentials.credentials
+        if old_token is not None:
+            users_repo.revoke_session(old_token)
+        new_session = users_repo.create_session(user.oid)
+        set_session_cookies(response, settings, new_session.token)
+        return RefreshResponse(
+            access_token=new_session.token,
+            expires_in=SESSION_TOKEN_TTL_SEC,
+            is_mock=False,
+        )
     if settings.feature_auth_mock:
         return RefreshResponse(
             access_token=settings.auth_mock_bearer_token,
@@ -132,18 +154,23 @@ async def refresh_token(
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
+    request: Request,
+    response: Response,
     user: CurrentUserDep,
     settings: SettingsDep,
     credentials: LogoutBearerDep,
 ) -> LogoutResponse:
-    """Invalidate the current session — revoke session token if self-register.
-
-    Mock + real MSAL paths stay stateless server-side (frontend store clears
-    local user state); W13 F5 adds session revoke for self-register users so
-    the bearer they hold becomes invalid before its 7-day TTL.
+    """Invalidate the current session — revoke the self-register session token
+    (whether presented via the `ekp_session` cookie or a bearer) and clear both
+    auth cookies. Mock + real MSAL paths stay stateless server-side (frontend
+    store clears local user state); the cookie-clear is harmless there.
     """
+    cookie_token = request.cookies.get(SESSION_COOKIE)
+    if cookie_token:
+        users_repo.revoke_session(cookie_token)
     if credentials is not None and credentials.scheme.lower() == "bearer":
         users_repo.revoke_session(credentials.credentials)
+    clear_session_cookies(response)
     return LogoutResponse(is_mock=settings.feature_auth_mock)
 
 
@@ -218,8 +245,18 @@ async def register(
 
 
 @router.post("/verify-email", response_model=VerifyEmailResponse)
-async def verify_email(payload: UserVerifyEmailRequest) -> VerifyEmailResponse:
-    """Validate 6-digit code and flip verified=True. Idempotent on already-verified."""
+async def verify_email(
+    payload: UserVerifyEmailRequest,
+    response: Response,
+    settings: SettingsDep,
+) -> VerifyEmailResponse:
+    """Validate the 6-digit code, flip verified=True, and auto-log-in.
+
+    On the verified-transition a fresh session is minted and the `ekp_session`
+    + `ekp_csrf` cookies are set (per ADR-0022 §1) so the V9 wireframe's Step 3
+    "Start asking" lands on `/chat` already authenticated. Idempotent on an
+    already-verified user (no new session — `access_token` stays None).
+    """
     if len(payload.code) != VERIFICATION_CODE_LENGTH or not payload.code.isdigit():
         raise _api_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -255,16 +292,28 @@ async def verify_email(payload: UserVerifyEmailRequest) -> VerifyEmailResponse:
         )
     updated = users_repo.mark_verified(user.oid)
     assert updated is not None  # mypy: oid resolved via find_by_email above
-    return VerifyEmailResponse(user=_to_public(updated))
+    session = users_repo.create_session(updated.oid)
+    set_session_cookies(response, settings, session.token)
+    return VerifyEmailResponse(
+        user=_to_public(updated),
+        access_token=session.token,
+        expires_in=SESSION_TOKEN_TTL_SEC,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(payload: UserLoginRequest) -> LoginResponse:
-    """Verify password + email-verified status and issue 7-day session token.
+async def login(
+    payload: UserLoginRequest,
+    response: Response,
+    settings: SettingsDep,
+) -> LoginResponse:
+    """Verify password + email-verified status and issue a 7-day session.
 
     Returns 401 on missing user OR password mismatch (constant-time comparison
-    inside `verify_password`); 403 on unverified email. Session token is a
-    256-bit URL-safe random string stored in the in-memory sessions repo.
+    inside `verify_password`); 403 on unverified email. The session token is a
+    256-bit URL-safe random string; W17 F2 (per ADR-0022) also sets it as the
+    httpOnly `ekp_session` cookie + an `ekp_csrf` double-submit cookie. The
+    token is still returned in the body for API/CLI clients (Bearer transport).
     """
     user = users_repo.find_by_email(payload.email)
     if user is None or not verify_password(payload.password, user.password_hash):
@@ -281,6 +330,7 @@ async def login(payload: UserLoginRequest) -> LoginResponse:
             hint="Check your inbox for the verification email or resend it.",
         )
     session = users_repo.create_session(user.oid)
+    set_session_cookies(response, settings, session.token)
     return LoginResponse(
         access_token=session.token,
         expires_in=SESSION_TOKEN_TTL_SEC,

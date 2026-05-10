@@ -48,15 +48,15 @@ This **amends the transport layer of ADR-0014, not the hybrid-auth model** — S
 
 Tracked in `docs/01-planning/W17-beta-hardening/{plan,checklist}.md` **F2** (+ **F0.1** for this ADR). Status appended at W17 closeout.
 
-- [ ] F0.1 — this ADR landed `Accepted`; README index updated
-- [ ] F2.1 — `Set-Cookie` `ekp_session` (httpOnly, SameSite=Lax, Secure=env!=local) + `ekp_csrf` (double-submit) on login + register-verify
-- [ ] F2.2 — `POST /auth/refresh` rotates both cookies; 401 if no valid session (CO_F5_refresh)
-- [ ] F2.3 — `POST /auth/logout` clears both cookies
-- [ ] F2.4 — `get_current_user` dual-path (cookie OR Bearer) + CSRF check on cookie-auth state-changing requests
-- [ ] F2.5 — frontend `api-client.ts` `credentials:'include'` + `X-CSRF-Token`; `auth/index.ts` `getBearer()` simplified (localStorage mock-only)
-- [ ] F2.6 — `login/page.tsx` + `register/page.tsx` stop treating localStorage as ground truth
-- [ ] F2.7 — `backend/tests/test_auth_cookie_transport.py` + existing `test_auth_*` updated; `tsc` clean
-- [ ] F2.8 — `architecture.md` §3.7 transport note; ADR-0014 References cross-link to this ADR; CO_F5_refresh + CO_F5_cookie → CLOSED
+- [x] F0.1 — this ADR landed `Accepted`; README index updated (`6edd9ef`)
+- [x] F2.1 — `Set-Cookie` `ekp_session` (httpOnly, SameSite=Lax, Secure=env!=local, Max-Age=session TTL) + `ekp_csrf` (double-submit, readable) on `POST /auth/login` + the verified-transition of `POST /auth/verify-email` — via `api/auth/cookies.set_session_cookies`
+- [x] F2.2 — `POST /auth/refresh` rotates the session token + both cookies (revokes the old token); 401 via the `Depends(get_current_user)` gate if no valid session; mock dev mode keeps returning the fixed dev-token (no cookie). Closes CO_F5_refresh
+- [x] F2.3 — `POST /auth/logout` revokes the session (cookie token + any bearer) + clears both cookies
+- [x] F2.4 — `get_current_user` dual-path (cookie precedence → bearer session → mock → MSAL) + CSRF double-submit (`X-CSRF-Token` == `ekp_csrf` cookie) enforced on cookie-authenticated state-changing requests (POST/PUT/PATCH/DELETE); GET + Bearer-authenticated requests are CSRF-exempt
+- [x] F2.5 — frontend `api-client.ts` `credentials:'include'` on all requests + `X-CSRF-Token` (from the `ekp_csrf` cookie) on non-GET; `getCsrfHeaders()` exported for the raw-fetch callers (`lib/api/query.ts` SSE stream, `lib/api/kb.ts` upload); `auth/index.ts` `getBearer()` simplified — the `SESSION_TOKEN_STORAGE_KEY` / `readSessionBearer` localStorage path removed (the cookie is the credential; mock dev-token + MSAL JWT are the only Bearers)
+- [x] F2.6 — `login/page.tsx` drops the `localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, …)` write + the now-unused import (cookie is set by the response). `register/page.tsx` needed no change — it never wrote localStorage, and the verify-email auto-login cookie makes its Step-3 → `/chat` work
+- [x] F2.7 — `backend/tests/test_auth_cookie_transport.py` (17 cases: Set-Cookie shape / cookie GET / CSRF reject + accept + mismatch / Bearer + mock CSRF-exempt / invalid-cookie fallthrough / refresh rotation + 401 + mock / logout clear); `test_auth_self_register.py::test_logout_revokes_session_token` + `test_mock_msal.py` dependency tests updated for the new `get_current_user(request, …)` signature; backend pytest 609 passed / 11 skipped; `tsc --noEmit` + `next lint` clean
+- [x] F2.8 — `architecture.md` §3.7「Auth transport」note (per this ADR); ADR-0014 References cross-link to ADR-0022 (+ ADR-0016, ADR-0023); `server.py` CORS gained `allow_credentials=True` (cookie transport correctness); CO_F5_refresh + CO_F5_cookie → CLOSED (W17 checklist/progress)
 
 ## References
 

@@ -12,7 +12,7 @@
  * (custom citation + done events) — wrapping `useChat` would add an indirection
  * for no benefit (per Karpathy §1.2 simplicity).
  */
-import { ApiError } from '../api-client';
+import { ApiError, getCsrfHeaders } from '../api-client';
 
 // Browser fetch goes through Next.js server-side rewrite (per api-client.ts
 // top docstring). NEXT_PUBLIC_API_URL is server-side only.
@@ -86,7 +86,8 @@ export async function* streamQuery(
 ): AsyncGenerator<SseEvent> {
   const response = await fetch(`${API_PREFIX}/query/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
     body: JSON.stringify(payload),
     signal,
   });

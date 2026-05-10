@@ -7,11 +7,13 @@
  * area right (split layout). Brand panel collapses < md per F3.8 responsive
  * acceptance.
  *
- * W13 D5 cont CO_F5d: auth wire deferral resolved — F5 backend cascade landed
- * (commit 054679d). Self-register path POSTs `/auth/login` and stores the
- * session bearer in localStorage; SSO path delegates to existing useAuthStore
- * (mock_msal in dev / real MSAL Beta+ via Q11 IT cred). Error.code from the
- * ApiError envelope drives toast variants per F3.7 acceptance.
+ * W13 D5 cont CO_F5d: auth wire deferral resolved — F5 backend cascade landed.
+ * W17 F2 (per ADR-0022): self-register path POSTs `/auth/login`; the backend
+ * sets the httpOnly `ekp_session` cookie + `ekp_csrf` cookie on the response
+ * (the browser / `/api/backend` proxy carry it), so the page no longer
+ * persists the token in localStorage. SSO path delegates to existing
+ * useAuthStore (mock_msal in dev / real MSAL Beta+ via Q11 IT cred).
+ * Error.code from the ApiError envelope drives toast variants per F3.7.
  */
 
 import { Building2, Loader2 } from 'lucide-react';
@@ -26,11 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ApiError } from '@/lib/api-client';
-import {
-  AuthErrorCodes,
-  SESSION_TOKEN_STORAGE_KEY,
-  authApi,
-} from '@/lib/api/auth';
+import { AuthErrorCodes, authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
@@ -51,13 +49,9 @@ export default function LoginPage() {
     setIsFormPending(true);
     try {
       const response = await authApi.login({ email, password });
-      // W13 D5 cont — minimal localStorage persistence so subsequent protected
-      // calls can lift the bearer once getBearer() learns about session-token
-      // mode (CO_F5d-cont follow-up). For now, stored as ground truth even if
-      // not yet consumed by api-client.ts.
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, response.access_token);
-      }
+      // W17 F2 (ADR-0022): the `ekp_session` httpOnly cookie is set by the
+      // response — no client-side token persistence. Subsequent protected
+      // calls carry it automatically (api-client `credentials:'include'`).
       toast.success(`Welcome back, ${response.user.display_name}!`);
       router.push('/chat');
     } catch (err) {

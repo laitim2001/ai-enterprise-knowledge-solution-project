@@ -181,9 +181,15 @@ app.add_middleware(
 # stack so preflight OPTIONS short-circuit before rate-limit/audit. Production
 # frontends serve from a real domain and simply won't match the localhost
 # pattern, so this is a no-op there. Per docs/setup.md §8.5.
+# W17 F2 — allow_credentials=True so a cross-origin browser fetch with
+# `credentials:'include'` can carry the `ekp_session` / `ekp_csrf` cookies
+# (the same-origin `/api/backend/*` proxy path sends them regardless; this
+# covers any direct browser→backend dev call). A regex origin (not `*`) is
+# required when credentials are allowed.
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://localhost:\d+",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,10 +1,13 @@
 /**
- * Self-register hybrid auth API client (W13 D5 cont CO_F5d frontend wire batch).
+ * Self-register hybrid auth API client (W13 D5 cont CO_F5d frontend wire batch;
+ * W17 F2 cookie transport per ADR-0022).
  *
  * Wraps backend POST /auth/register + /auth/verify-email + /auth/login +
- * /auth/resend-verification with typed responses. Reuses `apiClient.post`
- * which auto-injects bearer header — backend treats these endpoints as public
- * (no Depends auth), so the bearer is harmless when present.
+ * /auth/resend-verification with typed responses. Reuses `apiClient.post` —
+ * backend treats these as public (no Depends auth), so the auto-injected
+ * Bearer is harmless when present. `login` + `verify-email` success sets the
+ * httpOnly `ekp_session` cookie + `ekp_csrf` cookie (handled by the browser /
+ * the `/api/backend` proxy) — callers don't persist the token themselves.
  *
  * Errors flow through the W7 ApiError envelope (`error.code` discriminator);
  * callers branch via the constants exported below to surface variant-specific
@@ -12,11 +15,6 @@
  */
 
 import { apiClient } from '../api-client';
-
-// Re-exported so the login form keeps its existing import surface; the
-// canonical declaration lives in `lib/auth/index.ts` to break the
-// api-client → auth → api/auth circular import (W14 D1 F1.5 / CO_F5d-cont).
-export { SESSION_TOKEN_STORAGE_KEY } from '../auth';
 
 export interface UserPublic {
   oid: string;
@@ -54,6 +52,11 @@ export interface RegisterResponse {
 export interface VerifyEmailResponse {
   user: UserPublic;
   message: string;
+  // Set on the verified-transition (auto-login, per ADR-0022); null if the
+  // user was already verified. The session cookie is the actual credential —
+  // these are informational for any client that wants the Bearer too.
+  access_token: string | null;
+  expires_in: number | null;
 }
 
 export interface LoginResponse {
