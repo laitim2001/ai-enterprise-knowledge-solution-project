@@ -1,13 +1,13 @@
 ---
 phase: W17-beta-hardening
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-10
 ---
 
 # Phase W17 — Checklist
 
-> Atomic checkbox(每 item ≤ 0.5–2 hour effort)。Status:`active` 2026-05-10 per user directive。
+> Atomic checkbox(每 item ≤ 0.5–2 hour effort)。Status:`active` 2026-05-10 → `closed` 2026-05-10(F7 closeout — W17 phase Gate = PASS;🚧 F1.5b + F3.5b R8/Azure-key-bound runtime verifications deferred W18+/CO17)。
 > 每 item done 後 `[ ]→[x]` + commit ref;延後項標 🚧 + reason(per CLAUDE.md §10 sacred rule — 唔可以刪未勾選 item)。
 
 ## F0 — ADRs(H1/H2 gate — must land before F1/F2 implementation)
@@ -87,26 +87,28 @@ last_updated: 2026-05-10
 
 ## F7 — Phase closeout + W18+ rolling-JIT trigger
 
-- [ ] F7.1 W17 phase Gate verdict landed(PASS / PARTIAL PASS / FAIL + explicit rationale per W12-W15 pattern)— plan §3 7-criterion evaluation
-- [ ] F7.2 W17 progress.md retro 7 sections(What worked / What didn't / Surprises / Decisions / Carry-overs / Time tracking / Spec ref alignment)
-- [ ] F7.3 ADR-0022 + ADR-0023 status → `Accepted`(landed this phase)
-- [ ] F7.4 W17 plan + checklist + progress frontmatter `status` → `closed`(same commit cycle as F7 closeout)
-- [ ] F7.5 W18+ phase folder NOT pre-created(rolling-JIT — kickoff post-closeout)
-- [ ] F7.6 Hygiene catch-up(opportunistic, may be in-scope per F7)— `session-start.md`:C02 status / §2「v5 frozen」→ v6 / W16 status draft→active / ADR count + next-NNNN→0024 / §11 carry-overs CO18+CO_F5_*+CO_W15_F1/F2/F3/F4 → CLOSED;`COMPONENT_CATALOG.md` §11 stale「C13 Workflow Engine」note(if not already)
-- [ ] F7.7 No new OQ expected;if surface → sync `decision-form.md` per R4
+> **F7 verdict = PASS**(2026-05-10 D8)— landed `(this commit)`. **W17 phase Gate = PASS**(all 7 plan §3 criteria substantively met;sub-verdicts:F1 PARTIAL — 🚧 F1.5b R8-blocked Postgres-path smoke deferred / F3 PASS-structural — 🚧 F3.5b Azure-key-bound live-verify deferred / F2,F4,F5,F6 PASS;no FAIL condition;backend pytest grew 593/7 → 613/11). Full Gate rationale + 7-section retro in `progress.md`.
+
+- [x] F7.1 W17 phase Gate verdict = **PASS**(plan §3 7-criterion eval — see `progress.md` Day-8 "W17 phase Gate verdict" + Retro);sub-verdicts F1 PARTIAL(🚧 F1.5b)/ F3 PASS-structural(🚧 F3.5b)/ F2,F4,F5,F6 PASS;no FAIL condition(no ADR Tier-2 creep;in-memory fallback intact + tested;mock-auth dev path verified working post-cookie-change via the F5 next-dev smoke;pytest grew, no regression)— `(this commit)`
+- [x] F7.2 W17 `progress.md` Retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W18+ / Time tracking / Spec ref alignment)— `(this commit)`
+- [x] F7.3 ADR-0017 + ADR-0022 + ADR-0023 status = **`Accepted`**(verified — all three created `Accepted` this phase:ADR-0022/0023 in `6edd9ef`, ADR-0017 in `fb0253a`;`docs/adr/README.md` index has all three rows + "next available 0024", only ADR-0013 AF3 reserved)— `(this commit)`(verify-no-op)
+- [x] F7.4 W17 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `status: closed`(this commit cycle)— `(this commit)`
+- [x] F7.5 W18+ phase folder **NOT pre-created**(rolling-JIT per CLAUDE.md §10 R1)— kickoff candidates noted in `progress.md` Retro carry-overs:W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance(Q12)/ the user's local-dev-setup task(needs `scripts/seed_dev_kb.py` or one-liner — in-memory KB store starts empty)— `(this commit)`
+- [x] F7.6 Hygiene catch-up — `session-start.md`:§2 "v5 frozen"→v6 + Cohere v3.5→v4.0-pro;§3 C02 status(in-memory→Postgres-backed per ADR-0023, CO18 CLOSED, 🚧 F1.5b)+ C06 status(RAGAs integrated W17 F3, CO_W15_F1_eval_set_v1 OPEN);§4 authority-order header v5→v6;§11 ADR count 15→22 landed + next-NNNN 0017→0024 + carry-overs CLOSED(CO18 / CO_F5_refresh / CO_F5_cookie / CO_W15_F2_langfuse_url / CO_W15_F4_vitest_baseline_gap)+ CO_W15_F3_dark_mode_visual_verify partially closed + W17 milestones row + W17 closed;§10 W16 notes(F5 backend stub cascade done — F1-F4 still Track-A-blocked);Last-Updated + Update-history row. `COMPONENT_CATALOG.md` §11 stale "C13 Workflow Engine" note — left as standalone housekeeping(already flagged in session-start.md §3 Note + W17 D3 changelog Deviation 4;Karpathy §1.3 — not expanded here)— `(this commit)`
+- [x] F7.7 No new OQ surfaced — `decision-form.md` unchanged(Q8 4-metric-replacement note holds: F3 delivered the *current* 4 metrics, not a replacement set;Q14 SME labels remain the eval-set-v1 blocker — that's the existing Q14 status, not a new OQ)— `(this commit)`
 
 ---
 
 ## Cross-Cutting
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)— `docs(planning):` housekeeping commits exempt
-- [ ] Component tag in commit message per CC-1 — F1 = C02+C11+C12 / F2 = C08+C11 / F3 = C06+C08 / F4 = C09+C07 / F5 = cross-cutting / F6 = test harness
-- [ ] OQ status sync to `decision-form.md`(R4)— no W17 critical OQ surfaced expected(Q8 4-metric-replacement note: F3 delivers the *current* 4 metrics, not a replacement set — Q8 stays deferred Tier 2)
-- [ ] Risk register update — `psycopg[binary]` install vs R8 corp proxy outcome(if blocked → 5th cumulative R8 occurrence → ADR-0017 formalization trigger);R12 Azurite mismatch unchanged
-- [ ] CLAUDE.md §5.1 H1 check — F1 storage-layout change covered by ADR-0023;F2 transport change covered by ADR-0022;no other architectural change
-- [ ] CLAUDE.md §5.2 H2 check — `psycopg[binary]`(F1)covered by ADR-0023;Vitest/RTL/jsdom(F6)= dev-dependency exception per §5.2;no other new vendor
-- [ ] CLAUDE.md §3.1/§3.2 conventions — `mypy --strict` clean on new backend modules;`tsc --noEmit` clean;ruff/eslint clean on changed files;no `any`
-- [ ] CLAUDE.md §5.5 H5 — no secret commit;`DATABASE_URL` + cookie-signing-key (if any) only in `.env`(gitignored);`Secure` cookie gated on env;no PII in logs
+- [x] Each commit references `progress.md` Day-N entry(R2)— `docs(planning):` housekeeping commits exempt — held(F4 `9ee636c`↔Day-1 / F1 `2453a50`↔Day-2 + `5c5df92`↔Day-3 / F2 `7cca23e`↔Day-4 / F3 `7f446fb`↔Day-5 / F5 `414a21e`↔Day-6 / F6 `2d71b1e`↔Day-7 / F7 this↔Day-8;F0 ADR `6edd9ef` + F0b `fb0253a` = `docs(adr):` housekeeping-exempt)
+- [x] Component tag in commit message per CC-1 — held(F1 = C02+C11+C12 / F2 = C08+C11 / F3 = C06+C08 / F4 = C09+C07 / F5 = cross-cutting C09+C10+C11 / F6 = test harness governance — reflected in commit scopes `feat(infra,api)` / `feat(api)` / `feat(api,frontend)` / `feat(eval,api)` / `feat(frontend,api)` / `feat(frontend)` / `chore(frontend)`)
+- [x] OQ status sync to `decision-form.md`(R4)— **no W17 critical OQ surfaced**;`decision-form.md` unchanged(Q8 4-metric-replacement note holds: F3 delivers the *current* 4 metrics, not a replacement set — Q8 stays deferred Tier 2;Q14 SME labels = the existing eval-set-v1 blocker, not a new OQ)
+- [x] Risk register update — R8 corp proxy hit a **5th cumulative occurrence**(`pip install psycopg[binary]` blocked, D2)→ **ADR-0017 landed `fb0253a`**(R8 mitigation pattern formalized — now the authoritative record);converse confirmed:`pnpm add -D` of the F6 Vitest deps went through fine(R8 blocks binary-CDN downloads, not the npm registry). `RISK_REGISTER.md` R8-row + R12-row(Azurite mismatch — permanent fix = cloud Azure Blob, Track A)bump is opportunistic living-doc maintenance — ADR-0017 + session-start.md §11 carry the substantive R8 state;not separately re-touched here(Karpathy §1.3)
+- [x] CLAUDE.md §5.1 H1 check — F1 storage-layout change covered by **ADR-0023**;F2 transport change covered by **ADR-0022**;both authorized via the 2026-05-10 AskUserQuestion("approved + write ADR");no other architectural change(F3 RAGAs = within §5.6 spec / F4 = UI wiring + naming canon / F5 = a11y verify / F6 = dev-dep test harness — none touch §3/§4 components)
+- [x] CLAUDE.md §5.2 H2 check — `psycopg[binary]`(F1)covered by ADR-0023;Vitest/RTL/jsdom/`@vitejs/plugin-react`/`@testing-library/*`(F6)= **dev-dependency exception per §5.2**;`ragas` was already installed(no new vendor for F3);no other new dependency
+- [x] CLAUDE.md §3.1/§3.2 conventions — `ruff check` clean on all new/changed backend files;`mypy -p api.auth` + `-p eval` clean on the new modules except the documented R8 `psycopg` `import-not-found` ×2 in `postgres_users_store.py`(ADR-0017 PARTIAL-PASS)+ the pre-existing `import yaml` untyped + azure/jose stubs;`tsc --noEmit` + `next lint` clean(frontend);no `any`
+- [x] CLAUDE.md §5.5 H5 — no secret committed;`DATABASE_URL` only in `.env`(gitignored — `.env.example` carries a commented template);no separate cookie-signing key(the session token IS the credential — opaque random `secrets.token_urlsafe`, validated server-side via `resolve_session`);`Secure` cookie attr gated on `environment != "local"`;no PII / no plaintext-prompt logging changed
 
 ---
 

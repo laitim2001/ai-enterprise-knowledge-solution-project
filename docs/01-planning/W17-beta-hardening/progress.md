@@ -2,7 +2,7 @@
 phase: W17-beta-hardening
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed
 last_updated: 2026-05-10
 ---
 
@@ -281,47 +281,127 @@ The structural integration is complete + CI-tested at the LLM-judge boundary, bu
 
 ---
 
-## Day 8 — _(implementation entries appended below as work lands)_
+## Day 8 — F7: phase closeout(2026-05-10, same-calendar-day)
 
-_(Next:F7 closeout — Gate verdict + retro 7 sections + ADR-0022/0023 → Accepted + frontmatter `status: closed` + W18+ rolling-JIT trigger + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
+> F7 verdict = **PASS** — landed `(this commit)` `docs(planning)`. Cross-cutting governance(CLAUDE.md §10 R1 rolling-JIT + R5 closeout discipline).
+
+### W17 phase Gate verdict — **PASS**(plan §3 7-criterion eval)
+
+1. **F1 Postgres backing** — ✅(sub-verdict **PARTIAL**)— `PostgresKBBackend`(async) + `PostgresUsersStore`(sync) + `make_kb_backend`/`make_users_store` factories landed(`2453a50` + `5c5df92`);`KBStorageBackend` / `UsersStore` Protocols satisfied;in-memory fallback preserved when `DATABASE_URL` unset(local/CI unchanged);CI tests skip-clean(psycopg-gated). **CO18 → CLOSED.** The literal `pip install psycopg[binary]` + manual `docker compose up` Postgres-path runtime smoke + `mypy postgres_*` is **R8-corp-proxy-blocked** → 🚧 **F1.5b** deferred W18+/CO17(decision = Option A per the D2-cont AskUserQuestion;**ADR-0017 landed `fb0253a`** — R8 mitigation pattern, 5th cumulative occurrence + vendor-decision pivot).
+2. **F2 Auth-transport** — ✅ **PASS** — httpOnly `ekp_session` cookie + `ekp_csrf` double-submit + `/auth/refresh` rotation + dual-path `get_current_user`(cookie OR Bearer)+ verify-email auto-login(`7cca23e`);mock-auth dev path verified working(the F5 `next dev` smoke loaded `/login` + `/` cleanly). **CO_F5_refresh + CO_F5_cookie → CLOSED.** 17 new `test_auth_cookie_transport.py` cases.
+3. **F3 RAGAs** — ✅ **PASS (structural)** — `make_ragas_evaluator` + `patch_for_gpt5` extracted to `backend/eval/ragas_evaluator.py`;`orchestrator.run_eval_pipeline` + `build_ragas_samples` wired;`/eval/run` + `/eval/shootout` thread `app.state.synthesizer` + the judge evaluator through;`EvalReport.faithfulness` ← faithfulness mean / `correctness` ← `answer_relevancy` mean(approximation — proper `answer_correctness` needs SME reference answers per Q14)(`7f446fb`);CI-tested at the LLM-judge boundary(stub evaluator). Live judge run against a populated Azure index = 🚧 **F3.5b** deferred non-proxy env/personal Azure dev tier(CO17 pattern). **CO_W15_F1_eval_set_v1 stays OPEN**(`docs/eval-set-v1.yaml` final doesn't exist — `eval-set-v1-draft.yaml` is the WIP;needs Chris's SME labels).
+4. **F4 Frontend bundle** — ✅ **PASS** — Documents tab wired to the real `GET /kb/{id}/documents`(`9ee636c`);`admin/page.tsx` `CardTitle` lint orphan removed → `next lint` green globally;`NEXT_PUBLIC_LANGFUSE_URL` already in `.env.example`(W16) → **CO_W15_F2_langfuse_url CLOSED**;Cohere reranker naming canonicalized to `Cohere-rerank-v4.0-pro`(matches the live `.env`).
+5. **F5 a11y + dark-mode** — ✅ **PASS** — `[oklch(...)]` arbitrary-value form = 0 globally(milestone preserved);dark-mode mechanism confirmed(next-themes `attribute="class"` → `globals.css` `.dark` vars → tailwind `oklch(var(--token))` → utility classes;`tokens.ts` `colorsDark` inverted-button pattern);V8 Login + V7 Landing browser-verified in dark(`body bg oklch(0.18 0.005 285)` == `colorsDark.background`);V1-V6/V9 inherit(token-class-only — grep proves it);`DocumentsTable` `<th scope="col">` ×5 fix(`414a21e`). **CO_W15_F3_dark_mode_visual_verify partially closed**(interactive 9-view walkthrough = user pre-Beta smoke);CO_W15_F3_aria_full_audit stays Tier 2.
+6. **F6 Vitest + RTL** — ✅ **PASS** — `vitest ^4.1.5` + RTL + jest-dom + jsdom + `@vitejs/plugin-react` dev deps(H2-exempt §5.2);`vitest.config.ts` + `tests/unit/{setup.ts,button.test.tsx,README.md}` + `test:unit`/`test:unit:watch` scripts(`2d71b1e`);`pnpm test:unit` → 1 file / 3 tests passed. **CO_W15_F4_vitest_baseline_gap → CLOSED**(coverage expansion stays Tier 2).
+7. **F7 closeout** — ✅ **PASS** — this entry(Gate verdict + retro + frontmatter `status: closed` + W18+ NOT pre-created + session-start.md hygiene catch-up).
+
+**FAIL conditions** — none hit:no ADR-0022/0023 Tier-2 scope creep(both stayed transport / storage-layer);in-memory fallback intact + tested;mock-auth dev path verified working post-cookie-change(F5 next-dev smoke);**backend pytest grew** 593 passed / 7 skipped(W17 baseline)→ **613 passed / 11 skipped**(+20 / +4)— no regression.
+
+→ **W17 phase Gate = PASS**(with 🚧 F1.5b + F3.5b R8/Azure-key-bound runtime verifications deferred W18+/CO17 — the established "ship the wiring + CI-test at the boundary, defer the proxy/credential-bound runtime check" pattern;and CO_W15_F1_eval_set_v1 + the interactive 9-view dark-mode walkthrough remaining as carry-overs).
+
+### F7.6 hygiene catch-up
+
+`session-start.md` updated:§2 "v5 frozen"→v6 + Cohere v3.5→v4.0-pro;§3 C02 status(in-memory→Postgres-backed per ADR-0023;CO18 CLOSED;F1.5b 🚧)+ C06 status(RAGAs integrated W17 F3;CO_W15_F1_eval_set_v1 OPEN);§4 authority-order header v5→v6;§11 ADR count 15→22 landed + next-NNNN 0017→0024 + carry-overs CLOSED(CO18 / CO_F5_refresh / CO_F5_cookie / CO_W15_F2_langfuse_url / CO_W15_F4_vitest_baseline_gap)+ CO_W15_F3_dark_mode_visual_verify partially closed + W17 milestones row + W17 closed status;§10 W16 notes(F5 backend stub closure cascade done — F1-F4 still Track-A-blocked);Last-Updated + Update-history row added. `COMPONENT_CATALOG.md` §11 stale "C13 Workflow Engine" Tier-2-card note — already flagged in multiple places(session-start.md §3 Note + the W17 D3 changelog Deviation 4);left as a standalone housekeeping item(not expanded here — Karpathy §1.3 surgical).
+
+### F7.5 W18+ rolling-JIT
+
+W18+ phase folder **NOT pre-created**(per CLAUDE.md §10 R1). Kickoff candidates(decided post-closeout): (a) **W16 F1-F4** if the Track A IT cred populate event lands(Azure DELETE cleanup / ACS pip install / `.env.production` / Cohere Marketplace billing / 25% rollout / Q15 weekly signal report); (b) **Tier 2 prep** governance(per Q12 — Chris as Tier 2 owner); (c) the user's **local-dev-setup** task("set 起本地 backend + frontend 去開始在平台上執行測試" — likely needs a `scripts/seed_dev_kb.py` or one-liner for the in-memory KB store, since the seeded KB starts empty).
+
+### F7.7 OQ
+
+No new OQ surfaced this phase. `decision-form.md` unchanged(Q8 4-metric-replacement note holds — F3 delivered the *current* 4 metrics, not a replacement set;Q14 SME labels remain the eval-set-v1 blocker but that's the existing Q14 status, not a new OQ).
+
+### Day 8 commits
+
+- **`(this commit)`** `docs(planning)` — W17 F7 closeout(progress.md retro 7 sections + Gate verdict PASS + Day-8 entry + `status: active`→`closed` frontmatter on plan/checklist/progress + checklist F7.1-F7.7 ticked + plan §7 changelog D8)+ `session-start.md` F7.6 hygiene catch-up
 
 ---
 
-## Retro(填於 W17 closeout — F7)
+## Retro — W17 closeout(F7.2)
 
 ### What worked
 
-_(TBD)_
+- **Rolling-JIT one-phase discipline held** — W17 created at kickoff(`86a4403`), W18+ NOT pre-created;W16-beta-deploy stayed `draft`/parallel-track throughout(its F1-F4 are externally blocked — W17 didn't pretend to depend on or unblock it).
+- **ADR-first on the H1/H2 deliverables** — F0 ADR-0022(auth-transport)+ ADR-0023(persistent backing)landed Day 0 *before* any F1/F2 code;F0b ADR-0017(R8 mitigation pattern)landed Day 2 the moment the 5th-occurrence + vendor-pivot trigger was met. No code preceded its ADR.
+- **Pre-kickoff grep verification(CO_W14_process_grep_verify)paid off again** — surfaced that `GET /kb/{id}/documents` was *already implemented* backend-side(W16 F5.1.1) → F4.1 reframed from "implement backend" to "wire frontend + drop stale 501-stub copy" *before* writing any code(Karpathy §1.1). Also that `NEXT_PUBLIC_LANGFUSE_URL` was already in `.env.example`(W16) → F4.3 = verify-no-op. ~1 day of mis-scoped work avoided.
+- **"Ship the wiring + CI-test at the boundary, defer the credential-bound runtime check" pattern** — applied uniformly to F1(Postgres-path smoke deferred — psycopg pip R8-blocked)and F3(RAGAs live judge run deferred — Azure keys needed). Both shipped shippable code with CI tests at the natural boundary(psycopg `importorskip` for F1;stub evaluator at the LLM-judge call for F3). Beta-hardening progress without being held hostage by the corp proxy or Azure-key availability.
+- **Same-calendar-day collapse, again** — Days 0-8 all 2026-05-10(real calendar). Plan estimated ~5-7 working days;actual ≈ 1 calendar day of focused work. Consistent with the W12-W15 calibration(phase capacity runs far under the plan-day budget when pivot momentum is clean and there's no external blocker in the critical path).
+- **Backend pytest grew, not shrank** — 593/7 → 613/11(+20 pass, +4 skip). Every new module(`postgres_backend.py` / `postgres_users_store.py` / `cookies.py` / `ragas_evaluator.py`)shipped with tests, even the R8-deferred ones(skip-clean in CI).
 
-### What didn't
+### What didn't work / friction
 
-_(TBD)_
+- **R8 corp proxy bit again — 5th cumulative occurrence** — `pip install psycopg[binary]` blocked mid-download(same `IncompleteRead`/timeout pattern as Cohere W3 / argon2-cffi W13 / ACS SDK W13 / Playwright browsers W15). This *was* anticipated in the plan §4 risk table, but it still forced a stop-and-ask(the right call — it was also a vendor-decision pivot point). Net: ADR-0017 now formalizes the mitigation pattern, so the *next* occurrence is a documented playbook rather than a fresh deliberation. Also confirmed the *converse*: `pnpm add -D` of the F6 Vitest deps went through fine — **R8 blocks binary-CDN downloads, not the npm registry**(the `.npmrc` TLS-reject-unauthorized + hoisted-linker workarounds handle the rest).
+- **F1.8 doc-note scope was under-specified in the plan** — "architecture.md §3.4 / COMPONENT_CATALOG C02" turned out to also need `setup.md §4.2`(folded in), and revealed a *pre-existing* C11 catalog-entry drift("⏳ Beta+ scope" predates the whole W7-W15 hybrid-auth build)that's larger than F1.8's scope — flagged for separate housekeeping rather than fixed inline(Karpathy §1.3). Lesson: doc-note acceptance criteria should enumerate *all* the files, and a doc-touch often surfaces adjacent drift.
+- **F5's "browser smoke across V1-V9" was optimistic in the plan** — the static auth/landing pages browser-verify trivially(no backend), but the admin/chat views need a running backend + auth + seeded data. Settled on: deterministic milestone(`[oklch`=0)+ mechanism code-review + V7/V8 browser-verified + the inherit-by-token-class argument for V1-V6/V9;the per-view interactive dark-mode walkthrough stays the user's pre-Beta smoke(W12-W15 caveat shape). Honest scoping beats a checkbox claim.
 
 ### Surprises / discoveries
 
-_(TBD)_
+- `GET /kb/{id}/documents` was already done backend-side(W16 F5.1.1) — the "501 stub" the KB-detail Documents tab showed was *stale frontend copy*, not a missing route. (Surfaced Day 0.)
+- `NEXT_PUBLIC_LANGFUSE_URL` was already in `.env.example`(W16 F5.x.2) — F4.3 = no-op verify, not a new addition.
+- `PostgresUsersStore` had to be **sync** `psycopg`(not async like `PostgresKBBackend`)— `users_repo`'s public surface is sync(consumed by the sync `get_current_user` dependency + sync calls in async route bodies);an async DAL would have rippled through `dependency.py` / `auth.py` / the test suite, breaking plan F1.5's "same public interface". Blocking DB I/O in an async route body is acceptable Tier 1(auth infrequent, low-traffic Beta).
+- ADR-0022 §1 explicitly said "the email-verify step ... set ekp_session" → `/auth/verify-email`'s verified-transition now *auto-logs-in*(returns `access_token`/`expires_in`)— which incidentally fixed a pre-existing register-flow gap(Step-3 "Start asking" → `/chat` was hitting `/chat` unauthenticated). A spec-mandated change that closed a latent bug.
+- The error-boundary fallback UI(`<ErrorBoundary>`) renders correctly in dark mode — discovered incidentally when a `ChunkLoadError`(a known `next dev` cold-compile transient, not an app bug)triggered it during the F5 smoke.
+- `docs/eval-set-v1.yaml`(final)does **not** exist — only `eval-set-v1-draft.yaml`(WIP). Finalizing it needs Chris's SME reference answers per Q14;no ground truth was fabricated. CO_W15_F1_eval_set_v1 stays OPEN.
 
-### Decisions
+### Decisions(see plan §7 changelog D1-D8 for the full set;the load-bearing ones)
 
-_(TBD — will include: storage = Postgres rationale / cookie SameSite+Secure policy / RAGAs CI-mock boundary / Cohere canonical identifier pick)_
+- **Storage backend = Postgres via `psycopg`**, not stdlib `sqlite3` / `aiosqlite` / Cosmos(AskUserQuestion 2026-05-10)— production-grade alignment;ADR-0023.
+- **Keep `psycopg` despite the R8 `pip install` block**(Option A, D2-cont)— code is shippable(dep declared, lazy-imported, in-memory path unaffected);defer the local Postgres-path verification to W18+/CO17;formalize ADR-0017 now. No pivot to sqlite3.
+- **Connection-per-op(no pool)for both Postgres backends** — Tier 1 KB + auth ops are infrequent + off the query hot path;`CREATE TABLE IF NOT EXISTS` on connect(idempotent, race-free)— Karpathy §1.2 simplicity-first(ADR-0023 already permitted "connection / pool").
+- **Cookie policy:`SameSite=Lax` + `Secure` gated on `environment != "local"` + `Path=/` + `Max-Age` = session TTL**;`ekp_csrf` readable double-submit;CSRF check on cookie-auth state-changing requests only(GET + Bearer-auth CSRF-exempt). ADR-0022.
+- **`EvalReport.correctness` ← RAGAs `answer_relevancy` mean**(approximation)— proper `answer_correctness` needs SME reference answers per Q14;documented, not silently substituted.
+- **RAGAs CI boundary = the LLM-judge call**(stub evaluator in tests;`make_ragas_evaluator` → `None` without an Azure key → Recall@5-only fallback)— no live Azure OpenAI in CI;live runs are user-triggered.
+- **Cohere canonical model identifier = `Cohere-rerank-v4.0-pro`**(the Azure Marketplace deployment name — matches the live `.env`, which is what actually works);human display label `"Cohere v4.0-pro"` kept for UI;ADR/audit historical `cohere-v4.0-pro` references left per the anti-pattern "keep historical narrative".
+- **server.py CORS `allow_credentials=True`**(cookie-transport correctness;same local-dev-gap category as the `84d030e` CORS add — not H1, no ADR).
 
 ### Carry-overs to W18+
 
-_(TBD)_
+**🚧 R8 / credential-bound runtime verifications**(the "deferred" set):
+- 🚧 **F1.5b** — `pip install psycopg[binary]` + manual `docker compose up` Postgres-path CRUD/session smoke + `mypy postgres_backend.py`/`postgres_users_store.py` — R8-corp-proxy-blocked;deferred W18+/CO17(personal Azure dev tier / non-proxy env). Test scaffold IS committed(skip-clean in CI).
+- 🚧 **F3.5b** — RAGAs live-verify(`scripts/run_ragas_eval.py` or `POST /eval/run` against a populated `ekp-kb-drive-v1` Azure index + judge)— needs Azure OpenAI keys;deferred non-proxy env/personal Azure dev tier(same CO17 pattern). Structural integration complete + CI-tested at the judge boundary.
+
+**OPEN(needs an external input)**:
+- ⏸ **CO_W15_F1_eval_set_v1** — `docs/eval-set-v1.yaml` final doesn't exist;needs Chris's SME reference-answer labels per Q14. No ground truth fabricated. Until then, `EvalReport.correctness` is the answer-relevancy approximation + RAGAs runs against `eval-set-v0`(the validated subset).
+
+**Tier 2(out of scope, noted)**:
+- ⏸ **CO_W15_F3_aria_full_audit** — full NVDA/JAWS/VoiceOver screen-reader audit(W17 F5.2 was spot-check only). One concrete known gap: register `Stepper` `<li>` active step lacks `aria-current="step"`.
+- ⏸ **CO_W15_F4_interactive_flow_E2E** — full register/login + KB upload + Pipeline-wizard interactive E2E(W17 F6 scaffolded the unit-test layer only).
+- ⏸ **Vitest component-coverage expansion** — W17 F6 ships the harness + 1 sample;broad component/hook/MSW-data-fetch coverage is Tier 2(noted in `tests/unit/README.md`).
+
+**User pre-Beta smoke**:
+- ⏸ **Interactive 9-view dark-mode walkthrough** — toggle dark via the UserMenu/`ThemeToggle` on each of V1-V9 + eyeball for contrast surprises. Mechanism + V7/V8 + the `[oklch`=0 grep already done;this is the interactive layer.
+- ⏸ **CO_W15_F4_baseline_capture** — Playwright pixel-diff baseline first capture(`npx playwright install chromium` is R8-CDN-blocked → personal Azure dev tier / system-Chrome `channel:'chrome'` workaround).
+
+**Track-A-blocked(W16, not W17/W18 unless cred lands)**:
+- ⏸ CO16 Track A IT cred populate event + R-B1 closure / CO19 25% rollout / CO_F6a-c ACS email / Azure DELETE cleanup / `.env.production` / Cohere Marketplace billing / Q15 first weekly signal report.
+
+**Other inherited(unchanged)**:
+- ⏸ CO17 AF3 lifespan-gate fix Option A(**ADR-0013 reserved** — the only reserved ADR slot left;next available NNNN = 0024).
+- ⏸ R12 Azurite SDK signature mismatch(permanent fix = cloud Azure Blob, Track A).
+
+**W18+ kickoff candidates**(decided at W18 kickoff per rolling-JIT):W16 F1-F4 if Track A cred lands / Tier 2 prep governance(Q12)/ the user's local-dev-setup task(needs a `scripts/seed_dev_kb.py` or one-liner — the in-memory KB store starts empty).
 
 ### Time tracking
 
-| Deliverable | Plan estimate | Actual | Variance |
+| Deliverable | Plan estimate | Actual(real calendar) | Variance |
 |---|---|---|---|
-| F0 ADRs | 0.5 day | _TBD_ | _TBD_ |
-| F1 Postgres backing | 2 days | _TBD_ | _TBD_ |
-| F2 auth-transport | 1.5 days | _TBD_ | _TBD_ |
-| F3 RAGAs | 1.5 days | _TBD_ | _TBD_ |
-| F4 frontend bundle | 0.5 day | _TBD_ | _TBD_ |
-| F5 a11y/dark-mode | 0.5 day | _TBD_ | _TBD_ |
-| F6 Vitest scaffold | 0.5 day | _TBD_ | _TBD_ |
-| F7 closeout | 0.5 day | _TBD_ | _TBD_ |
+| F0 ADRs | 0.5 day | ~0.5 hr(Day 0)| −0.4 day |
+| F0b ADR-0017 | (not in plan)| ~0.3 hr(Day 2)| +0.3 hr(R8-trigger-driven)|
+| F1 Postgres backing | 2 days | ~2 hr(Day 2-3;part 1 KB backend + part 2 users_repo + doc notes)| −1.7 day(but 🚧 F1.5b runtime smoke deferred — not in this actual)|
+| F2 auth-transport | 1.5 days | ~1.5 hr(Day 4)| −1.3 day |
+| F3 RAGAs | 1.5 days | ~1.5 hr(Day 5)| −1.3 day(🚧 F3.5b live-verify deferred)|
+| F4 frontend bundle | 0.5 day | ~1 hr(Day 1)| −0.4 day |
+| F5 a11y/dark-mode | 0.5 day | ~1 hr(Day 6;incl. `next dev` + Playwright browser smoke)| −0.4 day |
+| F6 Vitest scaffold | 0.5 day | ~1 hr(Day 7;incl. `pnpm add` + harness + sample)| −0.4 day |
+| F7 closeout | 0.5 day | ~0.5 hr(Day 8)| −0.4 day |
+| **Total** | **~7 days** | **~1 calendar day** | consistent with the W12-W15 phase-capacity calibration(plan-day budget far over-estimates focused-momentum runs;the deferred 🚧 items are the unbudgeted-but-blocked tail)|
 
 ### Spec ref alignment
 
-_(TBD — F1 → architecture.md v6 §3.4 + ADR-0023;F2 → §3.7 + ADR-0014 + ADR-0022;F3 → §5.6 + eval-methodology.md;F4 → §5.x + ADR-0012;F6 → CLAUDE.md §3.2)_
+- **F1** → `architecture.md v6 §3.4`(multi-KB + `KBStorageBackend` Protocol swap point;the §3.4 "KB metadata 持久化" note added this phase, inline-tagged per ADR-0023, doc version not bumped)+ `§4.3`(`storage/settings.py` `database_url`)+ **ADR-0023**;`COMPONENT_CATALOG.md` C02;`setup.md §4.2`;CLAUDE.md §5.1 H1(storage-layout)+ §5.2 H2(`psycopg[binary]`)— both ADR-covered.
+- **F2** → `architecture.md v6 §3.7`(hybrid auth model — transport hardened, model unchanged;the §3.7 "Auth transport" note added this phase, inline-tagged per ADR-0022)+ **ADR-0014**(model)+ **ADR-0016**(scrypt baseline preserved)+ **ADR-0022**;CLAUDE.md §5.1 H1(transport)— ADR-covered.
+- **F3** → `architecture.md v6 §5.6`(V5 Eval Console — RAGAs 4-metric consumer)+ `eval-methodology.md`(RAGAs + ground-truth set);`ragas` already installed(no H2);ADR-0018(`kb_id` propagation in `build_ragas_samples`'s per-query retrieve).
+- **F4** → `architecture.md v6 §5.5`(V4 KB Detail Documents tab)+ **ADR-0012**(Cohere v4.0-pro lock — naming canon reference)+ ADR-0020(frontend Langfuse URL fallback).
+- **F5** → `architecture.md v6 §5.1`(`tokens.ts` design tokens)+ `§5.8`(cross-view UX)+ ADR-0021(RetrievalTab a11y inherited);CLAUDE.md §3.2(no hardcoded color — `[oklch`=0 milestone).
+- **F6** → `CLAUDE.md §3.2`("Vitest + React Testing Library" — the named-but-never-existing harness, now created;§5.2 dev-dep exception for the new deps).
+- **F0/F0b ADRs** → `CLAUDE.md §6`(ADR format)+ `audit-W15-d5-vs-spec.md §7`(ADR-0022/0023 were the §7 future-ADR candidates — now consumed)+ ADR-0017 = the R8-mitigation-pattern formalization(session-start.md §11 reservation candidate, trigger met).
