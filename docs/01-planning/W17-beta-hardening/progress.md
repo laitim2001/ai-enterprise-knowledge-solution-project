@@ -117,10 +117,16 @@ Per CLAUDE.md §5(vendor-decision-affected obstacle)+ §13(when in doubt → ask
 - **(B)** pivot storage to **stdlib `sqlite3`**(zero new dep — no R8 risk;the AI's original Day-0 recommendation). Lose the「production-grade Postgres」alignment but Beta could still adopt Postgres via a different driver later. Would supersede / amend ADR-0023.
 - **(C)** defer F1 entirely to W18+(when R8 is worked around);proceed with F2/F3/F5/F6 only this phase.
 
+### Decision (2026-05-10, same-calendar-day) — Option A taken
+
+User chose **(A)**:keep `psycopg` + defer local Postgres-path verification(CRUD tests + `mypy postgres_backend.py` + manual smoke)to W18+ / personal Azure dev tier(CO17)+ **formalize ADR-0017 now**. No pivot to sqlite3;ADR-0023 stands. → **ADR-0017 landed `fb0253a`**(R8 corp-proxy mitigation pattern — dependency-add discipline;ADR-0017 reservation cleared,only 0013 AF3 remains reserved;next NNNN → 0024). F1.5(`users_repo` Postgres path)+ F1.8(architecture.md §3.4 / COMPONENT_CATALOG C02 / setup.md §4.2 doc note)now **unblocked → pending implementation**(next). Then F2 cookie/CSRF → F3 RAGAs → F5 a11y → F6 Vitest → F7 closeout. F1 verdict stays **PARTIAL**(code shipped + ADR-0017 written;the Postgres-path runtime verification is the deferred part).
+
 ### Day 2 commits
 
 - **`2453a50`** `feat(infra,api)` — W17 F1 part 1 Postgres KB backend(11 files;+ NEW `kb_management/postgres_backend.py` + `factory.py` + `tests/test_kb_factory.py` + `tests/test_kb_postgres_backend.py` + `infrastructure/postgres-init/01-create-ekp-db.sql`)
-- **`(this docs commit)`** `docs(planning)` — W17 checklist F1 part-1 ticked(F1.5 / F1.8 → 🚧 held)+ this Day-2 progress entry + plan §7 changelog D1+D2(F4 landed + F1 deviations + R8 block)
+- **`3806777`** `docs(planning)` — W17 checklist F1 part-1 ticked(F1.5 / F1.8 → 🚧)+ Day-2 progress entry + plan §7 changelog D1+D2(F4 landed + F1 deviations + R8 block)
+- **`fb0253a`** `docs(adr)` — ADR-0017 R8 corp-proxy mitigation pattern + README index(0017 row;reservation cleared;next NNNN → 0024)
+- **`(this docs commit)`** `docs(planning)` — Day-2 「Decision: Option A taken」addendum + checklist F1.5/F1.8 🚧-reason updated(held-pending-decision → pending-implementation)
 
 ---
 
