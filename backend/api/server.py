@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth import get_current_user
 from api.error_handlers import register_error_handlers
@@ -173,6 +174,18 @@ app.add_middleware(
     AuditLogMiddleware,
     settings=get_settings(),
     protected_prefixes=_PROTECTED_PREFIXES,
+)
+
+# Local-dev CORS — Next.js dev server (localhost:3000-3002) calls this API
+# cross-origin (no Next rewrite proxy). Added last = outermost in the Starlette
+# stack so preflight OPTIONS short-circuit before rate-limit/audit. Production
+# frontends serve from a real domain and simply won't match the localhost
+# pattern, so this is a no-op there. Per docs/setup.md §8.5.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://localhost:\d+",
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
