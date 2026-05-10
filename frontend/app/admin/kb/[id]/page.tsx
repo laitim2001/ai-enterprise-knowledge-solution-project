@@ -30,8 +30,10 @@ import {
   FileText,
   FlaskConical,
   Loader2,
+  Search,
   Settings as SettingsIcon,
   SlidersHorizontal,
+  Sparkles,
   Upload,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -71,6 +73,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiError } from '@/lib/api-client';
 import {
@@ -79,7 +83,12 @@ import {
   type KbConfig,
   type KbStatus,
 } from '@/lib/api/kb';
-import { streamQuery, type Citation } from '@/lib/api/query';
+import { streamQuery, type Citation, type QueryRequest } from '@/lib/api/query';
+import {
+  retrievalTestApi,
+  type RetrievalMode,
+  type RetrievalTestResult,
+} from '@/lib/api/retrieval-test';
 
 const VALID_TABS = [
   'documents',
@@ -386,60 +395,293 @@ function ConfigRow({ label, value }: { label: string; value: string }) {
 }
 
 // --- Retrieval Testing tab ---------------------------------------------------
+// Per architecture.md §5.5.4 (ADR-0021): Vector / Full-Text / Hybrid mode
+// selector + Top K + Score Threshold + Rerank toggle → ranked result preview
+// (pure retrieval); plus the EKP-specific CRAG toggle + LLM selector on the
+// end-to-end synthesis sub-panel.
 
-interface RetrievalResult {
-  citations: Citation[];
-  answer: string;
-  refused: boolean;
-  rerankerUsed: string;
-  errorText: string | null;
-}
-
-const EMPTY_RESULT: RetrievalResult = {
-  citations: [],
-  answer: '',
-  refused: false,
-  rerankerUsed: '',
-  errorText: null,
-};
+const RETRIEVAL_MODES: { value: RetrievalMode; label: string; hint: string }[] = [
+  {
+    value: 'hybrid',
+    label: 'Hybrid (BM25 + vector RRF)',
+    hint: 'Default — keyword + semantic fused, with semantic rerank.',
+  },
+  {
+    value: 'vector',
+    label: 'Vector only',
+    hint: 'Pure embedding similarity; no keyword scoring.',
+  },
+  {
+    value: 'fulltext',
+    label: 'Full-Text only (BM25)',
+    hint: 'Keyword scoring only; no vector, no semantic rerank.',
+  },
+];
 
 function RetrievalTab({ kb }: { kb: KbStatus }) {
-  const [queryText, setQueryText] = useState('');
+  return (
+    <div className="space-y-6">
+      <RetrievalTestPanel kb={kb} />
+      <EndToEndQueryPanel kb={kb} />
+    </div>
+  );
+}
+
+function RetrievalTestPanel({ kb }: { kb: KbStatus }) {
+  const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<RetrievalMode>('hybrid');
+  const [topK, setTopK] = useState(5);
+  const [rerank, setRerank] = useState(true);
+  const [scoreThreshold, setScoreThreshold] = useState(0);
+
+  const thresholdApplies = mode !== 'fulltext';
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      retrievalTestApi.run(kb.kb_id, {
+        query: query.trim(),
+        mode,
+        top_k: topK,
+        rerank,
+        score_threshold: thresholdApplies ? scoreThreshold : 0,
+      }),
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        toast.error('Retrieval test failed', { description: err.message });
+      }
+    },
+  });
+  const result: RetrievalTestResult | null = mutation.data ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Search className="h-4 w-4" />
+          Retrieval test
+        </CardTitle>
+        <CardDescription>
+          Pure retrieval against{' '}
+          <span className="font-mono text-foreground">{kb.kb_id}</span> — compare
+          Vector / Full-Text / Hybrid modes, tune Top-K + score threshold + rerank.
+          No CRAG, no LLM synthesis (per architecture.md §5.5.4).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="rt-query">Test query</Label>
+          <Input
+            id="rt-query"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="e.g. how do I reconcile AR invoices?"
+            disabled={mutation.isPending}
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="rt-mode">Search mode</Label>
+            <Select value={mode} onValueChange={(v) => setMode(v as RetrievalMode)}>
+              <SelectTrigger id="rt-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RETRIEVAL_MODES.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {RETRIEVAL_MODES.find((m) => m.value === mode)?.hint}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Top K</Label>
+              <span className="font-mono text-sm text-muted-foreground">{topK}</span>
+            </div>
+            <Slider
+              aria-label="Top K"
+              value={[topK]}
+              onValueChange={(v) => setTopK(v[0] ?? 5)}
+              min={1}
+              max={50}
+              step={1}
+            />
+            <p className="text-xs text-muted-foreground">
+              Final chunk count{rerank ? ' (after rerank)' : ''}.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Score threshold</Label>
+              <span className="font-mono text-sm text-muted-foreground">
+                {thresholdApplies ? scoreThreshold.toFixed(2) : 'n/a'}
+              </span>
+            </div>
+            <Slider
+              aria-label="Score threshold"
+              value={[scoreThreshold]}
+              onValueChange={(v) => setScoreThreshold(v[0] ?? 0)}
+              min={0}
+              max={1}
+              step={0.01}
+              disabled={!thresholdApplies}
+            />
+            <p className="text-xs text-muted-foreground">
+              {thresholdApplies
+                ? 'Drop chunks below this similarity score (0 = keep all).'
+                : 'Full-Text BM25 scores have no 0–1 range — threshold disabled.'}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="rt-rerank">Rerank model</Label>
+              <Switch id="rt-rerank" checked={rerank} onCheckedChange={setRerank} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {rerank
+                ? 'Cohere v4.0-pro (Tier 1 locked — ADR-0012 / Q21).'
+                : 'No reranker — raw mode-native ordering.'}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={!query.trim() || mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Running…
+            </>
+          ) : (
+            <>
+              <Search className="mr-2 h-4 w-4" />
+              Test retrieval
+            </>
+          )}
+        </Button>
+
+        {mutation.isError && (
+          <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+            Retrieval failed:{' '}
+            {String((mutation.error as Error)?.message ?? 'unknown error')}
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/40 p-2 font-mono text-xs text-muted-foreground">
+              <span>mode: {result.mode}</span>
+              <span>reranker: {result.reranker}</span>
+              <span>
+                hits: {result.chunks.length} / {result.total_hits}
+              </span>
+              <span>embed {result.embed_latency_ms}ms</span>
+              <span>search {result.search_latency_ms}ms</span>
+              {result.reranked && <span>rerank {result.rerank_latency_ms}ms</span>}
+              <span>total {result.total_latency_ms}ms</span>
+            </div>
+            {result.chunks.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                No chunks{' '}
+                {result.total_hits > 0
+                  ? `above the score threshold (${result.total_hits} retrieved before filter)`
+                  : 'retrieved for this query'}
+                .
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {result.chunks.map((c) => (
+                  <li
+                    key={c.chunk_id}
+                    className="rounded-md border border-border p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="text-sm font-semibold">
+                          {c.rank}. {c.chunk_title || '(untitled chunk)'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.doc_title}
+                        </div>
+                        <div className="truncate font-mono text-[11px] text-muted-foreground">
+                          {c.section_path.join(' > ') || '—'}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        score {c.score.toFixed(4)}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                      {c.chunk_text_preview}
+                    </p>
+                    <div className="mt-1 font-mono text-[10px] text-muted-foreground">
+                      {c.chunk_id}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EndToEndQueryPanel({ kb }: { kb: KbStatus }) {
+  const [query, setQuery] = useState('');
+  const [enableCrag, setEnableCrag] = useState(true);
+  const [llmModel, setLlmModel] = useState<'gpt-5.5' | 'gpt-5.4-mini'>('gpt-5.5');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [result, setResult] = useState<RetrievalResult>(EMPTY_RESULT);
+  const [answer, setAnswer] = useState('');
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [refused, setRefused] = useState(false);
+  const [rerankerUsed, setRerankerUsed] = useState('');
+  const [errorText, setErrorText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = queryText.trim();
+    const trimmed = query.trim();
     if (!trimmed || isStreaming) return;
-    setResult({ ...EMPTY_RESULT });
+    setAnswer('');
+    setCitations([]);
+    setRefused(false);
+    setRerankerUsed('');
+    setErrorText(null);
     setIsStreaming(true);
     const ac = new AbortController();
     abortRef.current = ac;
+    const req: QueryRequest = {
+      query: trimmed,
+      kb_id: kb.kb_id,
+      llm_model: llmModel,
+      enable_crag: enableCrag,
+    };
     try {
-      for await (const evt of streamQuery(
-        { query: trimmed, kb_id: kb.kb_id },
-        ac.signal,
-      )) {
+      for await (const evt of streamQuery(req, ac.signal)) {
         if (evt.type === 'text-delta') {
-          setResult((prev) => ({ ...prev, answer: prev.answer + evt.content }));
+          setAnswer((prev) => prev + evt.content);
         } else if (evt.type === 'citation') {
-          setResult((prev) => ({
-            ...prev,
-            citations: [...prev.citations, evt.citation],
-          }));
+          setCitations((prev) => [...prev, evt.citation]);
         } else if (evt.type === 'done') {
-          setResult((prev) => ({
-            ...prev,
-            refused: evt.refused,
-            rerankerUsed: evt.reranker_used,
-          }));
+          setRefused(evt.refused);
+          setRerankerUsed(evt.reranker_used);
         }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setResult((prev) => ({ ...prev, errorText: msg }));
+      setErrorText(msg);
       if (err instanceof ApiError) {
         toast.error('Query failed', { description: err.message });
       }
@@ -450,93 +692,108 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Run a test query</CardTitle>
-          <CardDescription>
-            POST /query against{' '}
-            <span className="font-mono text-foreground">{kb.kb_id}</span>;
-            inspect retrieved chunks + relevance scores + reranker outcome.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="retrieval-query">Test query</Label>
-              <textarea
-                id="retrieval-query"
-                value={queryText}
-                onChange={(e) => setQueryText(e.target.value)}
-                rows={3}
-                placeholder="Ask a question — e.g. How do I reconcile AR invoices?"
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-4 w-4" />
+          End-to-end query (synthesis)
+        </CardTitle>
+        <CardDescription>
+          Full RAG against{' '}
+          <span className="font-mono text-foreground">{kb.kb_id}</span> — hybrid
+          retrieval → Cohere rerank → optional CRAG → LLM synthesis with citations.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="e2e-query">Query</Label>
+            <textarea
+              id="e2e-query"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              rows={3}
+              placeholder="Ask a question — e.g. How do I reconcile AR invoices?"
+              disabled={isStreaming}
+              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="e2e-crag">CRAG correction loop</Label>
+              <Switch
+                id="e2e-crag"
+                checked={enableCrag}
+                onCheckedChange={setEnableCrag}
                 disabled={isStreaming}
-                className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            <Button type="submit" disabled={!queryText.trim() || isStreaming}>
-              {isStreaming ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Running…
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="mr-2 h-4 w-4" />
-                  Run query
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <div className="space-y-1.5">
+              <Label htmlFor="e2e-llm">LLM model</Label>
+              <Select
+                value={llmModel}
+                onValueChange={(v) => setLlmModel(v as 'gpt-5.5' | 'gpt-5.4-mini')}
+                disabled={isStreaming}
+              >
+                <SelectTrigger id="e2e-llm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gpt-5.5">gpt-5.5 (synthesis default)</SelectItem>
+                  <SelectItem value="gpt-5.4-mini">gpt-5.4-mini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button type="submit" disabled={!query.trim() || isStreaming}>
+            {isStreaming ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Running…
+              </>
+            ) : (
+              <>
+                <FlaskConical className="mr-2 h-4 w-4" />
+                Run end-to-end
+              </>
+            )}
+          </Button>
+        </form>
 
-      {result.errorText && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Stream error: {result.errorText}
-        </div>
-      )}
+        {errorText && (
+          <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+            Stream error: {errorText}
+          </div>
+        )}
 
-      {result.refused && (
-        <div className="rounded-md border border-warning bg-warning/10 p-3 text-sm">
-          Refused — answer not found in available documentation.
-        </div>
-      )}
+        {refused && (
+          <div className="mt-4 rounded-md border border-warning bg-warning/10 p-3 text-sm">
+            Refused — answer not found in available documentation.
+          </div>
+        )}
 
-      {result.answer && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
-              Synthesized answer
-              {result.rerankerUsed && (
+        {answer && (
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Synthesized answer</Label>
+              {rerankerUsed && (
                 <Badge variant="outline" className="text-xs">
-                  reranker: {result.rerankerUsed}
+                  reranker: {rerankerUsed}
                 </Badge>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm">
-              {result.answer}
+            </div>
+            <p className="whitespace-pre-wrap rounded-md border border-border p-3 text-sm">
+              {answer}
               {isStreaming && <span className="ml-1 animate-pulse">▍</span>}
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {result.citations.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Retrieved chunks ({result.citations.length})
-            </CardTitle>
-            <CardDescription>
-              Sorted by relevance score(reranked when reranker enabled).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {result.citations.map((c, idx) => (
+        {citations.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <Label>Citations ({citations.length})</Label>
+            <ul className="space-y-2">
+              {citations.map((c, idx) => (
                 <li
                   key={c.chunk_id}
                   className="rounded-md border border-border p-3"
@@ -553,20 +810,20 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                         {c.section_path.join(' > ') || '—'}
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="shrink-0 text-xs">
                       score {c.relevance_score.toFixed(3)}
                     </Badge>
                   </div>
-                  <div className="mt-2 font-mono text-[10px] text-muted-foreground">
+                  <div className="mt-1 font-mono text-[10px] text-muted-foreground">
                     {c.chunk_id}
                   </div>
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Literal
 
 import structlog
 
@@ -96,8 +97,15 @@ class RetrievalEngine:
         kb_id: str,
         top_k: int = 50,
         filter_clause: str | None = None,
+        mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
+        rerank: bool = True,
     ) -> RetrievalResult:
-        """Embed query + hybrid search + optional rerank; return ordered chunks + timings.
+        """Embed query + search (mode-selectable) + optional rerank; ordered chunks + timings.
+
+        ADR-0021: `mode` selects hybrid (default) / vector / fulltext at the
+        searcher; `rerank=False` skips the reranker even when one is wired
+        (the V4 Retrieval Testing tab's "Rerank Model toggle"). `mode="fulltext"`
+        skips query embedding (BM25 doesn't use the vector).
 
         kb_id required per ADR-0018 multi-KB invariant — propagates to HybridSearcher
         for dynamic index_name + kb_id eq filter clause (per-KB scoping mandatory).
@@ -114,30 +122,33 @@ class RetrievalEngine:
 
         total_start = time.perf_counter()
 
-        embed_start = time.perf_counter()
-        query_embedding = await self._embedder.embed(query)
-        embed_latency_ms = int((time.perf_counter() - embed_start) * 1000)
+        if mode == "fulltext":
+            query_vector: list[float] = []
+            embed_latency_ms = 0
+        else:
+            embed_start = time.perf_counter()
+            query_embedding = await self._embedder.embed(query)
+            query_vector = query_embedding.vector
+            embed_latency_ms = int((time.perf_counter() - embed_start) * 1000)
 
-        # When reranker present, fetch wider candidate set then rerank to top_k.
-        fetch_k = (
-            max(top_k, self._hybrid_overfetch)
-            if self._reranker is not None
-            else top_k
-        )
+        do_rerank = self._reranker is not None and rerank
+        # When reranking, fetch a wider candidate set then rerank to top_k.
+        fetch_k = max(top_k, self._hybrid_overfetch) if do_rerank else top_k
         search_start = time.perf_counter()
         hits = await self._searcher.search(
             query_text=query,
-            query_vector=query_embedding.vector,
+            query_vector=query_vector,
             kb_id=kb_id,
             top_k=fetch_k,
             filter_clause=filter_clause if filter_clause is not None
             else "enabled eq true and low_value_flag eq false",
+            mode=mode,
         )
         search_latency_ms = int((time.perf_counter() - search_start) * 1000)
 
         rerank_latency_ms = 0
         reranked = False
-        if self._reranker is not None and hits:
+        if do_rerank and hits:
             rerank_start = time.perf_counter()
             reranked_chunks = await self._reranker.rerank(
                 query=query, candidates=hits, top_k=top_k,
@@ -160,6 +171,7 @@ class RetrievalEngine:
             "retrieval_complete",
             kb_id=kb_id,
             query_chars=len(query),
+            mode=mode,
             top_k=top_k,
             fetch_k=fetch_k,
             chunks_returned=len(chunks),

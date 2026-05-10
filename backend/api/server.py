@@ -29,6 +29,7 @@ from api.routes import (
     kb,
     observability,
     query,
+    retrieval_test,
     screenshots,
 )
 from api.routes import (
@@ -198,6 +199,7 @@ app.include_router(auth_routes.router)
 # now require authentication — Beta phase prerequisite.
 app.include_router(documents.router, tags=["documents"], dependencies=_auth)
 app.include_router(chunks.router, tags=["chunks"], dependencies=_auth)
+app.include_router(retrieval_test.router, tags=["retrieval-test"], dependencies=_auth)
 app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)
 app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)

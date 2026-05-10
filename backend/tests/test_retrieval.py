@@ -46,6 +46,52 @@ async def test_hybrid_search_payload_shape_matches_spec() -> None:
     assert payload["vectorQueries"][0]["fields"] == "content_vector"
     assert payload["vectorQueries"][0]["k"] == 50
     assert len(payload["vectorQueries"][0]["vector"]) == 1024
+    # hybrid is the default mode — payload identical whether mode omitted or "hybrid".
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_mode_vector_payload_shape() -> None:
+    """ADR-0021: mode='vector' → search='*' + vectorQueries; no semantic config."""
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher("https://x", "k", "idx") as s:
+            await s.search(
+                "paper jam", [0.2] * 1024, kb_id="drive_user_manuals",
+                top_k=10, mode="vector",
+            )
+
+    payload = json.loads(instance.post.await_args.kwargs["content"])
+    assert payload["search"] == "*"
+    assert payload["top"] == 10
+    assert "queryType" not in payload
+    assert "semanticConfiguration" not in payload
+    assert payload["vectorQueries"][0]["fields"] == "content_vector"
+    assert len(payload["vectorQueries"][0]["vector"]) == 1024
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_mode_fulltext_payload_shape() -> None:
+    """ADR-0021: mode='fulltext' → BM25-only (queryType='simple'); no vectorQueries."""
+    with patch("retrieval.hybrid.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with HybridSearcher("https://x", "k", "idx") as s:
+            await s.search(
+                "paper jam", [], kb_id="drive_user_manuals",
+                top_k=15, mode="fulltext",
+            )
+
+    payload = json.loads(instance.post.await_args.kwargs["content"])
+    assert payload["search"] == "paper jam"
+    assert payload["top"] == 15
+    assert payload["queryType"] == "simple"
+    assert "vectorQueries" not in payload
+    assert "semanticConfiguration" not in payload
 
 
 @pytest.mark.asyncio

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Literal
 
 import httpx
 import structlog
@@ -162,8 +163,16 @@ class HybridSearcher:
         kb_id: str,
         top_k: int = 50,
         filter_clause: str | None = _DEFAULT_FILTER,
+        mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
     ) -> list[HybridSearchHit]:
-        """Hybrid retrieval — BM25 (search) + vector (vectorQueries) → built-in RRF.
+        """Retrieval — `mode` selects BM25 / vector / hybrid (per ADR-0021).
+
+        - `mode="hybrid"` (default, unchanged): BM25 (`search`) + vector (`vectorQueries`)
+          → built-in RRF, with `queryType="semantic"` + `semanticConfiguration` rerank.
+        - `mode="vector"`: vector-only similarity search (`search="*"` so BM25 contributes
+          nothing; no semantic config — the semantic ranker needs a text query).
+        - `mode="fulltext"`: BM25-only keyword search (`queryType="simple"`; no vector
+          query, no semantic rerank). `query_vector` is ignored.
 
         kb_id required per ADR-0018 multi-KB invariant — index_name dynamically
         constructed via kb_naming.kb_id_to_index_name with self.index_name as Tier 1
@@ -183,21 +192,25 @@ class HybridSearcher:
             f"{self.endpoint}/indexes/{index_name}"
             f"/docs/search?api-version={self.api_version}"
         )
-        payload: dict = {
-            "search": query_text,
-            "vectorQueries": [
-                {
-                    "kind": "vector",
-                    "vector": query_vector,
-                    "k": top_k,
-                    "fields": "content_vector",
-                },
-            ],
-            "top": top_k,
-            "queryType": "semantic",
-            "semanticConfiguration": "ekp-semantic-config",
-            "filter": full_filter,
+        # ADR-0021: assemble the request payload per retrieval mode.
+        payload: dict = {"top": top_k, "filter": full_filter}
+        vector_query = {
+            "kind": "vector",
+            "vector": query_vector,
+            "k": top_k,
+            "fields": "content_vector",
         }
+        if mode == "vector":
+            payload["search"] = "*"
+            payload["vectorQueries"] = [vector_query]
+        elif mode == "fulltext":
+            payload["search"] = query_text
+            payload["queryType"] = "simple"
+        else:  # hybrid — unchanged W2 baseline behavior
+            payload["search"] = query_text
+            payload["vectorQueries"] = [vector_query]
+            payload["queryType"] = "semantic"
+            payload["semanticConfiguration"] = "ekp-semantic-config"
 
         response = await self._client.post(url, content=json.dumps(payload))
 
@@ -218,6 +231,7 @@ class HybridSearcher:
             "hybrid_search_returned",
             index=index_name,
             kb_id=kb_id,
+            mode=mode,
             count=len(hits),
             top_k=top_k,
         )
