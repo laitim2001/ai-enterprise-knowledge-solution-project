@@ -141,6 +141,30 @@ def _emit_trace_safe(
         )
 
 
+def emit_stage_metadata(name: str, *, status: str = "ok", **metadata: Any) -> None:
+    """Emit a standalone Langfuse trace span + `stage_metadata` structlog line
+    for a pipeline stage that isn't naturally wrapped by `observe_async`。
+
+    Use case(ADR-0020 Session 2):the Context Expander step computes its
+    `ExpansionStats`(requested / expanded / boundary-skip counts + batch fetch
+    latency)mid-flow inside `generation.context_expander.expand_context`;those
+    stats would otherwise be `structlog`-only and never reach Langfuse / the V6
+    Debug View。This emits them under stage name `generation.context_expansion`。
+
+    `metadata` kwargs land verbatim in the Langfuse trace metadata。Pass
+    `duration_ms=<int>` so `langfuse_trace._extract_stage` picks up the latency
+    uniformly with `observe_async`-emitted stages(which also key it as
+    `duration_ms` in metadata)。
+
+    Best-effort — degrades gracefully(Langfuse client absent / SDK drift)and
+    NEVER raises into the caller path(same H5 + Karpathy §1.2 contract as
+    `_emit_trace_safe`)。
+    """
+    _logger.info("stage_metadata", stage=name, status=status, **metadata)
+    client = get_langfuse_client()
+    _emit_trace_safe(client, name, output={"status": status}, metadata=dict(metadata))
+
+
 def observe_llm_async(
     name: str | None = None,
     *,

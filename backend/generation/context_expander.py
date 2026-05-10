@@ -42,10 +42,16 @@ from dataclasses import dataclass
 
 import structlog
 
+from observability.observe import emit_stage_metadata
 from retrieval.hybrid import HybridSearcher
 from retrieval.retrieval_engine import RetrievedChunk
 
 logger = structlog.get_logger(__name__)
+
+# Langfuse stage name for the Context Expander step — must match the frontend
+# observation-name → conceptual-stage mapping in
+# `frontend/app/debug/[traceId]/page.tsx` (ADR-0020 §5.7 V6 9-stage Debug View).
+_STAGE_NAME = "generation.context_expansion"
 
 
 @dataclass(slots=True, frozen=True)
@@ -92,6 +98,23 @@ class ExpansionStats:
     fetch_latency_ms: int     # batch Azure Search fetch latency
 
 
+def _emit_expansion_stage(stats: ExpansionStats) -> None:
+    """Surface ExpansionStats to Langfuse / V6 Debug View per ADR-0020 §C.
+
+    Latency keyed as `duration_ms` (= batch fetch latency) so
+    `langfuse_trace._extract_stage` maps it to `TraceStage.latency_ms`
+    uniformly with `observe_async`-emitted stages; the remaining counts land
+    in `TraceStage.details`.
+    """
+    emit_stage_metadata(
+        _STAGE_NAME,
+        duration_ms=stats.fetch_latency_ms,
+        requested_count=stats.requested_count,
+        expanded_count=stats.expanded_count,
+        boundary_skip_count=stats.boundary_skip_count,
+    )
+
+
 def _doc_id_of(chunk_id: str) -> str:
     """Extract doc_id substring from chunk_id format kb-{kb_id}_doc-{doc_id}_chunk-{idx}.
 
@@ -131,12 +154,14 @@ async def expand_context(
     per ADR-0020 observability requirements.
     """
     if not reranked_chunks:
-        return [], ExpansionStats(
+        empty_stats = ExpansionStats(
             requested_count=0,
             expanded_count=0,
             boundary_skip_count=0,
             fetch_latency_ms=0,
         )
+        _emit_expansion_stage(empty_stats)
+        return [], empty_stats
 
     # Step 1: collect all neighbor chunk_ids needed (skip None / cross-doc / empty)
     neighbor_ids_needed: set[str] = set()
@@ -239,5 +264,6 @@ async def expand_context(
         neighbors_fetched=len(neighbors_lookup),
         neighbors_requested=len(neighbor_ids_needed),
     )
+    _emit_expansion_stage(stats)
 
     return expanded, stats

@@ -54,6 +54,23 @@ def _extract_stage(observation: Any) -> TraceStage:
             except (TypeError, AttributeError):
                 latency_ms = 0
 
+    # ADR-0020 Session 2 — stage-specific metadata. Both `observe_async` and
+    # `emit_stage_metadata` stash a `duration_ms` int plus arbitrary extra keys
+    # in the observation's `metadata` dict (e.g. Context Expander
+    # `expanded_count` / `boundary_skip_count`, CRAG `triggered` / `iterations`).
+    # Surface the extras as `details`; use `duration_ms` as a final latency
+    # fallback when the SDK didn't expose timed start/end on this observation.
+    metadata = getattr(observation, "metadata", None)
+    details: dict[str, Any] | None = None
+    if isinstance(metadata, dict):
+        if latency_ms == 0:
+            raw_duration = metadata.get("duration_ms")
+            if isinstance(raw_duration, (int, float)) and not isinstance(raw_duration, bool):
+                latency_ms = int(raw_duration)
+        extra = {k: v for k, v in metadata.items() if k != "duration_ms"}
+        if extra:
+            details = extra
+
     model = getattr(observation, "model", None)
     if model is not None:
         model = str(model)
@@ -91,6 +108,7 @@ def _extract_stage(observation: Any) -> TraceStage:
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         status=status,
+        details=details,
     )
 
 

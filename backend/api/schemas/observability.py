@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -74,6 +76,13 @@ class TraceStage(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
     status: str = "ok"  # "ok" | "error" | "cancelled"
+    # ADR-0020 Session 2 — stage-specific metadata surfaced from the Langfuse
+    # observation's `metadata` dict (minus the always-present `duration_ms`,
+    # already mapped to `latency_ms`). Carries e.g. Context Expander
+    # `expanded_count` / `boundary_skip_count` / `fetch_latency_ms` for V6
+    # Debug View per-stage display. None when the observation had no extra
+    # metadata.
+    details: dict[str, Any] | None = None
 
 
 class TraceDetail(BaseModel):

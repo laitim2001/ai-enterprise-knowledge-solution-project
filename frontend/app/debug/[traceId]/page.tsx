@@ -4,29 +4,24 @@
  * V6 Debug View (`/debug/[traceId]`) — per architecture.md v6 §5.7 view 6 +
  * design ref §2.6 wireframe.
  *
- * W15 D2 F2 implementation — REWRITE replacing W1 skeleton 15-line placeholder.
- * Layout: trace header (Trace ID + Total ms + cost summary) + 6-stage pipeline
- * timeline (custom Collapsible per stage with chevron rotation) + Open in
- * Langfuse link.
+ * W15 D2 F2: initial implementation (6-stage interim wireframe scaffold + 501
+ * stub mitigation, per W15 D2 plan §7 changelog).
+ * ADR-0020 Session 2 (W16): expanded to the 9-stage spec (architecture.md §5.7)
+ * and wired to the live backend `GET /debug/trace/{trace_id}` (shipped W16 F5.5,
+ * Decision D.2 full Langfuse SDK integration). The backend returns a flat list
+ * of raw Langfuse observations; this view maps each onto one of the 9 conceptual
+ * pipeline stages via name-prefix matching. Stages without a matched observation
+ * render a "not traced this query" note (e.g. Query Rewriter / Re-retrieve only
+ * appear when CRAG triggers a correction).
  *
- * F2 deviations logged plan §7 changelog 2026-06-10 (D2):
- * 1. F2.1 "NEW route" — file actually exists as W1 skeleton 15-line placeholder
- *    per Karpathy §1.1 think-before-coding upfront grep verification (6th
- *    occurrence of plan literal vs actual code verification gap pattern).
- * 2. F2.2 "9-stage timeline" — design ref §2.6 wireframe + plan F2.2 own
- *    enumeration agree on 6 stages (Query Preprocessor / Hybrid Retrieval /
- *    Reranker / CRAG Confidence Judge / LLM Synthesis / Final Response);
- *    plan internal inconsistency between "9-stage" header + 6-enumerated
- *    stages → align with wireframe 6-stage spec.
- * 3. F2.3 "shadcn Accordion (W12 D3 installed)" — Accordion NOT in W12 D3
- *    19-primitive install list per Glob check; design ref §2.6 explicitly
- *    permits "shadcn Accordion OR custom Collapsible primitive";采 custom
- *    Collapsible (useState + ChevronDown rotation transition) per Karpathy
- *    §1.2 simplicity-first + H2 vendor lock (no new dependency).
- * 4. F2.1 trace data display — backend GET /debug/trace/{trace_id} returns 501
- *    NOT_IMPLEMENTED stub per W3+ implementation per Langfuse correlation;
- *    stub mitigation pattern (placeholder stage scaffold + stub note +
- *    Langfuse link still works using traceId from URL) per W14/W15 F1 precedent.
+ * The endpoint always returns HTTP 200 — the `status` field communicates the
+ * outcome, so this view branches on `status` (ok / langfuse_not_configured /
+ * not_found / sdk_method_missing / fetch_failed) rather than HTTP code. The
+ * "Open in Langfuse" deep-link CTA uses the backend-provided `trace_url` (which
+ * is always populated) and falls back to `NEXT_PUBLIC_LANGFUSE_URL`.
+ *
+ * Layout primitive: custom Collapsible (useState + ChevronDown rotation) per
+ * the W15 D2 decision — no shadcn Accordion dependency (H2 vendor lock).
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -34,8 +29,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronLeft,
-  DollarSign,
   ExternalLink,
+  Hash,
   Timer,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -50,56 +45,122 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ApiError } from '@/lib/api-client';
-import { debugApi, type PipelineStageMetric, type TraceData } from '@/lib/api/debug';
+import { debugApi, type TraceDetail, type TraceStage } from '@/lib/api/debug';
 import { cn } from '@/lib/utils';
+
+// --- 9 conceptual pipeline stages per architecture.md v6 §5.7 ----------------
+// `obsPrefixes` matches raw Langfuse observation names emitted by the backend
+// (`@observe_async` / `@observe_llm_async` / `observe_streaming` /
+// `emit_stage_metadata`). A given observation is claimed by the FIRST stage (in
+// this order) whose prefix it matches, so there's no double-counting when e.g.
+// `retrieval.retrieve` appears twice (initial + CRAG re-retrieval). Stages with
+// no prefix aren't separately traced in Tier 1; `note` explains why.
 
 interface PipelineStage {
   id: number;
   name: string;
   vendor?: string;
   description: string;
+  obsPrefixes: string[];
+  note?: string;
 }
 
-// 6-stage pipeline per architecture.md v6 §3.5 + design ref §2.6 wireframe.
-// Plan F2.2 literal "9-stage" inconsistent with own enumeration + wireframe;
-// aligned with wireframe spec per Karpathy §1.4 verifiable goal-driven match
-// to design ref. Stage names + vendor tags chosen to match plan F2.2
-// enumeration verbatim (per W6 demo-prep.md vendor lock context).
 const PIPELINE_STAGES: PipelineStage[] = [
   {
     id: 1,
     name: 'Query Preprocessor',
     description: 'Tokenize, normalize, optional intent classification',
+    obsPrefixes: [],
+    note: 'Lightweight in-process step — not emitted as a separate Langfuse span.',
   },
   {
     id: 2,
-    name: 'Hybrid Retrieval',
-    description: 'BM25 top-50 + Vector top-50 + RRF fusion → unique candidates',
+    name: 'Query Rewriter',
+    vendor: 'gpt-5.4-mini',
+    description:
+      'CRAG correction loop — rewrites the query when initial confidence is below threshold',
+    obsPrefixes: ['crag.rewrite_query'],
+    note: 'Only present when CRAG triggers a correction (confidence below 0.70).',
   },
   {
     id: 3,
-    name: 'Reranker',
-    vendor: 'Cohere v4.0-pro',
-    description: 'Top-50 candidates → top-K rerank (production lock per Q21 Resolved)',
+    name: 'Hybrid Retrieval',
+    description:
+      'BM25 top-50 + Vector top-50 + RRF fusion → unique candidates (kb_id-scoped per ADR-0018)',
+    obsPrefixes: ['retrieval.retrieve'],
+    note: 'Cohere rerank runs inside this span — see `rerank_latency_ms` in its details.',
   },
   {
     id: 4,
-    name: 'CRAG Confidence Judge',
-    description: 'Pass-through OR re-retrieve below threshold (default 0.70)',
+    name: 'Reranker',
+    vendor: 'Cohere v4.0-pro',
+    description:
+      'Top-50 candidates → top-K rerank (production lock per Q21 Resolved + ADR-0012)',
+    obsPrefixes: [],
+    note: 'Folded into the Hybrid Retrieval span (`rerank_latency_ms` there).',
   },
   {
     id: 5,
-    name: 'LLM Synthesis',
-    vendor: 'gpt-5.5',
-    description: 'Synthesize answer with citations + refusal logic for OOS',
+    name: 'CRAG Confidence Judge',
+    vendor: 'gpt-5.4-mini',
+    description:
+      'Grades retrieved context; pass-through above threshold (default 0.70) or trigger re-retrieve',
+    obsPrefixes: ['crag.grade', 'crag.refine'],
   },
   {
     id: 6,
+    name: 'Re-retrieve',
+    description: 'CRAG correction loop — re-runs retrieval with the rewritten query',
+    obsPrefixes: [],
+    note: 'Reuses the `retrieval.retrieve` span name — a second occurrence appears under Hybrid Retrieval when CRAG corrects.',
+  },
+  {
+    id: 7,
+    name: 'Context Expander',
+    description:
+      'Prepends prev / appends next neighbor chunk text to the top-K reranked chunks (architecture.md §3.1, ADR-0020)',
+    obsPrefixes: ['generation.context_expansion'],
+  },
+  {
+    id: 8,
+    name: 'LLM Synthesis',
+    vendor: 'gpt-5.5',
+    description: 'Synthesize answer with citations + refusal logic for out-of-scope queries',
+    obsPrefixes: ['synthesizer.synthesize', 'api.query.stream'],
+  },
+  {
+    id: 9,
     name: 'Final Response',
-    description: 'Citation linking + cost calculation + Langfuse trace publish',
+    description: 'End-to-end orchestration aggregate — citation linking, cost, Langfuse trace publish',
+    obsPrefixes: ['api.query'],
   },
 ];
+
+const LANGFUSE_FALLBACK_BASE =
+  process.env.NEXT_PUBLIC_LANGFUSE_URL ?? 'http://localhost:3000';
+
+function matchesPrefix(name: string, prefix: string): boolean {
+  return name === prefix || name.startsWith(`${prefix}.`);
+}
+
+/** Distribute observations across the 9 conceptual stages (first-match wins). */
+function bucketObservations(stages: TraceStage[]): Map<number, TraceStage[]> {
+  const buckets = new Map<number, TraceStage[]>();
+  for (const stage of PIPELINE_STAGES) {
+    buckets.set(stage.id, []);
+  }
+  for (const obs of stages) {
+    const owner = PIPELINE_STAGES.find((s) =>
+      s.obsPrefixes.some((p) => matchesPrefix(obs.name, p)),
+    );
+    if (owner) {
+      buckets.get(owner.id)!.push(obs);
+    }
+  }
+  return buckets;
+}
+
+type LoadState = 'loading' | 'error' | 'ready';
 
 export default function DebugTracePage({
   params,
@@ -107,19 +168,25 @@ export default function DebugTracePage({
   params: { traceId: string };
 }) {
   const traceId = params.traceId;
-  const langfuseUrl = `https://langfuse.example.com/trace/${encodeURIComponent(
-    traceId,
-  )}`;
 
-  const query = useQuery<TraceData>({
+  const query = useQuery<TraceDetail>({
     queryKey: ['debug', 'trace', traceId],
     queryFn: () => debugApi.getTrace(traceId),
     retry: false,
   });
 
-  const stubMode =
-    query.error instanceof ApiError && query.error.status === 501;
-  const otherError = query.isError && !stubMode;
+  const loadState: LoadState = query.isLoading
+    ? 'loading'
+    : query.isError
+      ? 'error'
+      : 'ready';
+
+  const data = query.data;
+  const langfuseHref =
+    data?.trace_url ??
+    `${LANGFUSE_FALLBACK_BASE}/trace/${encodeURIComponent(traceId)}`;
+
+  const buckets = data ? bucketObservations(data.stages) : null;
 
   return (
     <div className="space-y-6">
@@ -134,19 +201,13 @@ export default function DebugTracePage({
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Trace inspection
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Trace inspection</h1>
             <p className="mt-1 truncate font-mono text-sm text-muted-foreground">
               {traceId}
             </p>
           </div>
           <Button asChild variant="outline">
-            <a
-              href={langfuseUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={langfuseHref} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="mr-2 h-4 w-4" />
               Open in Langfuse
             </a>
@@ -154,27 +215,16 @@ export default function DebugTracePage({
         </div>
       </header>
 
-      <SummaryCard
-        report={query.data}
-        loading={query.isLoading}
-        stubMode={stubMode}
-      />
+      <StatusBanner loadState={loadState} data={data} error={query.error} />
 
-      {otherError && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Failed to load trace:{' '}
-          {String((query.error as Error)?.message ?? 'unknown')}
-        </div>
-      )}
+      <SummaryCard loadState={loadState} data={data} />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Pipeline timeline (6 stages)
-          </CardTitle>
+          <CardTitle className="text-base">Pipeline timeline (9 stages)</CardTitle>
           <CardDescription>
-            Per-stage duration, cost, and data preview per architecture.md v6
-            §3.5 + design ref §2.6 wireframe
+            Per-stage Langfuse observations per architecture.md v6 §5.7 (ADR-0020).
+            Stages with no observation this query are noted inline.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -182,11 +232,9 @@ export default function DebugTracePage({
             <PipelineStageCollapsible
               key={stage.id}
               stage={stage}
-              metric={
-                query.data?.stages?.[String(stage.id)] ?? null
-              }
-              loading={query.isLoading}
-              stubMode={stubMode}
+              observations={buckets?.get(stage.id) ?? []}
+              loadState={loadState}
+              traceStatus={data?.status}
             />
           ))}
         </CardContent>
@@ -195,16 +243,85 @@ export default function DebugTracePage({
   );
 }
 
-function SummaryCard({
-  report,
-  loading,
-  stubMode,
+// --- Status banner -----------------------------------------------------------
+
+const STATUS_COPY: Record<
+  string,
+  { title: string; tone: 'info' | 'warn' } | undefined
+> = {
+  langfuse_not_configured: {
+    title: 'Langfuse not configured — stage data unavailable',
+    tone: 'info',
+  },
+  sdk_method_missing: {
+    title: 'Langfuse SDK too old — stage extraction unavailable',
+    tone: 'warn',
+  },
+  not_found: { title: 'Trace not found in Langfuse', tone: 'warn' },
+  fetch_failed: { title: 'Langfuse fetch failed', tone: 'warn' },
+};
+
+function StatusBanner({
+  loadState,
+  data,
+  error,
 }: {
-  report: TraceData | undefined;
-  loading: boolean;
-  stubMode: boolean;
+  loadState: LoadState;
+  data: TraceDetail | undefined;
+  error: unknown;
 }) {
-  if (loading) {
+  if (loadState === 'loading') {
+    return null;
+  }
+  if (loadState === 'error') {
+    return (
+      <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+        Failed to load trace: {String((error as Error)?.message ?? 'unknown error')}
+      </div>
+    );
+  }
+  if (!data || data.status === 'ok') {
+    return null;
+  }
+  const copy = STATUS_COPY[data.status] ?? {
+    title: `Trace status: ${data.status}`,
+    tone: 'warn' as const,
+  };
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-md border p-4 text-sm',
+        copy.tone === 'info'
+          ? 'border-dashed border-border bg-muted/30'
+          : 'border-amber-500/40 bg-amber-500/10',
+      )}
+    >
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div>
+        <p className="font-medium">{copy.title}</p>
+        {data.note ? (
+          <p className="mt-1 text-xs text-muted-foreground">{data.note}</p>
+        ) : null}
+        <p className="mt-1 text-xs text-muted-foreground">
+          The 9-stage scaffold below shows the pipeline shape; per-stage
+          observations populate once trace data is available. The Open in
+          Langfuse link uses the trace ID and works independently.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// --- Summary card ------------------------------------------------------------
+
+function SummaryCard({
+  loadState,
+  data,
+}: {
+  loadState: LoadState;
+  data: TraceDetail | undefined;
+}) {
+  if (loadState === 'loading') {
     return (
       <div className="grid gap-4 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -220,103 +337,90 @@ function SummaryCard({
       </div>
     );
   }
-
-  if (stubMode) {
-    return (
-      <div className="flex items-start gap-3 rounded-md border border-dashed border-border bg-muted/30 p-4 text-sm">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        <div>
-          <p className="font-medium">Trace data pending backend implementation</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Backend `GET /debug/trace/&#123;trace_id&#125;` is W3+ stub —
-            pending Langfuse correlation per architecture.md §5.7. Pipeline
-            timeline below shows the 6-stage scaffold; per-stage metrics will
-            populate once trace API lands. Open in Langfuse link uses traceId
-            from URL and works independently.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!report) {
+  if (!data) {
     return null;
   }
-
   return (
     <div className="grid gap-4 sm:grid-cols-3">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
-            Latency
-          </CardDescription>
-          <CardTitle className="text-sm">Total duration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-2xl font-semibold">
-            <Timer className="h-5 w-5 text-muted-foreground" />
-            {report.total_ms.toLocaleString()} ms
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
-            Cost
-          </CardDescription>
-          <CardTitle className="text-sm">Total spend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-2xl font-semibold">
-            <DollarSign className="h-5 w-5 text-muted-foreground" />
-            {report.total_cost_usd.toFixed(4)}
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="sm:col-span-1">
-        <CardHeader className="pb-2">
-          <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
-            Query
-          </CardDescription>
-          <CardTitle className="line-clamp-2 text-sm">
-            {report.query}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            KB: {report.kb_id ?? '—'}
-          </p>
-        </CardContent>
-      </Card>
+      <SummaryTile
+        label="Latency"
+        title="Total duration"
+        icon={<Timer className="h-5 w-5 text-muted-foreground" />}
+        value={`${data.total_latency_ms.toLocaleString()} ms`}
+      />
+      <SummaryTile
+        label="Tokens in"
+        title="Input tokens"
+        icon={<Hash className="h-5 w-5 text-muted-foreground" />}
+        value={data.total_input_tokens.toLocaleString()}
+      />
+      <SummaryTile
+        label="Tokens out"
+        title="Output tokens"
+        icon={<Hash className="h-5 w-5 text-muted-foreground" />}
+        value={data.total_output_tokens.toLocaleString()}
+      />
     </div>
   );
 }
 
+function SummaryTile({
+  label,
+  title,
+  icon,
+  value,
+}: {
+  label: string;
+  title: string;
+  icon: React.ReactNode;
+  value: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardDescription className="font-mono text-[10px] uppercase tracking-wide">
+          {label}
+        </CardDescription>
+        <CardTitle className="text-sm">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 text-2xl font-semibold">
+          {icon}
+          {value}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Per-stage collapsible ---------------------------------------------------
+
+function sumLatency(observations: TraceStage[]): number {
+  return observations.reduce((acc, o) => acc + (o.latency_ms || 0), 0);
+}
+
 function PipelineStageCollapsible({
   stage,
-  metric,
-  loading,
-  stubMode,
+  observations,
+  loadState,
+  traceStatus,
 }: {
   stage: PipelineStage;
-  metric: PipelineStageMetric | null;
-  loading: boolean;
-  stubMode: boolean;
+  observations: TraceStage[];
+  loadState: LoadState;
+  traceStatus: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
+  const hasData = observations.length > 0;
+  const traceOk = traceStatus === 'ok';
 
   const durationLabel = (() => {
-    if (loading) return '…';
-    if (stubMode || !metric) return '—';
-    return `${metric.duration_ms.toLocaleString()} ms`;
+    if (loadState === 'loading') return '…';
+    if (!hasData) return '—';
+    return `${sumLatency(observations).toLocaleString()} ms`;
   })();
 
-  const costLabel = (() => {
-    if (!metric || metric.cost_usd === null || metric.cost_usd === undefined) {
-      return null;
-    }
-    return `$${metric.cost_usd.toFixed(4)}`;
-  })();
+  const anyError = observations.some((o) => o.status === 'error');
 
   return (
     <div className="rounded-md border border-border">
@@ -336,26 +440,39 @@ function PipelineStageCollapsible({
           <span className="truncate font-medium">
             Stage {stage.id} — {stage.name}
             {stage.vendor ? (
-              <span className="ml-1 text-muted-foreground">
-                ({stage.vendor})
-              </span>
+              <span className="ml-1 text-muted-foreground">({stage.vendor})</span>
             ) : null}
           </span>
+          {anyError ? (
+            <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
+              error
+            </span>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-3 font-mono text-xs text-muted-foreground">
-          {costLabel ? <span>{costLabel}</span> : null}
+          {hasData && observations.length > 1 ? (
+            <span>{observations.length}×</span>
+          ) : null}
           <span>{durationLabel}</span>
         </div>
       </button>
       {open ? (
-        <div className="border-t border-border p-3">
+        <div className="space-y-3 border-t border-border p-3">
           <p className="text-sm text-muted-foreground">{stage.description}</p>
-          {stubMode || !metric ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Stage details pending backend trace API + Langfuse correlation.
-            </p>
+          {hasData ? (
+            observations.map((obs, i) => (
+              <ObservationDetail key={`${obs.name}-${i}`} obs={obs} />
+            ))
           ) : (
-            <StageDetail metric={metric} />
+            <p className="text-xs text-muted-foreground">
+              {traceOk
+                ? (stage.note ??
+                  'No Langfuse observation for this stage on this query.')
+                : 'Stage observations populate once trace data is available.'}
+              {traceOk && stage.note && stage.obsPrefixes.length > 0
+                ? ' (Not all queries exercise every stage.)'
+                : ''}
+            </p>
           )}
         </div>
       ) : null}
@@ -363,38 +480,43 @@ function PipelineStageCollapsible({
   );
 }
 
-function StageDetail({ metric }: { metric: PipelineStageMetric }) {
+function ObservationDetail({ obs }: { obs: TraceStage }) {
+  const tokenLine =
+    obs.input_tokens || obs.output_tokens
+      ? `${obs.input_tokens.toLocaleString()} in / ${obs.output_tokens.toLocaleString()} out`
+      : null;
+  const detailEntries = obs.details ? Object.entries(obs.details) : [];
+
   return (
-    <div className="mt-3 space-y-3 text-sm">
-      {metric.input_preview ? (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Input
-          </p>
-          <pre className="mt-1 overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-xs">
-            {metric.input_preview}
-          </pre>
-        </div>
-      ) : null}
-      {metric.output_preview ? (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Output
-          </p>
-          <pre className="mt-1 overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-xs">
-            {metric.output_preview}
-          </pre>
-        </div>
-      ) : null}
-      {metric.details && Object.keys(metric.details).length > 0 ? (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Details
-          </p>
-          <pre className="mt-1 overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-xs">
-            {JSON.stringify(metric.details, null, 2)}
-          </pre>
-        </div>
+    <div className="rounded-md bg-muted/40 p-3 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono">
+        <span className="font-medium text-foreground">{obs.name}</span>
+        <span className="text-muted-foreground">{obs.type}</span>
+        <span className="text-muted-foreground">{obs.latency_ms.toLocaleString()} ms</span>
+        {obs.model ? <span className="text-muted-foreground">{obs.model}</span> : null}
+        {tokenLine ? <span className="text-muted-foreground">{tokenLine}</span> : null}
+        <span
+          className={cn(
+            'rounded px-1.5 py-0.5 uppercase tracking-wide',
+            obs.status === 'error'
+              ? 'bg-destructive/15 text-destructive'
+              : obs.status === 'cancelled'
+                ? 'bg-amber-500/15 text-amber-600'
+                : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {obs.status}
+        </span>
+      </div>
+      {detailEntries.length > 0 ? (
+        <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 font-mono">
+          {detailEntries.map(([k, v]) => (
+            <div key={k} className="contents">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="break-all text-foreground">{String(v)}</dd>
+            </div>
+          ))}
+        </dl>
       ) : null}
     </div>
   );

@@ -156,6 +156,75 @@ def test_get_trace_fetch_raises_returns_fetch_failed_status() -> None:
         langfuse_tracer._set_langfuse_client_for_tests(None)
 
 
+def test_get_trace_observation_metadata_surfaced_as_details() -> None:
+    """ADR-0020 Session 2 — observation metadata (minus `duration_ms`) → stage.details;
+    `duration_ms` used as latency fallback when no timed start/end on the observation."""
+    ctx_obs = SimpleNamespace(
+        name="generation.context_expansion",
+        type="EVENT",
+        usage=None,
+        model=None,
+        level="DEFAULT",
+        # no latency_ms / start_time / end_time → falls back to metadata.duration_ms
+        metadata={
+            "duration_ms": 37,
+            "requested_count": 5,
+            "expanded_count": 3,
+            "boundary_skip_count": 2,
+        },
+    )
+    fake_response = SimpleNamespace(data=SimpleNamespace(observations=[ctx_obs]))
+    fake_client = MagicMock()
+    fake_client.fetch_trace = MagicMock(return_value=fake_response)
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    try:
+        client = TestClient(_build_app())
+        resp = client.get("/debug/trace/trace-ctx")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["status"] == "ok"
+        stage = body["stages"][0]
+        assert stage["name"] == "generation.context_expansion"
+        assert stage["latency_ms"] == 37  # metadata.duration_ms fallback
+        assert stage["details"] == {
+            "requested_count": 5,
+            "expanded_count": 3,
+            "boundary_skip_count": 2,
+        }
+        assert "duration_ms" not in stage["details"]
+        assert body["total_latency_ms"] == 37
+    finally:
+        langfuse_tracer._set_langfuse_client_for_tests(None)
+
+
+def test_get_trace_observation_without_metadata_has_no_details() -> None:
+    """Observation lacking a `metadata` attr → stage.details is None (back-compat)."""
+    start = datetime.now(UTC)
+    obs = SimpleNamespace(
+        name="retrieval.retrieve",
+        type="SPAN",
+        start_time=start,
+        end_time=start + timedelta(milliseconds=80),
+        usage=None,
+        model=None,
+        level="DEFAULT",
+        latency_ms=80,
+    )
+    fake_response = SimpleNamespace(data=SimpleNamespace(observations=[obs]))
+    fake_client = MagicMock()
+    fake_client.fetch_trace = MagicMock(return_value=fake_response)
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    try:
+        client = TestClient(_build_app())
+        resp = client.get("/debug/trace/trace-nometa")
+        assert resp.status_code == 200
+        assert resp.json()["stages"][0]["details"] is None
+    finally:
+        langfuse_tracer._set_langfuse_client_for_tests(None)
+
+
 def test_get_trace_error_level_observation_marked_error_status() -> None:
     """Observation with level='ERROR' → stage status='error' (others 'ok')."""
     start = datetime.now(UTC)

@@ -24,7 +24,12 @@ import pytest
 import structlog
 
 from observability import langfuse_tracer
-from observability.observe import observe_async, observe_llm_async, observe_streaming
+from observability.observe import (
+    emit_stage_metadata,
+    observe_async,
+    observe_llm_async,
+    observe_streaming,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -256,6 +261,49 @@ async def test_decorator_composes_with_tenacity_retry() -> None:
 # ===========================================================================
 # observe_llm_async — W9 D2 F5.2 upgrade(client.generation()emit)
 # ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# emit_stage_metadata (ADR-0020 Session 2 — Context Expander stage emit)
+# ---------------------------------------------------------------------------
+
+
+async def test_emit_stage_metadata_emits_trace_with_metadata() -> None:
+    fake_client = MagicMock()
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    emit_stage_metadata(
+        "generation.context_expansion",
+        duration_ms=37,
+        requested_count=5,
+        expanded_count=3,
+        boundary_skip_count=2,
+    )
+
+    fake_client.trace.assert_called_once()
+    kwargs = fake_client.trace.call_args.kwargs
+    assert kwargs["name"] == "generation.context_expansion"
+    assert kwargs["output"] == {"status": "ok"}
+    assert kwargs["metadata"] == {
+        "duration_ms": 37,
+        "requested_count": 5,
+        "expanded_count": 3,
+        "boundary_skip_count": 2,
+    }
+
+
+async def test_emit_stage_metadata_no_op_when_client_absent() -> None:
+    # autouse fixture already set client to None — assert it doesn't raise.
+    emit_stage_metadata("generation.context_expansion", duration_ms=0)
+
+
+async def test_emit_stage_metadata_swallows_trace_failure() -> None:
+    fake_client = MagicMock()
+    fake_client.trace = MagicMock(side_effect=RuntimeError("langfuse down"))
+    langfuse_tracer._set_langfuse_client_for_tests(fake_client)
+
+    # Must NOT propagate — observability never breaks the request path.
+    emit_stage_metadata("generation.context_expansion", duration_ms=12, expanded_count=1)
 
 
 @dataclass(slots=True, frozen=True)
