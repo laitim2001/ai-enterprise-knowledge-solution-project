@@ -155,9 +155,40 @@ User chose **(A)**:keep `psycopg` + defer local Postgres-path verification(CRUD 
 
 ---
 
-## Day 4 → Day 6 — _(implementation entries appended below as work lands)_
+## Day 4 — F2: auth-transport hardening (httpOnly cookie + CSRF + /auth/refresh)(2026-05-10, same-calendar-day)
 
-_(Next:F2 cookie/CSRF + `/auth/refresh`(per ADR-0022)→ F3 RAGAs 4-metric → F5 a11y/dark-mode browser smoke V1-V9 → F6 Vitest+RTL scaffold → F7 closeout;each commit ↔ Day-N entry per R2;same-calendar-day collapse continuing.)_
+> Per ADR-0022. F2 verdict = **PASS** — landed `7cca23e` `feat(api,frontend)`. CO_F5_refresh + CO_F5_cookie → CLOSED.
+
+### Backend (C08 API Gateway + C11 Identity)
+
+- **NEW `backend/api/auth/cookies.py`** — `set_session_cookies(response, settings, token)` sets `ekp_session`(httpOnly, `SameSite=Lax`, `Secure` when `environment != "local"`, `Path=/`, `Max-Age=` session TTL)+ `ekp_csrf`(readable double-submit, same attrs minus httpOnly), returns the CSRF token; `clear_session_cookies()` expires both; `csrf_token_ok(header, cookie)` constant-time double-submit check; `SESSION_COOKIE`/`CSRF_COOKIE`/`CSRF_HEADER`/`STATE_CHANGING_METHODS` constants.
+- **`dependency.get_current_user` → dual-path** — resolution order: (1) `ekp_session` cookie (precedence) → `users_repo.resolve_session`; on a state-changing request (POST/PUT/PATCH/DELETE) the CSRF double-submit is enforced (`X-CSRF-Token` == `ekp_csrf` cookie, else 403); (2) `Authorization: Bearer` — session bearer (legacy / API clients) → mock dev-token → MSAL JWT (Bearer-auth is CSRF-exempt — a Bearer is never auto-attached by a browser). A present-but-invalid cookie falls through to (2). Now takes `request: Request` (the 2 `test_mock_msal.py` direct-call tests updated with a `_bare_request()` helper).
+- **`routes/auth.py`** — `/auth/login` + the verified-transition of `/auth/verify-email` call `set_session_cookies` (verify-email now **auto-logs-in** per ADR-0022 §1 — fixes the prior register-flow gap where Step-3 "Start asking" landed on `/chat` unauthenticated; `VerifyEmailResponse` gained `access_token`/`expires_in`, None on the idempotent already-verified branch). `/auth/refresh` — for a self-register session (cookie or legacy bearer): revoke the old token, mint a new one, re-set both cookies, return `RefreshResponse(is_mock=False)`; mock mode keeps the fixed dev-token (no cookie); real MSAL still 503 — **closes CO_F5_refresh**. `/auth/logout` — revoke the cookie token + any bearer + `clear_session_cookies` — **closes CO_F5_cookie**. `/auth/register` unchanged (user not verified yet).
+- **`server.py`** — CORS gained `allow_credentials=True` (cookie-transport correctness for any direct cross-origin browser→backend dev call — the same-origin `/api/backend` proxy path forwards `Cookie`/`Set-Cookie` regardless via `route.ts`; a regex origin, not `*`, is required when credentials are allowed). Same local-dev-gap category as the `84d030e` CORS add — not H1.
+
+### Frontend (C09 Admin UI + C10 Chat UI)
+
+- **`lib/api-client.ts`** — `credentials:'include'` on get/post/patch; `getCsrfHeaders()` (reads the `ekp_csrf` cookie via `document.cookie`, returns `{'X-CSRF-Token': …}` or `{}`) — exported and applied on post/patch; also wired into the raw-fetch callers `lib/api/query.ts` `streamQuery` (POST `/query/stream`) + `lib/api/kb.ts` `uploadDoc` (POST `/kb/{id}/documents`) — both are cookie-authenticated state-changing requests so they need the CSRF header (the `/api/backend` proxy → `dependencies=_auth` → CSRF check).
+- **`lib/auth/index.ts`** — `SESSION_TOKEN_STORAGE_KEY` + `readSessionBearer()` removed; the self-register session is the httpOnly cookie now, so `getBearer()` is just `getMockBearer()` (mock dev-token) / `getMsalBearer()` (SSO JWT). `lib/api/auth.ts` drops the `SESSION_TOKEN_STORAGE_KEY` re-export + adds `VerifyEmailResponse.access_token`/`expires_in`. `app/login/page.tsx` drops the `localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, …)` write + the now-unused import. `app/register/page.tsx` — no edit needed (never wrote localStorage; the verify-email auto-login cookie makes its Step-3 → `/chat` work).
+
+### Docs
+
+- `architecture.md` §3.7 — NEW「Auth transport」note (cookie + CSRF + dual-path + refresh rotation + verify-email auto-login; inline-tagged「W17 F2 amendment — per ADR-0022」; doc version not bumped — same convention as the §3.4 / §3.7 ADR-tag style). `docs/adr/0014-*.md` References — cross-link to ADR-0022 (+ ADR-0016, ADR-0023). `docs/adr/0022-*.md` "Implementation Deliverables" — F0.1 + F2.1–F2.8 ticked.
+
+### Verification
+
+`ruff check` clean on all new + changed files (pre-existing `server.py` 19×E402 from the truststore-must-run-first pattern + `test_auth_self_register.py` 5×UP037 untouched — not my mess). **Backend pytest 609 passed / 11 skipped** (the previous full run was 607 passed / 2 failed — the 2 were `test_mock_msal.py` calling `get_current_user(credentials=…, settings=…)` positionally → broke when `request` was added; fixed; +17 new `test_auth_cookie_transport.py` cases). `mypy -p api.auth` — `cookies.py` / `dependency.py` / `routes/auth.py` add no errors (the 5 in `api.auth` are pre-existing: `postgres_users_store.py` psycopg ×2 [R8/ADR-0017] + `email_provider.py` azure stub + `msal_provider.py` jose stubs ×2). Frontend `tsc --noEmit` + `next lint` clean.
+
+### Day 4 commits
+
+- **`7cca23e`** `feat(api,frontend)` — W17 F2 auth-transport hardening (17 files; + NEW `backend/api/auth/cookies.py` + `backend/tests/test_auth_cookie_transport.py`)
+- **`(this docs commit)`** `docs(planning)` — W17 checklist F2 ticked (verdict PASS, CO_F5_* CLOSED) + Day-4 progress entry + plan §7 changelog D4
+
+---
+
+## Day 5 → Day 6 — _(implementation entries appended below as work lands)_
+
+_(Next:F3 RAGAs 4-metric integration → F5 a11y/dark-mode browser smoke V1-V9 → F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2;same-calendar-day collapse continuing.)_
 
 ---
 
