@@ -318,11 +318,11 @@ function DocumentsTable({ rows }: { rows: DocumentSummary[] }) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Title</th>
-              <th className="px-3 py-2 text-left font-medium">Format</th>
-              <th className="px-3 py-2 text-right font-medium">Chunks</th>
-              <th className="px-3 py-2 text-left font-medium">Last indexed</th>
-              <th className="px-3 py-2 text-left font-medium">Doc id</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Title</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Format</th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">Chunks</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Last indexed</th>
+              <th scope="col" className="px-3 py-2 text-left font-medium">Doc id</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

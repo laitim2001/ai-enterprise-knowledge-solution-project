@@ -216,9 +216,47 @@ The structural integration is complete + CI-tested at the LLM-judge boundary, bu
 
 ---
 
-## Day 6 — _(implementation entries appended below as work lands)_
+## Day 6 — F5: a11y + dark-mode verification pass(2026-05-10, same-calendar-day)
 
-_(Next:F5 a11y/dark-mode browser smoke V1-V9 → F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
+> F5 verdict = **PASS**(dark-mode mechanism + static-view browser smoke + `[oklch` milestone confirmed;full interactive walkthrough of the admin/chat views deferred to the user's pre-Beta smoke — the established CO_W15_F3 pattern, scope reduced). One W17-own-mess a11y fix landed(`scope="col"` on the F4.1 Documents table). C09 + C10 + C11 views cross-cutting.
+
+### F5.1 — dark-mode visual verify
+
+- **`[oklch(...)]` arbitrary-value form = 0 globally** — `Grep '\[oklch'` across `frontend/` → 0 matches(the bare `oklch(...)` hits are all in `tokens.ts`(the `colorsLight`/`colorsDark` source-of-truth definitions)+ `tailwind.config.ts`(`oklch(var(--token))` wrappers)+ docstring comments — zero hardcoded arbitrary values in component/page files). **MILESTONE PRESERVED.**
+- **Mechanism confirmed**(code review):`app/layout.tsx` `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>`(next-themes)→ sets `<html class="dark">` → `app/globals.css` `.dark { --background: 0.18 0.005 285; … }`(all `colorsDark` vars)→ `tailwind.config.ts` `oklch(var(--token))` → utility classes(`bg-background` / `text-foreground` / `bg-primary` / `text-accent` / …)resolve to the dark palette. `body { @apply bg-background text-foreground }`. `tokens.ts` `colorsDark` (lines 60-83) is the documented "inverted-button pattern" — `primary` flips light(buttons become light bg in dark mode), `accent` coral L lifts 0.65→0.68 for dark-surface contrast, `background` is warm-neutral dark(hue 285, not pure black).
+- **Browser smoke**(`next dev -p 3001` + Playwright, `document.documentElement.classList.add('dark')`):
+  - **V8 Login**(`/login`)— light + dark screenshots;dark `getComputedStyle(body).backgroundColor === 'oklch(0.18 0.005 285)'`(== `colorsDark.background`)+ `color === 'oklch(0.95 0 0)'`(== `colorsDark.foreground`);BrandPanel left flips from charcoal(`bg-primary` light)→ light warm-neutral(dark — inverted-button pattern working);"Sign in" button inverts(dark→light bg);coral accent on "Ricoh account"/"Register" links in both modes. ✅
+  - **V7 Landing**(`/`)— dark full-page screenshot;dark warm-neutral bg, light "Get started"/"Start asking" buttons(inverted), coral feature-card icons, muted-foreground secondary text, border tokens on cards, sticky header `bg-background/…`. ✅
+  - **Error-boundary fallback**(incidental — a next-dev `ChunkLoadError` on cold-compile of `/` triggered the `<ErrorBoundary>`)— "EKP — Something went wrong" / Retry(coral destructive)/ Report + error toast all rendered correctly in dark. ✅(reload recovered — the ChunkLoadError is a known next-dev transient, not an app bug)
+  - **V1-V6 Chat/Admin/KB/Eval/Debug + V9 Register** — not browser-walked(need a running backend + auth/data);they consume the **same token utility classes**(the `[oklch` = 0 grep proves no view has a hardcoded color that could escape the `.dark` swap)→ dark mode necessarily propagates. The per-view interactive dark-mode walkthrough(toggle via the UserMenu/`ThemeToggle` on each of the 9 + verify no contrast surprise)stays the **user's pre-Beta smoke** — same shape as the W12-W15 "smoke-user-deferred caveat", scope now reduced to the interactive layer(the static + mechanism layer is verified here).
+- **CO_W15_F3_dark_mode_visual_verify → partially closed**(mechanism + `[oklch`=0 + V7/V8 browser-verified;interactive 9-view walkthrough remains the user's pre-Beta item — F7 decides full closure).
+
+### F5.2 — ARIA spot-check
+
+- **Register 6-box code input**(`app/register/page.tsx` Step2)— each box `<Input … aria-label={`Digit ${idx+1}`} inputMode="numeric" autoComplete="one-time-code" maxLength={1}>`;keyboard nav(Backspace/ArrowLeft/ArrowRight focus shift)+ paste-distribution on box 0. ✅ All Step1 fields `<Input id=… >` + `<Label htmlFor=… >` via the `Field` wrapper. The `Stepper` uses `<ol>`/`<li>` semantics.
+- **Login dual-path**(`app/login/page.tsx`)— email/password `<Input id=… >` + `<Label htmlFor=… >`;SSO `<Button>` with `<Building2>` icon + text label;"Forgot password?" is a non-focusable `<span title=…>`(disabled-Tier-2 visual). ✅
+- **New Documents tab**(`app/admin/kb/[id]/page.tsx` `DocumentsTable`)— `<th scope="col">` added to all 5 headers(was missing — F5.3 fix below);`<table>`/`<thead>`/`<tbody>` semantics;`Badge` tag chips.
+- **RetrievalTab**(ADR-0021 — W17 inherits)— Sliders `<Slider aria-label="Top K">` / `aria-label="Score threshold">`;Selects `<SelectTrigger id="rt-mode">` + `<Label htmlFor="rt-mode">` / `id="e2e-llm"` etc;Switches `<Switch id="rt-rerank">` + `<Label htmlFor="rt-rerank">` / `id="e2e-crag">`;`<textarea id="e2e-query">` + `<Label htmlFor="e2e-query">`. ✅
+- **`ThemeToggle`**(`components/nav/theme-toggle.tsx`)— `<Button … aria-label="Toggle theme">` + DropdownMenu Light/Dark/System. ✅
+- **Pre-existing gap noted, not fixed**(not W17's mess — Karpathy §1.3):the register `Stepper` `<li>` for the active step lacks `aria-current="step"`(W13 D5 register page). → defer to **CO_W15_F3_aria_full_audit**(Tier 2 full NVDA/JAWS/VoiceOver audit;this F5.2 is spot-check only per the plan).
+
+### F5.3 — W17-own-mess a11y fix
+
+- `app/admin/kb/[id]/page.tsx` `DocumentsTable`(added W17 Day 1 / F4.1)— `<th>` → `<th scope="col">` ×5(WCAG 1.3.1 table-header association). Surgical, only this. `tsc --noEmit` + `next lint` clean after the edit. Pre-existing gaps(Stepper `aria-current`)→ mentioned above, deferred.
+
+### Verification
+
+`Grep '\[oklch'` frontend = 0(milestone). `tsc --noEmit` clean. `next lint` "No ESLint warnings or errors". Browser smoke V7+V8 dark = `body bg oklch(0.18 0.005 285)` confirmed. No backend pytest impact(frontend-only + a planning-doc change). Playwright screenshots(`f5-login-{light,dark}.png` / `f5-landing-dark*.png`)were temp-only — deleted after review, not committed(consistent with the W15 F4 pixel-baseline-capture-is-user-smoke discipline). Dev server(`next dev -p 3001` PID stopped after the smoke).
+
+### Day 6 commits
+
+- **`(this commit)`** `feat(frontend)` — W17 F5 a11y + dark-mode verify(`DocumentsTable` `<th scope="col">` fix;1 file)+ this Day-6 progress entry + checklist F5.1-F5.3 ticked + plan §7 changelog D6
+
+---
+
+## Day 7 — _(implementation entries appended below as work lands)_
+
+_(Next:F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
 
 ---
 
