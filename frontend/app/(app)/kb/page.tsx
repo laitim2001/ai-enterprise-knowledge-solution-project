@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * V3 KB List (`/admin/kb`) — per architecture.md v6 §5.4 view 3.
+ * V3 KB List (`/kb`) — per architecture.md v6 §5.4 view 3.
  *
  * W14 D2 F2 refactor — plain-table → card grid per ui-design-reference-v6.md
  * §2.3 wireframe + design ref §3 cross-view rules. Each Card surfaces kb_id /
@@ -91,7 +91,7 @@ export default function KbListPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/kb/new">
+          <Link href="/kb/new">
             <Plus className="mr-2 h-4 w-4" />
             Create KB
           </Link>
@@ -203,7 +203,7 @@ function KbCard({ kb }: { kb: KbStatus }) {
   const lastIndexed = kb.last_indexed_at?.slice(0, 10) ?? '—';
   return (
     <Link
-      href={`/admin/kb/${kb.kb_id}`}
+      href={`/kb/${kb.kb_id}`}
       className="group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <Card className="h-full transition-colors group-hover:border-accent/60">
@@ -301,7 +301,7 @@ function KbEmpty({ hasSearch }: { hasSearch: boolean }) {
         </p>
       </div>
       <Button asChild>
-        <Link href="/admin/kb/new">
+        <Link href="/kb/new">
           <Plus className="mr-2 h-4 w-4" />
           Create KB
         </Link>

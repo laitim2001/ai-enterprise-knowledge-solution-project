@@ -5,11 +5,11 @@
  * - V7 Landing (`/`)
  * - V8 Login (`/login`)
  * - V9 Register Step 1 (`/register`)
- * - V2 Admin Dashboard (`/admin`)
+ * - Dashboard (`/dashboard` — W18 F3 placeholder; re-baseline once F4 lands)
  * - V5 Eval Console (`/eval`)
  *
- * V1 Chat / V3 KB List / V4 KB Detail / V6 Debug = covered by golden-path +
- * admin-path E2E render assertions (interactive flow tests). Pixel diff is
+ * V1 Chat / V3 KB List / V4 KB Detail / V6 Traces = covered by golden-path +
+ * app-shell-path E2E render assertions (interactive flow tests). Pixel diff is
  * gated to stable layout views — empty state baselines avoid dynamic content
  * jitter (KB IDs / timestamps / failed_documents arrays would mask out).
  *
@@ -57,13 +57,14 @@ test.describe('Visual baseline — pixel diff harness', () => {
     });
   });
 
-  test('V2 Admin Dashboard baseline (empty state)', async ({ page }) => {
-    await page.goto('/admin');
+  test('Dashboard baseline (W18 F3 placeholder)', async ({ page }) => {
+    await page.goto('/dashboard');
     await expect(
-      page.getByRole('heading', { name: /overview|admin/i }),
+      page.getByRole('heading', { name: /dashboard/i }),
     ).toBeVisible();
-    // Mask any dynamic content (timestamps in mono font appear after data load)
-    await expect(page).toHaveScreenshot('v2-admin-dashboard.png', {
+    // W18 F3 placeholder — re-capture this baseline once the W18 F4 overview cards land.
+    // Mask any dynamic content (timestamps / mono-font ids appear after data load in F4).
+    await expect(page).toHaveScreenshot('dashboard.png', {
       fullPage: true,
       mask: [page.locator('time'), page.locator('.font-mono')],
     });

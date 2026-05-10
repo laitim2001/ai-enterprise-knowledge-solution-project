@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * KB Pipeline Wizard (`/admin/kb/new`) — per architecture.md v6 §5.5 view 7.
+ * KB Pipeline Wizard (`/kb/new`) — per architecture.md v6 §5.5 view 7.
  *
  * W12 D4 F4.9 tokens migration: hardcoded oklch → token classes;
  * Step CTAs upgraded to shadcn Button (default + outline back). Functional
@@ -91,13 +91,13 @@ export default function KbNewPage() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['kb'] });
-    router.push(`/admin/kb/${created.kb_id}`);
+    router.push(`/kb/${created.kb_id}`);
   }
 
   return (
     <div className="max-w-3xl">
       <Link
-        href="/admin/kb"
+        href="/kb"
         className="text-sm text-accent hover:underline"
       >
         ← Back to KBs

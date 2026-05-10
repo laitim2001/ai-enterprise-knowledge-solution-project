@@ -146,7 +146,9 @@ reports/reranker_shootout_*.yaml
 reports/reranker_shootout_*.json
 
 # LLM trace dumps(若 dev export Langfuse traces 落 local)
-traces/
+# Anchored to the repo root so it doesn't shadow the frontend `/traces` route
+# folder (frontend/app/(app)/traces/ — W18 F3 per ADR-0024).
+/traces/
 *.langfuse-export.json
 
 # Daily session conversation logs — local only, never push to GitHub

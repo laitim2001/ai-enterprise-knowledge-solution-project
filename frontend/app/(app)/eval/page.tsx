@@ -515,7 +515,7 @@ function FailedQueriesCard({
                     </td>
                     <td className="px-2 py-2 text-right">
                       <Button asChild variant="ghost" size="sm">
-                        <Link href={`/debug/${q.query_id}`}>
+                        <Link href={`/traces/${q.query_id}`}>
                           <ExternalLink className="h-3 w-3" />
                         </Link>
                       </Button>

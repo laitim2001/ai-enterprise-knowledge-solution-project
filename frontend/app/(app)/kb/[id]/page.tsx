@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * V4 KB Detail (`/admin/kb/[id]`) — per architecture.md v6 §5.5 view 4.
+ * V4 KB Detail (`/kb/[id]`) — per architecture.md v6 §5.5 view 4.
  *
  * W14 D3 F3 refactor — 5-tab nav (Documents / Chunks / Pipeline / Retrieval
  * Testing / Settings) per ui-design-reference-v6.md §2.4 wireframe. Tab state
@@ -129,7 +129,7 @@ export default function KbDetailPage() {
   function handleTabChange(next: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', next);
-    router.push(`/admin/kb/${kbId}?${params.toString()}`, { scroll: false });
+    router.push(`/kb/${kbId}?${params.toString()}`, { scroll: false });
   }
 
   if (query.isLoading) {
@@ -156,7 +156,7 @@ export default function KbDetailPage() {
     <div className="space-y-6">
       <div>
         <Link
-          href="/admin/kb"
+          href="/kb"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3 w-3" />
@@ -177,7 +177,7 @@ export default function KbDetailPage() {
           )}
         </div>
         <Button asChild>
-          <Link href={`/admin/kb/${kbId}/upload`}>
+          <Link href={`/kb/${kbId}/upload`}>
             <Upload className="mr-2 h-4 w-4" />
             Upload Document
           </Link>
@@ -284,7 +284,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
               Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds
             </p>
             <Button asChild className="mt-4">
-              <Link href={`/admin/kb/${kb.kb_id}/upload`}>
+              <Link href={`/kb/${kb.kb_id}/upload`}>
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Document
               </Link>

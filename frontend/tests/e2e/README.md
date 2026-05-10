@@ -7,9 +7,11 @@ Tier 1 baseline test infrastructure landed W15 D4 F4 (per architecture.md v6
 
 | Test file | Deliverable | Views covered |
 |---|---|---|
-| `golden-path.spec.ts` | F4.2 — public + chat E2E | V7 Landing, V8 Login, V9 Register, V1 Chat |
-| `admin-path.spec.ts` | F4.3 — KB management + eval + debug | V2 Admin, V3 KB List, V5 Eval, V6 Debug + sidebar nav |
-| `visual-baseline.spec.ts` | F4.4 — pixel diff harness | V7 + V8 + V9 + V2 + V5 (empty state baselines) |
+| `golden-path.spec.ts` | F4.2 — public + chat E2E | V7 Landing (`/`), V8 Login (`/login`), V9 Register (`/register`), V1 Chat (`/chat`) |
+| `app-shell-path.spec.ts` | F4.3 + W18 F3 — app-shell modules | `/dashboard` (F3 placeholder), `/kb` KB List, `/eval` Eval Console, `/traces/[traceId]` Traces detail + AppShell sidebar nav |
+| `visual-baseline.spec.ts` | F4.4 — pixel diff harness | `/` + `/login` + `/register` + `/dashboard` + `/eval` (empty-state baselines) |
+
+> **W18 F3 (per ADR-0024)**: the IA was restructured — all authenticated views moved into the `app/(app)/` route group under a single `<AppShell>`; `/admin/kb/*` → `/kb/*`, `/debug/[traceId]` → `/traces/[traceId]`, `/admin` → `/dashboard` (new overview, F3 placeholder → real cards in F4). `admin-path.spec.ts` was renamed `app-shell-path.spec.ts` + its route refs updated. Browser binaries still can't be installed under the R8 corp proxy (CO_W15_F4_browser_binaries / ADR-0017) — F3's spec update is the deliverable; the run stays the pre-Beta smoke.
 
 V4 KB Detail 5-tab interactive flow + KB seeding tests = Beta hardening trigger
 (non-blocker per W15 plan F4.5 PARTIAL PASS acceptance "local-only baseline OK
@@ -62,14 +64,15 @@ frontend/tests/e2e/visual-baseline.spec.ts-snapshots/
 ├── v7-landing-chromium-win32.png
 ├── v8-login-chromium-win32.png
 ├── v9-register-step1-chromium-win32.png
-├── v2-admin-dashboard-chromium-win32.png
+├── dashboard-chromium-win32.png
 └── v5-eval-console-chromium-win32.png
 ```
 
 Commit these baselines to git (they form the visual regression contract).
 Subsequent `pnpm test:e2e` runs diff against them with 1% pixel tolerance.
 
-When intentional UI changes happen (e.g., V2 Admin Dashboard refactor),
+When intentional UI changes happen (e.g., the W18 F3 app-shell IA restructure;
+re-baseline `dashboard.png` again once the W18 F4 overview cards land),
 re-run `--update-snapshots` after visual approval and re-commit.
 
 ## Authentication

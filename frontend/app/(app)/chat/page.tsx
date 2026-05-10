@@ -7,6 +7,12 @@
  * (`/`) becomes V7 Landing public marketing-style entry per ADR-0015 UI Tier 1
  * expansion. Functional logic preserved exactly — only file path changed.
  *
+ * W18 F3 (per ADR-0024): relocated into the app/(app)/ route group (URL
+ * unchanged — /chat); now rendered inside <AppShell>, so the page's own <main>
+ * + min-h-screen became a <div> + h-full and the title row slimmed (the "EKP"
+ * wordmark + chrome live in the AppShell top bar / sidebar now). SSE-chat logic
+ * unchanged.
+ *
  * W12 D4 F4.4 tokens migration:hardcoded inline color Tailwind arbitrary values
  * replaced with token-referenced classes(`bg-primary` / `border-border` / etc)
  * wired via Tailwind config to CSS custom properties(globals.css :root + .dark)。
@@ -138,13 +144,13 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-8">
-      <header className="mb-6 border-b border-border pb-4">
-        <h1 className="text-2xl font-semibold">EKP — Knowledge Chat</h1>
-        <p className="mt-1 text-xs text-muted-foreground">
+    <div className="mx-auto flex h-full max-w-3xl flex-col">
+      <div className="mb-4 flex items-baseline justify-between border-b border-border pb-3">
+        <h1 className="text-lg font-semibold">Chat</h1>
+        <span className="text-xs text-muted-foreground">
           KB: <span className="font-mono">{KB_ID}</span>
-        </p>
-      </header>
+        </span>
+      </div>
 
       <section className="flex-1 space-y-4">
         {messages.length === 0 && (
@@ -189,7 +195,7 @@ export default function ChatPage() {
       </form>
 
       {modalImage && <ScreenshotModal image={modalImage} onClose={() => setModalImage(null)} />}
-    </main>
+    </div>
   );
 }
 

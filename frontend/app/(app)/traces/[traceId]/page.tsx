@@ -1,8 +1,14 @@
 'use client';
 
 /**
- * V6 Debug View (`/debug/[traceId]`) — per architecture.md v6 §5.7 view 6 +
+ * V6 Traces (`/traces/[traceId]`) — per architecture.md v6 §5.7 view 6 +
  * design ref §2.6 wireframe.
+ *
+ * W18 F3 (per ADR-0024): renamed "Debug View" → "Traces" + relocated
+ * /debug/[traceId] → app/(app)/traces/[traceId] (now rendered inside <AppShell>).
+ * The backend endpoint stays `GET /debug/trace/{trace_id}` (unchanged) — only
+ * the frontend route + the sidebar label changed; `lib/api/debug.ts` keeps its
+ * name (it talks to that backend endpoint).
  *
  * W15 D2 F2: initial implementation (6-stage interim wireframe scaffold + 501
  * stub mitigation, per W15 D2 plan §7 changelog).

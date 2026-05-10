@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * KB Upload (`/admin/kb/[id]/upload`) — per architecture.md v6 §5.4 view 5.
+ * KB Upload (`/kb/[id]/upload`) — per architecture.md v6 §5.5 KB Detail (rendered inside <AppShell>; route flattened W18 F3 per ADR-0024).
  *
  * W12 D4 F4.8 tokens migration: hardcoded oklch → token classes;
  * Upload CTA upgraded to shadcn Button. Functional logic intact (multipart
@@ -28,14 +28,14 @@ export default function KbUploadPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kb', params.id] });
       queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
-      router.push(`/admin/kb/${params.id}`);
+      router.push(`/kb/${params.id}`);
     },
   });
 
   return (
     <div className="max-w-xl">
       <Link
-        href={`/admin/kb/${params.id}`}
+        href={`/kb/${params.id}`}
         className="text-sm text-accent hover:underline"
       >
         ← Back to KB
