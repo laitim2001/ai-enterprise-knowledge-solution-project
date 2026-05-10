@@ -275,7 +275,7 @@ def test_session_resolve_missing_or_expired() -> None:
     session = users_repo.create_session(record.oid)
     # Force expiry to past — direct dict mutation since this is a test fixture.
     expired = session.model_copy(update={"expires_at": datetime.now(UTC) - timedelta(seconds=1)})
-    users_repo._sessions[session.token] = expired  # noqa: SLF001 — test-only direct write
+    users_repo._store._sessions[session.token] = expired  # type: ignore[attr-defined]  # noqa: SLF001 — test-only direct write into the in-memory store
     assert users_repo.resolve_session(session.token) is None
 
 
@@ -287,7 +287,7 @@ def test_session_resolve_returns_none_when_user_dropped() -> None:
         email="h@example.com", password=_VALID_PASSWORD, display_name="H"
     )
     session = users_repo.create_session(record.oid)
-    del users_repo._users[record.oid]  # noqa: SLF001 — simulate admin delete
+    del users_repo._store._users[record.oid]  # type: ignore[attr-defined]  # noqa: SLF001 — simulate admin delete
     assert users_repo.resolve_session(session.token) is None
 
 
@@ -423,7 +423,7 @@ def test_verify_email_rejects_expired_code(
     record = users_repo.find_by_oid(oid)
     assert record is not None
     # Force expiry to past via direct dict mutation (fixture-style only).
-    users_repo._users[oid] = record.model_copy(  # noqa: SLF001
+    users_repo._store._users[oid] = record.model_copy(  # type: ignore[attr-defined]  # noqa: SLF001
         update={"verification_code_expires_at": datetime.now(UTC) - timedelta(seconds=1)}
     )
     response = client.post(
@@ -499,7 +499,7 @@ def test_resend_verification_happy_path(
     user = users_repo.find_by_email("alice@example.com")
     assert user is not None
     # Bypass cooldown by bumping last_resend_at into the past.
-    users_repo._users[user.oid] = user.model_copy(  # noqa: SLF001
+    users_repo._store._users[user.oid] = user.model_copy(  # type: ignore[attr-defined]  # noqa: SLF001
         update={"last_resend_at": datetime.now(UTC) - timedelta(seconds=RESEND_COOLDOWN_SEC + 1)}
     )
     initial_emails = len(email_capture.sent)
@@ -917,7 +917,7 @@ def test_resend_fail_soft_when_email_send_fails(
     _register(client)
     user = users_repo.find_by_email("alice@example.com")
     assert user is not None
-    users_repo._users[user.oid] = user.model_copy(  # noqa: SLF001
+    users_repo._store._users[user.oid] = user.model_copy(  # type: ignore[attr-defined]  # noqa: SLF001
         update={"last_resend_at": datetime.now(UTC) - timedelta(seconds=RESEND_COOLDOWN_SEC + 1)}
     )
     app.dependency_overrides[get_email_provider] = lambda: _RaisingEmailProvider()

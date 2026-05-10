@@ -294,9 +294,15 @@ grep -q "references/dify" .gitignore || echo "references/dify/" >> .gitignore
 | Service | Port | Purpose |
 |---|---|---|
 | **azurite** | 10000–10002 | Local Azure Blob emulator |
-| **postgres** | 5432 | Langfuse 嘅 backend store |
+| **postgres** | 5432 | Langfuse 嘅 backend store + EKP persistent backing(KB Manager + users / sessions — dedicated `ekp` database,per ADR-0023)|
 | **langfuse** | 3000 | Self-host observability(traces) |
 | **(optional)pgadmin** | 5050 | Postgres UI(debug 用) |
+
+> **EKP `ekp` database**(W17 F1 — ADR-0023):`infrastructure/postgres-init/01-create-ekp-db.sql` 喺 postgres container 首次啟動時自動 `CREATE DATABASE ekp`。已有 volume(冇重建)就手動建一次:
+> ```bash
+> docker compose -f infrastructure/docker-compose.yml exec postgres createdb -U langfuse ekp
+> ```
+> 然後喺 `backend/.env` 設 `DATABASE_URL=postgresql://langfuse:langfuse_local_dev_only@localhost:5432/ekp` —— `KBService`(`make_kb_backend`)+ `users_repo`(`make_users_store`)就改用 Postgres,KB / 帳號 restart 唔再清空。**唔設 `DATABASE_URL` → 維持 in-memory fallback**(W1 行為,本機 dev / CI 不變;table 由 backend `CREATE TABLE IF NOT EXISTS` 自建,無 migration step)。
 
 ```bash
 # Start

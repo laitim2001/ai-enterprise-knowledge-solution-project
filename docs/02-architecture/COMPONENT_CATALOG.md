@@ -27,7 +27,7 @@ process_anchor: docs/01-planning/PROCESS.md (v1.0)
 | ID | Component | Spec ref | Tech (locked H2) | First touch | Status (2026-05-01) |
 |---|---|---|---|---|---|
 | **[C01](#c01--ingestion-pipeline)** | Ingestion Pipeline | `§3.3` `§3.5` | Docling + python-pptx + Azure OpenAI embedding | W2 | 🚫 Pending Q2 sample |
-| **[C02](#c02--knowledge-base-manager)** | Knowledge Base Manager | `§3.4` `§4.4 #4-8` | FastAPI + Pydantic + Storage Protocol | W1 D2 | ✅ Implemented (in-memory) |
+| **[C02](#c02--knowledge-base-manager)** | Knowledge Base Manager | `§3.4` `§4.4 #4-8` | FastAPI + Pydantic + Storage Protocol | W1 D2 | ✅ Implemented (Postgres-backed per ADR-0023; in-memory fallback when `DATABASE_URL` unset) |
 | **[C03](#c03--indexing-service)** | Indexing Service | `§3.6` `§3.4` | Azure AI Search Standard S1 + HNSW | W2 D1 | 🟡 Pending tier+region confirm |
 | **[C04](#c04--retrieval-engine)** | Retrieval Engine | `§3.1` `§3.2` | Hybrid BM25+vector + Cohere Rerank v3.5 | W2 D5 | 🟢 v2-stable(hybrid + Cohere wired W3 D1-D2;4-way shootout surface ready W4)|
 | **[C05](#c05--generation-pipeline)** | Generation Pipeline | `§3.1` `§3.2` | Azure OpenAI GPT-5.5 + custom CRAG (non-LangGraph) | W3 D1 | 🟢 v1-active(Synthesizer + SSE + CRAG L2 W3-W4 D1)|
@@ -187,14 +187,14 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 |---|---|
 | **Scope** | KB CRUD lifecycle、per-KB config(embedding model / chunk strategy / top-K / rerank-K)、multi-KB isolation(每 KB 獨立 index + Blob container + storage backend) |
 | **Spec ref** | `architecture.md §3.4`(multi-KB)+ `§4.4 #4-8`(API endpoints) |
-| **Tech (H2 locked)** | FastAPI router + Pydantic v2 schemas + storage backend Protocol(W1 in-memory → W2 D1 Azure-backed) |
-| **Depends on** | C03(provision per-KB index when KB created),C12(per-KB Blob container provision) |
-| **Phase plan** | W1 D2 F7 in-memory CRUD ✅ → W2 D1 swap to Azure-backed(`InMemoryKBBackend` → `AzureSearchKBBackend` via FastAPI dependency override)→ W3+ stable / soak |
+| **Tech (H2 locked)** | FastAPI router + Pydantic v2 schemas + `KBStorageBackend` Protocol(`InMemoryKBBackend` ↔ `PostgresKBBackend` via `make_kb_backend(settings)` — Postgres added W17 F1 per ADR-0023;H2 dep `psycopg[binary]`)|
+| **Depends on** | C03(provision per-KB index when KB created),C12(per-KB Blob container provision + docker-compose `postgres` `ekp` DB) |
+| **Phase plan** | W1 D2 F7 in-memory CRUD ✅ → W17 F1 Postgres-backed persistent path(`make_kb_backend` picks `PostgresKBBackend` when `DATABASE_URL` set,else in-memory — zero call-site change,Protocol contract holds;closes CO18)→ stable / soak |
 | **Critical OQ** | Indirect via Q3(C03 dependency) |
-| **Risks** | (None direct;inherits C03 risks) |
+| **Risks** | (None direct;inherits C03 risks;W17 `psycopg` local install hit R8 corp proxy → Postgres-path verification deferred per ADR-0017 — code shippable via lazy import + in-memory fallback)|
 | **Owner** | AI |
-| **Status** | 🟢 W1 in-memory impl committed `c6ca6e3`(2026-05-01);Protocol-based,W2 swap zero-touch on call sites |
-| **Interface** | **Input**:`KbCreate`(kb_id + name + description + KbConfig)/ kb_id path param → **Output**:`KbStatus` / 204 / 404 / 409 → **Side effect**:W1 in-memory dict;W2+ Azure AI Search index create/drop + Blob container create/drop |
+| **Status** | 🟢 W1 in-memory impl committed `c6ca6e3`(2026-05-01)→ W17 F1 `PostgresKBBackend` + `make_kb_backend` factory + tests added(per ADR-0023);Protocol-based,backend swap zero-touch on call sites |
+| **Interface** | **Input**:`KbCreate`(kb_id + name + description + KbConfig)/ kb_id path param → **Output**:`KbStatus` / 204 / 404 / 409 → **Side effect**:KB metadata row in Postgres `knowledge_bases` table(or process-local dict when `DATABASE_URL` unset);per-KB Azure AI Search index + Blob container create/drop handled via C03 / C12 |
 
 ---
 

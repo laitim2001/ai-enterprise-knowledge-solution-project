@@ -290,6 +290,8 @@ EKP Platform
 - `POST /kb/{kb_id}/documents` — 上載文件
 - `POST /query` — 查詢(指定 `kb_id`)
 
+**KB metadata 持久化**(W17 F1 amendment — per ADR-0023):KB Manager(`kb_management`)嘅 `KbStatus` records + 自助註冊用戶 / session(`users_repo`)透過 `KBStorageBackend` / `UsersStore` Protocol 抽象,預設後端 = Postgres(docker-compose `postgres` service 上一個 dedicated `ekp` database;`DATABASE_URL` 未設時 fallback 去 process-local in-memory,本機 dev / CI 不變)。chunk / 文件 / screenshot 仍存於各 KB 自己嘅 Azure AI Search index + Blob container(上文不變);呢個只係 KB **後設資料表** 嘅持久化選擇。
+
 ### 3.5 Step Record / Chunk Record Schema(統一格式)
 
 ```json
