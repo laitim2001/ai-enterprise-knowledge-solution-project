@@ -370,6 +370,7 @@ per [`CLAUDE.md §9`](../../../CLAUDE.md):
 
 - [ ] 對齊 §1 Karpathy baseline(think → simple → surgical → goal)
 - [ ] 對齊 H1–H6 hard constraints(若觸發,**第一句就 STOP and explain**)
+- [ ] 需要時可代為啟動 / 重啟本地服務(uvicorn / next dev / docker-compose / Azurite 等)協助開發 + 測試;優先用 background 模式(`run_in_background`)避免阻塞 session,完成後記得 stop;**destructive 服務操作**(刪 docker volume / `down -v` / kill 用戶自己嘅 process)仍需先確認
 - [ ] 跨 component 修改前先讀對應 `components/Cn-*.md` design note
 - [ ] 開始 code 前確認該 phase 已有 plan.md + checklist.md(R1)
 - [ ] 起草新 phase plan/checklist 前先讀「最近 closed phase」樣板(章節 / Day 數 / 細節水平必須一致)
@@ -408,7 +409,6 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 - [ ] 唔刪 V1 archive(冇 V1 archive — Tier 1 由 W1 D1 開始)
 - [ ] 唔讓 AI 單方面決定不可逆操作(git tag push / git mv 大量檔案 / `git reset --hard`)— 必須先報告
 - [ ] 唔執行 `--no-verify` / `--force` git 命令(除非用戶明確授權)
-- [ ] 唔啟動長期運行 server process(Node / FastAPI 開發 server 同 Claude Code 衝突;鼓勵 user 自行 `! uvicorn ...`)
 - [ ] 唔刪除未勾選 checklist `[ ]` 項目(只可 `→[x]` 或加 🚧 + reason)
 - [ ] 唔喺 retrospective 寫具體未來 sprint task(rolling = 下 phase kickoff 先寫)
 
@@ -474,3 +474,4 @@ per [`CLAUDE.md §12 self-verification`](../../../CLAUDE.md):
 | 2026-05-05 | W06 D5 stakeholder approval cycle cascade | §9 OQ status 11→16 Resolved + 10→5 Open(Q7+Q9+Q10+Q11+Q12 stakeholder approve 落地);§10 Sprint table W7-8 row updated active;§12 milestones W7 row updated active;Last Updated reflect amendment + ADR-0012 formal record + Beta plan v1 active + W7 active |
 | 2026-05-09 | W15 D5 closeout housekeeping catch-up(Tier 1 UI sprint cycle FINAL)| §9 OQ status 16→17 Resolved + Q22 NEW added(total 21→22)+ Q11 W9 D1 三方 alignment + Q14 W11 D2 corpus scope clarification context;§10 Sprint table extended W7-W16+ rows + Tier 1 UI sprint cycle FINAL gate added + Production launch gate added;§11 carry-overs replaced W6 D5 → W15 D5 closeout(Track A IT cred + R-B1 closure + 4-sprint user smoke deferred backlog + W14/W15 CO_* + R8 4 occurrences cumulative + ADR-0017 reservation candidate + ADR-0013 reserved AF3);§12 milestones added 9 rows W7-W15 + W16 draft + W17+ rolling JIT discipline preserved;架構 v5.1 → v6 amendment + ADR-0014/0015/0016 landed;**W16 status:draft**(rolling JIT thin skeleton);累計 6→15 phase closed |
 | 2026-05-09 | W15 D5 component status follow-up(post §9-§12 catch-up)| §3 component count 12 → 13 + C13 Email Verification Service NEW row added(ACS per Q22 + ADR-0014;W12 D1 v6 amendment + W13 D5 implementation);C04/C05/C06/C09/C10 status 🟢/🟡/⏳ → ✅ Implemented(post-W6/W3/W4/W12-W15/W3-W15 milestones);C08/C11 → 🟡 Mostly Implemented(C08 4-stub closure W16 F5 pending;C11 Track A IT cred consumption W16 F1 pending);Status header date 2026-05-04 W2 → 2026-05-09 W15 D5;§14 退役 line 12 → 13 component spine;Note added re COMPONENT_CATALOG.md §11 Tier 2 trigger matrix stale "C13 Workflow Engine"(catalog amendment W17+ housekeeping)|
+| 2026-05-10 | W16 — dev-server policy amendment(user directive)| §13 行為規範:由「唔做」list 移除「唔啟動長期運行 server process」;改放「必做」list 作正面授權 — AI 可代為啟動 / 重啟本地服務(uvicorn / next dev / docker-compose / Azurite)協助開發 + 測試,優先 background 模式,destructive 服務操作(刪 volume / `down -v` / kill 用戶 process)仍需先確認。Rationale:實際開發需 AI 代執行服務操作以提升協作效率;`run_in_background` 已解決舊「同 Claude Code 衝突」顧慮 |
