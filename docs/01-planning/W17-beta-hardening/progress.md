@@ -95,9 +95,38 @@ NOT addressed(stay W16 / W18+ / Tier 2):CO16 Track A IT cred(W16 F1)/ CO19 25% r
 
 ---
 
-## Day 2 → Day 6 — _(implementation entries appended below as work lands)_
+## Day 2 — F1 part 1: Postgres KB backend(2026-05-10, same-calendar-day)
 
-_(Next:F1 Postgres backing → F2 cookie/CSRF → F3 RAGAs → F5 a11y/dark-mode → F6 Vitest → F7 closeout;each commit ↔ Day-N entry per R2;same-day collapse possible per W12-W15 calibration — the `start_date`/`end_date` window is not a commitment.)_
+> User directive「繼續做 F1 Postgres persistent backing」. F1 is the largest deliverable(~2 plan-days)— split:**part 1 = the KB backend**(this entry);part 2 = `users_repo` Postgres path(F1.5)+ doc note(F1.8), held pending the decision below.
+
+### F1 part 1 — landed `2453a50` `feat(infra,api)`
+
+- **`PostgresKBBackend`**(`backend/kb_management/postgres_backend.py`)— satisfies the existing `KBStorageBackend` Protocol(create / list_all / get / delete / update_config / update_metadata). **Connection-per-op** via `psycopg` 3 async — Tier 1 KB ops are infrequent + off the query hot path, so a pool isn't warranted(**deviation from plan §F1.6「lifespan pool」**— Karpathy §1.2 simplicity-first;ADR-0023 already permitted「connection / pool」;logged in plan §7 changelog D2). `CREATE TABLE IF NOT EXISTS knowledge_bases (...)` on each connect — idempotent, microseconds when the table exists, race-free vs a lazy init flag. `knowledge_bases` table:`kb_id` PK / `name` / `description` / `config` JSONB / `total_documents` / `total_chunks` / `total_screenshots` / `failed_documents` JSONB / `last_indexed_at` TIMESTAMPTZ / `storage_size_mb` DOUBLE PRECISION. `KbStatus` ⇄ row mapping(JSONB via `model_dump()` / `model_dump(mode="json")` for the datetime in `FailureRecord`, reconstructed by Pydantic on read). Raises the existing `KBNotFoundError` / `KBAlreadyExistsError`.
+- **`make_kb_backend(settings)` factory**(`backend/kb_management/factory.py`)— mirrors `retrieval.reranker.factory.make_reranker`;Postgres when `settings.database_url` set, else `InMemoryKBBackend`(W1 behaviour — local dev / CI unchanged). `PostgresKBBackend`(and `psycopg`)is **lazily imported inside the branch** — an unset `DATABASE_URL` never touches `psycopg`(same graceful-degrade shape as the W13 F6 ACS lazy import;also keeps the in-memory path working if `psycopg` install is R8-blocked). `get_kb_service()` rewired through `make_kb_backend(get_settings())`;`kb_management/__init__.py` exports `make_kb_backend`. **No route / service call-site change**(the Protocol contract holds — this is the swap point the Protocol was designed for);`app.dependency_overrides[get_kb_service]` still works for tests. **No lifespan pool wiring needed**(connection-per-op).
+- **Config + infra** — `settings.database_url: str = ""`;`.env.example`「Persistent storage」section with commented `DATABASE_URL=postgresql://langfuse:langfuse_local_dev_only@localhost:5432/ekp`. `docker-compose.yml`:postgres exposes `:5432`(so the host-run backend can connect)+ mounts `./postgres-init/01-create-ekp-db.sql`(`CREATE DATABASE ekp;` — runs on a fresh `ekp-postgres-data` volume;existing volume → `docker compose exec postgres createdb -U langfuse ekp`). `pyproject.toml`:`psycopg[binary]>=3.2`(H2 — ADR-0023 covers;no `uv.lock` in repo so the declaration suffices).
+- **Tests** — `test_kb_factory.py`(in-memory selection — always runs;Postgres-selection `importorskip("psycopg")`)+ `test_kb_postgres_backend.py`(full CRUD: create-then-get-roundtrips-all-fields / dup→409 / get-missing→404 / list-all-sorted / update_config / update_config-missing→404 / update_metadata-partial / update_metadata-missing→404 / delete-then-404 / delete-missing→404 — `importorskip("psycopg")` + `skipif(not DATABASE_URL)`,with manual-smoke instructions in the docstring). **Backend pytest 594 passed / 9 skipped**(was 593/7 — +1 pass = the in-memory factory test;+2 skips = the psycopg-gated factory test + the postgres-backend module). `ruff check` clean on new + changed files. `tsc` n/a(no frontend change). `mypy --strict` on `postgres_backend.py` — **can't run locally**(psycopg not installed → import-not-found;works once psycopg is present, psycopg 3 ships `py.typed`).
+
+### 🚨 R8 corp-proxy block — 5th cumulative occurrence — ADR-0017 trigger met + vendor-decision pivot point
+
+`pip install psycopg[binary]>=3.2` **fails under the Ricoh corp proxy** — `IncompleteRead` on the first attempt(178743 bytes / 3.5 MB), then「Connection timed out while downloading」+「Attempting to resume incomplete download (0 bytes/3.6 MB, attempt 1)」on the `--retries 5 --timeout 120` retry. Same hard-block pattern as:Cohere SDK(W3 Marketplace path)、argon2-cffi(W13 → ADR-0016 stdlib switch)、ACS SDK(W13 → lazy-import design)、Playwright browser CDN(W15 D5 → ECONNRESET 0%). `pip config list` empty(no internal PyPI mirror configured).
+
+→ **5th cumulative R8 occurrence** — the ADR-0017 formalization trigger("5th occurrence OR vendor-decision pivot needed" per session-start.md §11 + W17 plan §4 risks)is **met**. AND this is a **vendor-decision pivot point**:the approver chose `psycopg`(AskUserQuestion 2026-05-10);if it can't be installed in the dev environment(and possibly the deploy pipeline), the choice may need revisiting.
+
+Per CLAUDE.md §5(vendor-decision-affected obstacle)+ §13(when in doubt → ask)→ **stop-and-ask**. F1 verdict = **PARTIAL**. F1.5(users_repo Postgres path)+ F1.8(architecture.md / COMPONENT_CATALOG C02 / setup.md §4.2 doc note)held pending the user decision. Options surfaced:
+- **(A)** keep `psycopg` — code is shippable as-is(dep declared,lazy-imported,in-memory path unaffected);defer the local Postgres-path verification(CRUD tests + `mypy postgres_backend.py` + manual smoke)to W18+ / a personal Azure dev tier(CO17 — where the corp proxy isn't in the path);**formalize ADR-0017 now**(R8 mitigation pattern). Then proceed with F1.5(users_repo)+ F2/F3/F5/F6.
+- **(B)** pivot storage to **stdlib `sqlite3`**(zero new dep — no R8 risk;the AI's original Day-0 recommendation). Lose the「production-grade Postgres」alignment but Beta could still adopt Postgres via a different driver later. Would supersede / amend ADR-0023.
+- **(C)** defer F1 entirely to W18+(when R8 is worked around);proceed with F2/F3/F5/F6 only this phase.
+
+### Day 2 commits
+
+- **`2453a50`** `feat(infra,api)` — W17 F1 part 1 Postgres KB backend(11 files;+ NEW `kb_management/postgres_backend.py` + `factory.py` + `tests/test_kb_factory.py` + `tests/test_kb_postgres_backend.py` + `infrastructure/postgres-init/01-create-ekp-db.sql`)
+- **`(this docs commit)`** `docs(planning)` — W17 checklist F1 part-1 ticked(F1.5 / F1.8 → 🚧 held)+ this Day-2 progress entry + plan §7 changelog D1+D2(F4 landed + F1 deviations + R8 block)
+
+---
+
+## Day 3 → Day 6 — _(implementation entries appended below as work lands)_
+
+_(Pending the F1 R8 / vendor decision above. Then:F1.5 users_repo + F1.8 doc note(if Postgres kept)→ F2 cookie/CSRF → F3 RAGAs → F5 a11y/dark-mode → F6 Vitest → F7 closeout;each commit ↔ Day-N entry per R2;same-day collapse possible per W12-W15 calibration.)_
 
 ---
 
