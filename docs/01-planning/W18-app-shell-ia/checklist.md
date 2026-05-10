@@ -2,7 +2,7 @@
 phase: W18-app-shell-ia
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-10
+last_updated: 2026-05-11
 ---
 
 # Phase W18 — Checklist
@@ -31,12 +31,15 @@ last_updated: 2026-05-10
 
 ## F2 — `(app)/` route group + consolidated providers + login-gate — ADR-0024 D2 + D7
 
-- [ ] F2.1 NEW `frontend/app/(app)/layout.tsx` — `<AuthProvider><QueryProvider><AppShell>{children}</AppShell></QueryProvider></AuthProvider>`;the single shell-wrapping layout for all authenticated views;file header docstring
-- [ ] F2.2 Login-gate — route guard at the `(app)/` `AuthProvider` boundary(or `middleware.ts`)→ unauthenticated → redirect `/login`;mock-auth dev mode = no-redirect(documented in the layout docstring);real MSAL = MSAL's own redirect
-- [ ] F2.3 Remove `frontend/app/admin/layout.tsx` + `frontend/app/eval/layout.tsx` + `frontend/app/debug/[traceId]/layout.tsx`(folded into `(app)/layout.tsx`);remove `frontend/app/admin/page.tsx`(old "Admin Dashboard" placeholder — role taken by `/dashboard` F4)
-- [ ] F2.4 Root `frontend/app/layout.tsx` — keeps only `<ThemeProvider>` + `<Toaster>`(auth pages get no app chrome);verify no `AuthProvider`/`QueryProvider` leak to root
-- [ ] F2.5 Auth pages(`/login` / `/register` / `/verify`)stay OUTSIDE `(app)/`(at `app/login/` etc) — unchanged structurally(F7 only touches the post-success redirect)
-- [ ] F2.6 `tsc --noEmit` + `next lint` clean;existing Playwright `webServer` mock-auth smoke still works(no infinite redirect loop — the gate is a no-op in mock mode)
+> **F2 verdict = PASS(F2.3 deferred into F3)**(2026-05-11 D2)— landed `(this commit)`. NEW `frontend/app/(app)/layout.tsx`(`<AuthProvider><QueryProvider><LoginGate><AppShell>{children}</AppShell></LoginGate></QueryProvider></AuthProvider>`)+ NEW `frontend/components/auth/login-gate.tsx`(mock-auth dev → pass-through, never gates;real MSAL → splash while idle/loading + a `/login` link on error/idle, **no auto-redirect** matching the existing AuthProvider anti-infinite-loop design + a `// TODO(W16)` to tighten once Q11 cred wiring is live). Root `app/layout.tsx` **already** only has `<ThemeProvider>` + `<Toaster>`(F2.4 = verify-no-op). `tsc --noEmit` + `next lint` clean;`[oklch`=0;dev server up(`/` HTTP 200). **The `(app)/` layout is inert until F3 moves the pages in** — and **F2.3(removing `app/admin/layout.tsx` / `eval/layout.tsx` / `debug/[traceId]/layout.tsx` + `app/admin/page.tsx`)is deferred into F3** because that removal is physically inseparable from the F3.1 page move(doing it now would strand `app/admin/kb/*` / `app/eval/page.tsx` / `app/debug/[traceId]/page.tsx` without their `AuthProvider`+`QueryProvider`+shell). See plan §7 changelog D2 + progress Day-2.
+
+- [x] F2.1 NEW `frontend/app/(app)/layout.tsx` — server component;`<AuthProvider><QueryProvider><LoginGate><AppShell>{children}</AppShell></LoginGate></QueryProvider></AuthProvider>`;file header docstring per §3.2;inert until F3 moves the page tree into `app/(app)/` — `(this commit)`
+- [x] F2.2 Login-gate — NEW `frontend/components/auth/login-gate.tsx`(`'use client'`);reads `useAuthStatus()` + `authMode` from `auth-provider`;**mock-auth dev mode = no-op pass-through**(AuthProvider auto-signs-in;the visible "未登入→/login" only appears in real MSAL/prod, per ADR-0024);**real MSAL**:`status==='authenticated'` → children;else → a minimal splash(`Loader2` spinner, or the error text on `status==='error'`)+ a `<Link href="/login">Sign in to continue</Link>`;**no auto-redirect**(matches the existing AuthProvider design that avoids an infinite loop if cred wiring is broken — `/login` is outside `(app)/`)+ a `// TODO(W16)` to tighten to `router.replace('/login')` once Q11 Track A cred is live — `(this commit)`
+- [ ] 🚧 F2.3 Remove `frontend/app/admin/layout.tsx` + `frontend/app/eval/layout.tsx` + `frontend/app/debug/[traceId]/layout.tsx` + `frontend/app/admin/page.tsx` — **deferred into F3**(reason:the removal is inseparable from the F3.1 page move — removing these layouts before the pages move into `app/(app)/` would strand `app/admin/kb/*`、`app/eval/page.tsx`、`app/debug/[traceId]/page.tsx` without `AuthProvider`/`QueryProvider`/shell → runtime crash;and `app/admin/page.tsx`'s role is taken by `/dashboard` which F4 creates. Per Karpathy §1.4 "make it actually work" — these land atomically with the move, not before it). Tracked here, not dropped(CLAUDE.md §10 sacred rule)
+- [x] F2.4 Root `frontend/app/layout.tsx` — verified **already** only `<ThemeProvider>`(next-themes, `attribute="class"` `defaultTheme="system"`)+ `<Toaster>` + `<html>`/`<body>` + metadata + `globals.css`;no `AuthProvider`/`QueryProvider` leak to root — no change needed(F2.4 = verify-no-op)— `(this commit)`(verified, no edit)
+- [x] F2.5 Auth pages(`/login` `app/login/page.tsx` / `/register` `app/register/page.tsx`;`/verify` is currently a step inside the register wizard, not a standalone route)stay OUTSIDE `app/(app)/` — verified(no auth page created inside `(app)/`);they keep the root layout(no app chrome pre-auth)— `(this commit)`(verified)
+- [x] F2.6 `pnpm -C frontend exec tsc --noEmit` → exit 0;`pnpm -C frontend exec next lint` → "No ESLint warnings or errors";dev server on `:3001`(prior session)up — `/` HTTP 200(mock-auth env;the `(app)/` layout being inert doesn't affect existing routes);Playwright `webServer` mock-auth smoke = booted-and-serving(the full E2E run stays the user's pre-Beta smoke per the R8 `npx playwright install chromium` block / CO_W15_F4_browser_binaries)— `(this commit)`
+- [x] F2.7 File header docstrings — `app/(app)/layout.tsx` + `components/auth/login-gate.tsx` both have full docstrings per §3.2 / session-start §13 #8(the `app/admin/layout.tsx` / `eval/layout.tsx` / `debug/layout.tsx` docstring updates land with their removal in F3)— `(this commit)`
 
 ## F3 — Move + re-route pages;flatten URLs;update all links + Playwright — ADR-0024 D3
 

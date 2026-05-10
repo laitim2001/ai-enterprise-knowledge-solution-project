@@ -3,7 +3,7 @@ phase: W18-app-shell-ia
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
 status: active
-last_updated: 2026-05-10
+last_updated: 2026-05-11
 ---
 
 # Phase W18 — Progress
@@ -68,7 +68,7 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 |---|---|---|---|
 | F0 Kickoff cascade | (D0, ~0.5d) | (this session) | ADR-0024→Accepted + README + ADR-0015 note + `architecture.md v6 §5` amendment(§5.0 added / §5.3 Dashboard / §5.9 Landing removed / §5.7 Traces / `/admin/*` flatten)+ W18 folder(plan/checklist/progress) — `(this commit)` |
 | F1 `<AppShell>` | 1-1.5d | ~0.4d(this session) | NEW `components/nav/app-shell.tsx` — generalized from `admin-shell.tsx`;`tsc --noEmit` + `next lint` clean;`[oklch`=0;not yet wired into a layout (that's F2) — `(this commit)` |
-| F2 `(app)/` route group + login-gate | 1d | — | — |
+| F2 `(app)/` route group + login-gate | 1d | ~0.3d(this session) | NEW `app/(app)/layout.tsx` + `components/auth/login-gate.tsx`;root layout already chrome-free(verify-no-op);**F2.3 layout-removal deferred into F3**(inseparable from the page move);`tsc`+`lint` clean,`[oklch`=0,dev server up — `(this commit)` |
 | F3 move + re-route + links + Playwright | 1.5d | — | — |
 | F4 `/dashboard` | 1d | — | — |
 | F5 `/settings` | 0.5d | — | — |
@@ -110,6 +110,36 @@ W18 does **NOT** address(stay W16 / Tier 2 / future): CO16 Track A IT cred + R-B
 ### Next
 
 - F2 — `app/(app)/layout.tsx` route group(`<AuthProvider><QueryProvider><AppShell>{children}</AppShell></QueryProvider></AuthProvider>`)+ login-gate guard + remove `app/admin/layout.tsx` / `eval/layout.tsx` / `debug/[traceId]/layout.tsx` / `admin/page.tsx` + root-layout chrome cleanup — wait for the user's go-ahead(directive pattern: explicit per-step).
+
+---
+
+## Day 2 — F2 — `(app)/` route group + login-gate(2026-05-11)
+
+### Built — `(this commit)`
+
+- **NEW `frontend/app/(app)/layout.tsx`**(server component)— the single layout for all authenticated views:`<AuthProvider><QueryProvider><LoginGate><AppShell>{children}</AppShell></LoginGate></QueryProvider></AuthProvider>`. Folds in what the three W12-W15 per-section layouts(`app/admin/layout.tsx`、`app/eval/layout.tsx`、`app/debug/layout.tsx`)did(AuthProvider + QueryProvider + a shell). File header docstring per §3.2. **Inert until F3** — `app/(app)/` has no `page.tsx` yet, so no URL matches it;F3 moves `chat`/`kb`/`eval`/`traces` in(+ F4/F5 add `dashboard`/`settings`).
+- **NEW `frontend/components/auth/login-gate.tsx`**(`'use client'`)— wraps `<AppShell>` inside the `(app)/` layout. Reads `useAuthStatus()` + `authMode` from `auth-provider`(the auth state lives in the Zustand `useAuthStore`, not React context — so `<LoginGate>` works wherever it's nested):
+  - **mock-auth dev mode**(`NEXT_PUBLIC_AUTH_MOCK` / `FEATURE_AUTH_MOCK`)→ `return <>{children}</>` immediately. `AuthProvider` auto-signs-in on mount,so the gate never gates;the visible "未登入 → /login" only appears in real MSAL / production builds(per ADR-0024 §"the mock-auth caveat"). This is what the dev `:3001` server runs.
+  - **real MSAL**:`status === 'authenticated'` → children;else → a minimal centred splash(`Loader2` spinner,or the error text when `status === 'error'`)+ a `<Link href="/login">Sign in to continue</Link>`. **No auto-redirect** — matching the existing `AuthProvider` design(comment: "no auto-redirect to Entra ID hosted login — user must click sign-in CTA so we never get into an infinite loop on startup if cred wiring is broken"). `/login` is **outside** `app/(app)/` so it's not behind this gate(no loop). A `// TODO(W16)` notes:tighten to `router.replace('/login')` on the definitively-unauthenticated state once Q11 Track A cred wiring is live.
+- **Root `frontend/app/layout.tsx`** — checked:**already** only `<html>`/`<body>` + `<ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>` + `<Toaster>` + metadata + `globals.css`. No `AuthProvider`/`QueryProvider` leak to root. F2.4 = verify-no-op,no edit.
+
+### Verification
+
+- `pnpm -C frontend exec tsc --noEmit` → exit 0(clean)
+- `pnpm -C frontend exec next lint` → "No ESLint warnings or errors"
+- `Grep '\[oklch'` across `frontend/` → **0**(milestone preserved)
+- Dev server on `:3001`(left running from a prior session)→ `GET /` HTTP 200(the V7 Landing — still present until F7). The new `app/(app)/layout.tsx` being inert(no pages)didn't break any existing route;Next.js tolerates a route group with only a `layout.tsx`(it matches no URL,so it's just unused — F3 makes it live).
+- **Not browser-tested at F2** — `app/(app)/layout.tsx` matches no URL until F3 moves the pages in;`tsc` proves the import chain(`AuthProvider`/`QueryProvider`/`LoginGate`/`AppShell`)compiles;the visual / interactive smoke of the shell comes with F3. Playwright `webServer` mock-auth smoke = the server is booted-and-serving;the full E2E run stays the user's pre-Beta smoke per the R8 `npx playwright install chromium` block(CO_W15_F4_browser_binaries).
+
+### Deviations from plan(R3)
+
+1. **F2.3(remove the old per-section layouts + `app/admin/page.tsx`)→ deferred into F3.** Reason:that removal is **physically inseparable** from the F3.1 page move — `app/admin/kb/*`、`app/eval/page.tsx`、`app/debug/[traceId]/page.tsx` currently get their `AuthProvider`+`QueryProvider`+shell from those layouts;removing the layouts before the pages move into `app/(app)/`(which provides the same)would strand them → runtime crash(`useQuery` with no `QueryProvider`,etc). And `app/admin/page.tsx`'s role is taken by `/dashboard`(F4). So the removals land atomically with the F3 move(Karpathy §1.4 "make it actually work" — don't break the app between commits). Tracked in `checklist.md` as 🚧 F2.3, not dropped.
+2. **F2.2「route guard ... → redirect `/login`」→ a gate-screen with a sign-in link, not an auto-`redirect()`.** Rationale:the existing `AuthProvider` deliberately avoids auto-redirects in MSAL mode(infinite-loop risk if cred wiring is broken — and it isn't live until W16 Track A);a "Sign in to continue" splash with a `<Link>` is functionally equivalent + safer for Tier 1. The `// TODO(W16)` flags the tightening. In mock mode(what dev uses)it's a no-op either way.
+3. **F2.4 was already done** — root `app/layout.tsx` has been chrome-free(ThemeProvider + Toaster only)since W13;"keeps only ..." is satisfied as-is. No edit;noted so it's not mistaken for skipped work.
+
+### Next
+
+- F3 — move + re-route the page tree into `app/(app)/`(`chat` ← `app/chat/`;`kb` ← `app/admin/kb/`,`/admin/` prefix dropped;`kb/[id]`、`kb/new`、`kb/[id]/upload`;`eval` ← `app/eval/`;`traces/[traceId]` ← `app/debug/[traceId]/`)+ **the F2.3 removals**(`app/admin/layout.tsx`、`eval/layout.tsx`、`debug/[traceId]/layout.tsx`、`app/admin/page.tsx`)+ update all internal `<Link>`/`router.push` + the Playwright `tests/e2e/` route refs + `next.config.mjs` check + grep-verify `'/admin'`/`/debug/` only-deliberate-refs-remain — wait for the user's go-ahead(directive pattern: explicit per-step). **After F3 the shell becomes browser-visible** — F3 is when the IA actually flips.
 
 ---
 
