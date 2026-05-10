@@ -254,9 +254,36 @@ The structural integration is complete + CI-tested at the LLM-judge boundary, bu
 
 ---
 
-## Day 7 — _(implementation entries appended below as work lands)_
+## Day 7 — F6: Vitest + React Testing Library infrastructure scaffold(2026-05-10, same-calendar-day)
 
-_(Next:F6 Vitest+RTL scaffold → F7 closeout + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
+> F6 verdict = **PASS** — landed `(this commit)` `chore(frontend)`. Cross-cutting governance(frontend test harness;CLAUDE.md §3.2 named "Vitest + React Testing Library" but it had never actually existed — W15 D4 finding). **CO_W15_F4_vitest_baseline_gap → CLOSED.**
+
+### What landed
+
+- **Dev deps**(`pnpm add -D` — H2 exception per §5.2「Dev dependency」):`vitest ^4.1.5` + `@vitejs/plugin-react ^6.0.1` + `@testing-library/react ^16.3.2` + `@testing-library/jest-dom ^6.9.1` + `@testing-library/user-event ^14.6.1` + `jsdom ^29.1.1`. `pnpm install` succeeded — **R8 corp proxy does NOT block the npm registry**(only binary-CDN downloads like Playwright browsers, per the W15 precedent;the `.npmrc` already carries `NODE_TLS_REJECT_UNAUTHORIZED=0` + `node-linker=hoisted` for the corp-MITM-cert + OneDrive workarounds). `pnpm-lock.yaml` updated(+101 / -35 packages).
+- **NEW `frontend/vitest.config.ts`** — `defineConfig` from `vitest/config`;`plugins: [react()]`;`resolve.alias` `'@' → resolve(__dirname, '.')`(mirrors `tsconfig.json` `paths`);`test.environment: 'jsdom'`,`globals: true`,`setupFiles: ['./tests/unit/setup.ts']`,`include: ['tests/unit/**/*.test.{ts,tsx}']`,`exclude: ['node_modules', '.next', 'tests/e2e/**']`(so vitest never picks up the Playwright specs — the two runners stay disjoint).
+- **NEW `frontend/tests/unit/setup.ts`** — `import '@testing-library/jest-dom/vitest'`(matchers `toBeInTheDocument` / `toHaveClass` …)+ `afterEach(cleanup)`.
+- **NEW `frontend/tests/unit/button.test.tsx`** — sample component test on `@/components/ui/button`:(1)renders children + the default `bg-primary` + `text-primary-foreground` token-class variant(the cva → design-token consumption path);(2)`variant="destructive"` swaps to `bg-destructive`(and drops `bg-primary`);(3)`onClick` fires on a `userEvent.click`. Render + interaction smoke — proves jsdom + RTL + jest-dom + cva + user-event all wire up;deep component coverage is Tier 2.
+- **NEW `frontend/tests/unit/README.md`** — the three test layers(unit/component = Vitest+RTL here / E2E golden-path = Playwright `tests/e2e/` / backend = pytest)don't blur;run via `pnpm test:unit` (`vitest run`) / `pnpm test:unit:watch` (`vitest`);Tier 2 = expand component + hook + MSW-data-fetch coverage;interactive multi-page flows stay in the Playwright layer(`CO_W15_F4_interactive_flow_E2E`).
+- **`frontend/package.json`** — `test:unit` (`vitest run`) + `test:unit:watch` (`vitest`) scripts added between `type-check` and `test:e2e`;no conflict with the existing `test:e2e*` scripts.
+
+### Verification
+
+`pnpm test:unit` → **Test Files 1 passed (1) / Tests 3 passed (3)**(vitest 4.1.5, jsdom env, ~9s incl. environment setup). `npx tsc --noEmit` clean(typechecks `vitest.config.ts` + `tests/unit/setup.ts` + `button.test.tsx` — the jest-dom/vitest matcher augmentation + the explicit `vitest` imports satisfy TS;no `vitest/globals` types entry needed since the test file imports `describe`/`it`/`expect`/`vi` explicitly). `npx next lint` "No ESLint warnings or errors". No backend pytest impact(frontend-only). No new OQ. No H1(no architecture change);H2 = dev-dep exception(§5.2).
+
+### Carry-over closed by F6
+
+- **CO_W15_F4_vitest_baseline_gap → CLOSED** — the harness exists + a sample passes + the layer boundaries are documented. Expanding component coverage stays Tier 2(noted in `tests/unit/README.md`).
+
+### Day 7 commits
+
+- **`(this commit)`** `chore(frontend)` — W17 F6 Vitest + RTL scaffold(`vitest.config.ts` + `tests/unit/{setup.ts,button.test.tsx,README.md}` + `package.json` scripts + 6 dev deps in `package.json`/`pnpm-lock.yaml`)+ this Day-7 progress entry + checklist F6.1-F6.5 ticked + plan §7 changelog D7
+
+---
+
+## Day 8 — _(implementation entries appended below as work lands)_
+
+_(Next:F7 closeout — Gate verdict + retro 7 sections + ADR-0022/0023 → Accepted + frontmatter `status: closed` + W18+ rolling-JIT trigger + hygiene catch-up;each commit ↔ Day-N entry per R2.)_
 
 ---
 
