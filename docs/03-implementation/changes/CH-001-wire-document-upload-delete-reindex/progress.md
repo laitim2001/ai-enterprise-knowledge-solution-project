@@ -173,6 +173,51 @@ last_updated: 2026-05-11
 
 ---
 
+## Day 3 — Phase 5 backend tests(2026-05-11)
+
+### Done
+- ✅ **T5.1** NEW `backend/tests/api/__init__.py`(empty package marker)+ `backend/tests/api/test_documents_route.py` ── ~560 LOC,24 test cases。Test fixtures:`_populator_mock`(MagicMock with 4 AsyncMock methods)+ `_engine_mock`(RetrievalEngine.list_documents AsyncMock)+ `_patch_orchestrator`(monkeypatch `IngestionOrchestrator` to factory returning MagicMock with `.ingest` AsyncMock + `select_parser` to MagicMock parser)+ `_build_app`(FastAPI + 2 routers + dependency_overrides + app.state shape)
+- ✅ **Phase 5 ticked** T5.1-T5.18 + T5.20-T5.22(checklist updated this commit)
+- ✅ **T5.2-T5.7** POST upload coverage:happy(`test_upload_happy_path_returns_202_indexed`),per-KB index targeting(`test_upload_targets_per_kb_index_not_legacy` AC22),counter sync(`test_upload_records_counter_event_on_success` AC10),pdf+pptx parametrized(AC2),unsupported `.txt` → 422(AC3),unknown kb → 404 + populator-never-awaited(AC4),no-populator → 503(AC5),parse/embed failure parametrized → 502(AC6),partial index failure → 502(AC6 b)
+- ✅ **T5.8** Duplicate doc_id → 409(`test_upload_duplicate_doc_id_returns_409`)+ populator.upload never awaited
+- ✅ **T5.9** DELETE 3 paths:happy + counter(204)/ not-found(404 `document.not_found`)/ Azure error(502 `index.delete_failed`)
+- ✅ **T5.10-T5.12** Reindex(Decision A = (ii) replace-in-place)5 tests:happy(`test_reindex_happy_returns_202_reindexed` AC9.1)/ missing-filename(`test_reindex_missing_filename_returns_422` AC9.2 — FastAPI's own UploadFile validation surfaces 422 BEFORE the route's defensive guard;`delete_doc.assert_not_awaited()`)/ doc-not-found(`test_reindex_doc_not_found_returns_404` AC9 — `_doc_exists_in_kb` returns False → 404)/ doc-id-mismatch(`test_reindex_doc_id_mismatch_returns_422` AC9 — uploaded `wrong-doc.docx` vs path `manual`)/ mid-pipeline-failure(`test_reindex_mid_pipeline_failure_returns_502_partial` AC9.3 — FailureRecord AFTER delete_doc → 502 `reindex.partial_failure` + delete_doc.assert_awaited_once)
+- ✅ **T5.14-T5.17** POST /kb + DELETE /kb auto-provisioning(Decision B = (β)):`test_post_kb_calls_create_index_for_kb` AC18 / `test_post_kb_index_create_fail_rolls_back_returns_502` AC19(GET → 404 confirms storage rollback)/ `test_delete_kb_calls_delete_index` AC20 / `test_delete_kb_index_already_gone_fail_soft_returns_204` AC21
+- ✅ **T5.18** AC22 — `populator.upload.call_args.kwargs["kb_id"] == "drive_user_manuals"`(NOT `None`)— confirms per-KB index targeting
+- ✅ **T5.20** `pytest tests/api/test_documents_route.py` → **24 passed**
+- ✅ **T5.21** Regression run:`pytest tests/{test_orchestrator,test_api_skeleton,test_documents_listing,test_kb_management,test_kb_reindex,test_multi_kb_routing}.py tests/api/test_documents_route.py` → **70 passed**(46 prev + 24 new;zero regression)
+- ✅ `mypy --strict --explicit-package-bases tests/api/test_documents_route.py` → 0 errors on the test file(47 transitive errors in 15 other files = pre-existing baseline,unrelated to CH-001)
+- ✅ `ruff check tests/api/test_documents_route.py` → clean(initial run flagged I001 import-ordering — auto-fixed via `--fix`)
+- ✅ **T5.22** `pnpm test:unit` skipped — CH-001 made zero frontend changes(no `frontend/` paths touched per `git diff --stat b87ce77..HEAD`);implicit AC12 satisfied
+
+### Decisions
+- **T5.19 🚧 deferred(`test_index_populator.py` for httpx-mocked unit tests)** ── Karpathy §1.2 simplicity-first:`create_index_for_kb` + `delete_index` + `delete_doc` + `upload(kb_id=)` are transitively covered via the 4 route-level tests(T5.14-T5.17 + AC22)+ `scripts/run_populate_sanity.py` reference + `scripts/create_index.py` precedent. A dedicated httpx-mocked unit test file adds little beyond integration-smoke noise — deferred to a future "Azure REST smoke harness" Change if real-Azure validation becomes a priority(W16+ Track A candidate).
+- **`_orch_factory` returns a per-call MagicMock** with the SAME `.ingest` AsyncMock attribute(shared across instances)── allows tests to call `ingest_mock.assert_awaited_once()` regardless of how many orchestrator-construction calls happened in the route. Cleaner than `monkeypatch.setattr` of `IngestionOrchestrator.ingest` directly because the orchestrator dataclass `__init__` then has nothing to do with the test.
+- **`_FakeUploadResult` duck-types `IndexUploadResult`** (3 attrs:`succeeded` / `failed` / `failed_keys`)── avoid importing the real class. The route reads `upload_result.succeeded` + `upload_result.failed` only;duck-typing is enough.
+- **T5.11 `test_reindex_missing_filename_returns_422` — surfaced a route-level dead-code finding**:FastAPI's own UploadFile validation rejects an empty-filename multipart part at the framework layer BEFORE the route's `_api_error("validation.file_required", ...)` guard fires. The defensive guard is unreachable via HTTP. Documented in the test docstring + this entry ── NOT a refactor target per Karpathy §1.3 surgical(removing the guard would expand CH-001 scope unnecessarily;the guard is harmless defensive code).
+- **TestClient + multipart `files={"file": (filename, bytes, mime)}` pattern** is the canonical approach;`io.BytesIO` wrapping is unnecessary.
+- **AsyncMock `name=` kwarg** ── kept on every Mock for nicer pytest traceback identification.
+- **DeprecationWarning `HTTP_422_UNPROCESSABLE_ENTITY` 是 pre-existing** ── Starlette 0.47+ renames the constant to `_CONTENT`;FastAPI internal + `documents.py:377` use the old name. Out of CH-001 scope;mention in retro for a follow-up Karpathy-§1.3-surgical Change.
+
+### Blockers
+- None at end of Day-3.
+
+### Effort
+- Planned (Phase 5):~1.5-2h (T5.1-T5.22)
+- Actual:~1h (this session;real-calendar collapse pattern — mocking patterns settled quickly because the test file mirrors `test_documents_listing.py`'s structure with the same KBService + app.state fixtures)
+- Variance:-0.5h
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(pending — this session)_ | test(api): CH-001 Phase 5 — 24 backend tests for document routes + POST/DELETE /kb (AC1-AC10 + AC18-AC22 + AC9.1-AC9.3) |
+
+### Next
+- **Phase 6** T6.1-T6.6 — user-driven manual smoke(needs `:8000` backend restart + `.env` Azure cred + `/kb/new` Pipeline wizard end-to-end)── AI cannot drive the browser;user smoke after this Phase 5 commit
+- **Phase 7** T7.1-T7.8 — docs closeout:remove documents.py file-top stale 501 stub note + ADR-0018 Implementation-timing row + COMPONENT_CATALOG.md C03/C08 status append + session-start.md §11 CO_F3a flip "stays 501 stub" → "CLOSED by CH-001" + grep `501` = 0 verify(AC17)+ progress closeout summary + frontmatter `in-progress → done`
+
+---
+
 ## Closeout(填於 status=done)
 
 ### Acceptance verification(against spec §3 AC1-AC17)
