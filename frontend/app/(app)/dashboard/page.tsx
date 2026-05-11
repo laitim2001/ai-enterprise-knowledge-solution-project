@@ -54,7 +54,7 @@ export default function DashboardPage() {
         {/* Knowledge bases */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Knowledge bases</CardTitle>
+            <CardTitle role="heading" aria-level={2} className="text-sm font-medium text-muted-foreground">Knowledge bases</CardTitle>
           </CardHeader>
           <CardContent>
             {kbQuery.isPending ? (
@@ -78,7 +78,7 @@ export default function DashboardPage() {
         {/* Recent queries — no backend source yet (Q6) */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Recent queries</CardTitle>
+            <CardTitle role="heading" aria-level={2} className="text-sm font-medium text-muted-foreground">Recent queries</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -93,7 +93,7 @@ export default function DashboardPage() {
         {/* Latest evaluation — no cached run source */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Latest evaluation</CardTitle>
+            <CardTitle role="heading" aria-level={2} className="text-sm font-medium text-muted-foreground">Latest evaluation</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -108,7 +108,7 @@ export default function DashboardPage() {
         {/* System health */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">System health</CardTitle>
+            <CardTitle role="heading" aria-level={2} className="text-sm font-medium text-muted-foreground">System health</CardTitle>
           </CardHeader>
           <CardContent>
             {healthQuery.isPending ? (
@@ -133,7 +133,7 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <Card className="sm:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Quick actions</CardTitle>
+            <CardTitle role="heading" aria-level={2} className="text-sm font-medium text-muted-foreground">Quick actions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

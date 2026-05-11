@@ -48,13 +48,13 @@ test.describe('Visual baseline — pixel diff harness', () => {
     });
   });
 
-  test('Dashboard baseline (W18 F3 placeholder)', async ({ page }) => {
+  test('Dashboard baseline (W18 F4 overview cards)', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(
-      page.getByRole('heading', { name: /dashboard/i }),
+      page.getByRole('heading', { name: /^dashboard$/i, level: 1 }),
     ).toBeVisible();
-    // W18 F3 placeholder — re-capture this baseline once the W18 F4 overview cards land.
-    // Mask any dynamic content (timestamps / mono-font ids appear after data load in F4).
+    // The F4 cards' data loads async (GET /kb + GET /health); mask dynamic content
+    // (mono-font ids / timestamps) so the baseline doesn't jitter on counts/uptime.
     await expect(page).toHaveScreenshot('dashboard.png', {
       fullPage: true,
       mask: [page.locator('time'), page.locator('.font-mono')],

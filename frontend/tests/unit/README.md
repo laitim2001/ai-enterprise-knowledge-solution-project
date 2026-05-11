@@ -24,14 +24,27 @@ explicitly excludes `tests/e2e/**` so it never picks up Playwright specs.
 | **E2E / golden-path** | Playwright (real Chromium) | Full user flows across pages — register→login, KB upload, Pipeline wizard; pixel-diff baselines | `frontend/tests/e2e/`, `playwright.config.ts`, `pnpm test:e2e` |
 | **Backend** | pytest + pytest-asyncio | API routes, pipeline, retrieval, eval, auth | `backend/tests/`, `pytest` |
 
-## What's here now (W17 F6)
+## What's here now
 
-- `button.test.tsx` — sample: `@/components/ui/button` renders children + the
-  default `bg-primary text-primary-foreground` token-class variant, the
+- `button.test.tsx` (W17 F6) — sample: `@/components/ui/button` renders children +
+  the default `bg-primary text-primary-foreground` token-class variant, the
   `destructive` variant swaps to `bg-destructive`, and `onClick` fires on a
-  `user-event` click. This is a render/interaction **smoke** — it proves the
-  harness works (jsdom + RTL + jest-dom + cva token resolution + user-event),
-  not exhaustive component coverage.
+  `user-event` click. Proves the harness works (jsdom + RTL + jest-dom + cva token
+  resolution + user-event).
+- `app-shell.test.tsx` (W18 F8.4) — `<AppShell>`: the 5 sidebar nav modules render
+  under `<nav aria-label="Primary">`, the active route gets `aria-current="page"`,
+  the focus-mode toggle hides the desktop sidebar (+ flips its label), the top-bar
+  global-search trigger is present. (`next/navigation` + `next/link` + `@/lib/api/kb`
+  mocked; `<UserMenu>` shows "Signing in…" with no AuthProvider — that path is fine.)
+- `global-search.test.tsx` (W18 F8.4) — `<GlobalSearch>`: opening renders the static
+  Page results, typing filters them + appends an "Ask in chat: …" action, selecting
+  that result `router.push('/chat?q=…')` + closes the palette, ArrowDown+Enter selects
+  the next result. (KB results come off `useQuery` — mocked to `[]`.)
+- `dashboard.test.tsx` (W18 F8.4) — `/dashboard` page render smoke: the `<h1>` + the
+  5 overview card headings (`role="heading" aria-level={2}`) + the 4 quick-action links
+  with the right hrefs. (Both `useQuery` calls mocked; this is a structure smoke.)
+
+These are render/interaction **smokes** — not exhaustive component coverage (see below).
 
 ## Tier 2 — expand coverage
 

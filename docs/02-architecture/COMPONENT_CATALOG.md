@@ -312,7 +312,7 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 | **Critical OQ** | Q10(visual identity — Open,using neutral tokens default until W4 designer pass) |
 | **Risks** | H3 hard constraint:Dify reference 只可學 layout,絕不可 copy code 或 brand color |
 | **Owner** | AI |
-| **Status** | 🟢 W1 D1 6 routes scaffold + custom design tokens(non-Dify)+ pnpm install + lint + type-check 全 clean |
+| **Status** | 🟢 W1 D1 6 routes scaffold + custom design tokens(non-Dify)+ pnpm install + lint + type-check 全 clean → W12-W15 UI Tier 1 expansion 9 views(per ADR-0015)→ **W18(per ADR-0024)**:all authenticated views re-parented under a single `<AppShell>`(persistent top bar + collapsible left sidebar + main content);URLs flattened — `/admin/*` → `/kb/*`,`/debug/[traceId]` → `/traces/[traceId]`,`/admin` → a real `/dashboard` overview(KB summary / recent-query CTA / latest-eval CTA / backend health / quick actions);`/settings` added(profile + theme + sign-out);V7 marketing Landing removed(`/` → redirect `/login`);login/register success → `/dashboard`;`<GlobalSearch>` Cmd/Ctrl+K quick-jump palette(Pages + KB names + "Ask in chat"). `architecture.md v6 §5` is inline-tagged with the amendment(§5.0 Application Shell + §5.3 Dashboard + §5.7 Traces + §5.9 Landing-removed + the flattened routing — doc version held);this catalog row mirrors it. `[oklch(...)]`=0 milestone preserved through the restructure |
 | **Interface** | **Input**:user browser interaction → **Output**:rendered React component tree → **Side effect**:fetch to C08 API |
 
 ---
@@ -329,7 +329,7 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 | **Critical OQ** | — |
 | **Risks** | SSE streaming on Ricoh corp network(可能 buffer 唔流暢)、citation render edge cases(citation 落 hallucinated source) |
 | **Owner** | AI |
-| **Status** | ⏳ Not started(W3 D2 first touch) |
+| **Status** | 🟢 W3 D2 chat UI + SSE streaming + citation cards + screenshot modal → W13 routing restructure(`/` → `/chat`)+ theme provider / dark mode → W15 token cleanup → **W18(per ADR-0024)**:the chat view now renders inside `<AppShell>`(its own `<main>`+`min-h-screen` became a `<div>`+`h-full`;the focus-mode toggle replaces the full-bleed chrome-less surface;in-page header slimmed — the "EKP" wordmark is in the shell top bar now);reads `?q=` on mount(the global-search "Ask in chat" deep-link pre-fills the input + focuses it). Route `/chat` unchanged;SSE/streaming logic untouched |
 | **Interface** | **Input**:user typed query → **Output**:streamed response render with citation markers → **Side effect**:SSE long-poll to C08 |
 
 ---

@@ -31,7 +31,7 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Profile</CardTitle>
+          <CardTitle role="heading" aria-level={2} className="text-base">Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {user ? (
@@ -53,7 +53,7 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Preferences</CardTitle>
+          <CardTitle role="heading" aria-level={2} className="text-base">Preferences</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <div>
@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Session</CardTitle>
+          <CardTitle role="heading" aria-level={2} className="text-base">Session</CardTitle>
         </CardHeader>
         <CardContent>
           <Button variant="outline" onClick={() => void signOut()}>

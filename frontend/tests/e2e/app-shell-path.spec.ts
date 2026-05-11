@@ -1,33 +1,43 @@
 /**
- * App-shell-path E2E baseline — W18 F3 (per ADR-0024; renamed from admin-path.spec.ts).
+ * App-shell-path E2E baseline — W18 F3 (per ADR-0024; renamed from admin-path.spec.ts); F4 + F8 updated.
  *
  * Coverage (Tier 1 baseline scope):
- * - /dashboard renders (architecture.md v6 §5.3) — W18 F3 PLACEHOLDER (the real overview
- *   cards land in W18 F4; this test is a heading + nav-link smoke for now — see the TODO)
+ * - /dashboard renders the real overview cards + quick actions (architecture.md v6 §5.3 / W18 F4)
  * - /kb KB List renders (§5.4) — card grid + sort + filter + Create CTA (re-routed from /admin/kb)
  * - /eval Eval Console renders (§5.6) — filter bar + 4-metric cards + Failed queries + Reranker Shootout
  * - /traces/[traceId] Traces detail renders (§5.7 — formerly "Debug View" /debug/[traceId]) —
  *   trace header + stage timeline + Open in Langfuse
  * - AppShell sidebar nav navigates between the modules
+ * - AppShell chrome (top bar + sidebar) is present on /dashboard /chat /kb /eval /traces, absent on
+ *   /login /register (W18 F8.5)
  *
  * Tests assume NEXT_PUBLIC_AUTH_MOCK=true bypasses login + uses the default mock user.
  * The actual run needs `npx playwright install chromium` which is R8-corp-proxy-blocked
- * (CO_W15_F4_browser_binaries / ADR-0017) — this spec's W18 F3 deliverable is the updated
- * route references + a tsc compile-check + this review; the run stays the pre-Beta smoke.
+ * (CO_W15_F4_browser_binaries / ADR-0017) — this spec's deliverable is the updated route
+ * references + a tsc compile-check + this review; the run stays the pre-Beta smoke.
  */
 
 import { test, expect } from '@playwright/test';
 
 test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () => {
-  test('/dashboard placeholder renders heading + module links', async ({ page }) => {
+  test('/dashboard renders the overview cards + quick actions (W18 F4)', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(
-      page.getByRole('heading', { name: /dashboard/i }),
+      page.getByRole('heading', { name: /^dashboard$/i, level: 1 }),
     ).toBeVisible();
-    // F3 placeholder surfaces module links (Chat / Knowledge Bases / Eval Console / Traces).
-    await expect(page.getByRole('link', { name: /^chat$/i }).first()).toBeVisible();
-    // TODO(W18 F4): assert the real overview cards (KB summary / recent queries /
-    // latest eval / system health / quick actions) once the F4 dashboard lands.
+    // The 5 overview card titles (CardTitle = role="heading" aria-level={2} per W18 F8.2).
+    await expect(
+      page.getByRole('heading', { name: /knowledge bases/i, level: 2 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /system health/i, level: 2 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /quick actions/i, level: 2 }),
+    ).toBeVisible();
+    // Quick-action links.
+    await expect(page.getByRole('link', { name: /new kb/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /open chat/i })).toBeVisible();
   });
 
   test('/kb KB List renders card grid with sort + filter + Create CTA', async ({
@@ -87,5 +97,26 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () =
     // Click "Chat" → /chat
     await page.getByRole('link', { name: /^chat$/i }).first().click();
     await expect(page).toHaveURL(/\/chat/);
+  });
+
+  test('AppShell chrome is present on app routes and absent on the auth pages', async ({
+    page,
+  }) => {
+    // Present (top bar global-search trigger + the "Primary" sidebar nav) on the module routes.
+    for (const path of ['/dashboard', '/chat', '/kb', '/eval', '/traces/some-trace-id']) {
+      await page.goto(path);
+      await expect(page.getByRole('navigation', { name: /primary/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /search \(ctrl/i })).toBeVisible();
+    }
+    // Absent on the auth pages — they keep the chrome-free root layout (BrandPanel split).
+    for (const path of ['/login', '/register']) {
+      await page.goto(path);
+      await expect(page.getByRole('navigation', { name: /primary/i })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /search \(ctrl/i })).toHaveCount(0);
+    }
+    // …and `/` redirects out to /login (no chrome there either — W18 F7).
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('navigation', { name: /primary/i })).toHaveCount(0);
   });
 });
