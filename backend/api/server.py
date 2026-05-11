@@ -38,6 +38,8 @@ from api.routes import (
 )
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
+from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
+from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
 from observability.langfuse_tracer import flush_tracer, init_tracer
 from retrieval.hybrid import HybridSearcher
@@ -52,16 +54,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     init_tracer(settings)
 
-    # Embedder + searcher + reranker + synthesizer are all context-managed;
+    # Embedder + searcher + reranker + synthesizer + populator are all context-managed;
     # we manually enter/exit so they stay open across requests.
     embedder: AzureOpenAIEmbedder | None = None
     searcher: HybridSearcher | None = None
     reranker: Reranker | None = None
     synthesizer: Synthesizer | None = None
     crag_grader: CragGrader | None = None
+    populator: IndexPopulator | None = None
     app.state.retrieval_engine = None
     app.state.synthesizer = None
     app.state.crag_loop = None
+    # CH-001 — ingestion-side state (embedder exposed for the ingestion orchestrator;
+    # populator owned here so POST /kb / POST /kb/{kb_id}/documents / DELETE /kb route
+    # handlers can call create_index_for_kb / upload / delete_doc / delete_index without
+    # re-instantiating Azure clients per request; chunker is stateless).
+    app.state.embedder = None
+    app.state.index_populator = None
+    app.state.ingestion_chunker = LayoutAwareChunker()
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -76,8 +86,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             admin_key=settings.azure_search_admin_key,
             index_name=settings.azure_search_default_index,
         )
+        populator = IndexPopulator(
+            endpoint=settings.azure_search_endpoint,
+            admin_key=settings.azure_search_admin_key,
+            index_name=settings.azure_search_default_index,
+        )
         await embedder.__aenter__()
         await searcher.__aenter__()
+        await populator.__aenter__()
+        # Expose embedder + populator to ingestion routes (CH-001); the existing
+        # RetrievalEngine wraps the same embedder for query embedding — sharing is
+        # safe because the embedder is a stateless async httpx client.
+        app.state.embedder = embedder
+        app.state.index_populator = populator
 
         # Optional Cohere reranker (Path A Marketplace per Q5 Resolved); factory
         # returns None when cohere_endpoint or cohere_api_key not populated.
@@ -130,6 +151,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await synthesizer.__aexit__(None, None, None)
         if reranker is not None:
             await reranker.__aexit__(None, None, None)  # type: ignore[attr-defined]
+        if populator is not None:
+            await populator.__aexit__(None, None, None)
         if embedder is not None:
             await embedder.__aexit__(None, None, None)
         if searcher is not None:

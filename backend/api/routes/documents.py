@@ -5,21 +5,50 @@ W16 F5.1.1 closure (CO_F3a):
     aggregation via RetrievalEngine.list_documents (kb_id-scoped chunks
     grouped by doc_id; returns list[DocumentSummary]).
 
-Other endpoints remain 501 stub pending W2 multi-format ingestion +
-re-index W17+ scope (out of W16 F5 batch per Path A scope decision).
+CH-001 (2026-05-12) — closes CO_F3a fully:
+    POST /kb/{kb_id}/documents — multipart UploadFile → tempfile →
+        select_parser → IngestionOrchestrator → IndexPopulator.upload(kb_id=)
+        → 200/202 with {doc_id, status:"indexed", chunks_emitted, ...}.
+    DELETE /kb/{kb_id}/documents/{doc_id} — IndexPopulator.delete_doc → 204
+        on success / 404 if no chunks match (clean idempotency).
+    POST /kb/{kb_id}/documents/{doc_id}/reindex (Decision A = (ii)) — multipart
+        re-upload → delete existing chunks → ingest new under same doc_id
+        → 202 atomic replace.
+    7 error codes (validation.unsupported_format / kb.not_found /
+    azure.config_missing / ingestion.{parse,embed,index}_failed /
+    document.duplicate / reindex.{doc_id_mismatch,partial_failure}).
 """
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 
 from api.schemas.listing import DocumentSummary
+from indexing.populate import IndexPopulator
+from ingestion.chunker.base import Chunker
+from ingestion.embedding.base import Embedder
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from retrieval.retrieval_engine import RetrievalEngine
 
 router = APIRouter()
 
 KbServiceDep = Annotated[KBService, Depends(get_kb_service)]
+
+
+@dataclass(slots=True, frozen=True)
+class _IngestionDeps:
+    """CH-001 — the four ingestion-side services resolved from app.state.
+
+    Embedder + IndexPopulator are lifespan-managed Azure clients (one per app
+    lifetime); Chunker is stateless. Parser is constructed per-request via
+    select_parser(file_extension) inside the route handlers (depends on input
+    file type, can't be lifespan-bound).
+    """
+
+    embedder: Embedder
+    populator: IndexPopulator
+    chunker: Chunker
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -33,6 +62,28 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
             ),
         )
     return engine
+
+
+def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
+    """Resolve the lifespan-wired ingestion services or 503.
+
+    Upload + reindex routes need all three (embedder for chunk embedding,
+    populator for Azure AI Search push/delete, chunker for layout-aware
+    chunking). Absence of any → 503 `azure.config_missing` (the populator is
+    None when Azure cred isn't configured per CH-001 spec §6.2 Approach A).
+    """
+    embedder = getattr(request.app.state, "embedder", None)
+    populator = getattr(request.app.state, "index_populator", None)
+    chunker = getattr(request.app.state, "ingestion_chunker", None)
+    if embedder is None or populator is None or chunker is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Ingestion services not initialized — check Azure OpenAI + AI Search "
+                ".env config (AZURE_OPENAI_API_KEY + AZURE_SEARCH_ADMIN_KEY)."
+            ),
+        )
+    return _IngestionDeps(embedder=embedder, populator=populator, chunker=chunker)
 
 
 async def _verify_kb_or_404(kb_id: str, service: KBService) -> None:

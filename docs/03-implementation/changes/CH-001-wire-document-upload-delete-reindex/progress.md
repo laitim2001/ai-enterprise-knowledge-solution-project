@@ -61,23 +61,53 @@ last_updated: 2026-05-11
 
 ---
 
-## Day 1 — _pending_(YYYY-MM-DD)
+## Day 1 — Phase 1 + 1.5 backend service wiring + multi-KB index provisioning(2026-05-11)
 
 ### Done
-- _(fill as items complete)_
+- ✅ **T1.1** Read `api/server.py` lifespan in full ── existing pattern: `embedder` / `searcher` / `reranker` / `synthesizer` / `crag_grader` all `__aenter__`ed inside the `if azure_cred:` block. App.state already has `retrieval_engine` / `synthesizer` / `crag_loop`. **No `IndexPopulator` or ingestion services on app.state yet** ── added.
+- ✅ **T1.2 / T1.5.2-1.5.5** `backend/indexing/populate.py` — added 3 new methods + extended `upload` signature(`12bfd3f` will commit):
+   - `IndexPopulator.create_index_for_kb(kb_id)` ── PUT `/indexes/{name}?api-version=2024-07-01` with `_load_index_schema()` from `backend/indexing/schema.json`(`@lru_cache(maxsize=1)` so the read is once-per-process);override `schema["name"]` with `kb_id_to_index_name(kb_id, legacy_default_index=self.index_name)`;accept 200/201/204 as success;raise `httpx.HTTPStatusError` on 4xx/5xx;structlog `index_created` on success
+   - `IndexPopulator.delete_index(kb_id) -> bool` ── DELETE `/indexes/{name}?api-version=2024-07-01`;**True on 204, False on 404 (fail-soft)**, raise on other errors;structlog `index_deleted` / `index_already_gone` / `index_delete_failed`
+   - `IndexPopulator.delete_doc(kb_id, doc_id) -> int` ── two-step:(1) POST `/docs/search` with `filter=kb_id eq X and doc_id eq Y`, `select=chunk_id`, `top=1000` to collect chunk_ids;(2) batch POST `/docs/index` with `@search.action: "delete"` per chunk_id;return count deleted. Fail-soft when the index itself is missing(returns 0)── covers the "DELETE on a doc in a KB never populated" edge case
+   - `IndexPopulator.upload(records, action, kb_id=None)` ── BC-preserving signature ext;`_resolve_index_name(kb_id)` helper resolves dynamically(falls back to `self.index_name` when kb_id None;works for existing W2-era callers like `scripts/run_populate_sanity.py`);`_upload_batch` now takes `index_name` arg
+- ✅ **T1.4 / T1.5** `backend/api/server.py` lifespan — added `app.state.embedder` + `app.state.index_populator` + `app.state.ingestion_chunker` alongside the existing `app.state.retrieval_engine` etc;`populator` ── `__aenter__`ed inside the `if azure_cred:` block + `__aexit__`ed in `finally`;`LayoutAwareChunker()` (stateless) constructed unconditionally(works without Azure cred — chunking is offline);**Approach A confirmed**(lifespan-init, not per-request)── one Azure REST client per app lifetime
+- ✅ **T1.5.6-1.5.7** `backend/api/routes/kb.py` POST + DELETE wiring(`12bfd3f` will commit):
+   - POST `/kb` ── after `service.create(payload)` success → resolve `_get_populator(request)`;**fail-soft when populator is None**(no Azure cred → log warning + return 201 with storage record only, preserving W16 F5.3 Decision B.1 baseline + the existing `test_delete_kb_in_memory_baseline_preserved` contract);Azure call failure → `service.delete(payload.kb_id)` rollback + 502 `index.create_failed` with the actionable hint quoting Azure index-name rules;rollback failure logged but the original 502 still raised(R10)
+   - DELETE `/kb/{kb_id}` ── after `service.delete(kb_id)` success → resolve `_get_populator(request)`;**fail-soft when populator is None**(returns 204 with storage already gone, no Azure touch);populator's `delete_index` itself is fail-soft on 404(common for pre-CH-001 KBs / partial-rollback orphans);Azure 5xx → 502 with hint to manually drop the index via `scripts/create_index.py delete`
+   - **Deviation discovered**:initial `_populator_or_503` (strict 503) broke `test_delete_kb_in_memory_baseline_preserved_per_b1` ── pytest failed with `503 != 204`. Fixed by replacing with `_get_populator -> IndexPopulator | None` + fail-soft branches in both routes. **Karpathy §1.3 "don't break what wasn't part of the change"**;the test surfaced the regression early
+- ✅ **T1.5.8** Dropped the "Track A W17+" deferral comment block in `routes/kb.py` DELETE docstring + replaced with the CH-001 closure note + ADR-0018 reference
+- ✅ **T1.5(documents helper)** `backend/api/routes/documents.py` — added `_ingestion_deps_or_503(request) -> _IngestionDeps`(NEW frozen dataclass bundling embedder + populator + chunker)alongside the existing `_engine_or_503`;**strict 503** for upload/reindex routes(uploads can't function without Azure cred);file-top docstring updated with the CH-001 closure narrative;imports for `IndexPopulator` / `Embedder` / `Chunker` Protocols added
+- ✅ Verified `mypy --strict` clean on the 4 changed files(`indexing/populate.py` + `api/server.py` + `api/routes/kb.py` + `api/routes/documents.py`);transitive mypy errors exist in OTHER unrelated files(eval/ragas_evaluator, api/routes/query, etc — pre-existing baseline, not introduced by this Change)
+- ✅ Verified `ruff check` at the pre-existing 19-error baseline on `api/server.py`(my 2 new imports added 2 noqa-suppressed entries — net delta zero)+ clean on the other 3 files
+- ✅ Verified `pytest backend/tests/test_orchestrator.py tests/test_api_skeleton.py tests/test_documents_listing.py tests/test_kb_management.py tests/test_kb_reindex.py tests/test_multi_kb_routing.py` — **46 tests pass**(including the previously-failing `test_delete_kb_in_memory_baseline_preserved_per_b1` after the fail-soft fix)
+- ✅ Verified `python -c "import api.server"` clean(no startup error)
 
 ### Decisions
-- _(if any design choices land here)_
+- **Fail-soft when populator is None**(both POST + DELETE /kb)── necessary to preserve the W16 F5.3 Decision B.1 in-memory baseline + the existing test contract. Spec §2.1 wasn't explicit about this case;documented in the route docstrings + this Day-1 entry. Strict Azure-required would be wrong for dev/CI where `.env` may not have Azure cred. Upload routes(documents.py)remain strict-503 because they genuinely can't function without Azure.
+- **Per-request `IngestionOrchestrator` construction**(not lifespan)── because `select_parser(Path)` resolves the parser per-file-extension;orchestrator holds parser reference;cheap to construct(just dataclass-ish). Embedder + populator are lifespan-shared.
+- **Embedder shared between RetrievalEngine + ingestion path** ── `app.state.embedder = embedder` exposed alongside the existing `RetrievalEngine(embedder=embedder, …)` wrapping. Safe because the embedder is a stateless async httpx client(no per-call state). Saves one Azure OpenAI client.
+- **`_load_index_schema()` cached via `lru_cache(maxsize=1)`** ── schema.json is small + immutable per-process;cache the parsed dict once;cheap.
+- **`# noqa: E402` on the 2 new `server.py` imports** ── same truststore-after-imports pattern as the 19 pre-existing E402 errors in the file. Not refactoring the whole file's noqa (Karpathy §1.3 — don't refactor what isn't broken from your edit's perspective).
 
 ### Blockers
-- _(if any)_
+- None
 
 ### Effort
-- Planned:{h};Actual:{h};Variance:{±h}
+- Planned (Phase 1 + 1.5):~2.5h (T1.1-T1.5.10)
+- Actual:~2.5h (this session)
+- Variance:0
 
 ### Commits
 | Hash | Subject |
 |---|---|
+| _(pending — committing now)_ | feat(backend,api,ingestion): CH-001 Phase 1 + 1.5 — IndexPopulator multi-KB lifecycle + lifespan wiring + POST/DELETE /kb auto-provisioning (close ADR-0018 Phase 3 upload-side) |
+
+### Next
+- **Phase 2** T2.1-T2.10 ── wire `POST /kb/{kb_id}/documents`(UploadFile → tempfile → select_parser → IngestionOrchestrator → IndexPopulator.upload(kb_id=) → KB counter sync)
+- **Phase 3** T3.1-T3.5 ── wire `DELETE /kb/{kb_id}/documents/{doc_id}`(IndexPopulator.delete_doc → 404 / 502 / 204)
+- **Phase 4** T4.1-T4.9 ── wire `POST /kb/{kb_id}/documents/{doc_id}/reindex`(replace-in-place per Decision A = (ii))
+- Likely commit Phase 2-4 as one logical chunk(same file, same lifespan deps, atomic CO_F3a closure)
+- Then Phase 5 backend tests + Phase 7 docs
 
 ---
 
