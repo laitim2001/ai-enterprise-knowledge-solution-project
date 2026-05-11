@@ -1,12 +1,14 @@
 /**
- * Visual baseline pixel diff harness — W15 D4 F4.4 deliverable.
+ * Visual baseline pixel diff harness — W15 D4 F4.4 deliverable; W18 F7 updated.
  *
- * Captures baseline screenshots for 5 representative views per Tier 1 scope:
- * - V7 Landing (`/`)
+ * Captures baseline screenshots for the representative views per Tier 1 scope:
  * - V8 Login (`/login`)
  * - V9 Register Step 1 (`/register`)
- * - Dashboard (`/dashboard` — W18 F3 placeholder; re-baseline once F4 lands)
+ * - Dashboard (`/dashboard` — real overview cards landed W18 F4; re-baseline on visual approval)
  * - V5 Eval Console (`/eval`)
+ *
+ * (V7 Landing's `/` baseline was dropped — the Landing page was REMOVED per
+ * ADR-0024 W18 F7; `/` now just redirects to `/login`, already covered above.)
  *
  * V1 Chat / V3 KB List / V4 KB Detail / V6 Traces = covered by golden-path +
  * app-shell-path E2E render assertions (interactive flow tests). Pixel diff is
@@ -30,17 +32,6 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Visual baseline — pixel diff harness', () => {
-  test('V7 Landing baseline', async ({ page }) => {
-    await page.goto('/');
-    // Wait for hero + features + footer to render
-    await expect(
-      page.getByRole('heading', { name: /enterprise knowledge platform/i }),
-    ).toBeVisible();
-    await expect(page).toHaveScreenshot('v7-landing.png', {
-      fullPage: true,
-    });
-  });
-
   test('V8 Login baseline', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel(/email/i)).toBeVisible();

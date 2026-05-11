@@ -1,8 +1,8 @@
 /**
- * Golden-path E2E baseline — W15 D4 F4.2 deliverable.
+ * Golden-path E2E baseline — W15 D4 F4.2 deliverable; W18 F7 updated (per ADR-0024).
  *
  * Coverage (Tier 1 baseline scope per W15 plan §3 Success Criteria):
- * - V7 Landing page renders (architecture.md v6 §5.9)
+ * - `/` redirects to `/login` (V7 Landing REMOVED per ADR-0024 — architecture.md v6 §5.9)
  * - V8 Login page renders + dual auth path UI (§5.10)
  * - V9 Register 3-step wizard renders (§5.11)
  * - V1 Chat page renders (§5.2)
@@ -19,18 +19,14 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Golden path — public + chat E2E', () => {
-  test('V7 Landing page renders with hero + features + how-it-works', async ({
+  test('/ redirects to /login (V7 Landing removed per ADR-0024)', async ({
     page,
   }) => {
     await page.goto('/');
-    // Hero section
+    await expect(page).toHaveURL(/\/login$/);
     await expect(
-      page.getByRole('heading', { name: /enterprise knowledge platform/i }),
+      page.getByRole('heading', { name: /sign in/i }),
     ).toBeVisible();
-    // 3 feature highlight cards
-    await expect(page.getByText(/multi-format ingestion/i)).toBeVisible();
-    await expect(page.getByText(/hybrid retrieval/i)).toBeVisible();
-    await expect(page.getByText(/citation/i)).toBeVisible();
   });
 
   test('V8 Login page renders with dual auth path (SSO + form)', async ({

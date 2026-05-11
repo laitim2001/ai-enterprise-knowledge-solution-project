@@ -21,6 +21,11 @@
  * §2.9 wireframe).
  *
  * Step 3 first-KB selector disabled per Q7 default Tier 1 single-KB POC.
+ *
+ * W18 F7 (per ADR-0024): Step 3's CTA routes to `/dashboard` (the new post-login
+ * home) instead of `/chat` — the verify-email auto-login (ADR-0022) means Step 3
+ * lands authenticated, so /dashboard resolves inside <AppShell>. The register
+ * page itself stays OUTSIDE `app/(app)/` (no app chrome — BrandPanel split layout).
  */
 
 import {
@@ -140,8 +145,8 @@ export default function RegisterPage() {
     }
   }
 
-  function handleStartAsking() {
-    router.push('/chat');
+  function handleGoToDashboard() {
+    router.push('/dashboard');
   }
 
   return (
@@ -176,7 +181,7 @@ export default function RegisterPage() {
             {step === 3 && (
               <Step3
                 displayName={info.displayName}
-                onStartAsking={handleStartAsking}
+                onContinue={handleGoToDashboard}
               />
             )}
           </div>
@@ -592,10 +597,10 @@ function Step2({
 
 function Step3({
   displayName,
-  onStartAsking,
+  onContinue,
 }: {
   displayName: string;
-  onStartAsking: () => void;
+  onContinue: () => void;
 }) {
   return (
     <div className="space-y-6 text-center">
@@ -607,7 +612,7 @@ function Step3({
           Welcome, {displayName || 'friend'}!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your account is ready. Start asking questions about your manuals.
+          Your account is ready. Head to your dashboard to get started.
         </p>
       </header>
 
@@ -625,8 +630,8 @@ function Step3({
         </p>
       </div>
 
-      <Button onClick={onStartAsking} size="lg" className="w-full">
-        Start asking →
+      <Button onClick={onContinue} size="lg" className="w-full">
+        Go to your dashboard →
       </Button>
     </div>
   );

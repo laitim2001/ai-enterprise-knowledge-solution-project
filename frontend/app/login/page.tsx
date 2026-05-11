@@ -14,6 +14,10 @@
  * persists the token in localStorage. SSO path delegates to existing
  * useAuthStore (mock_msal in dev / real MSAL Beta+ via Q11 IT cred).
  * Error.code from the ApiError envelope drives toast variants per F3.7.
+ *
+ * W18 F7 (per ADR-0024): successful sign-in now routes to `/dashboard` (the new
+ * post-login home) instead of `/chat`. Stays OUTSIDE the `app/(app)/` shell —
+ * the login page gets no app chrome (the BrandPanel split layout is its own).
  */
 
 import { Building2, Loader2 } from 'lucide-react';
@@ -53,7 +57,7 @@ export default function LoginPage() {
       // response — no client-side token persistence. Subsequent protected
       // calls carry it automatically (api-client `credentials:'include'`).
       toast.success(`Welcome back, ${response.user.display_name}!`);
-      router.push('/chat');
+      router.push('/dashboard');
     } catch (err) {
       handleAuthError(err, 'Sign in failed.');
     } finally {
@@ -66,7 +70,7 @@ export default function LoginPage() {
     try {
       await ssoSignIn();
       toast.success('Signed in with Microsoft.');
-      router.push('/chat');
+      router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error('Microsoft sign-in failed.', { description: message });

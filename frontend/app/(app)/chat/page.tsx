@@ -13,6 +13,11 @@
  * wordmark + chrome live in the AppShell top bar / sidebar now). SSE-chat logic
  * unchanged.
  *
+ * W18 F6: reads the `?q=` deep-link on first mount (the global-search palette's
+ * "Ask in chat: …" action navigates here with the query in the URL) → pre-fills
+ * the input + focuses it; the user hits Enter to send. Pre-fill only — the chat
+ * input / streaming logic is otherwise untouched.
+ *
  * W12 D4 F4.4 tokens migration:hardcoded inline color Tailwind arbitrary values
  * replaced with token-referenced classes(`bg-primary` / `border-border` / etc)
  * wired via Tailwind config to CSS custom properties(globals.css :root + .dark)。
@@ -58,6 +63,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [modalImage, setModalImage] = useState<ImageRef | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -65,6 +71,15 @@ export default function ChatPage() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Deep-link from the global-search "Ask in chat: …" action (W18 F6) — pre-fill on first mount.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q && q.trim()) {
+      setInput(q);
+      textareaRef.current?.focus();
+    }
   }, []);
 
   function patchAssistant(id: string, mut: (m: Message) => Message) {
@@ -169,6 +184,7 @@ export default function ChatPage() {
       >
         <div className="flex gap-2">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question…"

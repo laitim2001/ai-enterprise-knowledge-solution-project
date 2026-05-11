@@ -12,9 +12,8 @@
  *   - main content slot
  *   - responsive : the sidebar collapses to an off-canvas Sheet < md
  *
- * Wired into `app/(app)/layout.tsx` by W18 F2 — NOT consumed yet at F1 (component-only delivery).
- * `<GlobalSearch>` (W18 F6) mounts here and replaces the F1 search-trigger stub +
- * the Cmd/Ctrl+K handler's no-op body.
+ * Wired into `app/(app)/layout.tsx` by W18 F2. W18 F6 mounted `<GlobalSearch>` here —
+ * the top-bar search trigger + the Cmd/Ctrl+K listener both open the quick-jump palette.
  *
  * 100% design-token consumption (Tailwind classes wired to globals.css :root/.dark) —
  * no hardcoded `oklch()` colour arbitrary-values (W15 milestone preserved).
@@ -37,6 +36,7 @@ import {
 } from 'lucide-react';
 
 import { UserMenu } from '@/components/auth/user-menu';
+import { GlobalSearch } from '@/components/nav/global-search';
 import { ThemeToggle } from '@/components/nav/theme-toggle';
 import { Button } from '@/components/ui/button';
 import {
@@ -97,10 +97,9 @@ export function AppShell({ children }: AppShellProps) {
   // Mobile off-canvas nav (controlled — the trigger lives in the top bar, outside <SheetTrigger>).
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Global search — wired to the real <GlobalSearch> palette + Cmd/Ctrl+K by W18 F6.
-  const handleOpenSearch = useCallback(() => {
-    // TODO(W18 F6): mount <GlobalSearch> here and open it from this handler.
-  }, []);
+  // Global search command palette (W18 F6) — opened by the top-bar trigger and by Cmd/Ctrl+K.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const handleOpenSearch = useCallback(() => setSearchOpen(true), []);
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -211,6 +210,9 @@ export function AppShell({ children }: AppShellProps) {
           />
         </SheetContent>
       </Sheet>
+
+      {/* Global search command palette (Cmd/Ctrl+K) */}
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }
