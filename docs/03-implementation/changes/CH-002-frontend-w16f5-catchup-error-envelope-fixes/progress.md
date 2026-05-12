@@ -2,7 +2,7 @@
 change_id: CH-002
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: in-progress     # in-progress | closed
+status: closed          # in-progress | closed
 ---
 
 # CH-002 — Progress
@@ -94,8 +94,8 @@ status: in-progress     # in-progress | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(pending)_ | `feat(frontend): CH-002 Phase 3+4+5+6 — eval/run wired (F3) + Chunks tab (F7) + Settings-Identity edit (F10) + Vitest` |
-| _(pending)_ | `docs(planning,catalog): CH-002 closeout` |
+| `c2b489e` | `feat(frontend): CH-002 Phase 3+4+5+6 — eval/run wired (F3) + Chunks tab (F7) + Settings-Identity edit (F10) + Vitest` |
+| _(this commit)_ | `docs(planning,catalog): CH-002 closeout — 13/14 AC ✅ + AC14 user-deferred; COMPONENT_CATALOG C08/C09 rows; frontmatter done/closed` |
 
 ---
 

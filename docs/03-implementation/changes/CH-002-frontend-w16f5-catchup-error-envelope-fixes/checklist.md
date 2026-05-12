@@ -1,7 +1,7 @@
 ---
 change_id: CH-002
 spec_ref: ./spec.md
-status: in-progress     # in-progress | done
+status: done            # in-progress | done
 last_updated: 2026-05-12
 ---
 
@@ -61,20 +61,20 @@ last_updated: 2026-05-12
 
 ## Verification
 
-- [ ] Run all acceptance criteria from `spec.md §3`(AC1–AC14)
-- [ ] Smoke test in dev env(backend `:8000` `--env-file ../.env` + frontend `:3001`)
-- [ ] (user-facing)manual / Playwright verify per spec scenario — deferred to user pre-Beta smoke per AC14
+- [x] Run all acceptance criteria from `spec.md §3`(AC1–AC14)— 13/14 ✅ + AC14 🟡 user-deferred(see progress Closeout)
+- [x] Smoke test in dev env — backend `pytest` (111 passed across the error-handler blast radius) + `pnpm test:unit` (18 passed) cover AC1-AC13; the interactive browser walkthrough = user pre-Beta smoke per AC14
+- [ ] (user-facing)manual / Playwright verify per spec scenario — 🚧 deferred to user pre-Beta smoke per AC14(R8 `npx playwright install chromium` blocked / CO_W15_F4 / ADR-0017 — same umbrella as W15-W18)
 
 ## Cross-Cutting
 
-- [ ] Each commit references `progress.md` Day-N entry(R2)
-- [ ] Component tag in commit message per CC-1(`feat(api,frontend): ... (C01,C08,C09)` / `docs(...)`)
-- [ ] No ADR needed(H1 verified — see spec §6.6)
-- [ ] (if affects component)Update `components/Cn-*.md` design note — **only if a note exists**; C01/C06/C08/C09 notes are rolling JIT, likely no update needed(verify at closeout)
-- [ ] OQ status sync — N/A(no OQ resolved by CH-002)
-- [ ] COMPONENT_CATALOG.md — append a C08/C09 status row noting CH-002 frontend catch-up(if warranted at closeout)
-- [ ] `progress.md` closeout summary written
-- [ ] `progress.md` + this `checklist.md` frontmatter status flipped to `done` / `closed`
+- [x] Each commit references `progress.md` Day-N entry(R2)— `30bac99` Day 1, `69dbe1d` Day 1 cont., `c2b489e` Day 1 cont. 2, closeout commit Day 1 cont. 2
+- [x] Component tag in commit message per CC-1 — `feat(api): … (C01,C08)`, `feat(frontend): … (C06,C09)`, `docs(planning,catalog): …`
+- [x] No ADR needed(H1 verified — see spec §6.6;F6 was a spec-text reconcile, not an architecture decision)
+- [x] `components/Cn-*.md` design note — none exists for C01/C06/C08/C09(rolling JIT;none created)→ no update
+- [x] OQ status sync — N/A(no OQ resolved by CH-002)
+- [x] COMPONENT_CATALOG.md — C08 + C09 status rows appended with the CH-002 note
+- [x] `progress.md` closeout summary written(14-AC verification table + effort summary + lessons)
+- [x] `progress.md` `status: closed` + `checklist.md` `status: done` + `spec.md` `status: done`
 
 ---
 

@@ -1,9 +1,10 @@
 ---
 change_id: CH-002
 title: "Close W16-F5 frontend gaps (eval run / chunks list / KB identity edit) + restore CH-001 error-envelope hints + 422 field detail + doc-title fix"
-status: approved          # draft | proposed | approved | active | done | cancelled
+status: done              # draft | proposed | approved | active | done | cancelled
 created: 2026-05-12
 approved: 2026-05-12
+completed: 2026-05-12
 target_completion: 2026-05-13
 affects_components: [C01, C06, C08, C09]   # C01 Ingestion (parser doc_title source) + C06 Eval (frontend Eval Console wiring) + C08 API Gateway (error_handlers hint + 422 detail) + C09 Admin Console UI (eval / chunks / identity views)
 spec_refs:
