@@ -103,16 +103,35 @@ async def http_exception_handler(
     )
 
 
+def _redacted_loc_path(loc: object) -> str:
+    """Build a dotted field path from a Pydantic error `loc` tuple.
+
+    CLAUDE.md §5.5 H5 — only `str` / `int` `loc` elements (field names + list
+    indices) are joined; any non-str/int fragment (a value embedded in `loc`
+    for some discriminated-union errors) is dropped, never echoed. Returns
+    `"(body)"` when nothing usable remains.
+    """
+    if not isinstance(loc, (list, tuple)):
+        return "(body)"
+    parts = [str(p) for p in loc if isinstance(p, (str, int)) and not isinstance(p, bool)]
+    return ".".join(parts) if parts else "(body)"
+
+
 async def validation_exception_handler(
     request: Request,
     exc: RequestValidationError,
 ) -> JSONResponse:
-    # Pydantic raises with a list of error dicts; surface a digest message
-    # without leaking raw input values back (CLAUDE.md §5.5 H5 redaction).
-    first = exc.errors()[0] if exc.errors() else {}
+    # Pydantic raises with a list of error dicts; surface a digest message that
+    # names which field failed + the constraint message, WITHOUT leaking the raw
+    # input value (CLAUDE.md §5.5 H5 — `input` / `ctx` value fragments stay out).
+    # CH-002 F8: previously this collapsed everything to a generic "Request
+    # payload failed validation." which gave callers no hint about which field.
+    errors = exc.errors()
+    first = errors[0] if errors else {}
     raw_type = str(first.get("type", ""))
     raw_msg = str(first.get("msg", "invalid payload"))
-    message = "Request payload failed validation."
+    loc_path = _redacted_loc_path(first.get("loc"))
+    message = f"Request payload failed validation: {loc_path} — {raw_msg}"
     code = ErrorCodes.VALIDATION_INVALID_PAYLOAD
     if raw_type == "string_too_long" or "at most" in raw_msg.lower() or "too long" in raw_msg.lower():
         code = ErrorCodes.VALIDATION_QUERY_TOO_LONG

@@ -36,7 +36,36 @@ status: in-progress     # in-progress | closed
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(pending)_ | `docs(planning): CH-002 spec + checklist + progress — approved (F2=A, F6=a)` |
+| `30bac99` | `docs(planning): CH-002 spec + checklist + progress — approved (F2=Option A basename, F6=Option a spec reconcile)` |
+
+---
+
+## Day 1 (cont.) — 2026-05-12 — Phase 1 (backend) + Phase 2 (F6 reconcile)
+
+### Done
+- **T1.1 (F5)** — `documents.py` `_api_error` detail key `"actionable_hint"` → `"hint"` (the key `error_handlers.http_exception_handler` actually reads — the wrong key silently dropped the route's hint, leaving the envelope's `actionable_hint` null). Docstring updated.
+- **T1.3 (F8)** — `error_handlers.py` `validation_exception_handler`: new `_redacted_loc_path()` builds a dotted field path from the Pydantic error `loc` (str/int elements only — never `input`/`ctx` values, H5); `message` is now `"Request payload failed validation: {loc} — {msg}"`. `string_too_long` → `query_too_long` (E6) branch preserved.
+- **T1.5 (F2 Option A)** — `_run_ingest_pipeline`: tempfile is now written to `<tempfile.mkdtemp()>/<Path(filename.replace("\\","/")).name>` instead of `tempfile.NamedTemporaryFile(suffix=ext)` — so the parser's `doc_title = source.stem` is the real filename stem, not an opaque `tmpXXXX`. `Path(...).name` strips all directory components (traversal-safe on POSIX + Windows). `shutil.rmtree(tmp_dir, ignore_errors=True)` in `finally`. Reindex inherits it (shares `_run_ingest_pipeline`).
+- **T1.2 + T1.4 + T1.6 (tests)** — `test_documents_route.py`: `_build_app(with_error_handlers=...)` flag added; `test_ch002_f5_route_hint_surfaces_in_error_envelope` (4-param) + `test_ch002_f2_tempfile_named_after_original_basename` + `test_ch002_f2_upload_filename_traversal_stripped` (3-param, incl. `../../etc/passwd.docx` + `..\..\evil.docx` + `/abs/path/leak.docx`). `test_error_contract.py`: module-level `_FeedbackLike` (Literal) + `/feedback-like` route in the `app` fixture + `test_ch002_f8_validation_envelope_names_field_without_leaking_input` + `test_ch002_f8_validation_envelope_redacts_structured_input_value`.
+- **T1.7** — `pytest tests/api/test_documents_route.py tests/test_error_contract.py` → **42 passed**, 0 regression (was 24 + 10 in CH-001; now 32 + 10 — net +8 CH-002 tests, accounting for parametrize expansion: 4 + 1 + 3 + 2 = 10 new test cases).
+- **T1.8** — `ruff check` 4 changed files → clean; `mypy --strict --explicit-package-bases api/routes/documents.py api/error_handlers.py` → 0 errors on the changed lines (the ~50 reported errors are the pre-existing transitive baseline — Docling/langfuse/psycopg missing stubs, `dict`-type-arg family, Starlette `add_exception_handler` quirk, 2 pre-existing `Any`-return spots not touched).
+- **T2.1 + T2.2 (F6 Option a)** — `docs/03-implementation/changes/CH-001-.../spec.md` §3 AC4 carries an inline reconcile note (as-built = `resource.not_found` via shared `_verify_kb_or_404`; acceptable; no code change; CH-001 stays `done`); §7 changelog row added.
+- (commit: `feat(api): CH-002 Phase 1+2 — F5 hint key + F8 422 field detail + F2 tempfile basename + F6 CH-001 spec reconcile + tests`)
+
+### Decisions
+- F8 test: the `app` fixture model `_FeedbackLike` must be **module-level** — with `from __future__ import annotations` (PEP 563), a route function's parameter annotation is a string, and FastAPI's `get_type_hints` resolves it in module globals, not the enclosing function's locals; a function-local Pydantic model gets mis-classified (the route param became a `query.body` "Field required" error). First test attempt failed for exactly this reason → moved the model + route to module scope.
+- mypy invocation: needs `--explicit-package-bases` because `backend/__init__.py` exists → otherwise "Source file found twice under different module names: backend.api and api".
+
+### Blockers
+- None.
+
+### Effort
+- Planned (Phase 1+2): ~4.25h;Actual:~2h(F5/F2 trivial; F8 + the test-fixture forward-ref debug took the bulk);Variance:−2.25h
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(pending)_ | `feat(api): CH-002 Phase 1+2 — F5 hint key + F8 422 field detail + F2 tempfile basename + F6 CH-001 spec reconcile + tests` |
 
 ---
 

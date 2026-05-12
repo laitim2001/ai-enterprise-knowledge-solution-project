@@ -11,21 +11,21 @@ last_updated: 2026-05-12
 > AI tick 完成嘅 item;唔可以 tick 嘅 item 喺 progress Day-N entry 寫原因(per CLAUDE.md sacred rule — 唔可以刪未勾 `[ ]`)。
 > Design decisions locked at approval:**F2 = Option A**(route preserves original basename)· **F6 = Option a**(CH-001 spec inline reconcile note, no code).
 
-## Phase 1 — Backend(C08 / C01)
+## Phase 1 — Backend(C08 / C01)  ✅ DONE 2026-05-12
 
-- [ ] **T1.1**(F5)— `backend/api/routes/documents.py:160` `_api_error` detail key `"actionable_hint"` → `"hint"`(matches `error_handlers.py:82` `exc.detail.get("hint")` convention)
-- [ ] **T1.2**(F5)— add test to `backend/tests/api/test_documents_route.py`:upload-duplicate 409 envelope has **non-null** `actionable_hint` equal to the route hint; parametrized over `validation.unsupported_format` / `document.not_found` / `reindex.doc_id_mismatch` → AC5
-- [ ] **T1.3**(F8)— `backend/api/error_handlers.py` `validation_exception_handler`: build `message` from `first.get("loc")` (joined dotted path, str/int elements only) + `first.get("msg")`; **never** include `first.get("input")`; keep the existing `string_too_long` → `query_too_long` branch
-- [ ] **T1.4**(F8)— test(`backend/tests/api/test_error_handlers.py` — new file or extend existing): a 422 from a Pydantic-validated endpoint → response body contains the field path + constraint msg, does **not** contain the bad input value → AC6
-- [ ] **T1.5**(F2 Option A)— `backend/api/routes/documents.py` upload route: replace `tempfile.NamedTemporaryFile(suffix=ext)` with writing the uploaded bytes to `<tempfile.mkdtemp()>/<Path(upload_file.filename).name>`; `shutil.rmtree(tmpdir)` in `finally`; reindex route uses the same pattern if it also tempfiles
-- [ ] **T1.6**(F2)— test: upload `file=("My Report 2026.docx", <bytes>)` → `doc_title == "My Report 2026"` (via `GET /kb/{kb}/documents` listing or Chunks `section_path`), never `tmpXXXX`; **traversal test**: `filename="../../etc/passwd.docx"` → lands as `passwd.docx` inside the temp dir, never escapes → AC7 + R1
-- [ ] **T1.7** — `pytest backend/tests/api/` → all green(70 prior CH-001-era + new), 0 regression → AC9 (partial)
-- [ ] **T1.8** — `mypy --strict` on changed backend files → 0 new errors; `ruff check` clean(auto-`--fix` import order if needed)→ AC10
+- [x] **T1.1**(F5)— `backend/api/routes/documents.py` `_api_error` detail key `"actionable_hint"` → `"hint"`(matches `error_handlers.py` `exc.detail.get("hint")` convention)
+- [x] **T1.2**(F5)— added `test_ch002_f5_route_hint_surfaces_in_error_envelope` (parametrized: `document.duplicate` / `validation.unsupported_format` / `document.not_found` / `reindex.doc_id_mismatch`) — built via `_build_app(..., with_error_handlers=True)`, asserts non-null `actionable_hint` containing the route hint → AC5
+- [x] **T1.3**(F8)— `backend/api/error_handlers.py` `validation_exception_handler`: `message` now `"Request payload failed validation: {loc} — {msg}"` via new `_redacted_loc_path` (joins str/int `loc` elements only, never `input`); `string_too_long` → `query_too_long` branch preserved
+- [x] **T1.4**(F8)— added `test_ch002_f8_validation_envelope_names_field_without_leaking_input` + `test_ch002_f8_validation_envelope_redacts_structured_input_value` to `backend/tests/test_error_contract.py` (module-level `_FeedbackLike` model + `/feedback-like` route in the `app` fixture — `from __future__ import annotations` needs the model module-level) → AC6
+- [x] **T1.5**(F2 Option A)— `_run_ingest_pipeline`: `tempfile.NamedTemporaryFile(suffix=ext)` → write bytes to `<tempfile.mkdtemp()>/<Path(filename.replace("\\","/")).name>`; `shutil.rmtree(tmp_dir, ignore_errors=True)` in `finally`; reindex shares `_run_ingest_pipeline` so it inherits the fix
+- [x] **T1.6**(F2)— added `test_ch002_f2_tempfile_named_after_original_basename` (asserts `ingest_mock.await_args.kwargs["source"].name == "My Report 2026.docx"`) + `test_ch002_f2_upload_filename_traversal_stripped` (parametrized `../../etc/passwd.docx` / `..\..\evil.docx` / `/abs/path/leak.docx` → `.name` stripped, `".." not in source.parts`, `source.is_absolute()`) → AC7 + R1
+- [x] **T1.7** — `pytest tests/api/test_documents_route.py tests/test_error_contract.py` → **42 passed** (32 documents + 10 error_contract); 0 regression vs CH-001's 24+10 baseline → AC9 (full re-run at closeout)
+- [x] **T1.8** — `ruff check` on the 4 changed files → clean; `mypy --strict --explicit-package-bases api/routes/documents.py api/error_handlers.py` → 0 errors on the **changed lines** (the ~50 reported errors are the pre-existing transitive baseline: Docling/langfuse/psycopg missing stubs + `Missing type arguments for generic type "dict"` family + Starlette `add_exception_handler` arg-type quirk + 2 pre-existing `Any`-return spots at `documents.py:80` / `error_handlers.py:102`, none touched by CH-002) → AC10
 
-## Phase 2 — F6 spec reconcile(C08 — doc only)
+## Phase 2 — F6 spec reconcile(C08 — doc only)  ✅ DONE 2026-05-12
 
-- [ ] **T2.1**(F6 Option a)— `docs/03-implementation/changes/CH-001-wire-document-upload-delete-reindex/spec.md` §3 AC4: add inline note "实际 impl 用 shared `_verify_kb_or_404` → `resource.not_found`(message text already names the KB);spec's `kb.not_found` 文字 was aspirational — acceptable, no code change. Reconciled by CH-002 2026-05-12."; CH-001 frontmatter `status` stays `done`(this is a doc reconcile, NOT a re-open)→ AC8 (Option a path)
-- [ ] **T2.2**(F6)— add a one-line entry to CH-001 spec.md §7 changelog noting the AC4 reconcile by CH-002
+- [x] **T2.1**(F6 Option a)— `docs/03-implementation/changes/CH-001-.../spec.md` §3 AC4: added inline reconcile note (as-built = `resource.not_found` via shared `_verify_kb_or_404`; acceptable; no code change; CH-001 stays `done`) → AC8 (Option a path)
+- [x] **T2.2**(F6)— added the AC4-reconcile row to CH-001 spec.md §7 changelog
 
 ## Phase 3 — Frontend Eval Console(C09 / C06)(F3)
 

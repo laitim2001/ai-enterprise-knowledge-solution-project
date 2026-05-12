@@ -152,12 +152,17 @@ def _api_error(code: str, message: str, hint: str, http_status: int) -> HTTPExce
     """Build the uniform ApiError-envelope HTTPException.
 
     Matches the existing W7 D4 F4.1 error-handlers convention — `detail` is a
-    `{code, message, actionable_hint}` dict that the global error-handler
-    serializes into `{"error": {...}}`.
+    `{code, message, hint}` dict that the global error-handler reads (it looks
+    for the `"hint"` key per the W13 F5 structured-detail contract) and
+    serializes into `{"error": {code, message, actionable_hint}}`.
+
+    CH-002 F5 fix: the key is `"hint"` (not `"actionable_hint"`) — that's the
+    name `api/error_handlers.http_exception_handler` reads; using the wrong key
+    silently dropped the hint and the envelope's `actionable_hint` came back null.
     """
     return HTTPException(
         status_code=http_status,
-        detail={"code": code, "message": message, "actionable_hint": hint},
+        detail={"code": code, "message": message, "hint": hint},
     )
 
 
@@ -206,14 +211,23 @@ async def _run_ingest_pipeline(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
+    tmp_dir: str | None = None
     tmp_path: Path | None = None
     try:
         # Stream the UploadFile to a tempfile so the sync parser can read it as
         # a Path (Docling / python-pptx both want a filesystem path). The
         # spooled-temp inside UploadFile.file is sync-readable.
-        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        #
+        # CH-002 F2: name the tempfile after the *original* basename so the
+        # parser's `doc_title = source.stem` reflects the real filename, not an
+        # opaque `tmpXXXX` stem. `Path(filename.replace("\\", "/")).name` strips
+        # every directory component (path-traversal-safe on both POSIX + Windows);
+        # the file lives in a fresh `mkdtemp()` dir which is rmtree'd in `finally`.
+        tmp_dir = tempfile.mkdtemp(prefix="ekp-ingest-")
+        safe_name = Path(filename.replace("\\", "/")).name or f"upload{ext}"
+        tmp_path = Path(tmp_dir) / safe_name
+        with tmp_path.open("wb") as tmp:
             shutil.copyfileobj(upload_file.file, tmp)
-            tmp_path = Path(tmp.name)
 
         parser = select_parser(tmp_path)
         orchestrator = IngestionOrchestrator(
@@ -311,11 +325,8 @@ async def _run_ingest_pipeline(
             "images_deduped": result.images_deduped,
         }
     finally:
-        if tmp_path is not None and tmp_path.exists():
-            try:
-                tmp_path.unlink()
-            except OSError:
-                _stdlib_logger.warning("tempfile cleanup failed: %s", tmp_path)
+        if tmp_dir is not None:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @router.post("/kb/{kb_id}/documents", status_code=status.HTTP_202_ACCEPTED)

@@ -7,6 +7,8 @@ Exception. NO raw stack trace leaks to client.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
 from fastapi import FastAPI, HTTPException, status
 from fastapi.testclient import TestClient
@@ -18,6 +20,15 @@ from api.schemas.errors import ErrorCodes
 
 class _Body(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
+
+
+class _FeedbackLike(BaseModel):
+    """Mirrors the real `/feedback` `rating` field (a Literal) — used by the
+    CH-002 F8 test that checks the 422 envelope names the field + allowed values
+    without echoing the bad input. Module-level so `get_type_hints` can resolve
+    the `from __future__ import annotations` forward ref."""
+
+    rating: Literal["thumbs_up", "thumbs_down"]
 
 
 @pytest.fixture
@@ -60,6 +71,10 @@ def app() -> FastAPI:
     @app.post("/validate")
     def _validate(body: _Body) -> dict[str, str]:
         return {"echo": body.query}
+
+    @app.post("/feedback-like")
+    def _feedback_like(body: _FeedbackLike) -> dict[str, str]:
+        return {"rating": body.rating}
 
     return app
 
@@ -148,3 +163,32 @@ def test_envelope_includes_actionable_hint_when_known(client: TestClient) -> Non
     hint = response.json()["error"]["actionable_hint"]
     assert hint is not None
     assert "Sign in" in hint or "refresh" in hint.lower()
+
+
+# --------------------------------------------------------------------------- #
+# CH-002 F8 — 422 envelope names the failing field + constraint, never the
+# raw input value (H5 redaction preserved).
+# --------------------------------------------------------------------------- #
+
+
+def test_ch002_f8_validation_envelope_names_field_without_leaking_input(client: TestClient) -> None:
+    """CH-002 F8 — a Pydantic Literal mismatch (mirrors the real `/feedback`
+    `rating` field) surfaces the field path + the allowed values in the message,
+    but the bad input value is NOT echoed back (CLAUDE.md §5.5 H5)."""
+    resp = client.post("/feedback-like", json={"rating": "BANANA_SENTINEL"})
+    assert resp.status_code == 422
+    _assert_envelope(resp.json(), ErrorCodes.VALIDATION_INVALID_PAYLOAD)
+    message = resp.json()["error"]["message"]
+    assert "body.rating" in message            # the failing field is named
+    assert "thumbs_up" in message and "thumbs_down" in message  # allowed values surfaced
+    assert "BANANA_SENTINEL" not in resp.text  # the bad input value is NOT echoed (H5)
+
+
+def test_ch002_f8_validation_envelope_redacts_structured_input_value(client: TestClient) -> None:
+    """CH-002 F8 / R5 — a type error whose `input` is a structured value still
+    must not leak that value into the response body; the field path is named."""
+    resp = client.post("/validate", json={"query": {"nested": "LEAKME_SENTINEL_xyz"}})
+    assert resp.status_code == 422
+    _assert_envelope(resp.json(), ErrorCodes.VALIDATION_INVALID_PAYLOAD)
+    assert "body.query" in resp.json()["error"]["message"]
+    assert "LEAKME_SENTINEL_xyz" not in resp.text

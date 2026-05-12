@@ -18,6 +18,7 @@ Acceptance ref:spec.md §3 AC1-AC10 + AC18-AC22 + AC9.1-AC9.3.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -25,6 +26,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.error_handlers import register_error_handlers
 from api.routes import documents as documents_routes
 from api.routes import kb as kb_routes
 from api.schemas.kb import KbConfig, KbCreate
@@ -130,12 +132,22 @@ def _build_app(
     populator: MagicMock | None = None,
     engine: MagicMock | None = None,
     include_kb_router: bool = False,
+    with_error_handlers: bool = False,
 ) -> FastAPI:
-    """FastAPI app with the two routers + injected KBService + app.state shape."""
+    """FastAPI app with the two routers + injected KBService + app.state shape.
+
+    `with_error_handlers=True` wires `api.error_handlers.register_error_handlers`
+    so the route's `_api_error` HTTPException is serialized into the production
+    `{"error": {code, message, actionable_hint}}` envelope (CH-002 F5 — verifies
+    the route-supplied hint actually reaches the response). The default keeps the
+    raw `{"detail": {...}}` shape the bulk of these tests assert against.
+    """
     app = FastAPI()
     app.include_router(documents_routes.router)
     if include_kb_router:
         app.include_router(kb_routes.router)
+    if with_error_handlers:
+        register_error_handlers(app)
     app.dependency_overrides[get_kb_service] = lambda: kb_service
 
     # Embedder + chunker exist only to satisfy `_ingestion_deps_or_503`;they are
@@ -655,3 +667,136 @@ async def test_delete_kb_index_already_gone_fail_soft_returns_204(
     resp = client.delete("/kb/drive_user_manuals")
     assert resp.status_code == 204
     populator.delete_index.assert_awaited_once_with("drive_user_manuals")
+
+
+# =========================================================================== #
+# CH-002 — F5 (route hint reaches the {"error": ...} envelope) + F2 (tempfile
+# named after the original basename, traversal-safe).
+# =========================================================================== #
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("scenario", "expected_status", "expected_code", "hint_substring"),
+    [
+        ("duplicate", 409, "document.duplicate", "reindex"),
+        ("unsupported_format", 422, "validation.unsupported_format", "Convert"),
+        ("not_found_delete", 404, "document.not_found", "Verify the doc_id"),
+        ("reindex_mismatch", 422, "reindex.doc_id_mismatch", "Reindex requires"),
+    ],
+)
+async def test_ch002_f5_route_hint_surfaces_in_error_envelope(
+    kb_service_with_drive: KBService,
+    monkeypatch: pytest.MonkeyPatch,
+    scenario: str,
+    expected_status: int,
+    expected_code: str,
+    hint_substring: str,
+) -> None:
+    """CH-002 F5 (AC5) — when the global error handlers are registered, the
+    route-supplied `actionable_hint` is non-null in the response envelope (the
+    `_api_error` detail uses the `"hint"` key the handler reads — previously it
+    used `"actionable_hint"` which the handler dropped, leaving the envelope's
+    `actionable_hint` null)."""
+    _patch_orchestrator(monkeypatch)
+
+    if scenario == "duplicate":
+        engine = _engine_mock(list_docs=[{"doc_id": "vendor-manual"}])  # dup
+        app = _build_app(
+            kb_service=kb_service_with_drive,
+            populator=_populator_mock(),
+            engine=engine,
+            with_error_handlers=True,
+        )
+        resp = TestClient(app).post(
+            "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx"),
+        )
+    elif scenario == "unsupported_format":
+        app = _build_app(
+            kb_service=kb_service_with_drive,
+            populator=_populator_mock(),
+            engine=_engine_mock(list_docs=[]),
+            with_error_handlers=True,
+        )
+        resp = TestClient(app).post(
+            "/kb/drive_user_manuals/documents",
+            files={"file": ("notes.txt", b"hello", "text/plain")},
+        )
+    elif scenario == "not_found_delete":
+        app = _build_app(
+            kb_service=kb_service_with_drive,
+            populator=_populator_mock(delete_doc_count=0),  # no chunks → 404
+            engine=None,
+            with_error_handlers=True,
+        )
+        resp = TestClient(app).delete("/kb/drive_user_manuals/documents/ghost-doc")
+    else:  # reindex_mismatch
+        engine = _engine_mock(list_docs=[{"doc_id": "real-doc"}])  # doc exists
+        app = _build_app(
+            kb_service=kb_service_with_drive,
+            populator=_populator_mock(),
+            engine=engine,
+            with_error_handlers=True,
+        )
+        resp = TestClient(app).post(
+            "/kb/drive_user_manuals/documents/real-doc/reindex",
+            files=_docx_files("wrong-name.docx"),
+        )
+
+    assert resp.status_code == expected_status, resp.text
+    err = resp.json()["error"]
+    assert err["code"] == expected_code
+    assert err["actionable_hint"] is not None
+    assert hint_substring.lower() in err["actionable_hint"].lower()
+
+
+@pytest.mark.asyncio
+async def test_ch002_f2_tempfile_named_after_original_basename(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CH-002 F2 (AC7) — the ingest pipeline writes the upload to a tempfile
+    whose name is the *original* basename, so the parser's `doc_title =
+    source.stem` is the real stem rather than an opaque `tmpXXXX`."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    app = _build_app(
+        kb_service=kb_service_with_drive, populator=_populator_mock(), engine=_engine_mock(list_docs=[]),
+    )
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("My Report 2026.docx"),
+    )
+    assert resp.status_code == 202, resp.text
+    source: Path = ingest_mock.await_args.kwargs["source"]
+    assert source.name == "My Report 2026.docx"
+    assert source.stem == "My Report 2026"
+    assert not source.name.startswith("tmp")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "evil_filename",
+    ["../../etc/passwd.docx", r"..\..\evil.docx", "/abs/path/leak.docx"],
+)
+async def test_ch002_f2_upload_filename_traversal_stripped(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch, evil_filename: str,
+) -> None:
+    """CH-002 F2 (AC7 / R1) — directory components in the upload filename are
+    stripped before building the tempfile path; the file never escapes the
+    fresh `mkdtemp()` dir."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    app = _build_app(
+        kb_service=kb_service_with_drive, populator=_populator_mock(), engine=_engine_mock(list_docs=[]),
+    )
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents",
+        files={
+            "file": (
+                evil_filename, b"x",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+        },
+    )
+    assert resp.status_code == 202, resp.text
+    source: Path = ingest_mock.await_args.kwargs["source"]
+    assert "/" not in source.name and "\\" not in source.name
+    assert ".." not in source.parts
+    assert source.is_absolute()  # lives inside the mkdtemp() dir, an absolute path
