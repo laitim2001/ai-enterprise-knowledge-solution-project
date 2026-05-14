@@ -59,6 +59,23 @@ services:
   # Endpoint:http://127.0.0.1:10000/devstoreaccount1
   # Account name + key:default well-known(.env.example 已預填)
   # Backend code 用 AZURE_BLOB_CONNECTION_STRING 連 Azurite,production 切 real Blob
+  #
+  # ⚠️ R8/R9 Plan B — if `docker compose up -d azurite` fails with `503 Service
+  # Unavailable` mid-stream on `mcr.microsoft.com` (occurrence #6 reproduced
+  # 2026-05-14; see ADR-0017 + RISK_REGISTER R9), use the native npm CLI instead:
+  #
+  #   npm install -g azurite        # one-time, only if not already installed
+  #   azurite \
+  #     --blobHost 0.0.0.0 \
+  #     --queueHost 0.0.0.0 \
+  #     --tableHost 0.0.0.0 \
+  #     --location infrastructure/azurite-data \
+  #     --silent
+  #
+  # The `--location infrastructure/azurite-data` path is the same one the
+  # `azurite-data` named volume below mounts to /data, so blobs written by
+  # either delivery path are data-interchangeable. `AZURE_BLOB_CONNECTION_STRING`
+  # in `.env` works unchanged for both.
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest
     container_name: ekp-azurite

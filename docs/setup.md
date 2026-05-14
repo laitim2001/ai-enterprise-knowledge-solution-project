@@ -603,6 +603,7 @@ curl -X POST http://localhost:8000/debug/embed-test \
 | `port 10000 already in use` | 其他 Azure tool 用緊 | `lsof -i :10000` 搵出 process kill;或者改 `docker-compose.yml` 嘅 port mapping |
 | Azurite 容器一啟即 exit | Volume permission | `docker compose down -v && docker compose up -d`(清 volume 重來) |
 | 連得到 Azurite 但 Blob upload fail | Account name / key 同 default 唔同 | 用 default `devstoreaccount1` + well-known key,**唔好**改 |
+| `docker compose up -d azurite` 失敗 `503 Service Unavailable` / `httpReadSeeker: failed open` mid-blob 喺 `mcr.microsoft.com` | R8/R9 corp proxy 截 MCR layer blob CDN(`southeastasia.data.mcr.microsoft.com`)— see ADR-0017 occurrence #6 + RISK_REGISTER R9 | **Plan B (b) native npm**:`npm install -g azurite`(一次過,如未裝)→ `azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location infrastructure/azurite-data --silent`(host-side background)。data dir 同 docker volume mount 100% interchangeable;`AZURE_BLOB_CONNECTION_STRING` 唔需改 |
 
 ### 8.2 Azure OpenAI
 

@@ -145,10 +145,11 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Component(s)** | **C12** DevOps & Infra |
 | **Severity** | 🟡 Medium(Confirmed × Low impact, mitigated)|
 | **First observed** | 2026-04-30(W1 D1)`mcr.microsoft.com` resolves to `10.160.92.1`(internal proxy),Azurite Docker pull 撞 503 |
-| **Mitigation in place** | 🟢 Azurite via npm distribution(non-Docker)+ docker.io direct path for Langfuse |
+| **Recurrence log** | **2026-05-14**(post-W18 service-start)— `docker compose up -d azurite` 重撞:layer blob `1a142d512ad8` from `southeastasia.data.mcr.microsoft.com` `503 Service Unavailable` mid-stream × 2 consecutive attempts(同一 SAS URL,SAS expiry 未過,排除 token-expiry 原因)。Native npm fallback **re-verified effective** in the same session;cross-recorded as ADR-0017 occurrence #6 |
+| **Mitigation in place** | 🟢 Azurite via npm distribution(non-Docker)+ docker.io direct path for Langfuse — re-verified 2026-05-14;`infrastructure/azurite-data/` 路徑與 docker volume mount 100% interchangeable;Backend `AZURE_BLOB_CONNECTION_STRING` 同 `.env` 設定唔需要改;`docker-compose.yml` Azurite service header + `docs/setup.md §8.1` 各有 Plan B pointer per ADR-0017 §"Plan B realised — Azurite via native npm" |
 | **Long-term action** | IT whitelist `mcr.microsoft.com`(同 R8 一齊 IT escalate)or VPN |
 | **Affected workflow** | 任何 future MCR-hosted image(e.g. Azure CA deploy 階段 W7+)|
-| **Decay date / review** | W7 cloud deploy 之前必須 resolve(否則影響 production deploy pipeline)|
+| **Decay date / review** | W7 cloud deploy 之前必須 resolve(否則影響 production deploy pipeline);native npm fallback 對 local dev sufficient,production CI 階段 IT mirror / whitelist 仍 mandatory |
 
 ### R10 ★ — Q2 Sample Manual Delivery Delay
 
