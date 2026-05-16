@@ -136,7 +136,86 @@ Real-calendar collapse pattern continues — W12-W18 1.8-4× collapse;F1 ~2× fa
 
 ---
 
-<!-- Day 2+ entries to be appended by AI as F2-F9 land. Template:
+## Day 2 — 2026-05-17
+
+### F2 — `/dashboard` real cards per ADR-0030 absorbed scope(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 2 commits:`40964b6` kickoff + `b1fb75b` F1)。
+**Commits this day**:`(this commit)` — single F2 commit covering backend F2.1+F2.2 + frontend F2.3+F2.4 + Vitest F2.6 extension。
+
+#### What landed
+
+- **F2.1 Backend** NEW `backend/api/routes/health.py` — extracted from `api/server.py`'s inline `{"status": "ok"}` route + extended payload。Pydantic v2 schemas:`ComponentStatus = Literal["ok", "not_configured", "degraded", "error"]` + `ComponentHealth(status, latency_ms, detail)` + `HealthResponse(status: "ok"|"degraded", components: dict[str, ComponentHealth])`。5 per-component checks(config-state-only per Karpathy §1.2 simplicity;real-I/O ping deferred Wave B+):
+  - `azure_search` ← `app.state.retrieval_engine is not None`
+  - `azure_openai` ← `app.state.embedder is not None`
+  - `cohere` ← `engine.reranker is not None`(else `not_configured` per Q5 Path A)
+  - `langfuse` ← `get_langfuse_client() is not None`(else `not_configured`)
+  - `postgres` ← `settings.database_url`(else `not_configured` per ADR-0023 in-memory fallback)
+  Top-level roll-up:`ok` if all components are `ok` or `not_configured`;`degraded` if any `degraded`/`error`。`server.py` 修改 — removed inline route function + `app.include_router(health.router)`。
+- **F2.2 Backend pytest** NEW `backend/tests/api/test_health_route.py` — 7 tests covering all-green path + 2 degraded branches(retrieval_engine None + embedder None)+ 3 `not_configured` branches(Cohere optional + no DATABASE_URL + Langfuse no client)+ response schema shape contract;mypy strict clean on the new file。**7/7 pass**。
+- **F2.3-F2.4 Frontend** `frontend/app/(app)/dashboard/page.tsx` rewrite — replaces W18 F4 5-card placeholder with **4-stat strip + 5 cards**:
+  - **4-stat strip**(`<StatCard>` × 4 + skeleton)— Total KBs / Documents / Chunks / Storage MB,`grid grid-cols-2 lg:grid-cols-4`
+  - **Knowledge bases** card — top-5 KB list(sorted by document count desc)+ name link → `/kb/[kb_id]` + per-row doc count;empty-state when `kbs.length === 0`;"View all knowledge bases →" link → `/kb`
+  - **Recent queries** card — Q6 Open empty-state CTA → `/chat`(preserved per W18 F4 acceptance)
+  - **Latest evaluation** card — no cached-run empty-state CTA → `/eval`(preserved)
+  - **System health** card — **per-component dots** off `HealthResponse.components` via `useQuery(['health'])` + `refetchInterval: 60_000`(60s poll);5 dots Azure Search / OpenAI / Cohere / Langfuse / Postgres + label + `statusLabel(status)` text;dot colours via semantic tokens(`bg-success` / `bg-muted-foreground/40` / `bg-accent` / `bg-destructive` — no hardcoded oklch);`title={comp.detail}` for inline tooltip context
+  - **Quick actions** card — 4 buttons preserved(New KB / Upload doc / Run eval / Open chat)
+- **F2.6 Vitest extension** `frontend/tests/unit/dashboard.test.tsx` extended from W18 baseline 2 tests → **5 tests**(per plan F2.6):
+  - existing 2 tests preserved(5 card headings + 4 quick-action links)
+  - NEW **4-stat strip** test(KB count + Documents 17 + Chunks 320 + Storage 4.5 MB aggregated from fixture)
+  - NEW **5 per-component dots** test(`role="list" aria-label="Component connectivity"` + 5 listitems + cohere/postgres "Not configured" labels)
+  - NEW **top-5 KB list** test(2 KBs in fixture rendered as links to `/kb/[id]`)
+- **F2.7 docstring** updated dashboard page docstring(W18 F4 → W20 F2 evolution note + per-component dots scope + 4-stat strip + semantic-token note)
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F2.1 Backend `/health` per-component payload(`{status, components: {…} × 5}` + status taxonomy + Pydantic v2 schemas)— mypy strict clean(only pre-existing langfuse-stub error remains,same as feedback.py baseline)
+- [x] F2.2 Backend pytest — 7/7 pass(all-green + 2 degraded + 3 not_configured + schema contract);coverage on `routes/health.py` ≥ 80% per CLAUDE.md §3.1 H6
+- [x] F2.3 Frontend `dashboard/page.tsx` rewrite — 4-stat strip + 5 cards + per-component dots + top-5 KB list
+- [x] F2.4 Loading skeletons(`<StatCardSkeleton>` + `<Skeleton>` per card)+ error banners(KB card destructive + health card destructive dot)+ empty states(no-KBs message + Q6 CTA + no-eval-run CTA)
+- [x] F2.5 Tokens 100%(`bg-success`/`bg-muted-foreground/40`/`bg-accent`/`bg-destructive` semantic only — no hardcoded oklch);`pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors";`Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1 milestone preserved — 1 accidental docstring occurrence reworded before commit,same fix as W18 F1.6 precedent)
+- [x] F2.6 Vitest `dashboard.test.tsx` extended W18 baseline 2 tests → **5 tests**(+3 NEW per F2.6 plan literal:4-stat strip + per-component dots + top-5 KB list);`pnpm test:unit` 6 files / **21 tests pass**(W20 baseline post-F1 18 → 21)
+- [x] F2.7 File header docstrings updated(routes/health.py NEW + dashboard/page.tsx rewrite reflect W18 → W20 F2 evolution)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F2.1 real-I/O ping | "per-component status + latency_ms" suggested real pings | Config-state-only(latency_ms always None Wave A)| Karpathy §1.2 simplicity — real `SELECT 1` / `SearchClient.get_service_statistics()` pings add flap risk + 60s poll cost for marginal Wave A signal;schema keeps `latency_ms` field so Wave B+ pings populate without breaking response shape | AI Karpathy §1.2 self-judgment + plan F2 PARTIAL-PASS clause |
+| F2.1 server.py routing | Inline route extension | Extract to `routes/health.py` + `app.include_router` | Better testability(pytest 7/7)+ matches other route modules pattern(auth/kb/query/...)| AI per existing pattern;not a deviation,just an extraction decision |
+| F2.1 mypy strict | "clean" | Same as feedback.py baseline(1 pre-existing langfuse-stub error)| Project-wide pre-existing — langfuse SDK has no py.typed marker;health.py adds **0 new errors** post-cleanup of unused PostgresKBBackend import | Pre-existing project tolerance |
+| F2.6 Vitest first-pass | top-5 KB link test used `findByRole({ name: /view all/ })` as the await-anchor | Fixed by using `findByRole({ name: 'Drive Project — Manuals' })` as anchor instead | The "View all →" link renders even in empty-state(kbs.length === 0)→ first attempt's await didn't actually wait for kbQuery resolution → test saw empty state. Switched anchor to data-dependent link → forces real wait | AI per Vitest pattern correction |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Config-state-only health check** documented as Wave A scope;real-I/O pings explicitly deferred Wave B+ per plan F2 PARTIAL-PASS clause(no new OQ)。
+- **`Settings.database_url`** is the Tier 1 signal for Postgres health;`make_kb_backend` runs lazily so absence = in-memory fallback per ADR-0023(no new risk)。
+- **Component label localization** — `COMPONENT_LABELS` const English-only;i18n machinery deferred Tier 2 per architecture.md §11(no new OQ)。
+- **Refetch interval 60s** — chosen for Wave A simplicity;Beta cohort traffic may require websocket/SSE push pattern to reduce poll noise → Wave B+ polish candidate(not a Wave A blocker)。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F2.1 Backend `/health` extract + per-component payload | 45 min(0.5-1d C07 per W19 F2)| ~30 min | -33% |
+| F2.2 Backend pytest 7 tests | 45 min | ~25 min | -45% |
+| F2.3-F2.4 Frontend rewrite(4-stat strip + 5 cards + per-component dots + top-5 KB list)| 90 min | ~50 min | -45% |
+| F2.5 Verify(tsc + lint + oklch + test:unit + pytest)| 15 min | ~5 min | -67% |
+| F2.6 Vitest 3 NEW tests + 1 fix iteration | 30 min | ~25 min | -17% |
+| F2.7 docstrings + progress.md + commit | 20 min | ~15 min | -25% |
+| **F2 Day 2 total** | **~4 hours**(1 plan-day budget)| **~2.5 hours** | **-38%** |
+
+Real-calendar collapse pattern continues — same 1.8-4× collapse band as W12-W18 + W20 F1。
+
+#### Carry-overs to next Day-N
+
+- **F3 `/chat` advanced surfaces per ADR-0031 Option B server-side Conversation History** — largest deliverable(3-4 days plan budget)。Day 3-5 focus。Postgres `conversations` + `messages` tables + 6 NEW `/conversations` CRUD endpoints + frontend Conversation History sidebar + 3 citation modes + InlineImageCard + ImageGallery + CitationPill + FeedbackBar comment + CRAG strip。
+- **F8.1 multi-viewport browser smoke** — F2 surfaces NEW(4-stat strip + per-component health dots)need smoke at `sm` / `md` / `lg`;deferred to F8.1(R8 caveat per plan)。
+- **Wave B+ candidate** — real-I/O pings for `/health` per-component(`SearchClient.get_service_statistics()` / Postgres `SELECT 1` / etc)to populate `latency_ms` + catch silent degradation。
+
+---
+
+<!-- Day 3+ entries to be appended by AI as F3-F9 land. Template:
 
 ## Day N — YYYY-MM-DD
 

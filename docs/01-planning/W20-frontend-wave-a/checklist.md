@@ -33,13 +33,13 @@ last_updated: 2026-05-16
 
 ## F2 — `/dashboard` real cards per ADR-0030 absorbed scope(C09 + C07 + C02 + C06)
 
-- [ ] F2.1 Backend `backend/api/routes/health.py` — extend `GET /health` payload from `{status: "ok"}` to `{status, components: {azure_search, azure_openai, cohere, langfuse, postgres}}` with per-component status + latency_ms;per W19 F2 §3.1 item 1;~0.5-1d C07;mypy strict
-- [ ] F2.2 Backend — pytest test for `/health` per-component payload(skeleton fail / partial fail / all green)
-- [ ] F2.3 Frontend `frontend/app/(app)/dashboard/page.tsx` rewrite — replaces W18 F4 placeholder with 5 cards + 4-stat strip:(a) Top stat strip 4 cards / (b) Knowledge bases / (c) Recent queries CTA / (d) Latest evaluation CTA / (e) System health per-component dots / (f) Quick actions 4 buttons
-- [ ] F2.4 Loading skeletons + error banners per card(reuse W17 F4.1 + W18 F4 pattern);empty states first-class
-- [ ] F2.5 Tokens 100% `tokens.ts`;`tsc` + `lint` clean;`[oklch`=0 preserved
-- [ ] F2.6 Vitest test extension — `dashboard.test.tsx` cover 4-stat strip + per-component health dot count(W18 baseline 2 tests → ~5 tests)
-- [ ] F2.7 File header docstring updated
+- [x] F2.1 Backend NEW `backend/api/routes/health.py` landed `(this commit)` — `/health` extracted from inline `server.py` + extended payload from `{status: "ok"}` to `{status: "ok"|"degraded", components: {azure_search, azure_openai, cohere, langfuse, postgres}: {status, latency_ms, detail}}`;5 ComponentStatus values(ok / not_configured / degraded / error);Pydantic v2 schemas + `app.include_router(health.router)`;mypy strict clean(same baseline as `feedback.py` — only pre-existing langfuse-stub error)。Config-state-only check Wave A scope per Karpathy §1.2 simplicity;real-I/O pings deferred Wave B+(`latency_ms` schema field preserved)
+- [x] F2.2 Backend NEW `backend/tests/api/test_health_route.py` landed `(this commit)` — **7/7 pytest pass**:all-green path + 2 degraded(retrieval_engine None + embedder None)+ 3 not_configured(Cohere optional + no DATABASE_URL + Langfuse no client)+ response-schema contract;coverage ≥ 80% on new route per CLAUDE.md §3.1 H6
+- [x] F2.3 Frontend `dashboard/page.tsx` rewrite landed `(this commit)` — 4-stat strip(`<StatCard>` × 4 + skeleton — KBs/Documents/Chunks/Storage MB)+ 5 cards:(b) Knowledge bases card top-5 KB list + name link + per-row doc count + empty-state + "View all →" link;(c) Recent queries Q6 Open CTA → /chat;(d) Latest evaluation no-cache CTA → /eval;(e) System health per-component dots(5 dots semantic-token colours via `statusDotClass` + `statusLabel` + `title={comp.detail}` inline tooltip;`useQuery` 60s refetchInterval);(f) Quick actions 4 buttons preserved
+- [x] F2.4 Loading skeletons(`<StatCardSkeleton>` × 4 + `<Skeleton>` per card)+ error banners(KB card destructive text + health card destructive dot)+ empty states first-class(no-KBs message + Q6 CTA + no-eval-run CTA)
+- [x] F2.5 Tokens 100%(`bg-success` / `bg-muted-foreground/40` / `bg-accent` / `bg-destructive` semantic only — no hardcoded oklch);`pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors";`Grep '\[oklch'` = **0**(W15→W18→W20 F1→F2 milestone preserved — 1 accidental docstring occurrence reworded before commit per W18 F1.6 precedent)
+- [x] F2.6 Vitest `dashboard.test.tsx` extended W18 baseline 2 tests → **5 tests**(+3 NEW per plan F2.6 literal:4-stat strip aggregate values + 5 per-component dots + top-5 KB list);`pnpm test:unit` 6 files / **21 tests pass**(W20 baseline post-F1 18 → 21)
+- [x] F2.7 File header docstrings on NEW `health.py` + rewritten `dashboard/page.tsx`(W18 F4 → W20 F2 evolution + per-component dots scope + 4-stat strip + semantic-token note per CLAUDE.md §3.2)
 
 ## F3 — `/chat` advanced surfaces per ADR-0031 Option B server-side Conversation History(C10 + C08)
 

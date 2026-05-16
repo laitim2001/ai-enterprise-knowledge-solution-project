@@ -27,6 +27,7 @@ from api.routes import (
     debug,
     documents,
     feedback,
+    health,
     kb,
     observability,
     query,
@@ -218,10 +219,10 @@ app.add_middleware(
 )
 
 
-@app.get("/health", tags=["meta"])
-async def health() -> dict[str, str]:
-    """Liveness probe (Azure Container Apps health check target)."""
-    return {"status": "ok"}
+# W20 F2.1 — `/health` extracted to `api/routes/health.py`; payload extended from
+# `{status: "ok"}` to per-component connectivity (Azure Search / OpenAI / Cohere /
+# Langfuse / Postgres) consumed by the `/dashboard` System health card.
+app.include_router(health.router)
 
 
 # W7 D2 F1.3 — auth Depends wired router-level. W8 D5 F4.4 cascade extends
