@@ -215,7 +215,72 @@ Real-calendar collapse pattern continues — same 1.8-4× collapse band as W12-W
 
 ---
 
-<!-- Day 3+ entries to be appended by AI as F3-F9 land. Template:
+## Day 3 — 2026-05-17 (continued)
+
+### F3a — `/conversations` backend(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 1 commit:`550111e` F2)。
+**Commits this day**:`(this commit)` — F3 backend half(schemas + storage + 6 endpoints + pytest + CRAG verify)。F3 frontend half(F3.5-F3.16)splits into a separate commit Day 3-4 to keep review surface focused。
+
+#### What landed
+
+- **F3.1 Pydantic schemas** NEW `backend/api/schemas/conversation.py` — 7 models(`Conversation` + `Message` + `ConversationCreate` + `ConversationUpdate` + `MessageCreate` + `ConversationDetail` + `ConversationListResponse`)。`Conversation.user_id` 對齊 `AuthenticatedUser.oid`;`Conversation.kb_id` nullable(Tier 1 single-KB 但 schema future-proof);`Message.citations` carries W3 Citation list verbatim(JSONB in Postgres)。`_utcnow()` helper tz-aware default matches Postgres TIMESTAMPTZ。
+- **F3.2 Storage layer** NEW `backend/conversations/` module mirroring `api.auth.users_store` shape(simpler than `kb_management/` 4-file split):`__init__.py`(barrel)+ `store.py`(Protocol + InMemoryConversationStore + `make_conversation_store` factory)+ `postgres_store.py`(`PostgresConversationStore` per ADR-0023 — Postgres tables `conversations` + `messages` w/ user-idx + conv-idx + CASCADE FK + `CREATE TABLE IF NOT EXISTS` idempotent connect)。Async interface(route handlers async — distinct from sync `UsersStore`)— `anyio.to_thread.run_sync` wraps sync `psycopg` ops。In-memory fallback when `DATABASE_URL` unset。
+- **F3.3 6 endpoints** NEW `backend/api/routes/conversations.py` — all gated by `Depends(get_current_user)`:`POST /conversations`(create)+ `GET /conversations`(paginated list)+ `GET /conversations/{id}`(with messages)+ `PATCH /conversations/{id}`(partial — title preserved if absent,kb_id clears if explicit None)+ `DELETE /conversations/{id}`(CASCADE)+ `POST /conversations/{id}/messages`(append + auto-bump message_count + auto-title first user message)。Cross-user 404 isolation enforced at store layer。`@lru_cache(maxsize=1)` factory dependency `get_conversation_store()`。Wired into `server.py` after `kb.router`(`tags=["conversations"]`,`dependencies=_auth` router-level redundant per in-handler `Depends`)。
+- **F3.4 Pytest** NEW `backend/tests/api/test_conversations_route.py` — **12/12 pass**:create-defaults / create-with-fields / list-user-filtered-sorted / list-paginated / get-with-messages / patch-rename-clear-kb / delete-removes / auto-title-first-user-message / assistant-no-retitle / cross-user-404 / missing-404 / citations-round-trip。Coverage ≥ 80% on new route per CLAUDE.md §3.1 H6。`app.dependency_overrides[get_current_user]` + `app.dependency_overrides[get_conversation_store]` pattern。
+- **F3.13 CRAG fields verify** — `backend/api/schemas/query.py` line 56-57 already has `crag_triggered: bool` + `crag_iterations: int`(W4 CRAG L2 landed already with these fields);**no `crag_reasoning` field exists**(scoping decision recorded under Deviations — F3.12 CRAG strip will show "CRAG triggered — N iterations" without the reasoning tooltip per Karpathy §1.2 simplicity)。
+- **F3 Ellipsis sentinel refactor**(deviation table below)— initial design used `kb_id: str | None | type[Ellipsis] = ...` sentinel to distinguish "preserve" vs "clear" at the store layer。mypy strict rejected on 4 separate diagnostics(`EllipsisType` valid-as-type / Non-overlapping identity check / Incompatible default)。Refactored: store layer takes plain `title: str` + `kb_id: str | None`(both required — caller pre-computes from existing record);route layer owns partial-update semantics via `body.model_fields_set`。Cleaner + mypy strict clean。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F3.1 NEW `backend/api/schemas/conversation.py` — 7 Pydantic v2 schemas + tz-aware `_utcnow()` helper
+- [x] F3.2 NEW `backend/conversations/` module — Protocol + InMemoryConversationStore + PostgresConversationStore + factory + barrel `__init__.py`;`make_conversation_store(settings)` lazy-imports postgres branch per ADR-0023 R8 mitigation
+- [x] F3.3 NEW `backend/api/routes/conversations.py` — 6 endpoints all `Depends(get_current_user)`-gated;wired into `server.py`;cross-user 404 isolation enforced
+- [x] F3.4 NEW `backend/tests/api/test_conversations_route.py` — **12/12 pass**;coverage ≥ 80% on new route(every endpoint + cross-user isolation + pagination + auto-title + citations round-trip)
+- [x] F3.13 `QueryResponse.crag_triggered` + `crag_iterations` verified present(no schema change);`crag_reasoning` deliberately NOT added(deviation — F3.12 simpler tooltip-less indicator)
+- [x] mypy strict on F3 backend files — pre-existing project baseline only(3 `psycopg` stub errors matching `kb_management/postgres_backend.py` + project-wide `api/auth/postgres_users_store.py` / `email_provider.py` / `msal_provider.py` errors);**0 new mypy errors** introduced by F3 backend
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F3.2 module path | `backend/persistence/postgres_conversations.py` | `backend/conversations/{__init__,store,postgres_store}.py` | Match existing `api.auth.users_store` shape(Protocol+InMemory+factory in one file)— simpler than `kb_management/` 4-file split;persistence concern belongs alongside the domain module(`conversations/`)not a separate `persistence/` namespace。Project has no `backend/persistence/` precedent | AI per Karpathy §1.3 surgical + existing pattern alignment |
+| F3.2 sentinel | Original plan implied "preserve vs clear" sentinel at store layer | Refactored: store takes plain `title: str` + `kb_id: str \| None`(both required);route owns partial semantics | mypy strict rejected `EllipsisType` sentinel on 4 diagnostics;cleaner separation = route owns partial(Pydantic `model_fields_set` is the right place),store stays a thin SET-everything UPDATE | AI per Karpathy §1.2 simplicity + mypy strict gate |
+| F3.13 `crag_reasoning` | F3.12 frontend tooltip expected `query.crag_reasoning` | Field NOT added to backend(stays out of scope) | Adding requires changes to `generation/crag.py` CRAG loop emitter;Karpathy §1.2 don't add speculative fields;F3.12 frontend renders "CRAG triggered — N iterations" without reasoning tooltip — info-only chip per F3.12 simpler shape | AI per Karpathy §1.2 + plan F3.12 PARTIAL-PASS interpretation |
+| F3 commit split | Plan implies single F3 commit | Splitting F3a backend + F3b frontend(2 commits) | F3 is the largest deliverable(3-4 plan days);backend + frontend changes touch different concerns + are reviewable independently — same pattern as W18 F3 page-tree move(committed alone)| AI per Karpathy §1.3 + W18 commit cadence precedent |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Per-user isolation via 404 collapse** — cross-user access on a known conversation ID returns 404(not 403)to avoid leaking conversation IDs across users(security best practice for multi-tenant data — same as W17 F2 user-scoped /auth/me)。
+- **Title auto-gen = first-50-char slice**(Tier 1 simplicity per ADR-0031)— LLM-summarize as Wave B+ candidate noted in route docstring。
+- **Tables `conversations` + `messages` Postgres DDL** — idempotent `CREATE TABLE IF NOT EXISTS` runs on every connect(same pattern as `PostgresKBBackend` + `PostgresUsersStore` per ADR-0023)。No Alembic migration this phase(consistent with W17 F1)— migration framework adoption is a future-tier governance item。
+- **`anyio.to_thread.run_sync` wraps sync psycopg** — same trade as PostgresKBBackend(connection-per-op + low-traffic Tier 1)。
+- **CRAG reasoning field deferred** — out of F3 scope;Wave B+ candidate(needs CRAG loop emitter change in `generation/crag.py`)。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F3.1 Pydantic schemas | 30 min | ~15 min | -50% |
+| F3.2 Storage(Protocol + InMemory + Postgres + factory + barrel)| 90 min | ~60 min | -33% |
+| F3.3 6 endpoints | 60 min | ~30 min | -50% |
+| F3.4 Pytest 12 tests | 60 min | ~30 min | -50% |
+| F3.13 CRAG fields verify | 5 min | ~3 min | -40% |
+| F3a Refactor(Ellipsis → plain args)| - | ~15 min(extra) | - |
+| Verify(mypy + pytest)+ progress.md + commit | 30 min | ~25 min | -17% |
+| **F3a Day 3 backend total** | **~5 hours**(2 plan-days backend)| **~3 hours** | **-40%** |
+
+Real-calendar collapse pattern continues — same 1.8-4× collapse band as W12-W18 + W20 F1/F2。
+
+#### Carry-overs to next Day-N
+
+- **F3b Frontend half**(F3.5-F3.16)— Conversation History sidebar + 3 citation modes + InlineImageCard + ImageGallery + CitationPill + FeedbackBar comment + CRAG strip + Vitest scaffolding。Day 3-4 focus(separate commit)。
+- **F3.12 CRAG strip without reasoning tooltip** — info-only chip showing "CRAG triggered — N iterations" using existing fields(`crag_reasoning` Wave B+)。
+- **Wave B+ candidate** — `crag_reasoning` field in CRAG loop emitter for richer chat tooltip;LLM-summarize conversation title。
+
+---
+
+<!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
 

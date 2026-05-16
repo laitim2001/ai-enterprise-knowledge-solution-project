@@ -24,6 +24,7 @@ from api.routes import (
 )
 from api.routes import (
     chunks,
+    conversations,
     debug,
     documents,
     feedback,
@@ -236,6 +237,11 @@ _auth = [Depends(get_current_user)]
 app.include_router(query.router, tags=["query"], dependencies=_auth)
 app.include_router(feedback.router, tags=["query"], dependencies=_auth)
 app.include_router(kb.router, tags=["kb"], dependencies=_auth)
+# W20 F3.3 — /conversations CRUD per ADR-0031 Option B server-side Conversation History.
+# Endpoint-level `Depends(get_current_user)` inside the route handlers (the route
+# emits 404 on cross-user access — no per-router gate, since the in-handler dependency
+# is the authoritative isolation guard).
+app.include_router(conversations.router, tags=["conversations"], dependencies=_auth)
 app.include_router(auth_routes.router)
 # W8 D5 F4.4 — admin routes auth wire (W7 D2 字面 scope 之外 cascade per
 # beta-plan-v1.md §2 W8.F1). All 5 admin routers + new observability dashboard
