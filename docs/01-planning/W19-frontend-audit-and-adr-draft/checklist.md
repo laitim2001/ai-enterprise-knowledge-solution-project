@@ -32,10 +32,12 @@ last_updated: 2026-05-16
 
 ## F2 — Backend gap map(14 Tier 1 routes × endpoint × schema)
 
-- [ ] F2.1 NEW `audit/W19-backend-gap-map.md` — per-route table:Route / Frontend data needs(from F1) / Required endpoint / Status(supported / partial / missing / mock-only) / Wave block / Owner Cn
-- [ ] F2.2 Cumulative backend-work list — extracted from F2.1 `missing` + `partial` rows;grouped by Cn(C02 / C07 / C08 / C11 / C12 + new C14 / C16)+ Wave
-- [ ] F2.3 "Blocks Wave A/B/C" classification — explicit per-Wave dep list
-- [ ] F2.4 Real backend code grep — for each F2.1 row, grep `backend/api/routes/` + `backend/api/schemas/` for actual route + schema definition(or absence);cite file:line as evidence
+> **F2 verdict = PASS**(2026-05-16)— landed `(this commit)`。`audit/W19-backend-gap-map.md` covers 14 Tier 1 routes + topbar/sidebar surfaces × backend endpoint × schema check vs 13 route files + 11 schema files in `backend/api/{routes,schemas}/`。**21 ✅ supported / 7 🟡 partial / 13 🔴 missing / 2 🟣 mock-only**。Wave A blockers identified(6 small backend additions + 2 NEW endpoints for ADR-0025 NEW tabs)+ Wave B(2 NEW endpoints)+ Wave C MASSIVE(5-22 backend days depending on ADR-0026 + ADR-0027 option picks)。**Recommendation surface to F3 + F6**:ADR-0026 Option C hybrid + ADR-0027 Option B minimal 3-role → Wave C ~7 backend days,fits single phase;ADR-0030 + ADR-0032 candidates absorb into Wave A scope without separate ADR;ADR-0031 NEW(Chat advanced surfaces with Conversation History) keep as 6th ADR alongside 0025-0029。
+
+- [x] F2.1 NEW `audit/W19-backend-gap-map.md` §2 — per-route table covering all 14 Tier 1 routes + topbar/sidebar surfaces;columns:Route / Surface / Required endpoint / Status / Wave / Owner Cn / Evidence(backend file:line)。Summary by status:21 ✅ / 7 🟡 / 13 🔴 / 2 🟣 — `(this commit)`
+- [x] F2.2 `audit/W19-backend-gap-map.md` §3 cumulative backend-work list — grouped by Wave(Wave A blockers 6 items + Wave A ADR-0025 NEW tabs 2 items + Wave B 2 items + Wave C option-set bundled items 11-20 with effort estimates per Option A/B/C)+ Wave A polish 4 items — `(this commit)`
+- [x] F2.3 `audit/W19-backend-gap-map.md` §4 "Blocks Wave A/B/C" classification — Wave A 7-tab(`-Access`)recommended,Access tab deferred Wave C;Wave B independent of Wave C 岔口;Wave C strongly recommend Option B+C combo for ~7 backend days vs full Option A+B for ~22 backend days — `(this commit)`
+- [x] F2.4 Real backend code grep — every F2.1 row cites `backend/api/routes/<file>.py:<line>` + `backend/api/schemas/<file>.py:<line>` for actual route + schema definition(or absence per `grep ^class \w+\(` returning none)— `(this commit)`
 
 ## F3 — ADR drafts × 5(Status = Proposed,await F6 approval)
 

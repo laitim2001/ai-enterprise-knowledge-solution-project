@@ -78,7 +78,7 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 |---|---|---|---|
 | F0 Kickoff cascade | ~0.3d | ~0.2d(this session) | F0.1 Phase folder + plan/checklist/progress — `(this commit)`;F0.2 `audit/.gitkeep` — `(this commit)`;F0.3 `docs/adr/README.md` 5 reserved slots(0025-0029) + Next NNNN advance 0025→0030 — `(this commit)`;F0.4 `session-start.md` §10 W19 row + W18+→W20+ shift + Last-Updated + Update-history entry — `(this commit)`;F0.5 verified no `architecture.md` amendment at kickoff(F3 ADR drafts propose,per-ADR amendments land in W20+ kickoffs)— `(this commit)` |
 | F1 Mockup `.jsx` audit | ~0.8d | ~0.4d(this session) | `audit/W19-mockup-jsx-audit.md` landed:per-route table 14 Tier 1 + 8 Tier 2 + shell + 5 foundation files;deviation summary D1–D11 with F3 ADR feed;Tier 2 leak audit(1 leak Sidebar Workspace switcher + 1 borderline Chat Conversation History);visual identity verify(tokens match,1 NEW `--info` token);mock data schema match(3 NEW schemas needed + RBAC family massive)。5 parallel Read batches over 22 files / 11K lines。**5 H1 ADRs confirmed**(0025–0029)+ **3 NEW ADR candidates surface**(0030 polish bundle / 0031 chat advanced / 0032 topbar additive)— F2/F3/F4 take it forward — `(this commit)` |
-| F2 Backend gap map | ~0.8d | — | — |
+| F2 Backend gap map | ~0.8d | ~0.4d(this session)| `audit/W19-backend-gap-map.md` landed:28 endpoints across 13 route files inventoried + 38 schemas across 11 schema files mapped + per-route table 14 Tier 1 × surface × endpoint × status × Wave × Cn × backend file:line evidence + cumulative work list by Wave/Cn with effort estimates per ADR-0026/0027 option set。21 ✅ supported(KB CRUD + Docs + Chunks + Retrieval Test + Eval + Trace + Feedback + Auth + Cost + Query)+ 7 🟡 partial(/health enrich + KbConfig multimodal + Archive KB + crag_* fields verify + auth/me verify + Pipeline viz + embedding preview)+ 13 🔴 missing(Recent queries + Latest eval cache + Conversations + KB Images + Chunking preview + Doc detail enriched + Settings × 3 + /users + RBAC + Audit log + Notifications + /traces list)+ 2 🟣 mock-only(Workspace switcher + Labs sidebar)。Wave A blocker count = 6 small + 2 NEW endpoints;Wave B = 2 NEW;Wave C = MASSIVE option set scope。**Recommend F3+F6 picks**:ADR-0026 Option C hybrid + ADR-0027 Option B minimal 3-role → Wave C ~7 backend days fits single phase。ADR-0030/0032 candidates absorb into Wave A scope without separate ADR;ADR-0031 NEW(Chat advanced + Conversation History) keep as 6th ADR — `(this commit)` |
 | F3 ADR drafts × 5 | ~1.2d | — | — |
 | F4 Wave breakdown | ~0.4d | — | — |
 | F5 Tier 2 catalog | ~0.5d | — | — |
@@ -133,7 +133,61 @@ Full audit of `references/design-mockups/` 22 files / 11K lines via 5 parallel R
 
 ### Next
 
-- F2 — backend gap map per route × endpoint × schema(14 Tier 1 routes × Pydantic schema check vs `backend/api/schemas/*.py` + route check vs `backend/api/routes/*.py`)→ `audit/W19-backend-gap-map.md`
+- F3 — 5 ADR drafts(0025-0029)+ ADR-0031(NEW per F2 recommendation)with option sets for ADR-0026 + ADR-0027 strategic 岔口
+- F4 — Wave breakdown consume F1+F2+F3
+- F5 — Tier 2 disabled-affordance catalog
+- F6 — Chris approval
+
+---
+
+## Day 2 — F2 audit landed(2026-05-16)
+
+### Built — `audit/W19-backend-gap-map.md` NEW — `(this commit)`
+
+Backend gap map per Tier 1 route × surface × required endpoint × current status × Wave × Cn,with file:line evidence。28 endpoints across 13 route files inventoried(per `git grep "@router\."`) + 38 schemas across 11 schema files mapped(per `git grep "^class \w+\("`).
+
+### Key findings(audit §2-§3)
+
+**Status distribution**:
+- ✅ **21 supported** — KB CRUD + Documents CRUD(per CH-001)+ Chunks CRUD + Retrieval Test(per ADR-0021)+ Eval(per W17 F3 RAGAs)+ Trace detail(per W16 F5.5)+ Feedback + Auth(per ADR-0022)+ Query SSE + Cost Summary + Appearance
+- 🟡 **7 partial** — `/health` per-component(currently liveness only)+ KbConfig multimodal fields + Archive KB + QueryResponse `crag_*` field verify + `GET /auth/me` verify + Pipeline visualization + embedding vector preview
+- 🔴 **13 missing** — Recent queries(Q6)+ Latest eval cache + Conversations(Beta+)+ KB Images + Chunking preview + Doc detail enriched + Settings Connections × 9 + Settings Identity & Auth + Settings API Keys & Quotas + /users RBAC + Audit log + Notifications + /traces list
+- 🟣 **2 mock-only** — Workspace switcher + Labs sidebar(don't ship Tier 1)
+
+**Wave A blockers**(6 small + 2 NEW endpoints):
+1. `GET /health` per-component connectivity payload
+2. `KbConfig` schema multimodal ACTIVE fields(`extract_embedded_images` + `slide_screenshots` + `dedup_strategy` + `return_images_in_chat`)
+3. `QueryResponse.crag_triggered` + `crag_iterations` fields verify
+4. `POST /kb/{kb_id}/archive` for KB Settings Danger zone
+5. Q6 recent queries decision OR keep empty-state CTA(W18 F4 already accepted CTA approach)
+6. Eval cached run decision OR keep empty-state CTA
+7. `GET /kb/{kb_id}/images`(ADR-0025 Images tab)
+8. `POST /chunking-preview`(ADR-0025 Chunking Lab tab)
+
+**Wave B blockers**:`GET /kb/{kb_id}/docs/{doc_id}` enriched(ADR-0029)+ `GET /traces` list view。
+
+**Wave C MASSIVE**(option-set scope):
+- **ADR-0026 Settings Connections**:Option A read-only ~3 endpoints / Option C hybrid ~10 / Option B fully editable ~27
+- **ADR-0027 /users RBAC**:Option B minimal 3-role(`users.role` column add only)~5 backend days / Option C stage ~12 / Option A full RBAC ~20
+- **Combined**:Option A+B = ~22 backend days(Wave C must split into C1+C2) vs Option B+C = ~7 days(single phase)
+
+**Recommendations to F3 + F6**:
+- **ADR-0026 pick Option C hybrid** — Profile + Appearance + Account editable;Connections + Identity + API Keys read-only with「Edit coming Tier 2」 affordance。Trade-off:Beta operators rotate secrets via `.env` + Azure Portal,UI status only。
+- **ADR-0027 pick Option B minimal 3-role** — `users.role` column on existing `users` table per ADR-0023 + ACL middleware checks role only。NO new tables(roles/groups/audit_log defer Tier 2)。Members tab read-only listing + invite/suspend;Roles tab read-only matrix;Groups + Audit log = disabled affordance「Tier 2」。
+- **ADR-0030 fold into Wave A scope** — `/health` enrich + `/traces` list + Trace 3 viz are polish-grade,no separate ADR
+- **ADR-0031 NEW as 6th ADR** — Chat advanced surfaces with Conversation History(Beta+ localStorage Tier 1 scope decision)
+- **ADR-0032 fold into Wave A polish** — Workspace switcher disable + Sidebar Labs section + NotificationsMenu(`/notifications` mock acceptable)
+
+**Wave A scope decision**:7-tab KB Detail(`-Access`),Access tab deferred to Wave C alongside `/users` RBAC ship。Wave A 6-tab(`-Access -Chunking Lab`)would defeat ADR-0025 acceptance — not recommended。
+
+### Deviations from plan(R3)
+
+- F2 collapsed ~0.4d actual vs ~0.8d planned(same W12-W18 real-calendar collapse pattern as F1)
+- **ADR draft count recommendation:6 instead of 5**(0025/0026/0027/0028/0029 + NEW 0031)— 0030 + 0032 candidates absorbed into Wave A scope per F2 §6 recommendations。Plan F3.1-F3.5 5 ADRs stable + add F3.6 NEW ADR-0031 to checklist at F3 kickoff。**Plan changelog entry will be added at F3 close** documenting the 5→6 promotion。
+
+### Next
+
+- F3 — 5 ADR drafts(0025-0029)+ NEW ADR-0031 Chat advanced surfaces with option set;ADR-0026 + ADR-0027 carry option sets for Chris pick at F6
 
 ---
 
