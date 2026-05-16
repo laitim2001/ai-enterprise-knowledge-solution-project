@@ -236,11 +236,22 @@ async def _run_ingest_pipeline(
             embedder=deps.embedder,
             uploader=None,  # R12 — Azurite signature mismatch; screenshot blob upload skipped
         )
+        # W20 F4.2 — pass the KB's KbConfig so the orchestrator honours the
+        # ADR-0028 Step-4 multimodal toggles (`extract_embedded_images`, etc).
+        # `service.get_kb` already ran upstream via `_assert_kb_exists`, so this
+        # second read is a cheap in-memory lookup for the in-memory backend and a
+        # single Postgres SELECT for the persistent backend.
+        try:
+            kb_record = await service.get(kb_id)
+            kb_config = kb_record.config
+        except Exception:  # noqa: BLE001 — defensive: fall back to W2 baseline
+            kb_config = None
         result = await orchestrator.ingest(
             source=tmp_path,
             kb_id=kb_id,
             doc_id=doc_id,
             source_url=f"upload://{filename}",
+            kb_config=kb_config,
         )
 
         now = datetime.now(UTC)

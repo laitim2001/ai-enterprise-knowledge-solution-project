@@ -3,17 +3,20 @@
 /**
  * V3 KB List (`/kb`) — per architecture.md v6 §5.4 view 3.
  *
- * W14 D2 F2 refactor — plain-table → card grid per ui-design-reference-v6.md
- * §2.3 wireframe + design ref §3 cross-view rules. Each Card surfaces kb_id /
- * name / description / doc_count / chunks_count / last_indexed_at / derived
- * status badge so admins can sweep operational state at a glance.
+ * W14 D2 F2 refactor: plain-table → card grid per ui-design-reference-v6.md
+ * §2.3 wireframe + design ref §3 cross-view rules.
+ *
+ * W20 F4.3 polish (per ADR-0028 + architecture.md v6 §5.4 inline-tagged
+ * amendment):
+ *   - Status filter dropdown alongside the existing search + sort
+ *     (indexed / empty / degraded / all)
+ *   - Grid (default) ⇄ Table view toggle persisted to
+ *     `localStorage['ekp-kb-list-view']`
+ *   - The Card path renders unchanged (Karpathy §1.3 surgical — additive only);
+ *     the Table path is a new render branch hitting the same `visible` list
  *
  * Layout reference Dify Image 4 dataset-grid pattern (no code copy per ADR-0010);
- * EKP design tokens only.
- *
- * Search + sort are client-side over the in-memory list — Tier 1 cohort scale
- * (small KB count) doesn't justify backend pagination yet (W11 retro CO18 →
- * Beta hardening when persistent backing migrates to Postgres / Cosmos DB).
+ * EKP design tokens only — 100% via tokens.ts, no hardcoded oklch.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -24,11 +27,13 @@ import {
   Database,
   FileText,
   FileWarning,
+  LayoutGrid,
+  List,
   Plus,
   Search,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,12 +57,24 @@ import { kbApi, type KbStatus } from '@/lib/api/kb';
 import { cn } from '@/lib/utils';
 
 type SortKind = 'name' | 'last_indexed' | 'documents';
+type StatusKind = 'indexed' | 'empty' | 'degraded';
+type StatusFilter = StatusKind | 'all';
+type ViewKind = 'grid' | 'table';
 
 const SORT_LABEL: Record<SortKind, string> = {
   name: 'Name (A→Z)',
   last_indexed: 'Last indexed (recent)',
   documents: 'Documents (most)',
 };
+
+const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
+  all: 'All statuses',
+  indexed: 'Indexed only',
+  empty: 'Empty only',
+  degraded: 'Degraded only',
+};
+
+const VIEW_KEY = 'ekp-kb-list-view';
 
 export default function KbListPage() {
   const query = useQuery<KbStatus[]>({
@@ -67,19 +84,36 @@ export default function KbListPage() {
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKind>('last_indexed');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [view, setView] = useState<ViewKind>('grid');
+
+  // SSR-stable hydration: read the persisted view after mount.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(VIEW_KEY);
+    if (stored === 'grid' || stored === 'table') setView(stored);
+  }, []);
+
+  function pickView(next: ViewKind) {
+    setView(next);
+    window.localStorage.setItem(VIEW_KEY, next);
+  }
 
   const visible = useMemo(() => {
     const rows = query.data ?? [];
     const term = search.trim().toLowerCase();
-    const filtered = term
+    const filteredBySearch = term
       ? rows.filter((kb) =>
           [kb.name, kb.kb_id, kb.description]
             .filter(Boolean)
             .some((field) => field.toLowerCase().includes(term)),
         )
       : rows;
-    return [...filtered].sort(makeComparator(sort));
-  }, [query.data, search, sort]);
+    const filteredByStatus =
+      statusFilter === 'all'
+        ? filteredBySearch
+        : filteredBySearch.filter((kb) => deriveStatus(kb) === statusFilter);
+    return [...filteredByStatus].sort(makeComparator(sort));
+  }, [query.data, search, sort, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -98,8 +132,8 @@ export default function KbListPage() {
         </Button>
       </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -110,6 +144,18 @@ export default function KbListPage() {
             aria-label="Search KBs"
           />
         </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {(['all', 'indexed', 'empty', 'degraded'] as StatusFilter[]).map((kind) => (
+              <SelectItem key={kind} value={kind}>
+                {STATUS_FILTER_LABEL[kind]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={sort} onValueChange={(v) => setSort(v as SortKind)}>
           <SelectTrigger className="w-full sm:w-56">
             <ArrowDownAZ className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -123,6 +169,42 @@ export default function KbListPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <div
+          role="group"
+          aria-label="View mode"
+          className="flex shrink-0 rounded-md border border-border p-0.5"
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-pressed={view === 'grid'}
+            aria-label="Grid view"
+            onClick={() => pickView('grid')}
+            className={cn(
+              'h-7 w-7 p-0',
+              view === 'grid' && 'bg-accent/15 text-accent',
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-pressed={view === 'table'}
+            aria-label="Table view"
+            onClick={() => pickView('table')}
+            className={cn(
+              'h-7 w-7 p-0',
+              view === 'table' && 'bg-accent/15 text-accent',
+            )}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
+
         <span className="text-xs text-muted-foreground sm:ml-2">
           {query.isLoading
             ? '…'
@@ -138,10 +220,10 @@ export default function KbListPage() {
       )}
 
       {query.isLoading ? (
-        <KbGridSkeleton />
+        view === 'grid' ? <KbGridSkeleton /> : <KbTableSkeleton />
       ) : visible.length === 0 ? (
-        <KbEmpty hasSearch={search.trim().length > 0} />
-      ) : (
+        <KbEmpty hasSearch={search.trim().length > 0 || statusFilter !== 'all'} />
+      ) : view === 'grid' ? (
         <ul className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {visible.map((kb) => (
             <li key={kb.kb_id}>
@@ -149,6 +231,8 @@ export default function KbListPage() {
             </li>
           ))}
         </ul>
+      ) : (
+        <KbTable rows={visible} />
       )}
     </div>
   );
@@ -161,7 +245,6 @@ function makeComparator(sort: SortKind): (a: KbStatus, b: KbStatus) => number {
   if (sort === 'documents') {
     return (a, b) => (b.total_documents ?? 0) - (a.total_documents ?? 0);
   }
-  // last_indexed: recent first; null/empty pushed to end.
   return (a, b) => {
     const av = a.last_indexed_at ?? '';
     const bv = b.last_indexed_at ?? '';
@@ -171,8 +254,6 @@ function makeComparator(sort: SortKind): (a: KbStatus, b: KbStatus) => number {
     return bv.localeCompare(av);
   };
 }
-
-type StatusKind = 'indexed' | 'empty' | 'degraded';
 
 function deriveStatus(kb: KbStatus): StatusKind {
   if ((kb.failed_documents?.length ?? 0) > 0) return 'degraded';
@@ -255,6 +336,70 @@ function KbCard({ kb }: { kb: KbStatus }) {
   );
 }
 
+function KbTable({ rows }: { rows: KbStatus[] }) {
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th scope="col" className="px-3 py-2 text-left font-medium">Name</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">KB id</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">Status</th>
+            <th scope="col" className="px-3 py-2 text-right font-medium">Docs</th>
+            <th scope="col" className="px-3 py-2 text-right font-medium">Chunks</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">Last indexed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((kb) => {
+            const status = deriveStatus(kb);
+            return (
+              <tr
+                key={kb.kb_id}
+                className="border-t border-border transition-colors hover:bg-muted/40"
+              >
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/kb/${kb.kb_id}`}
+                    className="font-medium hover:text-accent hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {kb.name || kb.kb_id}
+                  </Link>
+                  {kb.description && (
+                    <div className="line-clamp-1 text-xs text-muted-foreground">
+                      {kb.description}
+                    </div>
+                  )}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {kb.kb_id}
+                </td>
+                <td className="px-3 py-2">
+                  <Badge
+                    variant="outline"
+                    className={cn('text-xs', STATUS_BADGE_CLASS[status])}
+                  >
+                    {STATUS_LABEL[status]}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {(kb.total_documents ?? 0).toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {(kb.total_chunks ?? 0).toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {kb.last_indexed_at?.slice(0, 10) ?? '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function KbGridSkeleton() {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 md:grid-cols-3" aria-hidden="true">
@@ -277,6 +422,16 @@ function KbGridSkeleton() {
   );
 }
 
+function KbTableSkeleton() {
+  return (
+    <div className="rounded-md border border-border p-3" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="my-2 h-6 w-full" />
+      ))}
+    </div>
+  );
+}
+
 function KbEmpty({ hasSearch }: { hasSearch: boolean }) {
   if (hasSearch) {
     return (
@@ -285,7 +440,7 @@ function KbEmpty({ hasSearch }: { hasSearch: boolean }) {
         <div>
           <p className="text-base font-medium">No matching KBs</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try a different search term or clear the filter.
+            Try a different search term, change the status filter, or clear it.
           </p>
         </div>
       </div>

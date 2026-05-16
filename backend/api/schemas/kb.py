@@ -1,4 +1,4 @@
-"""KB Pydantic schemas (per architecture.md §4.5)."""
+"""KB Pydantic schemas (per architecture.md §4.5; W20 F4.1 — Multimodal Tier 1 fields per ADR-0028)."""
 
 from datetime import datetime
 from typing import Literal
@@ -7,11 +7,41 @@ from pydantic import BaseModel, Field
 
 
 class KbConfig(BaseModel):
+    """KB-level configuration. The W2 baseline (`embedding_*`, `chunk_strategy`,
+    `default_top_k`, `default_rerank_k`) is augmented in W20 F4.1 with 4 Tier 1
+    multimodal flags surfaced by the `/kb/new` Step-4 wizard (per ADR-0028 +
+    architecture.md v6 §5.5.3):
+
+    * `extract_embedded_images` — gate the W2 F3 screenshot-extraction step at
+      ingest time. `True` reproduces the W2 default; `False` skips extraction
+      entirely (no `ScreenshotExtractor.extract` call) so a text-only KB can
+      ingest faster.
+    * `slide_screenshots` — applies to PPT ingestion;`True` keeps slide-level
+      screenshot generation (current default), `False` would skip. Wiring to
+      the PPT parser is a forward-compat seam (R12 — uploader=None today, so
+      this flag is a no-op until the screenshot pipeline ships full ingest).
+    * `dedup_strategy` — image SHA-256 dedup behaviour. `"sha256"` matches the
+      W2 baseline (uploader returns `deduped=True` for duplicate blobs);
+      `"none"` would re-upload duplicates (forward-compat seam).
+    * `return_images_in_chat` — a *query-time* read by the chat surface to
+      decide whether to render `InlineImageCard` / `ImageGallery` for this KB.
+      Persisted via this config; not used by the ingestion orchestrator.
+    """
+
     embedding_model: str = "text-embedding-3-large"
     embedding_dimension: int = 1024
     chunk_strategy: Literal["heading_aware", "layout_aware", "slide_based", "auto"] = "auto"
     default_top_k: int = 50
     default_rerank_k: int = 5
+
+    # W20 F4.1 — Multimodal Tier 1 fields (per ADR-0028 + architecture.md §5.5.3).
+    # Defaults match the plan literal — `False` for the opt-in extraction so a
+    # text-only KB doesn't pay the screenshot cost. The wizard surfaces these as
+    # explicit toggles so the KB owner picks intent at creation.
+    extract_embedded_images: bool = False
+    slide_screenshots: bool = True
+    dedup_strategy: Literal["sha256", "none"] = "sha256"
+    return_images_in_chat: bool = False
 
 
 class KbCreate(BaseModel):

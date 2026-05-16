@@ -13,6 +13,20 @@ Atomic per-doc semantics (per architecture.md §3.5 design intent + components/C
 The orchestrator returns either a fully-assembled list[ChunkRecord] OR an empty list
 plus a FailureRecord. Caller (C02 KB Manager / scripts/run_populate_sanity.py) decides
 whether to abort batch or record + continue.
+
+W20 F4.2 — `ingest()` accepts an optional `kb_config: KbConfig | None = None`
+argument so per-KB multimodal toggles flip behaviour at ingest time:
+
+* `extract_embedded_images=False` skips the W2 F3 screenshot-extraction step
+  entirely (text-only KB → no `ScreenshotExtractor.extract` call).
+* `slide_screenshots` + `dedup_strategy` are forward-compat seams (R12 — the
+  caller passes `uploader=None` today so these don't yet light up behaviour).
+* `return_images_in_chat` is a *query-time* flag (chat surface reads it from
+  the KB record); the orchestrator does not branch on it.
+
+Callers that omit `kb_config` get the W2-baseline behaviour (extract enabled)
+— this is the path the existing pytest suite + `scripts/run_populate_sanity.py`
+take, so the existing call sites need no churn.
 """
 
 from __future__ import annotations
@@ -24,6 +38,7 @@ from pathlib import Path
 
 import structlog
 
+from api.schemas.kb import KbConfig
 from indexing.schemas import ChunkRecord, ImageRef, make_chunk_id
 from ingestion.chunker.base import Chunker, ChunkSpec
 from ingestion.embedding.base import Embedder
@@ -78,6 +93,7 @@ class IngestionOrchestrator:
         kb_id: str,
         doc_id: str,
         source_url: str = "",
+        kb_config: KbConfig | None = None,
     ) -> IngestionResult:
         # 1. Parse — sync but CPU-bound; chunker also sync.
         result: ParserResult = self._parser.parse(source)
@@ -99,9 +115,15 @@ class IngestionOrchestrator:
             )
 
         # 2. Upload screenshots — best-effort; per-image failure non-fatal.
-        screenshot_records: list[ScreenshotRecord] = ScreenshotExtractor.extract(
-            result.embedded_images, kb_id=kb_id, doc_id=doc_id,
-        )
+        # W20 F4.2: skip extraction entirely when the KB owner opted out via
+        # `KbConfig.extract_embedded_images = False`. Backward-compat = no config
+        # passed → extract (W2 baseline).
+        if kb_config is not None and not kb_config.extract_embedded_images:
+            screenshot_records: list[ScreenshotRecord] = []
+        else:
+            screenshot_records = ScreenshotExtractor.extract(
+                result.embedded_images, kb_id=kb_id, doc_id=doc_id,
+            )
         sha_to_url: dict[str, str] = {}
         sha_to_alt: dict[str, str] = {}
         images_uploaded = 0

@@ -15,6 +15,12 @@ export interface KbConfig {
   chunk_strategy: 'heading_aware' | 'layout_aware' | 'slide_based' | 'auto';
   default_top_k: number;
   default_rerank_k: number;
+  // W20 F4.1 — Multimodal Tier 1 fields (per ADR-0028 + architecture.md v6 §5.5.3).
+  // Surfaced by the /kb/new Step-4 wizard.
+  extract_embedded_images: boolean;
+  slide_screenshots: boolean;
+  dedup_strategy: 'sha256' | 'none';
+  return_images_in_chat: boolean;
 }
 
 export const DEFAULT_KB_CONFIG: KbConfig = {
@@ -23,6 +29,10 @@ export const DEFAULT_KB_CONFIG: KbConfig = {
   chunk_strategy: 'auto',
   default_top_k: 50,
   default_rerank_k: 5,
+  extract_embedded_images: false,
+  slide_screenshots: true,
+  dedup_strategy: 'sha256',
+  return_images_in_chat: false,
 };
 
 export interface KbCreatePayload {

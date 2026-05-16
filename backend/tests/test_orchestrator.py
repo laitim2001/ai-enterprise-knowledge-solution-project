@@ -341,3 +341,83 @@ async def test_ingest_concurrent_callable_via_gather() -> None:
     assert len(results) == 2
     assert results[0].chunks[0].doc_id == "a"
     assert results[1].chunks[0].doc_id == "b"
+
+
+@pytest.mark.asyncio
+async def test_ingest_kb_config_extract_embedded_images_false_skips_extraction() -> None:
+    """W20 F4.2 — `extract_embedded_images=False` short-circuits ScreenshotExtractor.
+
+    The parser-provided embedded images are skipped entirely, so each chunk's
+    `embedded_images` list comes out empty even though the uploader could have
+    accepted them. (Backward-compat: `kb_config=None` keeps the W2 baseline,
+    asserted by every other test in this module.)
+    """
+    from api.schemas.kb import KbConfig
+
+    img = EmbeddedImage(
+        image_bytes=b"\x89PNG", alt_text="x", doc_order=0, ext="png", sha256="c" * 64,
+    )
+    pr = _parser_result(images=[img])
+    chunks = [_spec(0, "S1", images=["img@0"])]
+
+    mock_uploader = AsyncMock()
+    mock_uploader.upload_many = AsyncMock(return_value=[])
+
+    orch = IngestionOrchestrator(
+        parser=_FakeParser(pr),
+        chunker=_FakeChunker(chunks),
+        embedder=_FakeEmbedder(),
+        uploader=mock_uploader,
+    )
+
+    config = KbConfig(extract_embedded_images=False)
+    result = await orch.ingest(
+        Path("x.docx"), kb_id="kb", doc_id="d", kb_config=config,
+    )
+
+    # Extraction skipped → uploader never called.
+    mock_uploader.upload_many.assert_not_called()
+    assert result.failure is None
+    assert result.images_uploaded == 0
+    assert result.chunks[0].embedded_images == []
+
+
+@pytest.mark.asyncio
+async def test_ingest_kb_config_extract_embedded_images_true_preserves_w2_path() -> None:
+    """W20 F4.2 — `extract_embedded_images=True` matches the W2 baseline path."""
+    from api.schemas.kb import KbConfig
+
+    img = EmbeddedImage(
+        image_bytes=b"\x89PNG", alt_text="figure", doc_order=0, ext="png", sha256="d" * 64,
+    )
+    pr = _parser_result(images=[img])
+    chunks = [_spec(0, "S1", images=["img@0"])]
+
+    mock_uploader = AsyncMock()
+    mock_uploader.upload_many = AsyncMock(
+        return_value=[
+            UploadResult(
+                sha256="d" * 64,
+                blob_url="http://blob/screenshots/d.png",
+                deduped=False,
+                bytes_uploaded=4,
+            ),
+        ],
+    )
+
+    orch = IngestionOrchestrator(
+        parser=_FakeParser(pr),
+        chunker=_FakeChunker(chunks),
+        embedder=_FakeEmbedder(),
+        uploader=mock_uploader,
+    )
+
+    config = KbConfig(extract_embedded_images=True)
+    result = await orch.ingest(
+        Path("x.docx"), kb_id="kb", doc_id="d", kb_config=config,
+    )
+
+    mock_uploader.upload_many.assert_called_once()
+    assert result.failure is None
+    assert result.chunks[0].embedded_images[0].blob_url.endswith("d.png")
+    assert result.images_uploaded == 1

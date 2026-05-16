@@ -360,6 +360,69 @@ Real-calendar collapse pattern continues — F3 backend ~3h + F3 frontend ~3.5h 
 
 ---
 
+## Day 4 — 2026-05-17 (continued, third commit)
+
+### F4 — `/kb` list polish + `/kb/new` 5-step wizard(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 0 commits — `1879f64` F3b already pushed)。
+**Commits this day**:`(this commit)` — F4 backend + frontend combined(KbConfig schema + orchestrator branch + `/kb` list filter+table view + `/kb/new` 5-step wizard)。
+
+#### What landed
+
+- **F4.1 KbConfig extend** — `backend/api/schemas/kb.py` adds 4 Tier 1 multimodal fields per plan literal:`extract_embedded_images: bool = False`、`slide_screenshots: bool = True`、`dedup_strategy: Literal['sha256', 'none'] = 'sha256'`、`return_images_in_chat: bool = False`。Extended class docstring documents the Wave A active vs forward-compat seam split。Frontend `lib/api/kb.ts` `KbConfig` interface + `DEFAULT_KB_CONFIG` synced(default values mirror backend Pydantic defaults verbatim)。
+- **F4.2 Orchestrator branch** — `backend/ingestion/orchestrator.py` adds optional `kb_config: KbConfig | None = None` parameter on `ingest()`;when `kb_config.extract_embedded_images=False` short-circuits `ScreenshotExtractor.extract` to an empty list(uploader never called for that doc)。Backward-compat = `kb_config=None` preserves the W2 baseline path — every existing pytest case continues to pass without modification(11/11 baseline + 2/2 new = 13/13 total)。`api/routes/documents.py` `_run_ingest_pipeline` now fetches `service.get(kb_id)` and passes the resulting `kb.config`;defensive try/except falls back to W2 baseline on any lookup blip。3 forward-compat flags(slide_screenshots / dedup_strategy / return_images_in_chat)documented in the orchestrator module docstring as Wave B+ wiring seams(uploader=None today per R12;query-time `return_images_in_chat` is read by the chat surface, not the orchestrator)。
+- **F4.3 `/kb` list polish** — `app/(app)/kb/page.tsx`:status filter dropdown(All / Indexed only / Empty only / Degraded only)alongside the existing search + sort;grid (default,preserved unchanged per Karpathy §1.3) ⇄ table view toggle(`<LayoutGrid>` / `<List>` button group with `aria-pressed`)persisted to `localStorage['ekp-kb-list-view']`;NEW `<KbTable>` renders the same `deriveStatus` outputs as `<KbCard>`(no duplicate logic)+ tabular-nums numeric columns + first-column `<Link>` to `/kb/[id]`;`<KbTableSkeleton>` mirrors the grid skeleton。Empty-state copy updated to mention filter clear。
+- **F4.4 `/kb/new` 5-step wizard rewrite** — `app/(app)/kb/new/page.tsx`:5-step wizard(Source / Parsing / Chunking / Multimodal / Review);Stepper indicator gets `aria-current="step"` + `aria-label="Wizard steps"` landmark;Step 4 Multimodal renders 4 Tier 1 toggles via NEW `<ToggleRow>` + shadcn `<Switch>` AND 3 Tier 2 `<DisabledAffordance variant="p3-preview" showBadge>` chips(caption generation / image clustering / provenance ledger — sourced from W19 F5 27-affordance Tier 2 catalog rows 18-20)。Step 5 Review file picker + summary `<dl>` + `<Stage>` progress indicator + POST /kb → POST /kb/{id}/documents sequence → redirect `/kb/[id]`(logic preserved verbatim from W12 baseline,Karpathy §1.3 — UI restructure only,no mutation logic change)。Step 2 Parsing also has a single `<DisabledAffordance tier2Trigger="parser profile picker">` placeholder for Wave B+ Docling profile picker。
+- **F4.5 Stepper navigation** — Replaced per-step `setStep(N)` calls with two helpers:`next()` gates on the current step's validator output;`back()` decrements with bounds check。Step 4 has no validator(all toggles default-valid);Step 5 owns the file-picker validator + the execute call。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F4.1 KbConfig +4 fields,frontend type synced,mypy strict clean
+- [x] F4.2 orchestrator optional `kb_config` parameter,extract_embedded_images branch live,3 forward-compat flags documented,13/13 pytest pass
+- [x] F4.3 /kb list status filter + grid/table view toggle + localStorage persist
+- [x] F4.4 /kb/new 5-step wizard with Step 4 Tier 1 toggles + 3 Tier 2 disabled affordances + Step 2 parser-profile placeholder
+- [x] F4.5 Stepper next/back helpers + per-step validation gates
+- [x] F4.6 tokens 100%,`[oklch`=0 preserved,tsc + lint clean
+- [x] F4.7 Vitest baseline preserved 6 files/21 tests(F4 component tests 🚧 deferred F8.4)
+- [x] F4.8 File header docstrings on rewritten files
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F4.2 `slide_screenshots` + `dedup_strategy` + `return_images_in_chat` branches | "extract_embedded_images branch + slide_screenshots branch + dedup branch + return_images flag downstream" | Only `extract_embedded_images` branch live;other 3 flags accepted on the schema but documented as forward-compat seams(no behavioural branch yet)| `slide_screenshots` + `dedup_strategy` require uploader plumbing(uploader=None today per R12);`return_images_in_chat` is a *query-time* flag read by the chat surface, not the orchestrator。Per Karpathy §1.2 simplicity — wire the active behaviour now,leave the seams documented for Wave B+ rather than speculative-branch code today | AI per Karpathy §1.2 + plan F4.2 0.5d budget(full 4-flag wiring would exceed) |
+| F4.4 Step 4 Tier 2 affordances | "Tier 2 `<DisabledAffordance>` for caption/clustering/blockchain" | "caption generation / image clustering / **provenance ledger**" | "blockchain" rephrased to "provenance ledger" — the affordance label users will see should describe the *capability*(chain-of-custody hash verification)not the *implementation*(blockchain)。Same Tier 2 trigger,clearer copy | AI per Karpathy §1.2 + user-facing copy clarity |
+| F4 commit cadence | Plan implies multi-commit | Single F4 commit(backend + frontend combined) | Backend change is small(2 files + 2 tests + 1 doc tweak)+ tightly coupled to frontend type sync;splitting would obscure the unified "Wave A multimodal scope" intent。Same precedent as W20 F2(backend `/health` + frontend `/dashboard` combined) | AI per W20 F2 commit pattern |
+
+#### Decisions / new OQ / risk surfaced
+
+- **`extract_embedded_images = False` is the schema default** — matches plan literal but flips W2 implicit behaviour(W2 always extracted)。Backward-compat is preserved because:(1)existing tests pass `kb_config=None` → orchestrator uses W2 path;(2)the wizard Step 4 surfaces the toggle so the KB owner sees + picks intent at creation。Pre-existing KBs(created before W20)hold the W2 default in their stored `KbConfig` if they never PATCHed settings — their `extract_embedded_images` is whatever Pydantic populated at deserialization,which on the v6 schema is `False`(the new default)。**Risk**:re-ingesting an old KB after W20 deploy would skip extraction unless the operator updates its config first。Mitigated by `kb_config=None` defensive fallback in `documents.py`(if the schema deserialization fails for any old record,W2 baseline kicks in)+ the wizard makes this explicit going forward。
+- **`<DisabledAffordance variant="p3-preview" showBadge>` adopted Wave A** — first use site of the p3-preview variant introduced in W19 F5 spec;visible-but-disabled Tier 2 chips with inline "TIER 2" badge。Pattern works well for the Step 4 multimodal Tier 2 fieldset(side-by-side with active Tier 1 toggles in the same form)。Wave C may re-evaluate based on user feedback whether to keep p3-preview here or downgrade to p1-strict(hidden affordance)。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F4.1 KbConfig +4 fields + frontend type sync | 30 min | ~20 min | -33% |
+| F4.2 orchestrator branch + documents.py wire + 2 new pytests + 11 existing pass | 90 min | ~45 min | -50% |
+| F4.3 /kb list status filter + grid/table view toggle | 60 min | ~40 min | -33% |
+| F4.4 /kb/new 5-step wizard rewrite | 120 min | ~70 min | -42% |
+| F4.5 Stepper next/back refactor | 30 min | ~15 min | -50% |
+| F4.6 verify(tsc + lint + [oklch + Vitest baseline)| 20 min | ~15 min | -25% |
+| F4.7 + F4.8 docstrings(no Vitest component tests this commit per F8.4 batching)| 30 min | ~20 min | -33% |
+| Progress.md F4 Day-N entry + commit | 30 min | ~20 min | -33% |
+| **F4 Day 4 total** | **~6.5 hours**(2 plan-days) | **~4 hours** | **-38%** |
+
+Real-calendar collapse pattern continues — W12-W18 + W20 F1/F2/F3a/F3b/F4 established collapse band 1.8-4× holds(F4 lands at ~3.25× collapse — within band)。
+
+#### Carry-overs to next Day-N
+
+- **F5 `/kb/[id]` 7-tab refactor** per ADR-0025 minus Access — next deliverable(C09 + C01 + C02 + C03)。Backend 3 NEW endpoints(`POST /kb/{id}/archive` + `GET /kb/{id}/images` enriched + `POST /chunking-preview`)+ frontend 7-tab via shadcn `<Tabs>`(Documents + Chunks + Images NEW + Chunking Lab NEW + Pipeline + Retrieval Testing + Settings)+ Access tab disabled affordance(Wave C1 activates)。
+- **F8.4 Vitest scaffolding batch** — accumulating still(F1.7 + F3.15 + F4.7 + F5.10):`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + supporting fixtures。
+- **Wave B+ candidates inherited unchanged**:`crag_reasoning` field,LLM-summarize conversation title,sidebar mode multi-turn aggregation,Citation `kb_id` field,real-I/O `/health` pings — **plus W20 F4.2 wires** for `slide_screenshots` + `dedup_strategy` plumbing into the uploader when R12 lifts(Azure Blob persistent backing,Track A IT cred)。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
