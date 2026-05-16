@@ -830,46 +830,63 @@ export const ekpTokens = {
 
 **呢個 layer 嘅 implication**:**任何 dev clone Dify code 學 layout 之後**,寫自己 component 時用 `ekpTokens` 而非 hardcoded value,可確保視覺自動 distinct。
 
-### 5.2 View 1:End User Chat(`/chat`)— path moved per ADR-0015 v6;rendered inside `<AppShell>` per ADR-0024
+### 5.2 View 1:End User Chat(`/chat`)— path moved per ADR-0015 v6;rendered inside `<AppShell>` per ADR-0024;advanced surfaces + server-side Conversation History per ADR-0031(W20 Wave A)
 
 > **Per ADR-0024**:render 喺 `<AppShell>` 內(§5.0)— chat-immersive 用 sidebar 嘅 "focus mode" toggle 隱藏 sidebar(取代原 ADR-0015 嘅 full-bleed chrome-less surface)。原 in-page header 嘅 logo 移去 AppShell top bar;in-page header 只剩 KB selector dropdown。
+>
+> **Amendment per ADR-0031**(W19 F6 Accepted 2026-05-16,Option B server-side Tier 1):**Conversation History server-side persistence**(promotes C10 §7 Tier 2 → Tier 1)— Postgres `conversations` + `messages` tables per ADR-0023 backing pattern + 6 `/conversations` CRUD endpoints + in-memory fallback when `DATABASE_URL` unset。Chat view 加 **Conversation History sidebar**(左 collapsible pane,reuse AppShell focus-mode toggle pattern)、**3 citation placement modes**(`inline` / `footnote` / `sidebar` — tweaks toggle,localStorage persist per W18 sidebar focus-mode pattern)、**InlineImageCard**(citation 含 `image_url` 時 inline 顯示)、**ImageGallery**(per-message grid + modal preview with OCR overlay)、**CitationPill hover popover**(citation `[1]` hover → chunk preview + KB doc link)、**FeedbackBar comment field**(extend W17 thumbs-up/down with optional text comment + tag dropdown,POST `/feedback` per existing W8 endpoint)、**CRAG strip indicator**(horizontal strip above assistant message when `query.crag_triggered === true`,consume `query.crag_iterations` + `query.crag_reasoning` from `QueryResponse`)。SSE `/query` streaming logic preserved。Conversation title auto-gen = first-50-char slice(Tier 1;LLM-summarize = Tier 2)。
 
 **Layout reference**:抄 Claude.ai / ChatGPT,**唔係 Dify**(Dify 唔係 chat tool)。
 
 **Component**:
-- Header:logo + KB selector dropdown(Drive Manuals / Future KBs)
+- **Conversation History sidebar**(left collapsible pane per ADR-0031 Wave A):previous conversations list + "New chat" button + rename(double-click)+ delete confirmation
+- Header:logo + KB selector dropdown(Drive Manuals / Future KBs)+ **citation mode toggle**(3 modes per ADR-0031)
 - Main:chat history(virtualized list)
   - Message bubble(user / assistant 區分)
   - Streaming text(SSE)
-  - Inline citation card(chunk_title + doc_title + screenshot thumbnail)
+  - Inline citation card OR footnote OR sidebar(per citation mode setting per ADR-0031)
+  - **InlineImageCard**(citation 含 `image_url` 時 inline,per ADR-0031)
+  - **CitationPill** hover → popover with chunk preview + KB doc link(per ADR-0031)
+  - **CRAG strip indicator**(when `query.crag_triggered === true`,per ADR-0031)
   - Click citation → side panel 展開 chunk 全文
   - Click thumbnail → modal 大圖
+  - **ImageGallery** per-message grid + modal preview with OCR overlay(per ADR-0031)
 - Input:textarea + send button + KB chip
-- Footer:thumbs feedback + 「report issue」link
+- Footer:**FeedbackBar with optional comment + tag dropdown**(extend W17 thumbs-up/down per ADR-0031)+ 「report issue」link
 
-**Streaming UX**:用 Vercel AI SDK 嘅 `useChat` hook,Day 1 native 支援 SSE。
+**Streaming UX**:用 Vercel AI SDK 嘅 `useChat` hook,Day 1 native 支援 SSE。Message persistence layer added per ADR-0031(`POST /conversations/{id}/messages` after assistant turn completes)— SSE streaming logic unchanged。
 
-### 5.3 View 2:Dashboard(`/dashboard`)— renamed + relocated per ADR-0024(was「Admin Dashboard」`/admin`)
+### 5.3 View 2:Dashboard(`/dashboard`)— renamed + relocated per ADR-0024(was「Admin Dashboard」`/admin`);richer cards + per-component health per ADR-0030 absorbed scope(W20 Wave A)
 
 > **Amendment per ADR-0024**:原 §5.3「Admin Dashboard」係 minimal placeholder(own sidebar + top stats card row)。ADR-0024 將 sidebar 提升為 `<AppShell>` 共用 chrome(§5.0),「admin」framing 取消(Q4 — URL `/admin` → `/dashboard`),呢個 view 收窄為「post-login home — 真 overview dashboard」(Q2)。Login / register 成功後 land 喺度(原本 land `/chat`)。
+>
+> **Amendment per ADR-0030 absorbed scope**(W19 F6 SKIPPED-but-absorbed 2026-05-16):**richer cards + 4-stat strip + per-component `/health` payload**(W18 F4 placeholder → richer overview)— `GET /health` extended from `{status: "ok"}` to `{status, components: {azure_search, azure_openai, cohere, langfuse, postgres}}` with per-component status + latency_ms;Dashboard renders per-component dots + latency badges。Wave A scope ships W20。Q6 real-query-collection + eval-cache backend = empty-state CTA per W18 F4 acceptance(NOT promoted by Wave A — defer Tier 2)。
 
 **Layout**:render 喺 `<AppShell>` 內(§5.0);main content = cards grid(clean internal-tool dashboard — **唔係** router-to-chat)。
 
-**Page content**(per ADR-0024 Q2;v1 全部 data 來自既有 endpoints,無需新 backend):
-- **KB summary** — KB count + total documents / chunks / storage size(off `GET /kb`)
-- **Recent queries** — 最近 N 條 query(若無 → 「Ask something」CTA → `/chat`)
-- **Latest eval status** — Recall@5 / Faithfulness / Correctness(最近一次 `POST /eval/run` cached result)+ link → `/eval`
-- **System health** — Azure AI Search / Azure OpenAI / Cohere / Langfuse connectivity(off `GET /health` + component statuses)
+**Page content**(per ADR-0024 Q2 + ADR-0030 absorbed scope per W20 Wave A):
+- **Top stat strip**(4 stat cards per ADR-0030 absorb):Total KBs / Total Documents / Total Chunks / Total Storage(aggregate off `kbApi.list()`)
+- **KB summary** — KB count + total documents / chunks / storage size + top-5 KB list with link → `/kb`(off `GET /kb`)
+- **Recent queries** — 最近 N 條 query(若無 → 「Ask something」CTA → `/chat`;Q6 Open → CTA per W18 F4 acceptance preserved)
+- **Latest eval status** — Recall@5 / Faithfulness / Correctness(最近一次 `POST /eval/run` cached result if available)+ link → `/eval`(no-cache → CTA per W18 F4 acceptance preserved)
+- **System health** — Azure AI Search / Azure OpenAI / Cohere / Langfuse / Postgres connectivity(per-component dots + latency badges per ADR-0030 absorb;off extended `GET /health` payload)
 - **Quick actions** — New KB / Upload Document / Run Eval / Open Chat
 
-### 5.4 View 3:KB List(`/kb`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`
+### 5.4 View 3:KB List(`/kb`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`;grid + table view + filter bar polish(W20 Wave A)
 
-**Layout**:Card grid + create button。
+> **Amendment per W20 Wave A polish**(2026-05-16):**Grid view default**(current behavior preserved)+ **Table view toggle**(column headers + rows:`Name / Documents / Chunks / Storage / Last updated / Status / Actions`)+ **Filter bar**(search by name + status dropdown `active/archived/all` + sort dropdown `name/created/updated`)+ view toggle persisted to `localStorage['ekp-kb-list-view']`。
+
+**Layout**:Card grid(default)or Table view(toggle)+ create button(→ `/kb/new` 5-step wizard per ADR-0028)+ filter bar。
 **Per-card**:KB name、document count、storage size、last updated、last query rate。
+**Per-row(table view)**:Name / Documents / Chunks / Storage / Last updated / Status / Actions(re-index / archive / settings → `/kb/[id]?tab=settings`)。
 
-### 5.5 View 4:KB Detail(`/kb/[id]`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`
+### 5.5 View 4:KB Detail(`/kb/[id]`)— `/admin/` prefix dropped per ADR-0024;rendered inside `<AppShell>`;5-tab → 7-tab refactor per ADR-0025(W20 Wave A ships `-Access`)
 
-**Layout**:同 Dify Image 4(Sidebar:Documents / Pipeline / Retrieval Testing / Settings)。
+> **Amendment per ADR-0025**(W19 F6 Accepted 2026-05-16 consensus):5-tab → **8-tab** expansion(Documents · Chunks · **Images** NEW · **Chunking Lab** NEW · Pipeline · Retrieval Testing · **Access** · Settings)。Wave A ships **7-tab `-Access`**(per W19 F4 §3.6 + W20 plan A1 pick — Wave A backend +3 days from ADR-0031 Option B Conversation History already extends scope;Access tab needs ADR-0027 Option A full RBAC infra ~20 backend days = Wave C1 scope)。**Access tab = disabled affordance**(`<TabsTrigger disabled>` + `<DisabledAffordance tier={1.5} reason="RBAC pending Wave C1 per ADR-0027 Option A backend">` chip)through Wave A;activates Wave C1 when ADR-0027 Option A backend RBAC tables(roles + role_permissions + groups + group_members + audit_log + kb_acl)+ Entra Graph SDK + ACL middleware land。
+>
+> **Backend deps added by ADR-0025**(W19 F2 §3.1 items 6 + 7 + 8;W20 Wave A backend scope):**`POST /kb/{kb_id}/archive`**(~0.3d C02,Settings tab Danger zone)+ **`GET /kb/{kb_id}/images`** enriched(~1d C01+C02+C03,Images tab consumer — paginated image list with `{id, url, doc_id, doc_name, page_num, ocr_text, screenshot_type, created_at}`,reuse W2 F3 screenshot pipeline metadata)+ **`POST /chunking-preview`**(~1.5d C01+C03,Chunking Lab tab consumer — takes `{kb_id, sample_doc_id?, strategy, chunk_size, overlap}`,returns N preview chunks WITHOUT persist;reuse `layout_aware_chunker.py` from W2 F2)。
+
+**Layout**:7-tab content rendered via shadcn `<Tabs>` 喺 `<AppShell>` 內 — Tab 1 Documents + Tab 2 Chunks + Tab 3 Images NEW + Tab 4 Chunking Lab NEW + Tab 5 Pipeline + Tab 6 Retrieval Testing + Tab 7 Settings(+ Access tab disabled affordance 8th)。
 
 #### 5.5.1 Documents Tab
 
@@ -891,11 +908,15 @@ export const ekpTokens = {
 - 右側 panel:Document Information + Technical Parameters
 - **新增**:embedded images preview per chunk、low_value_flag indicator
 
-#### 5.5.3 Pipeline Tab(Ingestion Wizard)
+#### 5.5.3 Pipeline Tab(Ingestion Wizard for existing KBs)+ NEW `/kb/new` 5-step Wizard per ADR-0028(W20 Wave A)
 
-抄 Dify Image 1 + 6 嘅 3-step wizard:`Data Source → Document Processing → Execute & Finish`。
+> **Amendment per ADR-0028**(W19 F6 Accepted 2026-05-16 consensus):The 3-step Pipeline tab(below)stays as the **re-ingestion** path for **existing** KBs(invoked via `/kb-upload/[id]` per §5.5.3b OR within the KB Detail Pipeline tab here)。**NEW** at **KB creation time** = `/kb/new` **5-step wizard**(NEW route per ADR-0028):**Step 1 — Source**(Name + Description + Tags)→ **Step 2 — Parsing**(Docling profile picker;Tier 1 default profile;`strict` / `lenient` profiles = disabled affordances Tier 2)→ **Step 3 — Chunking**(strategy:`semantic` / `fixed` / `layout-aware`(default per ADR-0018)+ chunk size + overlap)→ **Step 4 — Multimodal**(Tier 1 active toggles per ADR-0028:`extract_embedded_images: bool = False` + `slide_screenshots: bool = True` PPT-default per W3 + `dedup_strategy: 'sha256' | 'none' = 'sha256'` + `return_images_in_chat: bool = False`;**Tier 2 disabled affordances** via `<DisabledAffordance tier={2}>`:`enable_caption_generation` / `image_clustering` / `provenance_blockchain`)→ **Step 5 — Review & Create**(summary table + `POST /kb` submit + redirect → `/kb/[id]`)。
+>
+> **Backend dep added by ADR-0028**(W19 F2 §3.1 item 2;W20 Wave A backend scope):`KbConfig` schema extend with Tier 1 active multimodal fields(`extract_embedded_images` + `slide_screenshots` + `dedup_strategy` + `return_images_in_chat`)~0.5d C01+C02;`backend/ingestion/orchestrator.py` consumes them downstream。Existing KBs pre-W20 get defaults retroactively via migration default value(no breaking change)。
 
-**Step 1 - Data Source**:Drag-drop multi-format upload(.docx / .pdf / .pptx)
+**Re-ingestion 3-step wizard(existing KB Pipeline tab + `/kb-upload/[id]`)** — 抄 Dify Image 1 + 6 嘅 3-step wizard:`Data Source → Document Processing → Execute & Finish`。
+
+**Step 1 - Data Source**:Drag-drop multi-format upload(.docx / .pdf / .pptx)+ same Multimodal Tier 1/2 affordance pattern per ADR-0028 §5.5.3b(W20 F6 polish)
 **Step 2 - Document Processing**:Chunk strategy selector(Auto / Heading-aware / Layout-aware / Slide-based)+ live preview pane
 **Step 3 - Execute & Finish**:Index method confirm + start indexing + progress bar
 
@@ -965,9 +986,11 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 >
 > **View-count impact**:ADR-0015 嘅「6 views → 9 views」變成「out goes Landing,in comes Dashboard」— 仍 ≈9 views,但 set 改咗(§5.0 Application Shell 係 chrome 唔計 view;§5.3「Admin Dashboard」placeholder → 真「Dashboard」overview;新增小 view `/settings`)。詳見 ADR-0024 §"Relationship to ADR-0015"。
 
-### 5.10 View 8:Login(`/login`)— v6 amendment(redirect target updated per ADR-0024)
+### 5.10 View 8:Login(`/login`)— v6 amendment(redirect target updated per ADR-0024);Brand panel + Forgot password disabled affordance polish per W20 F7
 
 > **Per ADR-0024**:呢個 page 留喺 `<AppShell>` **之外**(pre-auth 無 app chrome;§5.0)。Sign-in 成功 → redirect `/dashboard`(原 `/chat`)。「Forgot password?」link 維持 disabled affordance(reset password 仍 Tier 2 per §11)。
+>
+> **Amendment per W20 Wave A F7 polish**(2026-05-16):Brand panel slot integration(reuse `frontend/components/auth/brand-panel.tsx` from W13)+ **Forgot password** link rendered as **`<DisabledAffordance tier={2} reason="Self-register password reset — Tier 2 per architecture.md §11">`** chip + tooltip "Coming in a later tier"(shared component spec per W19 F5;same pattern used across Workspace switcher / Multimodal Tier 2 affordances / Access tab / Labs)。Redirect target unchanged(`/dashboard` per W18 F7)。
 
 **Layout reference**:Standard auth split layout(left brand panel / right form),visual hierarchy 借 Dify-leaning aesthetic 但 visual identity 100% EKP tokens。
 
