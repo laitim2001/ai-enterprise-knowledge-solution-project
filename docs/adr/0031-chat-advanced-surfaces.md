@@ -1,7 +1,7 @@
 # ADR-0031: Chat advanced surfaces — Conversation History(Beta+) + 3 citation placement modes + FeedbackBar(**option set on Conversation History scope — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.6 NEW — per F2 §6 promotion;awaits Chris pick at W19 F6 + approval)
+**Status**: **Accepted (Option B server-side Tier 1)** — W19 F6 Chris pick 2026-05-16。Chris selected Option B over Option A localStorage-only Tier 1(W19 F2 §6 recommendation + C10 §7 spec)和 Option C Tier 2 defer。**Implications**:promotes C10 §7 Tier 2 server-side persistence to Tier 1;Postgres `conversations` + `messages` tables + 6 `/conversations` CRUD endpoints + ~3 backend days extends Wave A backend budget(~5-7 → ~8-10 days)+ cross-device + cross-browser availability for users
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

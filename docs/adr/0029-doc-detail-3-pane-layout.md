@@ -1,7 +1,7 @@
 # ADR-0029: /doc-detail 3-pane layout(outline + chunks + inspector)
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.5 — awaits Chris approval at W19 F6 — route name decision deferred)
+**Status**: **Accepted (Option C `/kb/[id]/docs/[docId]`)** — W19 F6 Chris pick 2026-05-16。Chris selected Option C(nested-under-KB URL,IA consistency with ADR-0024 flat URL convention)over Option A `/doc-detail/[kbId]/[docId]`(prototype default)和 Option B `/doc/[kbId]/[docId]`(shorter)
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

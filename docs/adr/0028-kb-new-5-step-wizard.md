@@ -1,7 +1,7 @@
 # ADR-0028: /kb/new 5-step wizard + Multimodal Tier 1/2 split + /kb-upload re-ingestion coexistence
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.4 — awaits Chris approval at W19 F6)
+**Status**: **Accepted**(W19 F6 Chris approval 2026-05-16 — consensus decision)
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

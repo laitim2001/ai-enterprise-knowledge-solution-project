@@ -1,7 +1,7 @@
 # ADR-0027: /users Tier 1.5 RBAC NET NEW surface(**option set — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.3 — awaits Chris pick at W19 F6 + approval)
+**Status**: **Accepted (Option A full RBAC)** — W19 F6 Chris pick 2026-05-16。Chris selected Option A over Option B minimal 3-role(W19 F2 §6 recommendation)和 Option C stage。**Implications**:~20 NEW backend days + 6 NEW Postgres tables(`roles` + `role_permissions` + `groups` + `group_members` + `audit_log` + `kb_acl`)+ Entra Graph SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation)+ ACL middleware on every protected endpoint + audit_log writes + new C16 Users Service component + Wave C combined with ADR-0026 Option B = ~42 backend days **MUST split Wave C into C1+C2** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。Full RBAC Tier 1 ship = significantly higher operational maturity for Beta launch + per-KB ACL fully functional
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

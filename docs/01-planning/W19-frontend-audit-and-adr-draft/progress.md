@@ -2,7 +2,7 @@
 phase: W19-frontend-audit-and-adr-draft
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed
 last_updated: 2026-05-16
 ---
 
@@ -82,7 +82,7 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 | F3 ADR drafts × 5 + NEW ADR-0031 | ~1.2d(plan)+ 0.2d(NEW) | ~0.5d(this session)| **6 ADR drafts landed**:0025 KB Detail 8-tab(consensus)+ 0026 Settings 6-tab(option set 岔口 2)+ 0027 /users Tier 1.5 RBAC(option set 岔口 1)+ 0028 /kb/new 5-step(consensus)+ 0029 /doc-detail 3-pane(route name pick)+ **NEW 0031 Chat advanced**(option set Conversation History scope per F2 §6 promotion)。ADR-0030 + ADR-0032 SKIPPED per F2 absorb-vs-promote。`docs/adr/README.md` 6 rows + Next NNNN 0030→0033 with 0030/0032 SKIPPED note — `(this commit)` |
 | F4 Wave breakdown | ~0.4d | ~0.3d(this session)| `audit/W19-wave-breakdown.md` landed — 4-Wave structure(W20 / W21 / W22 / Wave D Tier 2 hold)+ dep ordering(A+B parallel,C needs A,D requires Beta launch)+ Wave A 7-tab `-Access` decision + Wave C2 split trigger for Option A picks + per-Wave H4 boundary policing + 岔口 → Wave impact ASCII diagram + mock-auth default through Wave C per user 岔口 2 — `(this commit)` |
 | F5 Tier 2 catalog | ~0.5d | ~0.3d(this session)| `audit/W19-tier2-disabled-affordance-catalog.md` landed — 27 Tier 2 affordances enumerated + 4 standardized patterns(P1 native disabled / P2 aria-disabled + toast / P3 coral TIER 2 badge / P4 route hidden)+ `<DisabledAffordance>` shared component spec + coral semantics enforcement + F5.4 `/labs/*` routing decision recommended Option C(prototype-only) — `(this commit)` |
-| F6 Closeout | ~0.3d(synthesis;Chris review = own time block)| ~0.2d synthesis(this session)| F6 prep — checklist F6.1-F6.8 + 4 strategic decisions surfaced for Chris async review;ADR Status flips + frontmatter close + retro + session-start.md hygiene + W20+ kickoff trigger AWAIT Chris approval — `(this commit)` |
+| F6 Closeout | ~0.3d(synthesis;Chris review = own time block)| ~0.3d total(synthesis 0.2d + closeout 0.1d this session)| **DONE** — Chris picked 4 strategic decisions via AskUserQuestion 2026-05-16(Option A + Option B + Option B + Option C)+ 6 ADRs flipped `Proposed` → `Accepted` + frontmatter `active` → `closed` + retro 7 sections + session-start.md hygiene + W20+ kickoff candidate flagged。**Wave C MUST split into C1+C2** per F4 §3.6 trigger;**Wave A backend +3 days** per ADR-0031 Option B Conversation History server-side。**Phase Gate = PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT** — `(this commit)` |
 
 ### Next
 
@@ -281,9 +281,110 @@ Per plan F3.1-F3.5(5 ADRs)+ F2 §6 recommendation(promote NEW ADR-0031 as 6th):
 
 ### Next
 
-- **Chris async review** of 4 strategic decisions OR live session(per Chris availability)
-- Post-approval F6.3-F6.8 closeout commit(ADR Status flips + frontmatter close + retro + session-start hygiene + W20 kickoff trigger note)
+- W20-frontend-wave-a phase folder kickoff(separate cascade per rolling JIT R1)— **needs Wave A scope re-confirm**:per ADR-0027 Option A acceptance,Wave A KB Detail可以 ship 8-tab(包含 Access)如果 backend RBAC infra 同 Wave A 一齊 land;或 ship 7-tab Wave A + Access tab Wave C1。Depends on backend phase split decision at W20 kickoff
+- W22+ Wave C must split per F4 §3.6 trigger — W22-frontend-wave-c1(~5-7 backend days subset)+ W22b-frontend-wave-c2(remaining ~30+ days)or different split per kickoff
+- Track A IT cred populate event(W16 F1)still parallel track — independent of W20-W22
 
 ---
 
-**Lifecycle reminder**:呢個 phase `status=active`(2026-05-16,per user directive)。重大 deviation 入 plan.md §7 changelog(per R3)。W20+ phase folder **唔會** pre-create(per CLAUDE.md §10 R1 rolling-JIT — W20-frontend-wave-a kickoff post-W19-F6 closeout decision per ADR-0025 + Wave A scope authorization)。
+## Day 5 — F6 closeout + W19 phase Gate PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT(2026-05-16)
+
+### Phase Gate verdict — **PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT** — `(this commit)`
+
+**Verdict rationale**(per the W12-W18 pattern):
+
+- **All 6 F-deliverables landed**(F0 Kickoff + F1 Mockup audit + F2 Backend gap map + F3 6 ADR drafts + F4 Wave breakdown + F5 Tier 2 catalog + F6 Chris approval cascade)
+- **Success-criteria checklist**(plan §3) — all 7 met:
+  - F0 phase folder + ADR README slots + session-start W19 row ✅
+  - F1 22 files / 11K lines audited + D1-D11 deviations + Tier 2 leak ✅
+  - F2 14 routes × endpoint × schema + cumulative work list + Wave blockers + grep evidence ✅
+  - F3 6 ADR drafts(0025/0026/0027/0028/0029/0031)Proposed → Accepted with option picks ✅
+  - F4 4-Wave skeletons + dep ordering + Wave C2 split trigger + 岔口 impact diagram ✅
+  - F5 27 affordances + 4 patterns + `<DisabledAffordance>` spec + coral semantics + Labs Option C ✅
+  - F6 Chris approves 4 strategic decisions + ADR Status flips + session-start hygiene + W20+ trigger flag ✅
+- **The "WAVE-C-SPLIT-TRIGGERED CAVEAT"**(why not a clean PASS — Wave C scope expansion implication):Chris picked Option A(full RBAC ~20 days)+ Option B(fully editable Settings ~22 days)= **~42 combined Wave C backend days exceeds single-phase budget per F4 §3.6 trigger**。Wave C MUST split into C1+C2 sub-phases per CLAUDE.md §10 rolling JIT。This is a **downstream implementation impact, not a F6 deliverable shortfall** — Wave C2 trigger was anticipated + documented in F4 §3.6 + plan §6 Risk row 2(F2 backend gap may be deeper than estimated)before the Chris picks。Per Karpathy §1.4 goal-driven,Wave C split + W22 kickoff scope decision = post-W19 R5 ADR-before-implement discipline applies。
+
+→ **PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT**。The 4 strategic decisions are Chris's authority + per the rolling JIT discipline,W22 kickoff(post-Wave A close)will make the C1/C2 split decision concrete based on actual backend implementation pace through Wave A。
+
+### Retrospective(7 sections per PROCESS.md / session-start §13)
+
+**1. What worked**
+
+- **F1+F2 parallel-Read batching pattern**(5 batches over 22 files in F1 + grep + schema inventory in F2)reused the W18 F3 atomic re-parent + re-route precedent — single-session collapse from ~1.6 plan-days to ~0.8 actual days(per W12-W18 real-calendar collapse pattern)。
+- **F2 §6 recommendations + F3 NEW ADR-0031 promotion** —  surfacing the absorb-vs-promote decision in F2 audit + F3 incorporating that as 6th ADR(0031)— eliminated the ambiguity that would have plagued F4 if 0030/0032 were left as TBD ADRs;Wave A polish scope clear from F3 onwards。
+- **Option-set ADR draft pattern**(0026 / 0027 / 0031)— explicit option sets with cost-benefit + recommendation in each ADR draft made Chris's F6 pick session efficient(AskUserQuestion 4 questions × 3 options each = 1 turn)。
+- **Wave C2 split trigger documented in F4 §3.6 _before_ Chris pick** — preemptive risk mitigation per plan §6 Risk row 2(F2 gap deeper than estimated);Chris's actual picks(Option A + B)triggered the split as anticipated — graceful handling rather than mid-Wave-C scramble。
+- **27-affordance catalog + 4 standardized patterns + `<DisabledAffordance>` component spec** — F5 reusable across Wave A/B/C implementations,eliminates per-Wave Tier 2 boundary policing inconsistency。
+
+**2. What didn't work / friction**
+
+- **F3 ADR drafting context drain** — 6 ADRs × ~150-300 lines each = ~1500 lines single-session NEW md;option-set ADRs(0026/0027/0031)需 careful nuanced option presentation,context pressure noticeable mid-F3。Wave A实现 phase 唔可能similar single-session collapse — 实际 implementation 6+ files × test + lint cycles = substantial context budget per file。
+- **Chris picks 3-of-4 against recommendation** — Chris explicitly chose maximum scope(Option A + B + B)over F2 §6 minimum-recommend(Option B + C + A)— substantial Wave C scope expansion;documented in plan §7 changelog as a deviation acknowledgment但 fully respected per stakeholder authority。
+- **`docs/12-ai-assistant/01-prompts/01-session-start.md` `.gitignore` directory-pattern ignored warning** — recurring warning across F0/F1/F2/F3/F4/F5/F6 commits;`git add` succeeds for already-tracked file modification but pollutes stage output。Mitigation: stays per-file modification(not directory)— same as W17/W18 pattern。
+
+**3. Surprises**
+
+- **F1 audit surfaced 3 NEW ADR candidates beyond plan F3 5 ADRs**(0030/0031/0032)— plan §6 Risk row 1 anticipated"audit may surface more deviations than 5"with medium likelihood/impact;actual: 3 surfaced + 1 promoted(0031) + 2 absorbed into Wave A scope(0030/0032)— graceful handling matched the mitigation。
+- **Chris picks 3-of-4 against W19 F2 §6 minimum-recommend** — anticipated as plan §6 Risk row 3("岔口 stay un-resolved at F6")but actually opposite — Chris resolved with **maximum** scope。Risk row 2(F2 gap deeper than estimated)更适合 — actual outcome = Wave C scope expansion forces split per F4 §3.6 anticipated trigger。
+- **Per F1 audit + F2 grep, mostly schemas match backend Pydantic shapes very precisely** — KB / Document / Chunk / Image / Trace / Eval / Shootout / Cost 全部 shape match;只有 Conversation + DocumentDetail + ChunkingComparison + RBAC missing(per F2 §3 cumulative gap list)— prototype design demonstrates high backend Pydantic awareness。
+
+**4. Decisions**(the ones that'll matter later — see plan §7 changelog for the full Chris pick context)
+
+- **Wave C MUST split C1+C2** per F4 §3.6 trigger due to Option A+B combined ~42 backend days exceeds single-phase budget per CLAUDE.md §10 rolling JIT。W22 kickoff(post-Wave A close)will decide concrete C1/C2 scope split based on actual Wave A backend pace。
+- **Wave A scope re-confirm at W20 kickoff** — per ADR-0027 Option A acceptance,Wave A KB Detail可以 ship 8-tab(包含 Access)如果 backend RBAC infra 同 Wave A 一齊 land(but Option A RBAC ~20 days,Wave A budget ~5-7 days backend — likely NOT achievable),或 ship 7-tab Wave A + Access tab Wave C1(more realistic);decision at W20 kickoff per F2 + Wave A backend phase split。
+- **Wave A backend +3 days** per ADR-0031 Option B Conversation History server-side(~5-7 → ~8-10 days)— substantial but within Wave A phase budget。
+- **Key Vault SDK + Entra Graph SDK NEW dependencies** per ADR-0026 Option B + ADR-0027 Option A — H2 stop-and-ask implicit acceptance via Chris pick;R8 corp-proxy risk per ADR-0017 mitigation pattern(Plan B (a) system binary / (b) native package manager / (c) defer to non-proxy env)applies to both new deps installation。
+- **ADR-0030 + ADR-0032 SKIPPED preserved** — F2 §6 absorb-vs-promote decision unchanged by Chris picks;Wave A polish covers these without separate ADR。
+
+**5. Carry-overs to W20+**(the 6 Accepted ADRs become W20+ tracking items)
+
+- **ADR-0025 KB Detail 8-tab** — Wave A `+` Wave C1(Access tab needs ADR-0027 RBAC infra activation)
+- **ADR-0026 Settings 6-tab fully editable Option B** — Wave C1 + C2(per scope split decision)+ Key Vault SDK new dep + ~22 backend endpoints + provider CRUD + Test connection + secret rotation
+- **ADR-0027 /users Tier 1.5 full RBAC Option A** — Wave C1 + C2 + 6 NEW Postgres tables + Entra Graph SDK new dep + ACL middleware + audit log writes + new C16 Users Service
+- **ADR-0028 /kb/new 5-step + Multimodal** — Wave A backend KbConfig +4 multimodal fields + Multimodal Tier 2 disabled affordance(captioning + render PDF + perceptual dedup + low_value vision filter)
+- **ADR-0029 /doc-detail 3-pane `/kb/[id]/docs/[docId]`** — Wave B + GET enriched endpoint
+- **ADR-0031 Chat advanced surfaces + Conversation History server-side Tier 1 Option B** — Wave A frontend + 6 `/conversations` CRUD endpoints + Postgres conversations + messages tables + ~3 backend days extends Wave A
+- **Wave A scope re-confirm at W20 kickoff** — Access tab Wave A vs Wave C1 decision
+- **Wave C C1/C2 scope split decision at W22 kickoff** — per F4 §3.6 trigger activation
+- **27-affordance Tier 2 catalog enforcement** — Wave A/B/C implementations consume `<DisabledAffordance>` component per F5 §4 spec
+- **F5.4 `/labs/*` routing Option C** — `<AppShell>` sidebar nav NOT include Labs section in Wave A
+
+**6. Time tracking**
+
+- Plan-day budget(per plan §5):F0 0.3d + F1 0.8d + F2 0.8d + F3 1.2d + F4 0.4d + F5 0.5d + F6 0.3d = **~4.3 plan-days budget**(window 2026-05-16 → 2026-05-23 per frontmatter)
+- Actual:F0 0.2d + F1 0.4d + F2 0.4d + F3 0.5d + F4 0.3d + F5 0.3d + F6 0.3d = **~2.4 actual days** condensed in **single calendar day 2026-05-16**。Real-calendar collapse ≈ 2× under plan-day budget — consistent with W12-W18 pattern(W18 was 4× collapse)。 Frontmatter end_date 2026-05-23 was a window not a commitment(per W18 precedent)。
+
+**7. Spec-ref alignment**
+
+- **`architecture.md v6 §5` amendments NOT done in W19**(F0.5 verify-no-op pattern)— per CLAUDE.md §6 ADR-before-implement,the 6 Accepted ADRs propose amendments;actual inline-tag edits land per-ADR at respective W20+ kickoffs(W20 for ADR-0025/0028/0031 / W21 for ADR-0029 / W22-C1 + W22-C2 for ADR-0026/0027)— same convention as ADR-0024 W18 kickoff inline-tag pattern + §3.4/§3.7 W17 precedent。
+- **`COMPONENT_CATALOG.md` C09/C10/C11 + new C16 Users Service rows** to land at W20+ phase implementations(W19 audit-only,no Cn design-note edit)
+- **`decision-form.md` untouched**(F6.8 R4 no-op confirmed)— 4 strategic decisions resolved via Accepted ADR options + Wave C scope decision per F4 §3.6 + Wave A scope re-confirm at W20 kickoff,not new OQs。
+- **CLAUDE.md §5.1 H1 check**:6 ADRs Accepted with Chris approval before any W20+ implementation = R5 ADR-before-implement discipline satisfied。Option A + B picks trigger H2 new dependency note(Key Vault SDK + Entra Graph SDK);R8 corp-proxy mitigation per ADR-0017 applies to both new deps + W20+ phase plans should explicit Plan B sequencing per ADR-0017 Decision-rule #5。
+- **CLAUDE.md §10 R5 trigger**:Wave C2 split per F4 §3.6 anticipates the split per rolling JIT — W22 kickoff cascade(post-Wave A close)will make concrete decision per W22 phase plan。
+
+### W19 phase Gate verdict = **PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT**
+
+All F0-F6 deliverables landed + Chris approves 4 strategic decisions + 6 ADRs Accepted。Wave C2 split is a downstream implementation impact requiring W22 kickoff scope decision,not a F6 deliverable shortfall。Same shape as W18 "PASS WITH SMOKE-USER-DEFERRED CAVEAT" — phase Gate PASS,but with an explicit caveat that future-phase work is impacted。
+
+### Closeout housekeeping landed(`(this commit)`)
+
+- 6 ADRs(0025/0026/0027/0028/0029/0031)Status `Proposed` → `Accepted` per Chris pick + header note documenting decisions + implications
+- `docs/adr/README.md` 6 rows + footnote updated to Accepted state + Next NNNN unchanged at `0033`(0030/0032 still SKIPPED)
+- W19 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
+- W19 `plan.md` §7 changelog 3 entries(initial draft + F3 5→6 promotion + F6 Chris approval cascade)
+- W19 `checklist.md` F6.1-F6.8 all ticked
+- W19 `progress.md` Day 5 entry + retro 7 sections + lifecycle reminder unchanged
+- `session-start.md` hygiene catch-up — §10 W19 row → closed + Wave C C1+C2 split note + W20+ candidates + §11 carry-overs + §12 milestones 17→18 + Last-Updated + Update-history
+- W20-frontend-wave-a phase folder **NOT pre-created**(rolling JIT — kickoff post-W19 closeout decision per ADR-0025/0028/0031 + Wave A scope re-confirm)
+
+### Next phase kickoff candidates(post-W19)
+
+1. **W20-frontend-wave-a**(primary candidate per F4 §1) — `/dashboard` + `/chat` advanced + `/kb` cluster + `/kb/[id]` 7-tab OR 8-tab + `/kb-upload` + `/login` + `/register` polish + topbar polish。Backend additions ~8-10 days + frontend ~10-13 days。Window ~1.5-2 weeks。
+2. **W21-frontend-wave-b**(parallel candidate per F4 §2) — can start concurrent with W20 if backend capacity supports;`/doc-detail` 3-pane + `/eval` + `/traces` list + `/traces/[traceId]` 3 viz modes。 ~2 backend days + ~6.5-7.5 frontend days。 Window ~1 week。
+3. **W22-frontend-wave-c1**(sequential post-Wave-A per F4 §3) — Wave C scope split decision at W22 kickoff per F4 §3.6 trigger activated by Chris Option A+B picks。
+4. **W22b-frontend-wave-c2**(after W22-c1 close per rolling JIT) — remainder of Wave C scope。
+5. **W23+ Tier 2** — Q12 post-Beta governance trigger,not pre-created。
+
+---
+
+**Lifecycle reminder**:呢個 phase `status=closed`(2026-05-16,per F6 Chris approval cascade)。重大 deviation 入 plan.md §7 changelog(per R3 — F6 decisions logged)。W20+ phase folder **唔會** pre-create(per CLAUDE.md §10 R1 rolling-JIT — W20-frontend-wave-a kickoff is a separate cascade)。

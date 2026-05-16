@@ -1,7 +1,7 @@
 # ADR-0025: KB Detail 5 → 8 tabs expansion(Images + Chunking Lab + Access)
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.1 — awaits Chris approval at W19 F6)
+**Status**: **Accepted**(W19 F6 Chris approval 2026-05-16 — consensus decision, no option set)
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

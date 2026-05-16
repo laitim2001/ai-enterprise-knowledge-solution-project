@@ -1,7 +1,7 @@
 # ADR-0026: Settings v1 thin → 6-tab hub + Connections backend(**option set — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: Proposed(W19 F3.2 — awaits Chris pick at W19 F6 + approval)
+**Status**: **Accepted (Option B fully editable)** — W19 F6 Chris pick 2026-05-16。Chris selected Option B over Option C hybrid(W19 F2 §6 recommendation)和 Option A read-only。**Implications**:~22 NEW backend endpoints + Key Vault SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation pattern noted)+ Wave C combined with ADR-0027 Option A = ~42 backend days **MUST split Wave C into C1+C2 sub-phases** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context

@@ -1,7 +1,7 @@
 ---
 phase: W19-frontend-audit-and-adr-draft
 plan_ref: ./plan.md
-status: active
+status: closed
 last_updated: 2026-05-16
 ---
 
@@ -73,18 +73,18 @@ last_updated: 2026-05-16
 
 > **F6 status = AWAITING CHRIS REVIEW**(2026-05-16)— F1+F2+F3+F4+F5 deliverables landed;F6 = Chris review of 4 strategic decisions + ADR Status flips + frontmatter close + retro + session-start.md hygiene。**Synthesis for Chris async review** prepared `(this commit)` in this checklist + summarized in `progress.md` Day 4 entry。
 
-- [ ] F6.1 Chris review session — 4 strategic decisions to make:
-  - **岔口 1**(ADR-0027 /users RBAC scope):**A full RBAC** / **B minimal 3-role RECOMMENDED** / C stage
-  - **岔口 2**(ADR-0026 Settings Connections scope):A read-only / **C hybrid RECOMMENDED** / B fully editable
-  - **ADR-0031 NEW Conversation History scope**:**A localStorage-only Tier 1 RECOMMENDED** / B server-side Tier 1 / C Tier 2 defer
-  - **ADR-0029 /doc-detail route name**:A `/doc-detail/[kbId]/[docId]` / B `/doc/[kbId]/[docId]` / **C `/kb/[id]/docs/[docId]` RECOMMENDED**
-- [ ] F6.2 ADR Status flips per Chris pick — 6 ADRs to `Accepted`(0025/0028/0029 consensus + 0026/0027/0031 per option pick)
-- [ ] F6.3 W19 phase Gate verdict — PASS / PARTIAL / FAIL per checklist + Chris sign-off
-- [ ] F6.4 W19 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
-- [ ] F6.5 W19 `progress.md` retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W20+ / Time tracking / Spec-ref alignment)
-- [ ] F6.6 `session-start.md` hygiene catch-up — §10 W19 row → closed verdict + W20+ candidates noted + §11 carry-overs(6 Accepted ADRs become W20+ tracking)+ §12 milestones row(累計 17→18)+ Last-Updated + Update-history
-- [ ] F6.7 W20-frontend-wave-a kickoff candidate flagged + W20 phase folder created in **separate kickoff cascade**(rolling JIT)
-- [ ] F6.8 Confirm no new W19 OQ — option-set picks → Accepted ADR options,not new OQs in `decision-form.md`
+- [x] F6.1 Chris review session **DONE** — 4 strategic decisions picked via AskUserQuestion 2026-05-16:
+  - **岔口 1**(ADR-0027 /users RBAC scope):**Option A full RBAC** picked(over recommended Option B minimal 3-role)— ~20 backend days + 6 NEW Postgres tables + Entra Graph SDK new dep + audit_log + new C16 Users Service
+  - **岔口 2**(ADR-0026 Settings Connections scope):**Option B fully editable** picked(over recommended Option C hybrid)— ~22 NEW backend endpoints + Key Vault SDK new dep
+  - **ADR-0031 NEW Conversation History scope**:**Option B server-side Tier 1** picked(over recommended Option A localStorage)— promotes C10 §7 Tier 2 to Tier 1;+3 backend days extends Wave A
+  - **ADR-0029 /doc-detail route name**:**Option C `/kb/[id]/docs/[docId]`** picked(matches recommendation)— IA consistency with ADR-0024 — `(this commit)`
+- [x] F6.2 ADR Status flips per Chris pick **DONE** — 6 ADRs `Proposed` → `Accepted`:0025 consensus / 0026 Accepted (Option B fully editable) / 0027 Accepted (Option A full RBAC) / 0028 consensus / 0029 Accepted (Option C) / 0031 Accepted (Option B server-side Tier 1);each ADR header note documenting Chris pick + implications — `(this commit)`
+- [x] F6.3 W19 phase Gate verdict = **PASS WITH WAVE-C-SPLIT-TRIGGERED CAVEAT**(all F0-F6 deliverables landed + Chris signs off 4 strategic decisions;Wave C2 split is a downstream implementation impact per F4 §3.6 trigger,not a F6 deliverable shortfall) — `(this commit)`
+- [x] F6.4 W19 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed` — `(this commit)`
+- [x] F6.5 W19 `progress.md` Day 5 entry + retro 7 sections written(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W20+ / Time tracking / Spec-ref alignment)— `(this commit)`
+- [x] F6.6 `session-start.md` hygiene catch-up — §10 W19 row → closed with Gate verdict + Wave C C1+C2 split note + W20+ candidates noted + §11 carry-overs(6 Accepted ADRs + Wave A scope re-confirm decision at W20 kickoff)+ §12 milestones row(累計 17→18)+ Last-Updated + Update-history — `(this commit)`
+- [x] F6.7 W20-frontend-wave-a kickoff candidate flagged in session-start §10 W19 row(actual W20 phase folder created in **separate kickoff cascade** per rolling JIT — NOT in this commit per R1 discipline)— `(this commit)` flag
+- [x] F6.8 Confirm no new W19 OQ — option-set picks resolved via Accepted ADR options,not new OQs;`decision-form.md` untouched(R4 no-op)— `(this commit)`
 
 ## F5 — Tier 2 disabled-affordance catalog
 
