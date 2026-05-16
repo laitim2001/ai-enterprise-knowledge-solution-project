@@ -53,14 +53,38 @@ last_updated: 2026-05-16
 
 ## F4 — Wave breakdown(W20–W23+ phase skeletons)
 
-- [ ] F4.1 NEW `audit/W19-wave-breakdown.md` — 4 Wave skeletons:
-  - Wave A — W20-frontend-wave-a(`/dashboard` + `/chat` + `/kb` + `/kb/[id]`)— ADR-0025 dep;backend = mostly supported + ad-hoc dashboard endpoint;est ~3-5d
-  - Wave B — W21-frontend-wave-b(`/doc-detail` + `/eval` + `/traces/[traceId]`)— ADR-0029 dep;backend mostly supported;est ~2-3d
-  - Wave C — W22-frontend-wave-c(`/settings` + `/users` + auth polish + real-MSAL ship)— ADR-0026 + ADR-0027 dep;**mock + real both ship** per user 岔口 2;backend HIGH scope;est ~5-8d
-  - Wave D — Tier 2 hold(8 `/labs/*` post-Beta governance Q12)— NOT pre-created
-- [ ] F4.2 Dep ordering — explicit "Wave A must close before B?" diagram;current draft = A+B parallel,C needs A done,D requires Beta launch
-- [ ] F4.3 Per-Wave H4 boundary policing list — features that surface as disabled affordance per F5 catalog
-- [ ] F4.4 岔口 → Wave impact diagram — Option A/B/C for each 岔口 → Wave C scope changes summarized
+> **F4 verdict = PASS**(2026-05-16)— landed `(this commit)`。`audit/W19-wave-breakdown.md` covers 4-Wave structure:Wave A(W20 ~1.5-2w / 8 routes / ~5-7 backend days)+ Wave B(W21 ~1w / 4 routes / ~2 backend days)+ Wave C(W22 ~1.5-2w / 5 routes / ~5-10 backend days per option-set picks)+ Wave D(Tier 2 hold,not pre-created)。**Dep ordering**:A+B parallel,C needs A,D requires Beta launch。**Wave A 7-tab KB Detail**(`-Access`)/ Wave C activates Access tab。**Mock-auth default through Wave C** + real-MSAL concurrent ship per user 岔口 2。**岔口 → Wave impact diagram**:Option A+A combination triggers Wave C split into C1+C2 sub-phases(rolling JIT per CLAUDE.md §10);Option B+C recommended = single phase。
+
+- [x] F4.1 NEW `audit/W19-wave-breakdown.md` — 4 Wave skeletons with scope + backend deps + frontend effort + acceptance criteria + ADR deps per Wave。Wave A includes ADR-0030/0032 absorbed scope(Dashboard polish + Trace 3 viz + /traces list + Topbar/Sidebar additive)— `(this commit)`
+- [x] F4.2 Dep ordering — Wave A+B parallel,Wave C needs A close(Settings UserMenu nav + Access tab RBAC infra),Wave D requires Beta launch(Q12 governance trigger)— diagrammed in §5 — `(this commit)`
+- [x] F4.3 Per-Wave H4 boundary policing list — Wave A: Shell + Auth + KB cluster disabled affordances(10 items);Wave B: embedding viz conditional;Wave C: Users RBAC + Settings Tier 2 affordances(13 items);Wave D: all `/labs/*` 8 pages — §6 cross-ref F5 catalog — `(this commit)`
+- [x] F4.4 岔口 → Wave impact diagram — Option B+C(recommended)~10 backend days single Wave C phase / Option A+A ~42 days must split C1+C2+C3 per rolling JIT — §3.5 with ASCII diagram + Wave C2 trigger conditions documented in §3.6 — `(this commit)`
+
+## F5 — Tier 2 disabled-affordance catalog
+
+> **F5 verdict = PASS**(2026-05-16)— landed `(this commit)`。`audit/W19-tier2-disabled-affordance-catalog.md` enumerates **27 Tier 2 disabled affordances**(4 Shell + 1 Auth + 7 KB cluster + 2 KB Access + 5 /users + 10 /settings + 3 Chat + 1 Dashboard = 27 surface);4 standardized patterns(**P1 native disabled + tooltip / P2 aria-disabled + click-toast / P3 coral TIER 2 badge + non-interactive / P4 route hidden**)+ NEW `<DisabledAffordance>` shared component spec for Wave A implementation。Coral semantics enforcement(coral reserved for brand emphasis + Tier 2 preview + citation pill — NOT for selected/active states / destructive / warning / info)。**F5.4 `/labs/*` routing decision — recommended Option C(prototype-only,don't ship `frontend/`)**。
+
+- [x] F5.1 NEW `audit/W19-tier2-disabled-affordance-catalog.md` §1 — 27 affordances enumerated(Shell S1-S4 + Auth A1 + KB K1-K7 + KB Access KA1-KA2 + Users U1-U5 + Settings ST1-ST10 + Chat C1-C3 + Dashboard D1)cross-ref F1 audit §2.3 leak findings(Sidebar Workspace switcher must fix Wave A polish + Chat Conversation History server-side persistence boundary explicit) — `(this commit)`
+- [x] F5.2 §2 4 standardized patterns + per-affordance handling spec — P1 native disabled / P2 aria-disabled + toast / P3 coral TIER 2 badge / P4 route hidden;each pattern's implementation code + when-to-use + a11y notes — `(this commit)`
+- [x] F5.3 §4 `<DisabledAffordance>` shared component design sketch — NEW `frontend/components/ui/disabled-affordance.tsx` spec with `variant` prop(p1-strict / p3-preview) + `reason` + `tier2Trigger` + `showBadge` + usage examples for S1 (P1) + U1 (P3);Wave A acceptance criterion = grep `<DisabledAffordance` count matches catalog count(~10 Wave A scope) — `(this commit)`
+- [x] F5.4 §5 `/labs/*` routing decision option set — A visible in sidebar / B feature-flag-gated / **C prototype-only RECOMMENDED**;Wave A action = `<AppShell>` sidebar nav NOT include Labs section + documented rationale comment in `frontend/components/nav/app-shell.tsx` — `(this commit)`
+
+## F6 — Phase closeout + Chris approve + W20+ kickoff trigger
+
+> **F6 status = AWAITING CHRIS REVIEW**(2026-05-16)— F1+F2+F3+F4+F5 deliverables landed;F6 = Chris review of 4 strategic decisions + ADR Status flips + frontmatter close + retro + session-start.md hygiene。**Synthesis for Chris async review** prepared `(this commit)` in this checklist + summarized in `progress.md` Day 4 entry。
+
+- [ ] F6.1 Chris review session — 4 strategic decisions to make:
+  - **岔口 1**(ADR-0027 /users RBAC scope):**A full RBAC** / **B minimal 3-role RECOMMENDED** / C stage
+  - **岔口 2**(ADR-0026 Settings Connections scope):A read-only / **C hybrid RECOMMENDED** / B fully editable
+  - **ADR-0031 NEW Conversation History scope**:**A localStorage-only Tier 1 RECOMMENDED** / B server-side Tier 1 / C Tier 2 defer
+  - **ADR-0029 /doc-detail route name**:A `/doc-detail/[kbId]/[docId]` / B `/doc/[kbId]/[docId]` / **C `/kb/[id]/docs/[docId]` RECOMMENDED**
+- [ ] F6.2 ADR Status flips per Chris pick — 6 ADRs to `Accepted`(0025/0028/0029 consensus + 0026/0027/0031 per option pick)
+- [ ] F6.3 W19 phase Gate verdict — PASS / PARTIAL / FAIL per checklist + Chris sign-off
+- [ ] F6.4 W19 `plan.md` + `checklist.md` + `progress.md` frontmatter `status: active` → `closed`
+- [ ] F6.5 W19 `progress.md` retro — 7 sections(What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W20+ / Time tracking / Spec-ref alignment)
+- [ ] F6.6 `session-start.md` hygiene catch-up — §10 W19 row → closed verdict + W20+ candidates noted + §11 carry-overs(6 Accepted ADRs become W20+ tracking)+ §12 milestones row(累計 17→18)+ Last-Updated + Update-history
+- [ ] F6.7 W20-frontend-wave-a kickoff candidate flagged + W20 phase folder created in **separate kickoff cascade**(rolling JIT)
+- [ ] F6.8 Confirm no new W19 OQ — option-set picks → Accepted ADR options,not new OQs in `decision-form.md`
 
 ## F5 — Tier 2 disabled-affordance catalog
 

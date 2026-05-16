@@ -80,9 +80,9 @@ W19 does **NOT** address(stay W16 / Tier 2 / parallel track):
 | F1 Mockup `.jsx` audit | ~0.8d | ~0.4d(this session) | `audit/W19-mockup-jsx-audit.md` landed:per-route table 14 Tier 1 + 8 Tier 2 + shell + 5 foundation files;deviation summary D1–D11 with F3 ADR feed;Tier 2 leak audit(1 leak Sidebar Workspace switcher + 1 borderline Chat Conversation History);visual identity verify(tokens match,1 NEW `--info` token);mock data schema match(3 NEW schemas needed + RBAC family massive)。5 parallel Read batches over 22 files / 11K lines。**5 H1 ADRs confirmed**(0025–0029)+ **3 NEW ADR candidates surface**(0030 polish bundle / 0031 chat advanced / 0032 topbar additive)— F2/F3/F4 take it forward — `(this commit)` |
 | F2 Backend gap map | ~0.8d | ~0.4d(this session)| `audit/W19-backend-gap-map.md` landed:28 endpoints across 13 route files inventoried + 38 schemas across 11 schema files mapped + per-route table 14 Tier 1 × surface × endpoint × status × Wave × Cn × backend file:line evidence + cumulative work list by Wave/Cn with effort estimates per ADR-0026/0027 option set。21 ✅ supported(KB CRUD + Docs + Chunks + Retrieval Test + Eval + Trace + Feedback + Auth + Cost + Query)+ 7 🟡 partial(/health enrich + KbConfig multimodal + Archive KB + crag_* fields verify + auth/me verify + Pipeline viz + embedding preview)+ 13 🔴 missing(Recent queries + Latest eval cache + Conversations + KB Images + Chunking preview + Doc detail enriched + Settings × 3 + /users + RBAC + Audit log + Notifications + /traces list)+ 2 🟣 mock-only(Workspace switcher + Labs sidebar)。Wave A blocker count = 6 small + 2 NEW endpoints;Wave B = 2 NEW;Wave C = MASSIVE option set scope。**Recommend F3+F6 picks**:ADR-0026 Option C hybrid + ADR-0027 Option B minimal 3-role → Wave C ~7 backend days fits single phase。ADR-0030/0032 candidates absorb into Wave A scope without separate ADR;ADR-0031 NEW(Chat advanced + Conversation History) keep as 6th ADR — `(this commit)` |
 | F3 ADR drafts × 5 + NEW ADR-0031 | ~1.2d(plan)+ 0.2d(NEW) | ~0.5d(this session)| **6 ADR drafts landed**:0025 KB Detail 8-tab(consensus)+ 0026 Settings 6-tab(option set 岔口 2)+ 0027 /users Tier 1.5 RBAC(option set 岔口 1)+ 0028 /kb/new 5-step(consensus)+ 0029 /doc-detail 3-pane(route name pick)+ **NEW 0031 Chat advanced**(option set Conversation History scope per F2 §6 promotion)。ADR-0030 + ADR-0032 SKIPPED per F2 absorb-vs-promote。`docs/adr/README.md` 6 rows + Next NNNN 0030→0033 with 0030/0032 SKIPPED note — `(this commit)` |
-| F4 Wave breakdown | ~0.4d | — | — |
-| F5 Tier 2 catalog | ~0.5d | — | — |
-| F6 Closeout | ~0.3d(synthesis;Chris review = own time block)| — | — |
+| F4 Wave breakdown | ~0.4d | ~0.3d(this session)| `audit/W19-wave-breakdown.md` landed — 4-Wave structure(W20 / W21 / W22 / Wave D Tier 2 hold)+ dep ordering(A+B parallel,C needs A,D requires Beta launch)+ Wave A 7-tab `-Access` decision + Wave C2 split trigger for Option A picks + per-Wave H4 boundary policing + 岔口 → Wave impact ASCII diagram + mock-auth default through Wave C per user 岔口 2 — `(this commit)` |
+| F5 Tier 2 catalog | ~0.5d | ~0.3d(this session)| `audit/W19-tier2-disabled-affordance-catalog.md` landed — 27 Tier 2 affordances enumerated + 4 standardized patterns(P1 native disabled / P2 aria-disabled + toast / P3 coral TIER 2 badge / P4 route hidden)+ `<DisabledAffordance>` shared component spec + coral semantics enforcement + F5.4 `/labs/*` routing decision recommended Option C(prototype-only) — `(this commit)` |
+| F6 Closeout | ~0.3d(synthesis;Chris review = own time block)| ~0.2d synthesis(this session)| F6 prep — checklist F6.1-F6.8 + 4 strategic decisions surfaced for Chris async review;ADR Status flips + frontmatter close + retro + session-start.md hygiene + W20+ kickoff trigger AWAIT Chris approval — `(this commit)` |
 
 ### Next
 
@@ -222,7 +222,67 @@ Per plan F3.1-F3.5(5 ADRs)+ F2 §6 recommendation(promote NEW ADR-0031 as 6th):
 
 ### Next
 
-- F4 — Wave breakdown consuming F1+F2+F3 outputs → `audit/W19-wave-breakdown.md`
+- F6 — **AWAIT Chris async review** of 4 strategic decisions:岔口 1 (ADR-0027 RBAC) + 岔口 2 (ADR-0026 Settings) + ADR-0031 NEW (Conversation History scope) + ADR-0029 route name pick;then ADR Status flips + W19 phase Gate + frontmatter close + retro + session-start.md hygiene + W20+ kickoff trigger
+
+---
+
+## Day 4 — F4 + F5 landed + F6 ready for Chris review(2026-05-16)
+
+### Built — F4 Wave breakdown + F5 Tier 2 catalog + F6 prep — `(this commit)`
+
+**F4 Wave breakdown**(`audit/W19-wave-breakdown.md`):
+- 4-Wave structure:Wave A(W20 / 8 routes / ~5-7 backend days)+ Wave B(W21 / 4 routes / ~2 backend days)+ Wave C(W22 / 5 routes / ~5-10 backend days per option picks)+ Wave D Tier 2 hold(NOT pre-created)
+- Dep ordering:Wave A+B parallel,Wave C needs A close(Settings nav + Access tab activation),Wave D requires Beta launch(Q12 governance trigger)
+- Wave A ships 7-tab KB Detail(`-Access`),Access tab activates Wave C with ADR-0027 RBAC infra
+- Wave C2 split trigger:if Chris picks Option A for ADR-0026 OR ADR-0027 → Wave C scope ~22 days exceeds single phase budget,split into C1+C2 sub-phases per CLAUDE.md §10 rolling JIT
+- 岔口 → Wave impact ASCII diagram + per-Wave H4 boundary policing(cross-ref F5 catalog)
+- Mock-auth default through Wave C + real-MSAL feature-flagged concurrent ship per user 岔口 2
+
+**F5 Tier 2 disabled-affordance catalog**(`audit/W19-tier2-disabled-affordance-catalog.md`):
+- 27 Tier 2 affordances enumerated:Shell S1-S4 + Auth A1 + KB K1-K7 + KB Access KA1-KA2 + Users U1-U5 + Settings ST1-ST10 + Chat C1-C3 + Dashboard D1
+- 4 standardized patterns:P1 native disabled + tooltip / P2 aria-disabled + click-toast / P3 coral TIER 2 badge + non-interactive / P4 route hidden
+- `<DisabledAffordance>` shared component spec for Wave A implementation(`frontend/components/ui/disabled-affordance.tsx`)
+- Coral semantics enforcement(brand emphasis + Tier 2 preview + citation pill — NOT for selected/active / destructive / warning / info)
+- F1 audit §2.3 leak fixes called out:Sidebar Workspace switcher MUST disable Wave A + Chat Conversation History server-side persistence boundary explicit
+- F5.4 `/labs/*` routing decision — recommended Option C(prototype-only,don't ship `frontend/`)
+
+**F6 Chris review synthesis prepared**:
+
+### 4 strategic decisions awaiting Chris pick
+
+| # | Decision | Options | Recommendation per F2 §6 |
+|---|---|---|---|
+| 1 | **ADR-0027 /users RBAC scope** | A full RBAC ~20 days + 6 new tables + Entra Graph SDK / **B minimal 3-role ~5 days** / C stage | **Option B minimal 3-role** |
+| 2 | **ADR-0026 Settings Connections scope** | A read-only ~3 endpoints / B fully editable ~22 endpoints + Key Vault SDK / **C hybrid ~10 endpoints** | **Option C hybrid** |
+| 3 | **ADR-0031 NEW Conversation History scope** | **A localStorage-only Tier 1 0 backend days** / B server-side Tier 1 ~3 days / C Tier 2 defer | **Option A localStorage-only Tier 1** |
+| 4 | **ADR-0029 /doc-detail route name** | A `/doc-detail/[kbId]/[docId]` / B `/doc/[kbId]/[docId]` / **C `/kb/[id]/docs/[docId]`** | **Option C `/kb/[id]/docs/[docId]`** for IA consistency with ADR-0024 flat URL |
+
+**Combined recommendation outcomes**:
+- Wave A 7-tab KB Detail(`-Access`)+ Multimodal Tier 1 active per ADR-0028 + Chat advanced with localStorage Conversation History
+- Wave B 3-pane `/kb/[id]/docs/[docId]` doc detail + Eval Console + Traces 3 viz
+- Wave C 6-tab Settings hybrid + `/users` 4-tab minimal RBAC + Access tab activation + real-MSAL concurrent ship
+- Wave D NOT pre-created per rolling JIT
+
+**F6 closeout sequence**(awaiting Chris pick):
+
+1. Chris pick 4 decisions(this turn or separate session)
+2. ADR Status flips:0025/0028 consensus → `Accepted`;0026/0027/0031 per option pick → `Accepted (Option X)`;0029 per route name pick → `Accepted (Option Y)`
+3. W19 phase Gate verdict PASS / PARTIAL / FAIL with rationale
+4. W19 frontmatter `active` → `closed` + checklist F6.x ticked
+5. W19 retro 7 sections in progress.md
+6. `session-start.md` hygiene catch-up:§10 W19 row → closed + W20+ candidates + §11 carry-overs(6 Accepted ADRs)+ §12 milestones row 17→18 + Last-Updated + Update-history
+7. W20-frontend-wave-a kickoff candidate flagged(actual W20 phase folder created in separate kickoff cascade per rolling JIT)
+
+### Deviations from plan(R3)
+
+- **F4 collapsed ~0.3d / F5 ~0.3d**(W12-W18 real-calendar collapse pattern continues)
+- F6 sequence intentionally bifurcated:F6.1 Chris review + F6.2 ADR flips await user action;F6.3-F6.8 housekeeping = post-approval finalize(separate commit)
+- **3 ADR option-set decisions + 1 route name pick = 4 strategic decisions for Chris**(per plan F6.1 4-decision list now explicit in checklist)
+
+### Next
+
+- **Chris async review** of 4 strategic decisions OR live session(per Chris availability)
+- Post-approval F6.3-F6.8 closeout commit(ADR Status flips + frontmatter close + retro + session-start hygiene + W20 kickoff trigger note)
 
 ---
 
