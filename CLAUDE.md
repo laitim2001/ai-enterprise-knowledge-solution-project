@@ -11,8 +11,8 @@
 |---|---|
 | Project | **Enterprise Knowledge Platform (EKP)** — Tier 1 Foundation |
 | First Use Case | Drive Project — Ricoh internal user manuals |
-| Primary Spec | `docs/architecture.md`(v5 frozen as of 2026-04-27) |
-| Phase | Tier 1 / 12-week sprint(POC 6w → Beta 4w → Rollout 2w) |
+| Primary Spec | `docs/architecture.md` v6 frozen(v5 → v5.1 → v6 amendment W11 D2 cont per ADR-0014/0015 — UI Tier 1 expansion 9 views + hybrid auth model;§3.4 + §3.7 inline-tagged via ADR-0022/0023 W17,doc version held) |
+| Phase | Tier 1 Foundation — 原 spec 12-week(POC 6w → Beta 4w → Rollout 2w)實際 trajectory:W1–W11 base + **W12–W15 UI sprint cycle pivot**(v5.1→v6 amendment)+ W17 beta hardening + W18 unified application shell IA。**17 phases closed through W18(2026-05-11)**,W16 partial 待 Track A IT cred,W19+ rolling JIT |
 | Strict Mode | **ON** — see §5 Hard Constraints |
 | Behavioral Baseline | **§1(Karpathy guidelines)** — universal coding mindset,適用於所有 code change |
 | Decision Owner(architecture) | Chris(技術 Lead) |
@@ -108,7 +108,7 @@ Multi-step task 要先講 plan:
 | **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md §2`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / progress — 詳見 §10 |
 | **Change to existing feature**(modify behavior, < 3 days) | [`docs/01-planning/PROCESS.md §3`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/changes/CH-{NNN}-{kebab}/` | Pre-doc:**spec.md**(approved by user)→ derive checklist + progress;AI auto-classify per PROCESS.md §1 |
 | **Bug-fix**(fix incorrect / broken / regressed behavior) | [`docs/01-planning/PROCESS.md §4`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/bugs/BUG-{NNN}-{kebab}/` | Pre-doc:**report.md**(severity Sev1-Sev4)→ derive checklist + progress;Sev1/Sev2 mandatory postmortem |
-| **改 / 新加 component**(明確涉及 EKP 12 modules 之一)| [`docs/02-architecture/COMPONENT_CATALOG.md`](./docs/02-architecture/COMPONENT_CATALOG.md) + 對應 `components/Cn-{kebab}.md`(若已存在)| 識別 component → spec ref + dep + tech + status,再跳去 architecture.md 對應 section 落實作 |
+| **改 / 新加 component**(明確涉及 EKP 13 modules 之一,C01–C13)| [`docs/02-architecture/COMPONENT_CATALOG.md`](./docs/02-architecture/COMPONENT_CATALOG.md) + 對應 `components/Cn-{kebab}.md`(若已存在)| 識別 component → spec ref + dep + tech + status,再跳去 architecture.md 對應 section 落實作 |
 | **Risk-related decision / mitigation update** | [`docs/01-planning/RISK_REGISTER.md`](./docs/01-planning/RISK_REGISTER.md)(living)+ `docs/architecture.md §8`(frozen baseline)| 新 risk / status update 入 living register,§8 不動 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
 | 寫 / 改 backend feature | `docs/architecture.md` §3 + §4 | RAG core + application architecture |
@@ -120,7 +120,7 @@ Multi-step task 要先講 plan:
 | Chunking 邏輯 | `docs/architecture.md` §3.3 + §3.5 | layout-aware,not character-based |
 | 寫 eval / test | `docs/eval-methodology.md` + `docs/eval-set-v0.yaml`(W1 ready) | RAGAs + 30–50 條 ground truth |
 | 涉及 Dify reference | `references/REFERENCE_USAGE.md`(W1 Day 1 setup) | 嚴禁 copy-paste,只可 layout 借鑒 |
-| Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 21 條 OQ status |
+| Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 22 條 OQ status(Q22 NEW W12 D1 per ADR-0014) |
 | 評估 GraphRAG / multi-agent / multi-tenancy | **STOP** — 呢啲係 Tier 2,Tier 1 唔做 | See `docs/architecture.md` §11 trigger matrix |
 
 **Default behavior**:如果你唔確定一個 task 屬邊個 doc 範圍,**ask before guessing**。
@@ -243,7 +243,7 @@ Refs: docs/architecture.md §3.2
 1. **STOP** 寫 code
 2. 喺 chat 講明:
    - 你想做咩 architectural change
-   - 為何 v5 spec 唔啱
+   - 為何 v6 spec 唔啱
    - Proposed 替代方案
 3. 等 user 回應「approved + write ADR」先繼續
 4. 寫新 ADR 入 `docs/adr/`(format see §6)
@@ -273,6 +273,8 @@ Refs: docs/architecture.md §3.2
 | Eval | RAGAs |
 | Frontend | Next.js 14 + shadcn/ui + Tailwind |
 | Backend | FastAPI + uvicorn |
+| Persistent storage | Postgres 16 via `psycopg>=3.2`(KB metadata + users/sessions backing per ADR-0023 W17 F1;in-memory fallback when `DATABASE_URL` unset) |
+| Email verification | Azure Communication Services Email(per ADR-0014 + Q22 Resolved;`ConsoleEmailProvider` stub when `feature_email_mock=true`) |
 
 **加新 dependency 嘅唯一合法路徑**:
 1. STOP and ask
@@ -405,31 +407,38 @@ references/DIFY_PINNED_COMMIT.txt
 
 ## 8. Open Questions(影響 Claude Code 決策)
 
-呢 21 條 OQ(`docs/architecture.md` §10、`docs/decision-form.md`)嘅 status 影響你嘅 default behavior:
+呢 **22 條 OQ**(`docs/architecture.md` §10、`docs/decision-form.md`;Q22 NEW per ADR-0014 hybrid auth W12 D1 — Email Verification Service vendor = ACS)嘅 status 影響你嘅 default behavior:
 
 - 任何 OQ status = **「Open」** → 用 spec 入面標明嘅 default value 繼續做,但**喺 commit message 標**:`Note: depends on OQ-Q<N> default`
 - 任何 OQ status = **「Resolved」** → 直接用 resolved value,唔需要 note
 - 任何 OQ status = **「Blocked」** → STOP 對應 work item,ask user
 
-**最 critical 嘅 W1 必 resolve OQ**:Q1(format ratio)、Q2(document source access)、Q3(Azure AI Search resource)、Q4(GPT-5.5 deployment)、Q13(ground truth labeler)。其他 OQ 用 default 繼續。
+**最 critical 嘅 W1 必 resolve OQ**:Q1(format ratio)、Q2(document source access)、Q3(Azure AI Search resource)、Q4(GPT-5.5 deployment)、Q13(ground truth labeler)。其他 OQ 用 default 繼續。**當前 snapshot**(per session-start.md §9):17 Resolved + 5 Open(Q6/Q8/Q15/Q16/Q20 全部 non-blocking,default value 繼續)。
 
 ---
 
 ## 9. Sprint Awareness
 
-| Week | 你嘅 default focus(若無其他 instruction) | Hard cutoff |
-|---|---|---|
-| W1 | Foundation:FastAPI skeleton、Next.js skeleton、Docling .docx parser、KB CRUD、Eval set v0、Azurite local | W1 末 Gate 1 prep |
-| W2 | Multi-format ingestion 完成、Hybrid retrieval baseline、Admin Console layout | **Gate 1 Decision(Recall@5 ≥ 80%)** |
-| W3 | Cohere Rerank、GPT-5.5 synthesis、Citation、Chat UI streaming、PPT parser | — |
-| W4 | CRAG L2、RAGAs eval automation、Reranker shootout(4-way)、加 20 條 real query | **Gate 2 Decision(4 metric within 5pp)** |
-| W5 | Optimization;**conditional** L3 routing(only if Gate 2 全 pass) | — |
-| W6 | Final eval、Demo prep、Beta plan | POC 結束 |
-| W7-8 | Microsoft Entra ID、rate limiting、React polish、Beta deploy | — |
-| W9-10 | Beta internal testing、UX iteration | — |
-| W11-12 | Staged rollout 25% → 100% | Production launch |
+> **此表反映實際 trajectory**(已超出原 spec 12-week)。詳細 phase status / commits / artifacts 看 [`docs/12-ai-assistant/01-prompts/01-session-start.md` §10 + §12](./docs/12-ai-assistant/01-prompts/01-session-start.md)。
 
-如果 Claude Code session 邊個 week 唔清楚,**ask user "What week are we in?"** 之後再做 default focus 對應。
+| Week | 你嘅 default focus(若無其他 instruction) | Hard cutoff / Status |
+|---|---|---|
+| W1 | Foundation:FastAPI skeleton、Next.js skeleton、Docling .docx parser、KB CRUD、Eval set v0、Azurite local | ✅ closed 2026-05-02 |
+| W2 | Multi-format ingestion + Hybrid retrieval baseline + Admin Console layout | ✅ **Gate 1 PASS R@5=0.9722** 2026-05-04 |
+| W3 | Cohere Rerank + GPT-5.5 synthesis + Citation + Chat UI streaming + PPT parser | ✅ closed 2026-05-04 |
+| W4 | CRAG L2 + RAGAs eval automation + Reranker shootout(4-way → 2-way per Karpathy §1.2)+ 加 20 條 real query | ✅ closed 2026-05-04(Gate 2 verdict deferred → W5) |
+| W5 | Optimization;**conditional** L3 routing(only if Gate 2 全 pass) | ✅ closed 2026-05-04(**Gate 2 PARTIAL PASS** landed W5 D2;L3 NOT triggered) |
+| W6 | Final eval + Demo prep + Beta plan + Azure 2-way verify | ✅ closed 2026-05-05(Gate 2 PARTIAL PASS confirmed;Cohere v4.0-pro reaffirmed final;Q21 Resolved) |
+| W7-W8 | Microsoft Entra ID auth(mock bridge)+ rate limiting + mobile responsive + Langfuse SDK + cost dashboard + alerts | ✅ closed 2026-05-06 |
+| W9-W10 | Beta internal testing prep + C11 dependency_overrides cleanup + cost dashboard real-time wire + W11 governance prep | ✅ closed 2026-05-06 |
+| W11 | Staged rollout 25% + Mode B local dev + **UI sprint pivot triggered**(architecture.md v5.1→v6 amendment;ADR-0014 hybrid auth + ADR-0015 UI Tier 1 expansion sister ADRs) | ✅ closed 2026-05-08 |
+| **W12–W15 UI sprint cycle(pivot)** | Phase 1 W12 foundation discovery → Phase 2 W13 user-facing views + ADR-0016 scrypt → Phase 3 W14 admin views refactor → Phase 4 W15 polish closeout FINAL + Playwright E2E baseline harness | ✅ all closed 2026-05-09 — **Tier 1 UI sprint cycle FINAL gate PASS WITH SMOKE-USER-DEFERRED CAVEAT** |
+| W16 | Beta deploy resume — Track A IT cred + 25% rollout activation + daily metric monitor + backend stub closure cascade | 🟡 **draft / partial**:F5 stub cascade DONE;F1-F4 仍 pending **Track A IT cred populate event + R-B1 closure** |
+| W17 | Beta hardening(parallel to W16)— Postgres persistent backing(ADR-0023)+ auth-transport hardening(ADR-0022)+ RAGAs 4-metric integration + ADR-0017 R8 mitigation pattern | ✅ closed 2026-05-10(Gate PASS;🚧 F1.5b + F3.5b R8/Azure-key-bound runtime smoke deferred per CO17) |
+| W18 | Unified application shell IA(per ADR-0024)— `<AppShell>` across all authenticated views + URL flatten(`/admin/*`→`/kb/*`)+ `/dashboard` real overview + `/settings` + `<GlobalSearch>` Cmd/Ctrl+K palette + V7 Landing removed | ✅ closed 2026-05-11(Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT) |
+| W19+ | _not pre-created_ — rolling JIT per §10 R1 | _kickoff post-W18 closeout decision;candidates = W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / local-dev seed-KB task_ |
+
+如果 Claude Code session 邊個 week 唔清楚,**ask user "What week / day are we in?"** 之後再做 default focus 對應。Hard gates:Gate 1 ✅ / Gate 2 PARTIAL ✅ / Gate 3 ✅ / Tier 1 UI sprint cycle FINAL ✅ / **Production launch gate ⏳ pending Track A IT cred**。
 
 ---
 
@@ -457,19 +466,19 @@ references/DIFY_PINNED_COMMIT.txt
 
 每個 Claude session 開始(在 §0 quick identity check 之後),AI **必須順序執行以下 6 步**,先 reply 用戶第一句訊息:
 
-1. 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md`(SITUATION EKP — 12 components C01–C12 / 21 OQ snapshot / 紀律 9 項 / 權威排序 7-tier / W1–W12 timeline)
+1. 讀 `docs/12-ai-assistant/01-prompts/01-session-start.md`(SITUATION EKP — **13 components C01–C13** / **22 OQ snapshot** / 紀律 9 項 / 權威排序 7-tier / **W1–W18 timeline + W19+ rolling JIT**)
 2. 讀 active phase 嘅 `plan.md`(知 scope + acceptance criteria)
 3. 讀 active phase 嘅 `checklist.md`(知 next un-checked item;active phase = `git status` + 最新 W{NN}-{name} folder)
 4. 讀 active phase 嘅 `progress.md` 最近 3 個 Day-N entries(知 context + blockers + carry-overs)
 5. Run `git status --short` + `git log --oneline -5`(知 working tree state)
 6. 唔清楚 / item acceptance criteria 模糊 → ask user(per §13 When in Doubt)
 
-**Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 12 components / §9 OQ snapshot / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
+**Compact 後嘅特殊處理**:`/compact` 觸發後 context 重組,AI **必須 re-read 步驟 1–4**。原因:compact summary 對 active session work(commits / tests / files)retain ~95%,但對 standing instructions(§3 **13 components** / §9 **22 OQ snapshot** / §13 紀律 9 項 / 權威排序 7-tier)retention 只有 ~60%,容易令 AI 答出 generic correct 但缺 EKP-specific structure 嘅 reply。Re-read 後唔需主動 summarize(用戶問先講),但要確保下一個 reply 對齊 SITUATION + active phase。
 
 ### 10.4 Phase Folder Naming
 
 `W{NN}-{phase-kebab-name}/` 對應 §9 Sprint Awareness 嘅 W{NN} sprint week。
-Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shootout/`。**Rolling JIT**:每 phase 喺 kickoff 先建,**唔可以一次過建 W01–W12**。
+Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shootout/`、`W18-app-shell-ia/`。**Rolling JIT**:每 phase 喺 kickoff 先建,**唔可以一次過建 W01–W18+**(W19+ 仍未 pre-created,等下一 sprint trigger 先 kickoff)。
 
 ### 10.5 Reference
 
@@ -552,7 +561,7 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 ```
 EKP Tier 1 — Strict Mode
 ├─ Behavioral baseline: §1 Karpathy (think → simple → surgical → goal)
-├─ Spec: docs/architecture.md (frozen v5)
+├─ Spec: docs/architecture.md (frozen v6)
 ├─ Stack: Azure AI Search + OpenAI + Cohere + Next.js + FastAPI
 ├─ Tier 1 only: NO GraphRAG, NO multi-agent, NO multi-tenancy
 ├─ Dify: read-only reference, never copy code
@@ -564,6 +573,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 1.4 — 2026-05-16 housekeeping catch-up for accumulated W18+ state**(§0 spec v5→v6 frozen + Tier 1 trajectory 17-phase footnote;§2 12 modules→13 modules + decision-form 21→22 OQ;§5.1 H1 v5→v6;§5.2 H2 vendor table 加 Postgres ADR-0023 + ACS Email ADR-0014;§8 OQ count 21→22 + Q22 note + 17-Resolved-5-Open snapshot;§9 Sprint Awareness extended W1–W18 + W19+ with actual status / Gate verdicts / closed dates;§10.3 12 components / 21 OQ / W1-W12 → 13 / 22 / W1-W18 + W19+ rolling JIT;§10.4 W01-W12 example → W01-W18+;Appendix A Spec v5→v6)
 **Version 1.3 — added §10 Phase Planning Workflow + R1–R5 binding rules; renumbered §11–§14; §2 routing table + §12 self-verification updated**
 **Effective: from W1 Day 1**
 **Owner: Chris(技術 Lead)**

@@ -2,7 +2,7 @@
 
 > **用法**:直接 copy「複製貼上區」呢段入 Claude Code 對話框送出即可。下方「設計說明」係畀維護者睇嘅背景,**唔需要每次貼**。
 >
-> **適用範圍**:Tier 1 12-week sprint(W1–W12)期間任何 EKP-related session。非 EKP work(e.g. ad-hoc explore / one-off docs)可以用通用 800 字 compact。
+> **適用範圍**:Tier 1 Foundation sprint(原 W1–W12 spec,實際 trajectory **extended to W18+** via W12-W15 UI sprint cycle pivot + W17 beta hardening + W18 app shell IA)期間任何 EKP-related session。非 EKP work(e.g. ad-hoc explore / one-off docs)可以用通用 800 字 compact。
 
 ---
 
@@ -55,7 +55,7 @@ Phase W{NN}-{name} / Day Z / 累計 N/12 phase / Branch / Working tree 狀態(cl
 - 本 phase 剩 X days / Y un-checked items
 - 下個 phase plan 狀態(rolling JIT:當前 phase 收尾才寫,禁止預寫多個 phase plan)
 - Open items / carry-overs(從 progress.md retro / 🚧 延後項 / RISK_REGISTER 🔴 entries)
-- 即將觸發嘅 hard gate(Gate 1 W2 / Gate 2 W4 / Gate 3 W6 / Production launch W12)
+- 即將觸發嘅 hard gate(Gate 1 W2 ✅ / Gate 2 W4-W6 PARTIAL ✅ / Gate 3 W6 demo ✅ / **Tier 1 UI sprint cycle FINAL W15 ✅ PASS WITH SMOKE-USER-DEFERRED CAVEAT** / **Production launch W16+ ⏳ pending Track A IT cred populate event + R-B1 closure**)
 
 ### 8. Rolling Planning 紀律自檢
 ☐ 沒預寫多個未來 phase folder(只當前 active + 下一個 draft)
@@ -169,15 +169,16 @@ per [`CLAUDE.md §10`](../../../CLAUDE.md) + [`PROCESS.md §5`](../../01-plannin
 ## 維護
 
 - 同 `01-session-start.md` 配套使用(一個 session 開頭、一個 session 結尾)
-- `CLAUDE.md` 大改(§5 H1–H6 / §10 R1–R5 / §1 Karpathy 範圍)時,§3 對應更新
+- `CLAUDE.md` 大改(§5 H1–H6 / §10 R1–R5 / §1 Karpathy 範圍 / §9 Sprint Awareness gate 列表)時,§3 + §7 hard gate list 對應更新
 - `PROCESS.md` 大改(加 task type / 改 classification heuristics)時,§3 #8 + §1 task type 對應更新
-- `COMPONENT_CATALOG.md` 大改(加 / 改 / 刪 Cn)時,§3 #7 + §10 紅旗信號對應更新
-- Phase 切換(W2 → W3)時不需改本檔(內容係 Tier 1 通用)
-- Tier 1 完成(W12)後退役 → Tier 2 對應 compact
+- `COMPONENT_CATALOG.md` 大改(加 / 改 / 刪 Cn — 目前 **13 components C01–C13**,C13 = Email Verification Service per ADR-0014 / Q22)時,§3 #7 + §10 紅旗信號對應更新
+- Phase 切換(W2 → W3 → ... → W18+)時不需改本檔(內容係 Tier 1 通用),**除非** §7 hard gate list 出現新 gate
+- Tier 1 完成(原 spec W12;實際 trajectory W18+ via UI sprint pivot extension)後退役 → Tier 2 對應 compact
 
 ---
 
-**Last Updated**:2026-05-04(W02 D5 closeout — 配合 `01-session-start.md` 同期初版)
+**Last Updated**:2026-05-16(W18+ accumulated state housekeeping catch-up — §0 scope `W1-W12` → Tier 1 trajectory `W18+` extension footnote;§7 hard gate list 加 Tier 1 UI FINAL gate(W15 PASS WITH SMOKE-USER-DEFERRED CAVEAT)+ Production launch gate(W16+ pending Track A IT cred);§維護 `12 component` → **13 component C01-C13**(C13 = Email Verification Service per ADR-0014 / Q22);Phase switching note 加 W18+ caveat)
+> **Prior**:2026-05-04(W02 D5 closeout — 配合 `01-session-start.md` 同期初版)
 **Maintainer**:Chris(技術 Lead)+ AI 助手共同維護
 **File location**:`docs/12-ai-assistant/01-prompts/02-compact-session.md`
 **Companion**:`01-session-start.md`(每個新 session 開頭用)
@@ -189,3 +190,4 @@ per [`CLAUDE.md §10`](../../../CLAUDE.md) + [`PROCESS.md §5`](../../01-plannin
 | Date | Phase | Updates |
 |---|---|---|
 | 2026-05-04 | W02 D5 closeout | 初版(基於 sample-2 結構,EKP-specific:H1-H6 / R1-R5 / 12 component / 4 task type / Tier 1 boundary 紅旗信號)|
+| 2026-05-16 | post-W18 housekeeping cluster — accumulated W18+ state catch-up | §0 適用範圍 `W1-W12` → Tier 1 trajectory `W18+` extension footnote 反映 W12-W15 UI sprint cycle pivot + W17 beta hardening + W18 app shell IA;§7 §下一步 hard gate list 加 Tier 1 UI sprint cycle FINAL gate(W15 PASS WITH SMOKE-USER-DEFERRED CAVEAT)+ Production launch gate(W16+ pending Track A IT cred populate event + R-B1 closure);§維護 `COMPONENT_CATALOG.md 大改` 句 `12 component` → 13 component C01-C13(C13 = Email Verification Service per ADR-0014 / Q22 NEW);Phase 切換 example `W2 → W3` → `W2 → W3 → ... → W18+`;Tier 1 完成例子由 `W12` → `原 spec W12;實際 trajectory W18+ via UI sprint pivot extension`;Last Updated bump + Prior line preserved;同步 `CLAUDE.md` v1.3→v1.4 + `01-session-start.md` Update history backlog 2-row catch-up(2026-05-14 R8 #6 commit `d57fff9` + 2026-05-16 R8 #7 commit `dffe19a`)|
