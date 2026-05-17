@@ -900,13 +900,28 @@ export const ekpTokens = {
 - Embedded images count column
 - Failed parse status + error preview
 
-#### 5.5.2 Document → Chunks View
+#### 5.5.2 Document → Chunks View(KB-wide chunks browsing within `/kb/[id]` Chunks tab — per ADR-0024)
+
+> **Per ADR-0024 + Wave B note**:呢個 section 描述 `/kb/[id]` Chunks tab(KB-wide chunks 瀏覽)— **lighter weight**,for at-a-glance KB chunk inspection。**Per-document deep inspection** = NEW **§5.5.2a Document Detail page** 3-pane(per ADR-0029 Option C `/kb/[id]/docs/[docId]`,W21 Wave B implementation)。**兩個 surface coexist**:Documents tab row click → `/kb/[id]/docs/[docId]`(per-doc 3-pane with outline + chunks-in-section + inspector with embedding vector preview);Chunks tab = KB-wide chunk browsing without doc-level context。
 
 抄 Dify Image 5:
 - 24 CHUNKS 上方統計
 - Per-chunk:Chunk-XX / character count / Retrieval count / Enabled toggle
 - 右側 panel:Document Information + Technical Parameters
 - **新增**:embedded images preview per chunk、low_value_flag indicator
+
+#### 5.5.2a Document Detail page(NEW per ADR-0029 Option C — W21 Wave B)
+
+> **NEW per ADR-0029**(W19 F6 Accepted 2026-05-16 Option C `/kb/[id]/docs/[docId]` — IA consistency with ADR-0024 flat URL convention + KB-scoped grouping;W21 Wave B implementation):per-document deep inspection page with **3-pane layout** for chunk-level debugging + doc structure verification。
+>
+> **Layout**:`grid-cols-[240px_1fr_380px]` desktop baseline + responsive breakpoint < 1200px(left pane → drawer,right pane → overlay):
+> - **Left pane**(sticky 240px):Document Outline — heading hierarchy from layout_aware chunker;`<button>` per node + `aria-current="location"` active state via `IntersectionObserver` + click-to-jump scroll
+> - **Center pane**(1fr):Chunks list within active section — cards per chunk(section_path + tokens + has_image badge + low_value badge + content preview with `<mark>` for emphasized text + associated image thumbnail)
+> - **Right pane**(sticky 380px):Chunk Inspector — metadata badges(chunk_index + tokens + embedded_images count + low_value badge)+ section_path + prev/next chunk links + associated image card + **embedding vector preview**(24 sampled dims in 8-col grid + "+1000 more dims" tail caption)。**Wave B verify feasibility**:if Azure Search exposes vectors via `select=*,content_vector`,render grid;if expensive,`<DisabledAffordance variant="p3-preview" showBadge>` "Embedding vector view: Tier 2 — request to enable"
+> - **Header**:pipeline stages strip(5 stages — Parse / Extract / Chunk / Embed / Index;Tier 1 surfaces parse + embed timing only,others forward-compat with "—" tooltip "Stage timing — Wave C+ instrumentation")
+> - **Image strip**:horizontal scroll thumbnails of all images in doc(SHA256 hash + dim + size + low_value/dedup badge);click → `<ScreenshotModal>`(reuse Wave A pattern)
+>
+> **Backend dep added by ADR-0029**(W19 F2 §3.3 item 9;W21 Wave B backend scope):`GET /kb/{kb_id}/docs/{doc_id}` enriched(~1d C01+C03)— returns `DocumentDetail` schema(NEW)including `doc_id` / `title` / `source` / `source_url` / `file_type` / `size_kb` / `pages` / `language` / `chunk_strategy` / `total_chunks` / `total_images` / `total_tokens` / `low_value_chunks` / `parse_duration_ms` / `embed_duration_ms` / `indexed_at` / `outline: list[OutlineNode]` / `image_refs: list[ImageRef]`;`OutlineNode` NEW schema = `{level, title, chunk_count, page?}`。
 
 #### 5.5.3 Pipeline Tab(Ingestion Wizard for existing KBs)+ NEW `/kb/new` 5-step Wizard per ADR-0028(W20 Wave A)
 
@@ -937,7 +952,15 @@ export const ekpTokens = {
 
 KB-level config:embedding model lock、chunk strategy default、retrieval default、KB description。
 
-### 5.6 View 5:Eval Console(`/eval`)— rendered inside `<AppShell>` per ADR-0024(own `app/eval/layout.tsx` folded into `app/(app)/layout.tsx`;route unchanged)
+### 5.6 View 5:Eval Console(`/eval`)— rendered inside `<AppShell>` per ADR-0024(own `app/eval/layout.tsx` folded into `app/(app)/layout.tsx`;route unchanged);W21 Wave B 6-section refactor consuming W17 F3 RAGAs(NO new backend)
+
+> **Amendment per W21 Wave B**(2026-05-17 kickoff):W15 baseline → **6-section overview** consuming existing W17 F3 RAGAs 4-metric endpoints(`POST /eval/run` + `POST /eval/shootout`)—NO new backend(per W19 F2 backend gap map line 115-118 all ✅ supported)。Sections:
+> - **Section 1** — 4-metric stat strip(Precision@5 + Recall@5 + Faithfulness + Answer Relevancy)from `EvalReport`;`<StatCard>` × 4 + loading skeleton + run-vs-baseline delta chips
+> - **Section 2** — Reranker Shootout table(consume `POST /eval/shootout` → `ShootoutReport`;5 rerankers + 2 dropped Voyage + ZeroEntropy per ADR-0012;Cohere v4.0-pro highlighted as production-locked baseline;per-row 4-metric chips + winner badge)
+> - **Section 3** — Failed queries inspector(collapsible `<details>` per `EvalReport.failed_queries[]`;Expected vs Got side-by-side;jump-to-trace link → `/traces/[traceId]` for any logged failed query)
+> - **Section 4** — Recommendation card(advisory text:current production config `{reranker: 'cohere-v4', threshold: 0.70, NON_STICKY: true}` per W5 D4;no interactive controls)
+> - **Section 5** — Ops Metrics card(p50/p95/p99 latency + avg cost/query;sourced from `EvalReport.ops_metrics` if exposed,else `<DisabledAffordance>` "Ops metrics — Wave C+")
+> - **Section 6** — CRAG Insight card(trigger rate + avg iterations + qualitative reasoning;sourced from `EvalReport.crag_trigger_rate` + `crag_avg_iterations` if exposed,else coverage-only fallback)
 
 **Layout**:Top filter bar + main content split(left config + right results)。
 
@@ -949,9 +972,15 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 - Failed queries table(Q-id / query / expected / got / inspect)
 - W4 Reranker Shootout section(4-way table + recommendation card)
 
-### 5.7 View 6:Traces(`/traces/[traceId]`)— renamed + re-routed per ADR-0024(was「Debug View」`/debug/[traceId]`);rendered inside `<AppShell>`
+### 5.7 View 6:Traces(`/traces` index + `/traces/[traceId]` 3 viz modes)— renamed + re-routed per ADR-0024(was「Debug View」`/debug/[traceId]`);rendered inside `<AppShell>`;W21 Wave B adds `/traces` index + 3 viz modes per ADR-0030 absorbed scope
 
 > **Per ADR-0024**:「Traces」更貼切 operations-facing 用途(唔淨係 debug);own `app/debug/layout.tsx` folded into `app/(app)/layout.tsx`;sidebar item = "Traces"。stage 內容(下文 9 stages)不變。
+>
+> **Amendment per W21 Wave B + ADR-0030 absorbed scope**(2026-05-17 kickoff;ADR-0030 SKIPPED-but-implemented decision per W19 F6 — Dashboard polish shipped Wave A F2;Trace 3 viz + /traces list ship Wave B F5+F6):
+> - **`/traces` NEW index list view** — 9-col table(Timestamp / Duration / Status / KB / Query preview / Tokens / Cost USD / CRAG iter / Stage count)+ filter seg(All / Errors / CRAG triggered)+ Date range picker(24h / 7d / 30d / custom)+ KB filter dropdown;row click → `/traces/[traceId]`;persisted to `localStorage['ekp-traces-filter']`;pagination "Load more" + URL state(`?page=N&size=50`)
+> - **`/traces/[traceId]` 3 viz modes** — `<ToggleGroup>` in header with 3 options(W20 F3.7 citation-mode pattern):**Vertical**(Tier 1 default — current W18 list style preserved)+ **Waterfall**(SVG-based timeline bars + per-stage tooltip with start_ms + duration_ms + status)+ **Flame**(SVG-based flame-graph stacked bars showing nested call depth — Wave A flat-trace renders waterfall-equivalent;forward-compat for ADR-0020 Context Expander multi-step traces);mode toggle persisted to `localStorage['ekp-trace-viz-mode']`
+>
+> **Backend dep added by ADR-0030 absorbed**(W19 F2 §3.3 item 10;W21 Wave B backend scope):`GET /traces?filter=...&since=...` list endpoint(~1d C07,Langfuse Postgres query + filter)— returns `TraceListResponse{items: list[TraceSummary], total, limit, offset}`;`TraceSummary` NEW schema = `{trace_id, timestamp, duration_ms, status: Literal['ok','error','crag_triggered'], kb_id, query_preview, total_tokens, cost_usd, crag_iterations?, stage_count}`。
 
 **Layout**:Top trace summary + vertical timeline + expandable stages。
 
