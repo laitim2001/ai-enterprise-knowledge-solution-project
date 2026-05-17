@@ -160,6 +160,8 @@ Multi-step task 要先講 plan:
 #### 3.2.1 Design Fidelity Rule(`references/design-mockups/` 100% reproduction)
 
 > **`references/design-mockups/` 係前端視覺 + 互動嘅 canonical spec。實作必須 100% 重現 mockup,唔可以「大概模仿」。**
+>
+> **⚠️ 呢條規則 binding level = Hard Constraint H7**(per [§5.7](#57-h7--design-fidelity-constraint),同 H1-H6 同層)。Violate = broken project + STOP+ask trigger。Detail checklist 喺本節;trigger 條件 + Required behavior 喺 §5.7。
 
 前端設計係本項目嘅 critical surface — implementation 對 mockup 必須做到 **完整重現**(complete reproduction),不是 approximate / similar / inspired-by。具體規則:
 
@@ -356,6 +358,38 @@ Tier 2 list(`docs/architecture.md` §11):
 
 UI component test 為 nice-to-have(視 sprint 進度),其他 backend 鼓勵但唔強制。
 
+### 5.7 H7 — Design Fidelity Constraint
+
+**`references/design-mockups/` 係前端視覺 + 互動嘅 canonical spec**(EKP 自有 high-fidelity HTML prototype,**唔係**第三方 reference)。前端 implementation **必須 100% 完整地重現 mockup 效果**,**唔可以「大概模仿」**(approximate / similar / inspired-by 都唔得)。
+
+**H7 trigger 條件**(任何一條符合就 trigger STOP and ask):
+
+- 寫 / 改前端 page、component、layout 嘅 implementation 同對應 mockup(`references/design-mockups/EKP Platform.html#<route>` + `ekp-page-*.jsx`)嘅 **layout 結構 / spacing / typography / color tokens / interaction states / responsive breakpoints / a11y affordances** 任何一項唔對齊
+- Mockup detail 不清晰(無法判斷正確視覺 / 互動)
+- shadcn/ui 冇對應 primitive 重現 mockup(例:custom popover 動效冇 primitive — 唔可以「用 dropdown 算」)
+- Layout philosophy 偏離 mockup(可以 micro-polish spacing / typography,但唔可以 redesign — 同 §5.1 H1「8 view layout philosophy」條件互通)
+- Design-stage expansion 例外(DESIGN_README 3 處標明:KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)以外嘅任何 mockup 偏離
+
+**Required behavior**:
+1. **STOP** 寫 code
+2. 喺 chat 講明:
+   - 你想做咩 deviation 或 unclear 喺邊 mockup spot
+   - Mockup 對應位置(URL hash + `ekp-page-*.jsx` line ref)
+   - Proposed 處理方案(加 primitive / 寫 vanilla / 改 mockup / `🚧 deferred` + reason)
+3. 等 user 決定 — **絕對唔可以自行 approximate**
+4. 處理方案如涉及 design-stage expansion ADR-route per §5.1 H1
+
+**唔屬於 H7 trigger**(可以自行做):
+- Pure backend / API / schema change(無前端 mockup 對應)
+- 加 test / logging / observability(對 visual 無影響)
+- Refactor 內部實作(visual output identical pre/post)
+- Design-stage expansion 3 處 proposal(per ADR-route — scope confirm 之後仍受 H7 約束)
+- 修正 visual drift bug(把 implementation **更貼近** mockup,reverse direction)
+
+**Cross-ref**:detail per [§3.2.1 Design Fidelity Rule](#321-design-fidelity-ruledesign-mockups100-reproduction) 嘅 7-item checklist;self-verify per §12 fidelity check。
+
+**Why**:前端係 user-facing surface,設計細節影響 stakeholder 對產品成熟度嘅判斷。W12-W18 UI sprint cycle 已經花咗 4 phase 校正 visual identity(per ADR-0015 + W12 D2 tokens lock + ADR-0024 W18 IA flip + W19/W20 design-mockups landed)。Mockup 係 single source of truth;re-introduce drift = 退步。User 2026-05-17 explicit framing:「**前端頁面的設計是非常重要的**」+「**100%完整地把mockup 的效果重現出來,而不是大概地模仿**」+「**必須要留意和遵守的規則**」→ binding level promoted 到 H7 hard constraint(同 H1-H6 同層)。
+
 ---
 
 ## 6. Architecture Decision Record (ADR) Format
@@ -532,9 +566,9 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 完成一個 task 之前,**run through 以下 checklist**:
 
 - [ ] 對應 spec 嘅哪個 section?(quote section number)
-- [ ] 有冇 violate H1–H6?(若有,即係 task 未完)
+- [ ] 有冇 violate H1–H7?(若有,即係 task 未完)
 - [ ] 有冇 violate §1 Behavioral Baseline?(每行改動 trace 返 user request 嗎?)
-- [ ] **Frontend changes only — Design Fidelity check(per §3.2.1)**:有冇打開 `references/design-mockups/EKP Platform.html` 對應頁面對齊?layout / spacing / typography / color tokens / interaction states / responsive 全部 100% match 咗未?唔啱嘅地方有冇 surface(STOP+ask 或標 🚧 deferred + reason)?**「大概模仿」== task 未完**
+- [ ] **Frontend changes only — Design Fidelity check(per §5.7 H7 + §3.2.1)**:有冇打開 `references/design-mockups/EKP Platform.html` 對應頁面對齊?layout / spacing / typography / color tokens / interaction states / responsive / a11y 全部 100% match 咗未?唔啱嘅地方有冇 surface(STOP+ask per §5.7 H7 trigger 或標 🚧 deferred + reason)?**「大概模仿」== H7 violation == task 未完**
 - [ ] Test 寫咗未?(若 critical module)
 - [ ] Linter / formatter run 過?
 - [ ] Commit message follow Conventional Commits?
@@ -553,6 +587,9 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 | Spec 缺乏 detail | Ask user,don't guess |
 | 兩種實作方式都 reasonable | 揀**更接近 v4/v5 既有 pattern** 嘅一個 |
 | Stakeholder feedback 同 spec 衝突 | STOP — surface the conflict,等 resolution |
+| **Mockup vs implementation 唔對齊**(任何一項 — layout / spacing / typography / color / interaction / responsive / a11y) | **STOP per §5.7 H7** — surface deviation + open mockup + propose 處理方案(加 primitive / 寫 vanilla / 改 mockup / `🚧 deferred`)— **絕對唔可以 approximate** |
+| **Mockup detail 不清晰** / **shadcn 冇 primitive 重現** | **STOP per §5.7 H7** — surface gap + ask user(加 primitive / 寫 vanilla / 改 mockup) |
+| **Mockup vs backend contract 衝突**(e.g. mockup 2-step verify vs backend 3-step 6-digit code) | **STOP per §4 authority ordering** — architecture.md > design-mockups;backend wins + 記 plan §7 changelog + visual polish-only migrate(per W20 F7.2 precedent) |
 | Tier 1 / Tier 2 邊界模糊 | Default to Tier 2(out of scope),ask if uncertain |
 | Performance vs simplicity trade-off | Tier 1 階段:simplicity wins(2K chunks 無 perf 壓力) |
 | Quality vs delivery time trade-off | 4 metric target 唔可以 compromise;UI polish 可以後補 |
@@ -583,17 +620,27 @@ EKP Tier 1 — Strict Mode
 ├─ Behavioral baseline: §1 Karpathy (think → simple → surgical → goal)
 ├─ Spec: docs/architecture.md (frozen v6)
 ├─ Stack: Azure AI Search + OpenAI + Cohere + Next.js + FastAPI
-├─ Tier 1 only: NO GraphRAG, NO multi-agent, NO multi-tenancy
-├─ Dify: read-only reference, never copy code
-├─ Frontend: §3.2.1 design-mockups 100% reproduction (no approximation)
-├─ Architectural change: STOP + ask + ADR
-├─ New vendor: STOP + ask + ADR
+├─ Hard Constraints (Strict Mode — STOP+ask on trigger):
+│  ├─ H1 — Architectural change (spec §3/§4, vendor swap, storage layout, 8-view layout philosophy)
+│  ├─ H2 — Vendor / dependency (locked stack per architecture.md §3.2)
+│  ├─ H3 — Dify reference (read-only, never copy code)
+│  ├─ H4 — Tier 1 only (NO GraphRAG, NO multi-agent, NO multi-tenancy)
+│  ├─ H5 — Security & privacy (no secrets/PII/plaintext-prompt-logging)
+│  ├─ H6 — Test coverage (backend pipeline ≥ 80%)
+│  └─ H7 — Design fidelity (design-mockups 100% reproduction, NO approximation)
 └─ When in doubt: ask, don't guess
 ```
 
 ---
 
 **End of CLAUDE.md**
+**Version 1.7 — 2026-05-17 design fidelity promoted to H7 hard constraint**(per user explicit framing「**前端頁面的設計是非常重要的**」+「**100%完整地把mockup 的效果重現出來,而不是大概地模仿**」+「**必須要留意和遵守的規則**」= binding level = H1-H6 同層 hard constraint level)。具體變動:
+- §5 加 NEW §5.7 H7 — Design Fidelity Constraint(5 條 trigger 條件:layout/spacing/typography/color tokens/interaction states/responsive/a11y 任一唔對齊 + mockup detail 不清晰 + shadcn 冇 primitive 重現 + layout philosophy 偏離 + design-stage expansion 之外偏離);Required behavior(STOP + propose 處理方案 + 等 user 決定,絕對唔可以 approximate);唔屬於 H7 trigger 範圍(pure backend / test / logging / refactor 無 visual 改動 / design-stage expansion proposal ADR-routed / 修 visual drift bug)
+- §3.2.1 加 binding-level cross-ref 到 §5.7 H7(detail checklist 喺 §3.2.1;trigger + Required behavior 喺 §5.7)
+- §12 self-verification「violate H1–H6」改「violate H1–H7」+ Frontend fidelity check 加 §5.7 H7 trigger reference +「大概模仿 == H7 violation == task 未完」
+- §13 When in Doubt 加 3 條 NEW row:Mockup vs implementation 對唔齊 → STOP per H7 / Mockup detail 不清晰 / shadcn 冇 primitive 重現 → STOP per H7 / Mockup vs backend contract 衝突 → STOP per §4 authority ordering = backend wins(per W20 F7.2 precedent)
+- Appendix A Hard Constraints section 重組 — H1-H7 all listed(原 freeform 描述 → structured H1-H7 enumeration);H7「Design fidelity (design-mockups 100% reproduction, NO approximation)」明文化
+- memory `feedback_design_fidelity.md` cross-ref update 加 [[CLAUDE.md §5.7 H7]]
 **Version 1.6 — 2026-05-17 design fidelity rule explicit**(§3.2 加 NEW §3.2.1 Design Fidelity Rule —「`references/design-mockups/` 100% reproduction」明文化:shadcn/ui 規限 *技術*,唔規限 *fidelity*;layout / spacing / typography / color tokens / interaction states / responsive 全部要逐項對齊 mockup;唔肯定就開 `EKP Platform.html` 對住做;mockup detail 不清晰 → STOP+ask,唔可以自行 approximate;design-stage expansion 例外仍受 visual fidelity 約束;Why = 前端 user-facing surface,visual drift 累積就會退步,Mockup 係 single source of truth。§12 self-verification 加一條 frontend-only fidelity check —「大概模仿 == task 未完」)
 **Version 1.5 — 2026-05-16 design-mockups landed**(§2 routing「寫 / 改 frontend feature」加 `references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` first-stop + 3 處 design-stage expansion 標註;§7 標題下加 disambiguation note 區分 `references/dify/`(third-party H3-bound)vs `references/design-mockups/`(EKP 自有 prototype,唔受 H3 但仍受 H2 — 唔可直接 copy stripped components,必須用 shadcn/ui 重寫))
 **Version 1.4 — 2026-05-16 housekeeping catch-up for accumulated W18+ state**(§0 spec v5→v6 frozen + Tier 1 trajectory 17-phase footnote;§2 12 modules→13 modules + decision-form 21→22 OQ;§5.1 H1 v5→v6;§5.2 H2 vendor table 加 Postgres ADR-0023 + ACS Email ADR-0014;§8 OQ count 21→22 + Q22 note + 17-Resolved-5-Open snapshot;§9 Sprint Awareness extended W1–W18 + W19+ with actual status / Gate verdicts / closed dates;§10.3 12 components / 21 OQ / W1-W12 → 13 / 22 / W1-W18 + W19+ rolling JIT;§10.4 W01-W12 example → W01-W18+;Appendix A Spec v5→v6)
