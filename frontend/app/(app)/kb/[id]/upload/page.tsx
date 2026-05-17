@@ -87,7 +87,10 @@ export default function KbUploadPage() {
     uploadMutation.mutate(state.file);
   }
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-misc.jsx:15-16` (`.content` + `.content-narrow`). Inner preserved until F6.
   return (
+    <div className="content"><div className="content-narrow">
     <div className="max-w-3xl">
       <Link
         href={`/kb/${params.id}`}
@@ -142,6 +145,7 @@ export default function KbUploadPage() {
         )}
       </div>
     </div>
+    </div></div>
   );
 }
 

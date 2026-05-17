@@ -121,7 +121,10 @@ export default function KbNewPage() {
     router.push(`/kb/${created.kb_id}`);
   }
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-kb-new.jsx:47-48` (`.content` + `.content-narrow`). Inner preserved until F5.
   return (
+    <div className="content"><div className="content-narrow">
     <div className="max-w-3xl">
       <Link href="/kb" className="text-sm text-accent hover:underline">
         ← Back to KBs
@@ -197,6 +200,7 @@ export default function KbNewPage() {
         )}
       </div>
     </div>
+    </div></div>
   );
 }
 

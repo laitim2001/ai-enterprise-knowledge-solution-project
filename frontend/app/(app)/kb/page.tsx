@@ -115,7 +115,10 @@ export default function KbListPage() {
     return [...filteredByStatus].sort(makeComparator(sort));
   }, [query.data, search, sort, statusFilter]);
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-kb.jsx:10-11` (`.content` + `.content-wide`). Inner preserved until F5.
   return (
+    <div className="content"><div className="content-wide">
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -235,6 +238,7 @@ export default function KbListPage() {
         <KbTable rows={visible} />
       )}
     </div>
+    </div></div>
   );
 }
 

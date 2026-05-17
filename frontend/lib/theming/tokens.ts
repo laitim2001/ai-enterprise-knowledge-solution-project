@@ -68,7 +68,7 @@ export const ekpTokens = {
     foreground: 'oklch(0.95 0 0)',
     card: 'oklch(0.20 0.005 285)',
     'card-foreground': 'oklch(0.95 0 0)',
-    popover: 'oklch(0.20 0.005 285)',
+    popover: 'oklch(0.22 0.005 285)',
     'popover-foreground': 'oklch(0.95 0 0)',
     muted: 'oklch(0.25 0.005 285)',
     'muted-foreground': 'oklch(0.65 0 0)',

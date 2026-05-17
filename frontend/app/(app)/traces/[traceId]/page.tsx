@@ -194,7 +194,10 @@ export default function DebugTracePage({
 
   const buckets = data ? bucketObservations(data.stages) : null;
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-trace.jsx:416-417` (`.content` + `.content-wide`). Inner preserved until F7.
   return (
+    <div className="content"><div className="content-wide">
     <div className="space-y-6">
       <header className="space-y-3">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -246,6 +249,7 @@ export default function DebugTracePage({
         </CardContent>
       </Card>
     </div>
+    </div></div>
   );
 }
 

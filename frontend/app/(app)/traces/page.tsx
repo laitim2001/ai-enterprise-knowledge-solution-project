@@ -25,7 +25,10 @@ export default function TracesPage() {
     if (id) router.push(`/traces/${encodeURIComponent(id)}`);
   }
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-trace.jsx:11-12` (`.content` + `.content-wide`). Inner preserved until F7.
   return (
+    <div className="content"><div className="content-wide">
     <div className="mx-auto max-w-xl space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Traces</h1>
@@ -47,5 +50,6 @@ export default function TracesPage() {
         </Button>
       </form>
     </div>
+    </div></div>
   );
 }

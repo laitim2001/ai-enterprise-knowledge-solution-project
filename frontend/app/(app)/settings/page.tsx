@@ -22,7 +22,11 @@ export default function SettingsPage() {
   const user = useCurrentUser();
   const signOut = useAuthStore((s) => s.signOut);
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-settings-tabs.jsx:19-20` (`.content` + `.content-narrow`). Inner preserved
+  // until F8 settings rebuild (Wave C2 6-tab scope per ADR-0026).
   return (
+    <div className="content"><div className="content-narrow">
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
@@ -76,6 +80,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+    </div></div>
   );
 }
 

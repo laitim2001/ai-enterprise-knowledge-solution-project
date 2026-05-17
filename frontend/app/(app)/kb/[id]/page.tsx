@@ -171,7 +171,10 @@ export default function KbDetailPage() {
 
   const kb = query.data;
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-kb.jsx:156-157` (`.content` + `.content-wide`). Inner preserved until F6.
   return (
+    <div className="content"><div className="content-wide">
     <div className="space-y-6">
       <div>
         <Link
@@ -275,6 +278,7 @@ export default function KbDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </div></div>
   );
 }
 

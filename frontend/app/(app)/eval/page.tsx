@@ -191,7 +191,11 @@ export default function EvalConsolePage() {
     });
   };
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-eval.jsx:10-11` (`.content` + `.content-wide`). AppShell no longer
+  // injects `.content`. Inner W20 layout preserved until F7 eval rebuild.
   return (
+    <div className="content"><div className="content-wide">
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -248,6 +252,7 @@ export default function EvalConsolePage() {
         </div>
       </div>
     </div>
+    </div></div>
   );
 }
 

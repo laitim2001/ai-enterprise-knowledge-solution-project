@@ -14,14 +14,12 @@
 
   :root {
     color-scheme: light;
-    /* Layout constants (per references/design-mockups/styles.css W22 F1
-       strict-fidelity rebuild) — sidebar width + top-bar height drive the
-       grid-template-columns layout in <AppShell>. Collapsed sidebar narrows
-       to 60px (icon-only rail). Tier 2 multi-tenant work may parametrize. */
-    --sidebar-w: 248px;
-    --topbar-h: 52px;
-
-    /* Light mode */
+    /* Light mode color tokens — bare L C H values, components consume via
+       `oklch(var(--token))`. Synchronized with `frontend/lib/theming/tokens.ts`
+       (Warm Charcoal + Coral Accent per ADR-0015 W12 D2). Layout / radius /
+       shadow / font / density / duration tokens live in `styles-mockup.css`
+       (W22 F1-pivot CSS-first rebuild — `references/design-mockups/styles.css`
+       direct adoption). */
     --primary: 0.20 0.01 285;
     --primary-foreground: 0.98 0 0;
     --secondary: 0.94 0.005 285;
@@ -60,7 +58,7 @@
     --foreground: 0.95 0 0;
     --card: 0.20 0.005 285;
     --card-foreground: 0.95 0 0;
-    --popover: 0.20 0.005 285;
+    --popover: 0.22 0.005 285;
     --popover-foreground: 0.95 0 0;
     --muted: 0.25 0.005 285;
     --muted-foreground: 0.65 0 0;
@@ -75,7 +73,8 @@
     --destructive-foreground: 0.98 0 0;
   }
 
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
+  /* Note: `body` styles (font-family / font-size / line-height /
+     font-feature-settings / color / background) are set in `styles-mockup.css`
+     which loads AFTER this file (per layout.tsx import order). Don't duplicate
+     here. */
 }

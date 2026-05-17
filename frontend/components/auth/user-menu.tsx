@@ -1,30 +1,36 @@
 'use client';
 
 /**
- * C09/C10 app-shell user menu — W12 D4 build with shadcn DropdownMenu;
- * W18 F5: + a "Settings" link → /settings (per ADR-0024 §5.0 top-bar user menu);
- * W22 F1: trigger button rewritten per mockup `ekp-shell.jsx` `UserMenu` —
- *   avatar (initials, small) + username text + chev-down (replaces W18 baseline
- *   icon-only avatar). Dropdown internals preserved per Karpathy §1.3 surgical;
- *   richer item set (Profile / API keys / Identity & Auth) is W22 F8 settings
- *   cluster scope, not F1.
+ * C09/C10 app-shell user menu — W22 F1-pivot direct-copy from mockup
+ * `references/design-mockups/ekp-shell.jsx` UserMenu function (per
+ * CLAUDE.md §5.7 H7 strict fidelity 2026-05-17 user directive — direct
+ * copy mockup JSX + adapt for project architecture).
  *
- * Wraps existing `useAuthStore` + `useCurrentUser` hooks.
+ * Structure mirrors mockup `<PopMenu width=260>`:
+ *   - Header: avatar (large) + display name + email + "Workspace Admin" badge
+ *   - Body: 5 nav items (Profile / Settings / API keys & quotas / Identity & Auth)
+ *           + `<div className="hr" />` divider + Sign out (destructive color)
+ *   - Footer: "MSAL · httpOnly cookie · 7d TTL" muted-mono caption
+ *
+ * shadcn `<DropdownMenu>` Radix wrapper preserved for accessibility (keyboard
+ * trap + focus return + portal positioning). Inner content uses mockup CSS
+ * classes (`.avatar.avatar-lg` / `.badge.badge-accent` / `.nav-item` / `.hr`
+ * / `.text-xs.muted` / `.mono`) — NO Tailwind utility classes.
+ *
+ * Wraps existing `useAuthStore` + `useCurrentUser` hooks for the real auth
+ * data;routes Profile / API keys / Identity & Auth all link to /settings until
+ * W22 F8 settings cluster wires the 6-tab Settings page per ADR-0026 Wave C2.
  */
 
-import { ChevronDown, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, Key, LogOut, Settings as SettingsIcon, Shield, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
-import { cn } from '@/lib/utils';
 
 function getInitials(username: string): string {
   const localPart = username.split('@')[0] || username;
@@ -56,43 +62,98 @@ export function UserMenu() {
         <button
           type="button"
           aria-label="Open user menu"
-          className={cn(
-            'flex h-8 items-center gap-2 rounded-sm pl-1 pr-2 text-[13px] transition-colors hover:bg-muted',
-          )}
+          title="Account"
+          className="btn btn-ghost btn-sm"
+          style={{ paddingLeft: 4, paddingRight: 8, gap: 8 }}
         >
-          <span
-            aria-hidden="true"
-            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-border bg-muted font-mono text-[10px] font-semibold"
-          >
+          <span className="avatar avatar-sm" aria-hidden="true">
             {initials || 'U'}
           </span>
-          <span className="hidden truncate sm:inline-block">{displayName}</span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span style={{ fontSize: 13 }}>{displayName}</span>
+          <ChevronDown size={13} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="flex flex-col">
-            <span className="truncate text-sm font-medium">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={4}
+        className="topbar-popmenu p-0"
+        style={{ width: 260 }}
+      >
+        {/* Header — direct copy mockup ekp-shell.jsx UserMenu lines 202-211 */}
+        <div
+          style={{
+            padding: '12px 14px',
+            borderBottom: '1px solid oklch(var(--border))',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+          }}
+        >
+          <div className="avatar avatar-lg">{initials || 'U'}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{displayName}</div>
+            <div
+              className="text-xs muted"
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {user.preferredUsername}
-            </span>
-            {user.isMock ? (
-              <span className="text-xs text-muted-foreground">[mock]</span>
-            ) : null}
+              {user.isMock ? ' [mock]' : ''}
+            </div>
+            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+              <span className="badge badge-accent">Workspace Admin</span>
+            </div>
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/settings">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+        </div>
+
+        {/* Body — 4 nav items + divider + Sign out;direct copy mockup lines 212-227 */}
+        <div style={{ padding: 6 }}>
+          <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
+            <UserIcon className="icon" size={14} />
+            <span>Profile</span>
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void signOut()}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign out
-        </DropdownMenuItem>
+          <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
+            <SettingsIcon className="icon" size={14} />
+            <span>Settings</span>
+          </Link>
+          <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
+            <Key className="icon" size={14} />
+            <span>API keys &amp; quotas</span>
+          </Link>
+          <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
+            <Shield className="icon" size={14} />
+            <span>Identity &amp; Auth</span>
+          </Link>
+          <div className="hr" />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="nav-item"
+            style={{
+              padding: '7px 10px',
+              color: 'oklch(var(--destructive))',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <LogOut size={14} />
+            <span>Sign out</span>
+          </button>
+        </div>
+
+        {/* Footer — direct copy mockup lines 228-230 */}
+        <div
+          style={{
+            padding: '8px 14px',
+            borderTop: '1px solid oklch(var(--border))',
+            background: 'oklch(var(--muted) / 0.3)',
+          }}
+        >
+          <div className="text-xs muted mono">MSAL · httpOnly cookie · 7d TTL</div>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,54 +1,35 @@
 'use client';
 
 /**
- * C09 admin shell theme toggle — W13 D1 F1.4 dark mode toggle UI.
+ * C09 admin shell theme toggle — W22 F1-pivot direct-copy from mockup
+ * `references/design-mockups/ekp-shell.jsx` line 53-55 (per CLAUDE.md
+ * §5.7 H7 strict fidelity 2026-05-17 user directive).
  *
- * Sun / Moon icons swap via `next-themes` resolvedTheme. DropdownMenu offers
- * Light / Dark / System tri-state so users keep system-preference-follow as
- * the default. Reuses 19 shadcn primitives installed W12 D3 (DropdownMenu +
- * Button) per H2 utility-lib pattern — no new vendor.
+ * Mockup pattern: SIMPLE onClick → toggle theme. No dropdown menu.
+ *   IcSparkles (when dark mode active, click to go light) /
+ *   IcLayers (when light mode active, click to go dark).
+ *
+ * `next-themes` `setTheme(dark/light)` is the toggle target — bypasses the
+ * "system" tri-state option that the prior shadcn DropdownMenu offered
+ * (users can still pick system via /settings page if Wave C2 surfaces it).
  */
 
-import { Moon, Sun } from 'lucide-react';
+import { Layers, Sparkles } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Toggle theme"
-          className="relative"
-        >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => setTheme('light')}>
-          <Sun className="mr-2 h-4 w-4" />
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme('dark')}>
-          <Moon className="mr-2 h-4 w-4" />
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme('system')}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <button
+      type="button"
+      className="btn btn-ghost btn-icon btn-sm"
+      aria-label="Toggle theme"
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+    >
+      {isDark ? <Sparkles size={15} /> : <Layers size={15} />}
+    </button>
   );
 }

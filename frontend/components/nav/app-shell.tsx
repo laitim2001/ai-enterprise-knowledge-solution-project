@@ -1,63 +1,32 @@
 'use client';
 
 /**
- * C09 unified application shell — W22 F1 strict-fidelity rebuild per
- * `references/design-mockups/ekp-shell.jsx` + CLAUDE.md §5.7 H7.
+ * C09 unified application shell — W22 F1-pivot CSS-first rebuild per
+ * CLAUDE.md §5.7 H7 (2026-05-17 user directive after the hand-translation
+ * approach was rejected for typography + spacing drift).
  *
- * Layout philosophy (mockup grid-template-columns: var(--sidebar-w) 1fr;
- * height 100vh):
- *   ┌─────────────┬─────────────────────────────────────┐
- *   │  Sidebar    │  TopBar (52px)                      │
- *   │  ─────────  │  ───────────────────────────────────│
- *   │  Brand      │  ┊ toggle ┊ breadcrumbs ┊ search ┊  │
- *   │  Workspace  │  ┊ ┊ lang ┊ theme ┊ bell ┊ user ┊ │
- *   │  switcher   │  ───────────────────────────────────│
- *   │             │                                     │
- *   │  Workspace  │            Page content             │
- *   │  Tools      │                                     │
- *   │  Labs T2    │                                     │
- *   │             │                                     │
- *   │  user-chip  │                                     │
- *   └─────────────┴─────────────────────────────────────┘
+ * **Visual layer = mockup CSS direct adoption** (`references/design-mockups/
+ * styles.css` → `frontend/app/styles-mockup.css`). This TSX file only owns:
+ *   - React structure (App Router integration / state)
+ *   - Data hooks (auth user, pathname → active route + breadcrumbs)
+ *   - Behaviour (collapse toggle, Cmd/Ctrl+K binding, mobile drawer)
+ *   - Class-name mapping to mockup CSS rules
  *
- * Replaces the W18 F1 / W20 F1 implementation (flex-col with TopBar across
- * top of both columns), which failed the user-eye fidelity audit 2026-05-17
- * with 4 fundamental drifts (TopBar IA / Sidebar IA / Main content shape /
- * Typography). See W22 plan §0 + W21 progress.md Day 1 retro.
+ * Class names mirror `references/design-mockups/ekp-shell.jsx` 1:1:
+ *   .app .sidebar .sidebar-brand .brand-mark .brand-name .brand-tag
+ *   .workspace-switcher .ws-avatar .ws-info
+ *   .nav .nav-section-label .nav-item (data-active) .nav-tail
+ *   .sidebar-footer .user-chip .user-chip-info .avatar
+ *   .topbar .breadcrumbs .topbar-search .kbd .topbar-actions .topbar-divider
+ *   .btn .btn-ghost .btn-icon .btn-sm
  *
- * Preserve (per W22 plan §0 + Karpathy §1.3 surgical):
- *   - File path `frontend/components/nav/app-shell.tsx` + `AppShellProps`
- *     `{ children }` API contract
- *   - localStorage key `ekp-sidebar-collapsed`
+ * Preserve (per W22 plan §0):
+ *   - File path `frontend/components/nav/app-shell.tsx` + AppShellProps API
+ *   - localStorage key 'ekp-sidebar-collapsed'
  *   - Cmd/Ctrl+K → <GlobalSearch> binding
- *   - Mobile off-canvas <Sheet> pattern (preserves BUG-002 375px no-overflow
- *     test in `app-shell-path.spec.ts`)
- *   - ARIA landmarks (`<header>` implicit banner / `<nav aria-label="Primary">`
- *     / `<main>`) — same names asserted by `app-shell.test.tsx`
- *   - `<DisabledAffordance>` wraps every Tier 2 surface (workspace switcher /
- *     language toggle / Labs section / Audit log) — W19 F5 27-affordance
- *     catalog + CC10 H4 boundary
- *   - <UserMenu> / <ThemeToggle> / <NotificationsMenu> / <GlobalSearch>
- *     integration points (their internals are F2/F8 cluster scope)
- *
- * Rebuild (per mockup strict reproduction):
- *   - grid-cols-[var(--sidebar-w)_1fr] layout (replaces flex-col)
- *   - Sidebar = 248px (replaces w-56 = 224px); --sidebar-w + --topbar-h
- *     CSS vars added to globals.css
- *   - Sidebar internal: brand strip (52px aligned w/ topbar) → workspace
- *     switcher (moved from topbar) → nav sections (Workspace 5 items /
- *     Tools 3 items / Labs · Tier 2 8 items) → user-chip footer
- *   - TopBar internal: sidebar-toggle → breadcrumbs → search (right-of-center
- *     360w 30h) → right-actions (lang / theme / bell / divider / user-w-name)
- *   - Tier 2 Labs section rendered with `<DisabledAffordance>` per item — the
- *     8 Labs items render visible but unclickable (W19 F5.4 Option C — items
- *     show in UI but `/labs/*` routes never ship; Tier 2 boundary held)
- *   - Tools `Audit Log` rendered with `<DisabledAffordance>` (multi-tenant
- *     concern; Tier 2 §11)
- *
- * 100% design-token consumption — only arbitrary values are the layout
- * constants `var(--sidebar-w)` and `h-[52px]` which are spec-locked per
- * references/design-mockups/styles.css and added to globals.css.
+ *   - Mobile <Sheet> drawer pattern (shadcn Radix-wrapped; BUG-002 test still holds)
+ *   - <UserMenu> / <ThemeToggle> / <NotificationsMenu> / <GlobalSearch> integration
+ *   - <DisabledAffordance> wraps every Tier 2 surface (W19 F5 27-affordance catalog)
  */
 
 import Link from 'next/link';
@@ -70,13 +39,13 @@ import {
   Cpu,
   Database,
   Globe,
-  LayoutDashboard,
+  Home,
   Layers,
+  type LucideIcon,
   Menu,
-  MessageSquare,
+  MessageCircle,
   MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Search,
   Send,
   Settings,
@@ -91,7 +60,6 @@ import { UserMenu } from '@/components/auth/user-menu';
 import { GlobalSearch } from '@/components/nav/global-search';
 import { NotificationsMenu } from '@/components/nav/notifications-menu';
 import { ThemeToggle } from '@/components/nav/theme-toggle';
-import { Button } from '@/components/ui/button';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   Sheet,
@@ -100,56 +68,52 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useCurrentUser } from '@/lib/providers/auth-provider';
-import { cn } from '@/lib/utils';
 
-/** localStorage key for the focus-mode / sidebar-collapsed preference. */
 const SIDEBAR_COLLAPSED_KEY = 'ekp-sidebar-collapsed';
-
-/** Workspace label (single-tenant Tier 1 — fixed value; switcher disabled per §11). */
 const WORKSPACE_LABEL = 'Ricoh · RAPO';
 const WORKSPACE_HOST = 'ekp-beta.ricoh.com';
 
 interface NavLink {
   href: string;
   label: string;
-  Icon: typeof LayoutDashboard;
+  Icon: LucideIcon;
+  /** Right-aligned tail label (e.g. "5" KBs count, "Cmd↵" shortcut). */
   tail?: string;
 }
 
 /**
- * The 5 Workspace modules — per mockup `window.NAV_ITEMS` labels (Dashboard /
- * Chat / Knowledge / Eval / Traces). Tail numbers come from data in a later
- * pass (e.g. Knowledge tail = KB count) — F3+ wire data fetch.
+ * Icon mapping per mockup `references/design-mockups/ekp-data.jsx` NAV_ITEMS + manual
+ * `IcX` → closest lucide-react equivalent (mechanical, NOT semantic guess):
+ *   IcHome (house shape `M3 11 12 3l9 8`) → lucide `Home` (matches house outline)
+ *   IcChat (round speech bubble w/ tail) → lucide `MessageCircle` (matches round bubble)
+ *   IcDatabase (cylinder ellipses) → lucide `Database` (same shape)
+ *   IcActivity (zigzag line) → lucide `Activity` (same shape)
+ *   IcLayers (stacked diamonds) → lucide `Layers` (same shape)
  */
 const WORKSPACE_NAV: NavLink[] = [
-  { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { href: '/chat', label: 'Chat', Icon: MessageSquare },
-  { href: '/kb', label: 'Knowledge', Icon: Database },
+  { href: '/dashboard', label: 'Dashboard', Icon: Home },
+  { href: '/chat', label: 'Chat', Icon: MessageCircle, tail: 'Cmd↵' },
+  { href: '/kb', label: 'Knowledge', Icon: Database, tail: '5' },
   { href: '/eval', label: 'Eval', Icon: Activity },
   { href: '/traces', label: 'Traces', Icon: Layers },
 ];
 
-/** Tools section — Settings + Users + Audit Log (Audit Log is Tier 2 §11). */
 const TOOLS_NAV: NavLink[] = [
   { href: '/settings', label: 'Settings', Icon: Settings },
   { href: '/users', label: 'Users & access', Icon: UsersIcon },
 ];
 
-/**
- * Labs · Tier 2 section — visible-disabled per W19 F5 27-affordance catalog +
- * F5.4 Option C (prototype-only; `/labs/*` routes never ship). Each item
- * wraps in `<DisabledAffordance>` so the AT path stays correct and the
- * Tier 2 boundary (CC10 H4) is held — items render but are unclickable.
- */
 interface LabsItem {
   label: string;
-  Icon: typeof LayoutDashboard;
-  /** Drives `<DisabledAffordance reason>` and the tooltip text. */
+  Icon: LucideIcon;
   reason: string;
-  /** Tier 2 trigger tag — surfaced in the tooltip per the W19 F5 catalog. */
   trigger: string;
 }
 
+/** Labs · Tier 2 — 8 items rendered visible-disabled per W19 F5 27-affordance
+ * catalog + F5.4 Option C (prototype-only;`/labs/*` routes never ship). Each
+ * wraps in `<DisabledAffordance>` so AT users hear the disabled state + the
+ * Tier 2 boundary (CC10 H4) is held. */
 const LABS_NAV: LabsItem[] = [
   { label: 'GraphRAG', Icon: Layers, reason: 'Knowledge-graph retrieval — Tier 2', trigger: 'graph-rag retrieval' },
   { label: 'Multi-Agent', Icon: Cpu, reason: 'Multi-agent orchestration — Tier 2', trigger: 'agent-orchestration' },
@@ -166,14 +130,9 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 /**
- * Compute breadcrumb labels from the App Router pathname.
- *
- * Dynamic segments (e.g. `/kb/[id]`) surface a generic label
- * ("Knowledge Base" / "Document" / "Trace detail") until the corresponding
- * page rebuild (F6 KB cluster / F7 observability cluster) wires the real
- * name through a context provider. The mockup shows real names — the
- * generic placeholder is the F1 acceptable interim per CLAUDE.md §13
- * "Mockup detail unclear" row's pragmatic interpretation.
+ * Map App Router pathname → breadcrumb labels. Dynamic segments (`/kb/[id]`,
+ * `/traces/[traceId]`) surface a generic last-crumb until the per-page rebuild
+ * wires the real name via context (F6 / F7 cluster scope).
  */
 function computeBreadcrumbs(pathname: string): string[] {
   const segments = pathname.split('/').filter(Boolean);
@@ -190,7 +149,6 @@ function computeBreadcrumbs(pathname: string): string[] {
   if (root === 'kb') {
     if (rest.length === 0) return ['Knowledge'];
     if (rest[0] === 'new') return ['Knowledge', 'New KB'];
-    // /kb/[id] / /kb/[id]/upload / /kb/[id]/docs/[docId]
     const trail = ['Knowledge', 'Knowledge Base'];
     if (rest[1] === 'upload') trail.push('Upload');
     else if (rest[1] === 'docs') trail.push('Document');
@@ -202,7 +160,6 @@ function computeBreadcrumbs(pathname: string): string[] {
     return ['Traces', 'Trace detail'];
   }
 
-  // Fallback — humanise the first segment
   return [root.charAt(0).toUpperCase() + root.slice(1)];
 }
 
@@ -213,7 +170,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname() ?? '/';
 
-  // Focus-mode / sidebar-collapsed — persisted to localStorage; SSR-stable.
+  // Sidebar collapsed state — persisted to localStorage; SSR-stable.
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
     if (window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') {
@@ -228,10 +185,10 @@ export function AppShell({ children }: AppShellProps) {
     });
   }, []);
 
-  // Mobile off-canvas nav (Sheet — preserved W18 F1 pattern).
+  // Mobile off-canvas drawer
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Cmd/Ctrl+K palette (preserved W18 F6 binding).
+  // Cmd/Ctrl+K palette
   const [searchOpen, setSearchOpen] = useState(false);
   const handleOpenSearch = useCallback(() => setSearchOpen(true), []);
   useEffect(() => {
@@ -248,42 +205,37 @@ export function AppShell({ children }: AppShellProps) {
   const breadcrumbs = useMemo(() => computeBreadcrumbs(pathname), [pathname]);
 
   return (
-    <div
-      // Desktop: 2-col grid (sidebar | main); mobile (< md): single col, sidebar
-      // hidden — accessed via the top-bar hamburger → <Sheet>.
-      className="grid h-screen overflow-hidden md:grid-cols-[var(--sidebar-w)_1fr]"
-      data-sidebar={collapsed ? 'collapsed' : 'expanded'}
-    >
-      {/* Desktop sidebar — hidden when focus mode (collapsed) is on or below md. */}
-      {!collapsed && (
-        <DesktopSidebar pathname={pathname} />
-      )}
-
-      {/* Main column — top bar + scrolling content. */}
-      <div className="flex min-w-0 flex-col overflow-hidden">
+    <div className="app" data-sidebar={collapsed ? 'collapsed' : 'expanded'}>
+      <DesktopSidebar pathname={pathname} collapsed={collapsed} />
+      <div className="main">
         <TopBar
           breadcrumbs={breadcrumbs}
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
+          onToggleSidebar={toggleCollapsed}
           onOpenMobileNav={() => setMobileNavOpen(true)}
           onOpenSearch={handleOpenSearch}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
-          {children}
-        </main>
+        {/* Per mockup pattern: each PageX self-wraps its content with
+            `<div className="content"><div className="content-{wide|narrow}">`
+            (per `references/design-mockups/ekp-page-*.jsx`). PageChat is the
+            deliberate exception — full-bleed 3-pane grid filling
+            `calc(100vh - var(--topbar-h))` per `ekp-page-chat.jsx:88-94`.
+            AppShell stays layout-agnostic so each route can express its own
+            content-box shape (H7 fidelity per CLAUDE.md §5.7). */}
+        {children}
       </div>
 
-      {/* Mobile off-canvas sidebar */}
+      {/* Mobile off-canvas sidebar (< md) — shadcn Sheet pattern preserved.
+          When the Sheet renders, the `<aside class="sidebar">` from mockup
+          CSS is reused inside the Sheet body for IA consistency. */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[248px] p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
-          <MobileSidebarContent pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
+          <MobileSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      {/* Global search palette (Cmd/Ctrl+K) — opened by top-bar trigger or hotkey */}
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
@@ -293,300 +245,251 @@ export function AppShell({ children }: AppShellProps) {
 
 interface TopBarProps {
   breadcrumbs: string[];
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
+  onToggleSidebar: () => void;
   onOpenMobileNav: () => void;
   onOpenSearch: () => void;
 }
 
-function TopBar({ breadcrumbs, collapsed, onToggleCollapsed, onOpenMobileNav, onOpenSearch }: TopBarProps) {
+function TopBar({ breadcrumbs, onToggleSidebar, onOpenMobileNav, onOpenSearch }: TopBarProps) {
   return (
-    <header
-      className={cn(
-        'flex h-[var(--topbar-h)] shrink-0 items-center gap-3 border-b border-border bg-background px-5',
-      )}
-    >
-      {/* Mobile hamburger (< md) */}
-      <Button
-        variant="ghost"
-        size="icon"
+    <header className="topbar">
+      {/* Mobile hamburger (< md) — opens shadcn Sheet drawer. `!md:hidden` uses
+          Tailwind's important variant so `display:none` wins specificity over
+          `.btn { display: inline-flex }` from styles-mockup.css (which loads
+          AFTER Tailwind base/utilities per layout.tsx import order). Same
+          treatment for the desktop toggle's `!hidden md:!inline-flex` so the
+          two buttons swap cleanly across the breakpoint without ever both
+          appearing simultaneously (BUG-002 375px no-overflow stays held). */}
+      <button
+        className="btn btn-ghost btn-icon btn-sm md:!hidden"
+        type="button"
         aria-label="Open navigation"
-        className="h-8 w-8 md:hidden"
         onClick={onOpenMobileNav}
       >
-        <Menu className="h-4 w-4" />
-      </Button>
+        <Menu size={15} />
+      </button>
 
-      {/* Desktop focus-mode toggle (≥ md) */}
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={collapsed ? 'Expand sidebar (exit focus mode)' : 'Collapse sidebar (focus mode)'}
-        aria-pressed={collapsed}
+      {/* Desktop sidebar toggle (≥ md) — collapses to icon-only rail */}
+      <button
+        className="btn btn-ghost btn-icon btn-sm !hidden md:!inline-flex"
+        type="button"
+        aria-label="Toggle sidebar (hides left navigation)"
         title="Toggle sidebar (hides left navigation)"
-        className="hidden h-8 w-8 md:inline-flex"
-        onClick={onToggleCollapsed}
+        onClick={onToggleSidebar}
       >
-        {collapsed ? (
-          <PanelLeftOpen className="h-[15px] w-[15px]" />
-        ) : (
-          <PanelLeftClose className="h-[15px] w-[15px]" />
-        )}
-      </Button>
+        <PanelLeft size={15} />
+      </button>
 
-      {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+      <nav aria-label="Breadcrumb" className="breadcrumbs">
         {breadcrumbs.map((b, i) => (
-          <span key={`${i}-${b}`} className="flex items-center gap-1.5">
+          <span key={`${i}-${b}`} className="contents">
             {i > 0 && (
-              <ChevronRight className="h-3 w-3 shrink-0 opacity-40" aria-hidden="true" />
+              <span className="sep" aria-hidden="true">
+                <ChevronRight size={12} />
+              </span>
             )}
-            {i === breadcrumbs.length - 1 ? (
-              <span className="font-medium text-foreground">{b}</span>
-            ) : (
-              <span>{b}</span>
-            )}
+            {i === breadcrumbs.length - 1 ? <b>{b}</b> : <span>{b}</span>}
           </span>
         ))}
       </nav>
 
-      {/* Search trigger — pushed right via `ml-auto`; mockup width 360 height 30 */}
       <button
+        className="topbar-search"
         type="button"
         onClick={onOpenSearch}
-        aria-label="Search (Ctrl+K)"
-        className={cn(
-          'ml-auto flex h-[30px] min-w-0 max-w-[360px] flex-1 items-center gap-2 rounded-sm border border-border bg-muted/50 px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted',
-        )}
+        aria-label="Search KBs, traces, settings (Ctrl+K)"
+        title="Search KBs, traces, settings (⌘K)"
       >
-        <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 flex-1 truncate text-left">
-          Search KBs, traces, settings…
-        </span>
-        <kbd className="ml-auto hidden shrink-0 rounded-[3px] border border-border bg-background px-1.5 py-px font-mono text-[10.5px] sm:inline-block">
-          ⌘ K
-        </kbd>
+        <Search size={14} />
+        <span style={{ flex: 1, textAlign: 'left' }}>Search KBs, traces, settings…</span>
+        <span className="kbd">⌘ K</span>
       </button>
 
-      {/* Right cluster — language / theme / notifications / divider / account */}
-      <div className="flex shrink-0 items-center gap-0.5">
-        {/* Language toggle — Tier 2 disabled (i18n machinery is Tier 2 §11) */}
+      <div className="topbar-actions">
+        {/* Language toggle — Tier 2 disabled per W19 F5 catalog */}
         <DisabledAffordance
           reason="Multi-language (JP / ZH) — Tier 2"
           tier2Trigger="i18n machinery"
           className="hidden sm:inline-flex"
         >
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             disabled
             aria-label="Language (Tier 2 — coming soon)"
-            className="h-8 w-8"
+            className="btn btn-ghost btn-icon btn-sm"
           >
-            <Globe className="h-[15px] w-[15px]" />
-          </Button>
+            <Globe size={15} />
+          </button>
         </DisabledAffordance>
 
-        {/* Theme toggle (sun / moon — internal swap) */}
         <ThemeToggle />
-
-        {/* Notifications bell (existing W20 F1.1 component preserved) */}
         <NotificationsMenu />
 
-        {/* Vertical divider */}
-        <div
-          aria-hidden="true"
-          className="mx-1 hidden h-[18px] w-px bg-border sm:block"
-        />
+        <div className="topbar-divider" aria-hidden="true" />
 
-        {/* Account — UserMenu trigger rebuilt to mockup pattern (avatar + name + chev) */}
         <UserMenu />
       </div>
     </header>
   );
 }
 
-// ── Sidebar (desktop) ──────────────────────────────────────────────────────
+// ── Sidebar ────────────────────────────────────────────────────────────────
 
-function DesktopSidebar({ pathname }: { pathname: string }) {
+function DesktopSidebar({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
   return (
-    <aside className="flex h-screen flex-col overflow-hidden border-r border-border bg-card">
-      <SidebarBrand />
-      <WorkspaceSwitcher />
-      <SidebarNav pathname={pathname} />
-      <SidebarFooter />
+    <aside className="sidebar">
+      <SidebarBrand collapsed={collapsed} />
+      {!collapsed && <WorkspaceSwitcher />}
+      <SidebarNav pathname={pathname} collapsed={collapsed} />
+      <SidebarFooter collapsed={collapsed} />
     </aside>
   );
 }
 
-function MobileSidebarContent({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate: () => void;
-}) {
+function MobileSidebar({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <SidebarBrand />
+    <aside className="sidebar">
+      <SidebarBrand collapsed={false} />
       <WorkspaceSwitcher />
-      <SidebarNav pathname={pathname} onNavigate={onNavigate} />
-      <SidebarFooter />
-    </div>
+      <SidebarNav pathname={pathname} collapsed={false} onNavigate={onNavigate} />
+      <SidebarFooter collapsed={false} />
+    </aside>
   );
 }
 
-function SidebarBrand() {
+function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className="flex h-[var(--topbar-h)] shrink-0 items-center gap-2.5 border-b border-border px-4">
+    <div className="sidebar-brand">
       <Link
         href="/dashboard"
-        className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-sm bg-primary font-mono text-[12px] font-semibold tracking-tighter text-primary-foreground"
+        className="brand-mark"
         aria-label="EKP — go to dashboard"
       >
         EKP
       </Link>
-      <span className="overflow-hidden truncate text-[14px] font-semibold tracking-tight">
-        Knowledge Platform
-      </span>
-      <span className="rounded-sm bg-muted px-1.5 py-px font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Beta
-      </span>
+      {!collapsed && (
+        <>
+          <span className="brand-name">Knowledge Platform</span>
+          <span className="brand-tag">BETA</span>
+        </>
+      )}
     </div>
   );
 }
 
 function WorkspaceSwitcher() {
+  // Apply aria-disabled + title directly to the button so mockup `.workspace-switcher`
+  // layout (margin 10px 12px 4px + flex full-width inside sidebar) is preserved.
+  // Earlier wrap in <DisabledAffordance> broke the layout because its `<span
+  // className="inline-flex">` wrapper collapsed the switcher to content-width.
+  const TIER2_TITLE = 'Workspace switcher — Tier 2 (multi-tenancy per architecture.md §11)';
   return (
-    <DisabledAffordance
-      reason="Multi-workspace support — Tier 2 per architecture.md §11"
-      tier2Trigger="multi-tenancy"
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      aria-label={`Workspace: ${WORKSPACE_LABEL} (${TIER2_TITLE})`}
+      title={TIER2_TITLE}
+      className="workspace-switcher"
+      style={{ opacity: 0.7, cursor: 'default' }}
     >
-      <button
-        type="button"
-        disabled
-        aria-label={`Workspace: ${WORKSPACE_LABEL} (multi-workspace — Tier 2)`}
-        className={cn(
-          'mx-3 mb-1 mt-2.5 flex items-center gap-2 rounded-sm border border-border bg-card px-2.5 py-1.5 text-[13px] transition-colors hover:bg-muted',
-        )}
-      >
-        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-sm bg-accent font-mono text-[11px] font-semibold text-accent-foreground">
-          R
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className="truncate text-[13px] font-semibold">{WORKSPACE_LABEL}</span>
-          <span className="text-[11px] text-muted-foreground">{WORKSPACE_HOST}</span>
-        </span>
-        <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-      </button>
-    </DisabledAffordance>
+      <span className="ws-avatar">R</span>
+      <span className="ws-info">
+        <b>{WORKSPACE_LABEL}</b>
+        <span>{WORKSPACE_HOST}</span>
+      </span>
+      <ChevronDown size={13} className="muted" />
+    </button>
   );
 }
 
 function SidebarNav({
   pathname,
+  collapsed,
   onNavigate,
 }: {
   pathname: string;
+  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   return (
-    <nav
-      aria-label="Primary"
-      className="flex flex-1 flex-col gap-px overflow-y-auto px-3 pb-4 pt-2"
-    >
-      <SidebarSectionLabel>Workspace</SidebarSectionLabel>
+    <nav className="nav" aria-label="Primary">
+      {!collapsed && <div className="nav-section-label">Workspace</div>}
       {WORKSPACE_NAV.map((item) => (
         <SidebarLink
           key={item.href}
           item={item}
           active={isActiveRoute(pathname, item.href)}
+          collapsed={collapsed}
           onNavigate={onNavigate}
         />
       ))}
 
-      <SidebarSectionLabel>Tools</SidebarSectionLabel>
-      {TOOLS_NAV.map((item) => (
-        <SidebarLink
-          key={item.href}
-          item={item}
-          active={isActiveRoute(pathname, item.href)}
-          onNavigate={onNavigate}
-        />
-      ))}
-      {/* Audit Log — Tier 2 disabled affordance (multi-tenancy §11) */}
-      <DisabledAffordance
-        reason="Audit log surface — Tier 2 (multi-tenancy)"
-        tier2Trigger="multi-tenancy"
-      >
-        <button
-          type="button"
-          disabled
-          className={cn(
-            'flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13.5px] font-normal text-muted-foreground opacity-60',
-          )}
-        >
-          <Shield className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="flex-1 text-left">Audit Log</span>
-          <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-            Soon
-          </span>
-        </button>
-      </DisabledAffordance>
-
-      <SidebarSectionLabel accent>Labs · Tier 2</SidebarSectionLabel>
-      {LABS_NAV.map((item) => (
-        <DisabledAffordance
-          key={item.label}
-          reason={item.reason}
-          tier2Trigger={item.trigger}
-        >
+      {!collapsed && (
+        <>
+          <div className="nav-section-label">Tools</div>
+          {TOOLS_NAV.map((item) => (
+            <SidebarLink
+              key={item.href}
+              item={item}
+              active={isActiveRoute(pathname, item.href)}
+              collapsed={false}
+              onNavigate={onNavigate}
+            />
+          ))}
+          {/* Audit Log — Tier 2 disabled, mockup pattern `style={{ opacity: 0.5 }}`
+              applied directly per `references/design-mockups/ekp-shell.jsx` line 296-300.
+              No <DisabledAffordance> wrapper (it would break `.nav-item` flex layout). */}
           <button
             type="button"
             disabled
-            className={cn(
-              'flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13.5px] font-normal text-foreground opacity-80',
-            )}
+            aria-disabled="true"
+            className="nav-item muted"
+            title="Tier 2 — multi-tenancy (audit log requires multi-workspace boundary)"
+            aria-label="Audit Log (Tier 2 — multi-tenancy)"
+            style={{ opacity: 0.5, cursor: 'default' }}
           >
-            <item.Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="flex-1 text-left">{item.label}</span>
-            <span className="ml-auto font-mono text-[11px] font-medium text-accent">
-              T2
-            </span>
+            <Shield className="icon" size={16} />
+            <span>Audit Log</span>
+            <span className="nav-tail">Soon</span>
           </button>
-        </DisabledAffordance>
-      ))}
-    </nav>
-  );
-}
 
-function SidebarSectionLabel({
-  children,
-  accent,
-}: {
-  children: React.ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        'px-2.5 pb-1 pt-3.5 font-mono text-[10.5px] font-medium uppercase tracking-wider first:pt-1',
-        accent ? 'text-accent' : 'text-muted-foreground',
+          <div className="nav-section-label" style={{ color: 'oklch(var(--accent))' }}>
+            Labs · Tier 2
+          </div>
+          {LABS_NAV.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="nav-item"
+              title={`${item.reason} · ${item.trigger}`}
+              aria-label={`${item.label} (${item.reason})`}
+              style={{ cursor: 'default' }}
+            >
+              <item.Icon className="icon" size={16} />
+              <span>{item.label}</span>
+              <span className="nav-tail" style={{ color: 'oklch(var(--accent))' }}>
+                T2
+              </span>
+            </button>
+          ))}
+        </>
       )}
-    >
-      {children}
-    </div>
+    </nav>
   );
 }
 
 function SidebarLink({
   item,
   active,
+  collapsed,
   onNavigate,
 }: {
   item: NavLink;
   active: boolean;
+  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   const { href, label, Icon, tail } = item;
@@ -595,67 +498,63 @@ function SidebarLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       onClick={onNavigate}
-      className={cn(
-        'relative flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13.5px] transition-colors',
-        active
-          ? 'bg-muted font-medium text-foreground'
-          : 'font-normal text-foreground hover:bg-muted',
-        // Active-state left rail (mockup `.nav-item[data-active]::before`)
-        active &&
-          'before:absolute before:-left-3 before:top-[5px] before:bottom-[5px] before:w-[2px] before:rounded-full before:bg-accent before:content-[""]',
-      )}
+      className="nav-item"
+      data-active={active ? 'true' : 'false'}
+      title={collapsed ? label : undefined}
     >
-      <Icon
-        className={cn(
-          'h-4 w-4 shrink-0',
-          active ? 'text-foreground' : 'text-muted-foreground',
-        )}
-        aria-hidden="true"
-      />
-      <span className="flex-1 truncate">{label}</span>
-      {tail && (
-        <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
-          {tail}
-        </span>
+      <Icon className="icon" size={16} />
+      {!collapsed && (
+        <>
+          <span>{label}</span>
+          {tail && <span className="nav-tail">{tail}</span>}
+        </>
       )}
     </Link>
   );
 }
 
-function SidebarFooter() {
+function SidebarFooter({ collapsed }: { collapsed: boolean }) {
   const user = useCurrentUser();
-  const displayName = user?.preferredUsername ?? '—';
+  const displayName = user?.preferredUsername ?? 'Signing in…';
   const localPart = displayName.split('@')[0] ?? displayName;
-  const initials = localPart
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((t) => t[0]?.toUpperCase() ?? '')
-    .join('')
-    .slice(0, 2) || 'U';
+  const initials = (
+    localPart
+      .split(/[._-]/)
+      .filter(Boolean)
+      .map((t) => t[0]?.toUpperCase() ?? '')
+      .join('')
+      .slice(0, 2) || 'U'
+  );
 
-  return (
-    <div className="flex shrink-0 items-center gap-2 border-t border-border px-2.5 py-2">
-      <div className="flex flex-1 items-center gap-2 rounded-sm px-2 py-1.5 hover:bg-muted">
-        <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-border bg-muted font-mono text-[11px] font-semibold">
-          {initials}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className="truncate text-[12.5px] font-semibold">
-            {localPart}
-          </span>
-          <span className="truncate text-[11px] text-muted-foreground">
-            Workspace Admin
-          </span>
+  if (collapsed) {
+    return (
+      <div className="sidebar-footer">
+        <div className="avatar" title={localPart}>
+          <span>{initials}</span>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
+    );
+  }
+
+  return (
+    <div className="sidebar-footer">
+      <div className="user-chip">
+        <div className="avatar">
+          <span>{initials}</span>
+        </div>
+        <div className="user-chip-info">
+          <b>{localPart}</b>
+          <span>Workspace Admin</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-ghost btn-icon btn-sm"
+        title="Account actions"
         aria-label="More account actions"
-        className="h-7 w-7 shrink-0"
       >
-        <MoreHorizontal className="h-3.5 w-3.5" />
-      </Button>
+        <MoreHorizontal size={14} />
+      </button>
     </div>
   );
 }

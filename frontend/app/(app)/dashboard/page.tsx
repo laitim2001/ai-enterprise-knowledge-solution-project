@@ -166,7 +166,12 @@ export default function DashboardPage() {
     .sort((a, b) => b.total_documents - a.total_documents)
     .slice(0, 5);
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
+  // `ekp-page-dashboard.jsx:16-17` (`.content` + `.content-wide`). AppShell no longer
+  // injects `.content` so /chat can stay full-bleed per its mockup. Inner W20 layout
+  // (`mx-auto max-w-5xl space-y-6`) preserved until F3 dashboard rebuild.
   return (
+    <div className="content"><div className="content-wide">
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
@@ -330,7 +335,11 @@ export default function DashboardPage() {
                 aria-label="Component connectivity"
               >
                 {COMPONENT_ORDER.map((key) => {
-                  const comp = healthQuery.data.components[key];
+                  // W22 F1-pivot defensive read — backend /health response can be
+                  // shape `{status, components: {...}}` (W20 F2.1 build) or thin
+                  // `{status: "ok"}` (pre-W20 build / old running process). Don't
+                  // crash AppShell verification when components field absent.
+                  const comp = healthQuery.data?.components?.[key];
                   if (!comp) return null;
                   const label = COMPONENT_LABELS[key] ?? key;
                   return (
@@ -377,6 +386,7 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+    </div></div>
   );
 }
 

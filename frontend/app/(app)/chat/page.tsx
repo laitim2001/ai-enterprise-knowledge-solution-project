@@ -287,8 +287,13 @@ export default function ChatPage() {
   const latestAssistantCitations: Citation[] =
     [...messages].reverse().find((m) => m.role === 'assistant')?.citations ?? [];
 
+  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): /chat is full-bleed per mockup
+  // `ekp-page-chat.jsx:88-94` (3-pane grid `calc(100vh - var(--topbar-h))`).
+  // AppShell no longer injects `.content`. Transient `flex-1 min-h-0` outer makes
+  // the W20 layout fill the remaining flex-column space inside `.main` until F4
+  // chat rebuild adopts the mockup's grid + height calc.
   return (
-    <div className="flex h-full min-h-0 gap-0">
+    <div className="flex flex-1 h-full min-h-0 gap-0">
       {!historyCollapsed && (
         <div className="hidden w-56 shrink-0 md:block">
           <ConversationHistory
