@@ -29,11 +29,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Archive,
   ArrowLeft,
   Database,
   FileText,
   FlaskConical,
+  Image as ImageIcon,
   Loader2,
+  Lock,
+  Scissors,
   Search,
   Settings as SettingsIcon,
   SlidersHorizontal,
@@ -52,6 +56,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   Card,
   CardContent,
@@ -99,9 +104,14 @@ import {
   type RetrievalTestResult,
 } from '@/lib/api/retrieval-test';
 
+// W20 F5.4 — 7-tab refactor per ADR-0025 (`-Access` Wave A scope; Access tab
+// is rendered as a disabled affordance, not in VALID_TABS routing so it can't
+// be ?tab=access-targeted).
 const VALID_TABS = [
   'documents',
   'chunks',
+  'images',
+  'chunking-lab',
   'pipeline',
   'retrieval',
   'settings',
@@ -111,6 +121,8 @@ type TabKey = (typeof VALID_TABS)[number];
 const TAB_LABEL: Record<TabKey, string> = {
   documents: 'Documents',
   chunks: 'Chunks',
+  images: 'Images',
+  'chunking-lab': 'Chunking Lab',
   pipeline: 'Pipeline',
   retrieval: 'Retrieval Testing',
   settings: 'Settings',
@@ -202,6 +214,14 @@ export default function KbDetailPage() {
               <Database className="mr-1.5 h-3.5 w-3.5" />
               {TAB_LABEL.chunks}
             </TabsTrigger>
+            <TabsTrigger value="images">
+              <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
+              {TAB_LABEL.images}
+            </TabsTrigger>
+            <TabsTrigger value="chunking-lab">
+              <Scissors className="mr-1.5 h-3.5 w-3.5" />
+              {TAB_LABEL['chunking-lab']}
+            </TabsTrigger>
             <TabsTrigger value="pipeline">
               <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
               {TAB_LABEL.pipeline}
@@ -214,6 +234,21 @@ export default function KbDetailPage() {
               <SettingsIcon className="mr-1.5 h-3.5 w-3.5" />
               {TAB_LABEL.settings}
             </TabsTrigger>
+            {/* W20 F5.8 — Access tab disabled affordance (Tier 1.5;Wave C1
+                activates per ADR-0027 Option A RBAC backend). Render the tab
+                visibly but block ?tab=access routing + click via TabsTrigger
+                disabled + wrap in <DisabledAffordance>. */}
+            <DisabledAffordance
+              variant="p1-strict"
+              reason="RBAC pending Wave C1 per ADR-0027 Option A backend"
+              tier2Trigger="RBAC + audit log + group membership"
+              className="inline-flex"
+            >
+              <TabsTrigger value="access" disabled aria-disabled="true">
+                <Lock className="mr-1.5 h-3.5 w-3.5" />
+                Access
+              </TabsTrigger>
+            </DisabledAffordance>
           </TabsList>
         </div>
 
@@ -222,6 +257,12 @@ export default function KbDetailPage() {
         </TabsContent>
         <TabsContent value="chunks" className="mt-6">
           <ChunksTab kb={kb} />
+        </TabsContent>
+        <TabsContent value="images" className="mt-6">
+          <ImagesTab kb={kb} />
+        </TabsContent>
+        <TabsContent value="chunking-lab" className="mt-6">
+          <ChunkingLabTab kb={kb} />
         </TabsContent>
         <TabsContent value="pipeline" className="mt-6">
           <PipelineTab kb={kb} />
@@ -565,6 +606,255 @@ function ChunksTable({ rows }: { rows: ChunkSummary[] }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// --- Images tab (W20 F5.5 per ADR-0025) --------------------------------------
+
+function ImagesTab({ kb }: { kb: KbStatus }) {
+  const images = useQuery({
+    queryKey: ['kb', kb.kb_id, 'images'],
+    queryFn: () => kbApi.listImages(kb.kb_id, 200, 0),
+  });
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const items = images.data?.items ?? [];
+  const selectedItem = items.find((i) => i.id === selected) ?? null;
+
+  return (
+    <div className="space-y-4">
+      <header className="flex items-baseline justify-between">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Cited screenshots</h2>
+          <p className="text-xs text-muted-foreground">
+            Images surfaced during ingest, aggregated across all chunks (deduplicated by SHA-256).
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {images.isLoading ? 'Loading…' : `${items.length} image${items.length === 1 ? '' : 's'}`}
+        </span>
+      </header>
+
+      {images.isError && (
+        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+          Failed to load images:{' '}
+          {String((images.error as Error)?.message ?? 'unknown')}
+        </div>
+      )}
+
+      {!images.isLoading && !images.isError && items.length === 0 && (
+        <div className="rounded-md border border-dashed border-border bg-muted/30 p-8 text-center">
+          <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground" />
+          <p className="mt-3 text-sm font-medium">No images yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Images surface after the screenshot pipeline runs end-to-end (R12 — Azure Blob
+            switch pending Track A IT cred). Upload Word, PDF, or PowerPoint docs to populate.
+          </p>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {items.map((img) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => setSelected(img.id)}
+              className="overflow-hidden rounded-md border border-border text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label={`Open image from ${img.doc_name}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.url}
+                alt={img.ocr_text || `Image from ${img.doc_name}`}
+                className="h-32 w-full object-cover"
+              />
+              <div className="border-t border-border bg-background p-2">
+                <div className="line-clamp-1 text-xs font-medium">{img.doc_name}</div>
+                {img.ocr_text && (
+                  <div className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                    {img.ocr_text}
+                  </div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={selectedItem !== null} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="line-clamp-1">
+              {selectedItem?.doc_name ?? 'Image preview'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedItem.url}
+                alt={selectedItem.ocr_text || selectedItem.doc_name}
+                className="max-h-[60vh] w-full rounded-md border border-border object-contain"
+              />
+              {selectedItem.ocr_text && (
+                <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
+                  <div className="font-semibold uppercase tracking-wide text-muted-foreground">
+                    OCR / alt text
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap">{selectedItem.ocr_text}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// --- Chunking Lab tab (W20 F5.6 per ADR-0025) --------------------------------
+
+function ChunkingLabTab({ kb }: { kb: KbStatus }) {
+  const [sampleText, setSampleText] = useState(
+    '## Example heading\n\nPaste sample content here to preview how the chunker will split it.\n\nAdd more paragraphs separated by blank lines.',
+  );
+  const [strategy, setStrategy] = useState<KbConfig['chunk_strategy']>(kb.config.chunk_strategy);
+  const [chunkSize, setChunkSize] = useState(700);
+
+  const preview = useMutation({
+    mutationFn: () =>
+      kbApi.chunkingPreview({
+        kb_id: kb.kb_id,
+        sample_text: sampleText,
+        strategy,
+        chunk_size: chunkSize,
+        overlap: 0,
+      }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-base font-semibold tracking-tight">Chunking Lab</h2>
+        <p className="text-xs text-muted-foreground">
+          Preview how the current chunker will split sample text — no persistence, no
+          Azure index writes. Apply changes via Settings → Chunk strategy.
+        </p>
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Inputs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="lab-text">Sample text</Label>
+            <textarea
+              id="lab-text"
+              value={sampleText}
+              onChange={(e) => setSampleText(e.target.value)}
+              rows={6}
+              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="lab-strategy">Strategy</Label>
+              <Select
+                value={strategy}
+                onValueChange={(v) => setStrategy(v as KbConfig['chunk_strategy'])}
+              >
+                <SelectTrigger id="lab-strategy">
+                  <SelectValue placeholder="Strategy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">auto</SelectItem>
+                  <SelectItem value="layout_aware">layout_aware</SelectItem>
+                  <SelectItem value="heading_aware">heading_aware</SelectItem>
+                  <SelectItem value="slide_based">slide_based</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lab-size">Chunk size (tokens)</Label>
+              <Input
+                id="lab-size"
+                type="number"
+                min={50}
+                max={4000}
+                value={chunkSize}
+                onChange={(e) => setChunkSize(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Button type="button" onClick={() => preview.mutate()} disabled={preview.isPending}>
+              {preview.isPending ? 'Previewing…' : 'Preview'}
+            </Button>
+            {/* Apply is a Tier 2 affordance — Wave B+ re-chunking pipeline. */}
+            <DisabledAffordance
+              variant="p3-preview"
+              reason="Re-chunking requires re-ingest of every doc — arrives in a later tier"
+              tier2Trigger="re-chunking pipeline"
+              showBadge
+            >
+              <Button type="button" variant="outline" disabled>
+                Apply
+              </Button>
+            </DisabledAffordance>
+          </div>
+        </CardContent>
+      </Card>
+
+      {preview.isError && (
+        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
+          Preview failed: {String((preview.error as Error)?.message ?? 'unknown')}
+        </div>
+      )}
+
+      {preview.data && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">
+              Preview ({preview.data.total} chunk{preview.data.total === 1 ? '' : 's'})
+            </CardTitle>
+            {preview.data.note && (
+              <CardDescription className="text-xs">{preview.data.note}</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {preview.data.items.length === 0 && (
+              <p className="text-xs text-muted-foreground">No chunks emitted from the sample.</p>
+            )}
+            {preview.data.items.map((item) => (
+              <details
+                key={item.chunk_index}
+                className="rounded-md border border-border bg-muted/30 p-2 text-xs"
+              >
+                <summary className="cursor-pointer">
+                  <span className="font-medium">#{item.chunk_index}</span>{' '}
+                  {item.chunk_title || '(untitled section)'}
+                  <span className="ml-2 text-muted-foreground">
+                    · {item.chunk_token_count} tokens
+                  </span>
+                </summary>
+                <div className="mt-2 space-y-1">
+                  {item.section_path.length > 0 && (
+                    <div className="font-mono text-[10px] text-muted-foreground">
+                      {item.section_path.join(' › ')}
+                    </div>
+                  )}
+                  <pre className="whitespace-pre-wrap rounded bg-background p-2 font-mono text-[11px]">
+                    {item.chunk_text}
+                  </pre>
+                </div>
+              </details>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1274,12 +1564,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         </CardContent>
       </Card>
 
-      <DangerZone kbId={kb.kb_id} />
+      <DangerZone kb={kb} />
     </div>
   );
 }
 
-function DangerZone({ kbId }: { kbId: string }) {
+function DangerZone({ kb }: { kb: KbStatus }) {
   return (
     <Card className="border-destructive/30">
       <CardHeader>
@@ -1288,11 +1578,14 @@ function DangerZone({ kbId }: { kbId: string }) {
           Danger zone
         </CardTitle>
         <CardDescription>
+          Archive freezes new ingest but keeps the index + screenshots queryable;
           Re-index sweeps every document(idempotent);Delete drops the KB +
           all its chunks + screenshots(non-recoverable).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* W20 F5.7 — Archive action lands real backend (POST /kb/{id}/archive). */}
+        <ArchiveAction kb={kb} />
         <DangerAction
           label="Re-index KB"
           description="Re-run the ingestion pipeline against every document in this KB."
@@ -1301,7 +1594,7 @@ function DangerZone({ kbId }: { kbId: string }) {
           confirmCta="Re-index"
           stub="POST /kb/{id}/reindex"
           issue="W2 stub — confirms UX wire only."
-          kbId={kbId}
+          kbId={kb.kb_id}
         />
         <DangerAction
           label="Delete KB"
@@ -1312,10 +1605,76 @@ function DangerZone({ kbId }: { kbId: string }) {
           stub="DELETE /kb/{id}"
           issue="Stub — UI wire only."
           variant="destructive"
-          kbId={kbId}
+          kbId={kb.kb_id}
         />
       </CardContent>
     </Card>
+  );
+}
+
+// W20 F5.7 — Archive action with real backend wire (POST /kb/{id}/archive).
+function ArchiveAction({ kb }: { kb: KbStatus }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () => kbApi.archive(kb.kb_id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
+      queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
+      toast.success(`KB '${kb.kb_id}' archived.`);
+      setOpen(false);
+    },
+    onError: (err) => {
+      toast.error('Archive failed.', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    },
+  });
+
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Archive className="h-3.5 w-3.5" />
+          Archive KB
+          {kb.archived && (
+            <Badge variant="outline" className="bg-muted text-xs text-muted-foreground">
+              Already archived
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Freeze new ingest. The Azure search index + screenshot blobs are preserved so
+          the chat surface keeps citing past content.
+        </p>
+      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" disabled={kb.archived || mutation.isPending}>
+            {kb.archived ? 'Archived' : 'Archive'}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive this KB?</DialogTitle>
+            <DialogDescription>
+              <span className="font-mono">{kb.kb_id}</span> will reject new uploads + reindex
+              requests. Existing chunks remain queryable from the chat surface.
+              Re-create the KB to resume ingest.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={mutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending ? 'Archiving…' : 'Archive KB'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

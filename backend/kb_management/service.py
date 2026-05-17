@@ -52,6 +52,11 @@ class KBService:
         """W16 F5.2 CO_F3b — partial PATCH of name + description (Decision A.1)."""
         return await self._backend.update_metadata(kb_id, name=name, description=description)
 
+    async def archive(self, kb_id: str, archived: bool = True) -> KbStatus:
+        """W20 F5.1 — flip the soft-archive flag (default = True). Idempotent.
+        Per ADR-0025 archived KBs survive in storage; upload/reindex routes refuse."""
+        return await self._backend.set_archived(kb_id, archived)
+
     async def record_doc_event(
         self,
         kb_id: str,

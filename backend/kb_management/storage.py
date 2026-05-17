@@ -52,6 +52,9 @@ class KBStorageBackend(Protocol):
         append_failure: FailureRecord | None = None,
     ) -> KbStatus: ...  # CH-001 — post-ingest counter sync (closes AC10)
 
+    async def set_archived(self, kb_id: str, archived: bool) -> KbStatus: ...
+    """W20 F5.1 — flip the `archived` flag for soft-archive semantics per ADR-0025."""
+
 
 class InMemoryKBBackend:
     """Process-local KB store. W1 development only — not durable across restart."""
@@ -134,5 +137,16 @@ class InMemoryKBBackend:
             "last_indexed_at": new_indexed_at,
             "failed_documents": new_failures,
         })
+        self._kbs[kb_id] = updated
+        return updated
+
+    async def set_archived(self, kb_id: str, archived: bool) -> KbStatus:
+        """W20 F5.1 — soft-archive flag flip. Idempotent (flipping to current value
+        returns the unchanged record). Per ADR-0025 the search index + screenshot
+        blobs are preserved — only `documents.py` write paths refuse new ingest."""
+        kb = await self.get(kb_id)
+        if kb.archived == archived:
+            return kb
+        updated = kb.model_copy(update={"archived": archived})
         self._kbs[kb_id] = updated
         return updated

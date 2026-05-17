@@ -87,3 +87,8 @@ class KbStatus(BaseModel):
     failed_documents: list[FailureRecord]
     last_indexed_at: datetime
     storage_size_mb: float
+    # W20 F5.1 — archive soft-state per ADR-0025. Archived KBs survive in storage
+    # (search index + screenshot blobs preserved) but `documents.py` upload/reindex
+    # routes return 403 so the KB freezes from the user's perspective. Default
+    # False keeps every existing record + every existing test path unchanged.
+    archived: bool = False

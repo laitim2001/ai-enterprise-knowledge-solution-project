@@ -85,14 +85,24 @@ def _populator_mock(
 
 
 def _engine_mock(
-    *, list_docs: list[dict[str, Any]] | None = None, list_raises: Exception | None = None,
+    *,
+    list_docs: list[dict[str, Any]] | None = None,
+    list_raises: Exception | None = None,
+    list_chunks_per_doc: dict[str, list[dict[str, Any]]] | None = None,
 ) -> MagicMock:
-    """MagicMock RetrievalEngine with `list_documents` AsyncMock."""
+    """MagicMock RetrievalEngine with `list_documents` AsyncMock + optional `list_chunks`."""
     engine = MagicMock(name="RetrievalEngine")
     if list_raises is not None:
         engine.list_documents = AsyncMock(side_effect=list_raises)
     else:
         engine.list_documents = AsyncMock(return_value=list_docs or [])
+
+    if list_chunks_per_doc is not None:
+        async def _list_chunks(_kb_id: str, doc_id: str) -> list[dict[str, Any]]:
+            return list_chunks_per_doc.get(doc_id, [])
+        engine.list_chunks = AsyncMock(side_effect=_list_chunks)
+    else:
+        engine.list_chunks = AsyncMock(return_value=[])
     return engine
 
 
@@ -800,3 +810,133 @@ async def test_ch002_f2_upload_filename_traversal_stripped(
     assert "/" not in source.name and "\\" not in source.name
     assert ".." not in source.parts
     assert source.is_absolute()  # lives inside the mkdtemp() dir, an absolute path
+
+
+# =========================================================================== #
+# W20 F5.2 — GET /kb/{kb_id}/images
+# =========================================================================== #
+
+
+@pytest.mark.asyncio
+async def test_list_kb_images_empty_index_returns_empty_list(
+    kb_service_with_drive: KBService,
+) -> None:
+    """Empty KB (no docs, no chunks) → 200 with empty paginated body."""
+    engine = _engine_mock(list_docs=[], list_chunks_per_doc={})
+    app = _build_app(kb_service=kb_service_with_drive, populator=None, engine=engine)
+
+    resp = TestClient(app).get("/kb/drive_user_manuals/images")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body == {"items": [], "total": 0, "limit": 50, "offset": 0}
+
+
+@pytest.mark.asyncio
+async def test_list_kb_images_missing_kb_returns_404(
+    kb_service_empty: KBService,
+) -> None:
+    """Missing kb_id → 404 (the engine is never called)."""
+    engine = _engine_mock(list_docs=[])
+    app = _build_app(kb_service=kb_service_empty, populator=None, engine=engine)
+    resp = TestClient(app).get("/kb/does-not-exist/images")
+    assert resp.status_code == 404
+    engine.list_documents.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_list_kb_images_aggregates_and_dedupes(
+    kb_service_with_drive: KBService,
+) -> None:
+    """Two docs, three chunks total with overlapping image SHA → dedup + pagination."""
+    docs = [
+        {"doc_id": "manual-A", "doc_title": "Manual A", "doc_format": "docx",
+         "total_chunks": 2, "last_indexed_at": "2026-05-17T00:00:00Z"},
+        {"doc_id": "manual-B", "doc_title": "Manual B", "doc_format": "pdf",
+         "total_chunks": 1, "last_indexed_at": "2026-05-17T00:00:00Z"},
+    ]
+    chunks_per_doc = {
+        "manual-A": [
+            {
+                "chunk_id": "c1", "chunk_index": 0, "chunk_total": 2,
+                "chunk_title": "S1", "section_path": [], "enabled": True,
+                "low_value_flag": False,
+                "embedded_images_json": (
+                    '[{"checksum_sha256":"aaa","blob_url":"http://b/aaa.png","alt_text":"figure 1"}]'
+                ),
+            },
+            {
+                "chunk_id": "c2", "chunk_index": 1, "chunk_total": 2,
+                "chunk_title": "S2", "section_path": [], "enabled": True,
+                "low_value_flag": False,
+                # 2nd image AND a dup of the same one above.
+                "embedded_images_json": (
+                    '[{"checksum_sha256":"aaa","blob_url":"http://b/aaa.png","alt_text":"figure 1"},'
+                    '{"checksum_sha256":"bbb","blob_url":"http://b/bbb.png","alt_text":"figure 2"}]'
+                ),
+            },
+        ],
+        "manual-B": [
+            {
+                "chunk_id": "c3", "chunk_index": 0, "chunk_total": 1,
+                "chunk_title": "X", "section_path": [], "enabled": True,
+                "low_value_flag": False,
+                "embedded_images_json": (
+                    '[{"checksum_sha256":"ccc","blob_url":"http://b/ccc.png","alt_text":"figure 3"}]'
+                ),
+            },
+        ],
+    }
+    engine = _engine_mock(list_docs=docs, list_chunks_per_doc=chunks_per_doc)
+    app = _build_app(kb_service=kb_service_with_drive, populator=None, engine=engine)
+    client = TestClient(app)
+
+    resp = client.get("/kb/drive_user_manuals/images")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # 3 unique SHA: aaa, bbb, ccc (the duplicate aaa collapses).
+    assert body["total"] == 3
+    assert len(body["items"]) == 3
+    ids = [item["id"] for item in body["items"]]
+    assert sorted(ids) == ["aaa", "bbb", "ccc"]
+    # alt_text → ocr_text round-trip + doc_name from host chunk.
+    by_id = {item["id"]: item for item in body["items"]}
+    assert by_id["aaa"]["ocr_text"] == "figure 1"
+    assert by_id["aaa"]["doc_name"] == "Manual A"
+    assert by_id["ccc"]["doc_name"] == "Manual B"
+    # Tier 1 forward-compat seams are null.
+    assert by_id["aaa"]["page_num"] is None
+    assert by_id["aaa"]["screenshot_type"] is None
+
+    # Pagination — limit=2, offset=0 + offset=2 disjoint.
+    page1 = client.get("/kb/drive_user_manuals/images?limit=2&offset=0").json()
+    page2 = client.get("/kb/drive_user_manuals/images?limit=2&offset=2").json()
+    assert page1["total"] == 3 and page2["total"] == 3
+    assert len(page1["items"]) == 2 and len(page2["items"]) == 1
+    page1_ids = {i["id"] for i in page1["items"]}
+    page2_ids = {i["id"] for i in page2["items"]}
+    assert page1_ids.isdisjoint(page2_ids)
+
+
+@pytest.mark.asyncio
+async def test_list_kb_images_malformed_json_is_skipped(
+    kb_service_with_drive: KBService,
+) -> None:
+    """A chunk with malformed `embedded_images_json` → silently skipped, not 500."""
+    docs = [{
+        "doc_id": "manual-A", "doc_title": "A", "doc_format": "docx",
+        "total_chunks": 1, "last_indexed_at": "2026-05-17T00:00:00Z",
+    }]
+    chunks_per_doc = {
+        "manual-A": [{
+            "chunk_id": "c1", "chunk_index": 0, "chunk_total": 1,
+            "chunk_title": "S", "section_path": [], "enabled": True,
+            "low_value_flag": False,
+            "embedded_images_json": "{not-json",
+        }],
+    }
+    engine = _engine_mock(list_docs=docs, list_chunks_per_doc=chunks_per_doc)
+    app = _build_app(kb_service=kb_service_with_drive, populator=None, engine=engine)
+    resp = TestClient(app).get("/kb/drive_user_manuals/images")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["total"] == 0
+

@@ -59,6 +59,55 @@ export interface KbStatus {
   failed_documents: FailureRecord[];
   last_indexed_at: string;
   storage_size_mb: number;
+  // W20 F5.1 — soft-archive flag per ADR-0025 KB Detail Settings Danger zone.
+  archived: boolean;
+}
+
+// W20 F5.2 — KB images aggregation (KB Detail Tab 3 Images NEW).
+export interface KbImageItem {
+  id: string;
+  url: string;
+  doc_id: string;
+  doc_name: string;
+  page_num: number | null;
+  ocr_text: string;
+  screenshot_type: string | null;
+  created_at: string | null;
+}
+
+export interface KbImagesResponse {
+  items: KbImageItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// W20 F5.3 — chunking preview (KB Detail Tab 4 Chunking Lab NEW).
+export interface ChunkingPreviewRequest {
+  kb_id?: string;
+  sample_doc_id?: string;
+  sample_text: string;
+  strategy: 'heading_aware' | 'layout_aware' | 'slide_based' | 'auto';
+  chunk_size: number;
+  overlap: number;
+}
+
+export interface ChunkingPreviewItem {
+  chunk_index: number;
+  chunk_title: string;
+  chunk_text: string;
+  chunk_token_count: number;
+  section_path: string[];
+  low_value_flag: boolean;
+}
+
+export interface ChunkingPreviewResponse {
+  items: ChunkingPreviewItem[];
+  total: number;
+  strategy: string;
+  chunk_size: number;
+  overlap: number;
+  note: string | null;
 }
 
 export const kbApi = {
@@ -79,6 +128,20 @@ export const kbApi = {
     kbId: string,
     patch: { name?: string; description?: string },
   ): Promise<KbStatus> => client.patch<KbStatus>(`/kb/${kbId}`, patch),
+
+  // W20 F5.1 — archive a KB (soft delete; index + blobs preserved per ADR-0025).
+  archive: (kbId: string): Promise<KbStatus> =>
+    client.post<KbStatus>(`/kb/${kbId}/archive`, {}),
+
+  // W20 F5.2 — KB images aggregation (Tab 3 Images).
+  listImages: (kbId: string, limit = 50, offset = 0): Promise<KbImagesResponse> =>
+    client.get<KbImagesResponse>(
+      `/kb/${kbId}/images?limit=${limit}&offset=${offset}`,
+    ),
+
+  // W20 F5.3 — chunking preview (Tab 4 Chunking Lab).
+  chunkingPreview: (body: ChunkingPreviewRequest): Promise<ChunkingPreviewResponse> =>
+    client.post<ChunkingPreviewResponse>('/chunking-preview', body),
 
   uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
     const form = new FormData();

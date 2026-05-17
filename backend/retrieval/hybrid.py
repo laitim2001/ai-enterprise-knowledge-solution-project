@@ -345,7 +345,7 @@ class HybridSearcher:
             "top": top,
             "select": (
                 "chunk_id,chunk_index,chunk_total,chunk_title,"
-                "section_path,enabled,low_value_flag"
+                "section_path,enabled,low_value_flag,embedded_images_json"
             ),
             "orderby": "chunk_index asc",
         }
@@ -367,6 +367,10 @@ class HybridSearcher:
                 "section_path": list(item.get("section_path") or []),
                 "enabled": bool(item.get("enabled", True)),
                 "low_value_flag": bool(item.get("low_value_flag", False)),
+                # W20 F5.2 — additive: surfaced for /kb/{id}/images aggregation.
+                # JSON string (per index schema §3.6). Empty `[]` when chunk
+                # has no images (uploader=None today per R12).
+                "embedded_images_json": str(item.get("embedded_images_json") or "[]"),
             })
 
         logger.debug(

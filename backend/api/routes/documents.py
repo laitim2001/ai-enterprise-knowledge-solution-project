@@ -19,6 +19,7 @@ CH-001 (2026-05-12) — closes CO_F3a fully:
     document.duplicate / reindex.{doc_id_mismatch,partial_failure}).
 """
 
+import json
 import logging
 import re
 import shutil
@@ -32,7 +33,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 
 from api.schemas.kb import FailureRecord
-from api.schemas.listing import DocumentSummary
+from api.schemas.listing import DocumentSummary, KbImageItem, KbImagesResponse
 from indexing.populate import IndexPopulator
 from ingestion.chunker.base import Chunker
 from ingestion.embedding.base import Embedder
@@ -112,6 +113,28 @@ async def _verify_kb_or_404(kb_id: str, service: KBService) -> None:
         ) from exc
 
 
+async def _refuse_if_archived(kb_id: str, service: KBService) -> None:
+    """W20 F5.1 — soft-archive guard for ingest write paths (upload + reindex).
+
+    Reads the KB record and returns 403 `kb.archived` when `archived=True` so
+    no new chunks are written into the index. Pairs with `POST /kb/{kb_id}/archive`
+    (per ADR-0025 `/kb/[id]` Settings → Danger zone). Read-only paths (GET docs,
+    chunks, query, retrieval test) deliberately don't flip 403 — the chat surface
+    keeps citing past content from an archived KB."""
+    try:
+        kb = await service.get(kb_id)
+    except KBNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    if kb.archived:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"KB '{kb_id}' is archived — re-create the KB to resume ingest",
+        )
+
+
 @router.get("/kb/{kb_id}/documents", response_model=list[DocumentSummary])
 async def list_documents(
     kb_id: str, request: Request, service: KbServiceDep,
@@ -134,6 +157,86 @@ async def list_documents(
         ) from exc
 
     return [DocumentSummary(**row) for row in rows]
+
+
+@router.get("/kb/{kb_id}/images", response_model=KbImagesResponse)
+async def list_kb_images(
+    kb_id: str,
+    request: Request,
+    service: KbServiceDep,
+    limit: int = 50,
+    offset: int = 0,
+) -> KbImagesResponse:
+    """W20 F5.2 — paginated image list across the KB (per ADR-0025 KB Detail Tab 3).
+
+    Walks the KB's documents → per-doc chunks → flattens `embedded_images_json`
+    → deduplicates by `checksum_sha256` (image identity). Pagination by simple
+    slicing post-dedup (Tier 1 — image counts stay modest, no need for
+    server-side pagination yet).
+
+    Today's reality: `uploader=None` (R12 Azurite signature mismatch) means
+    `embedded_images_json` is always `[]` for newly-ingested chunks → the
+    endpoint returns an empty list with 200 OK. The plumbing is forward-compat
+    for the W16+ Track A Azure Blob switch when real screenshots land.
+
+    Returns 404 when `kb_id` doesn't exist (KB not found). 503 when retrieval
+    engine isn't initialized (Azure config missing).
+    """
+    await _verify_kb_or_404(kb_id, service)
+    limit = max(1, min(limit, 200))  # clamp pagination
+    offset = max(0, offset)
+
+    engine = _engine_or_503(request)
+
+    try:
+        docs = await engine.list_documents(kb_id)
+    except Exception as exc:  # noqa: BLE001 — Azure surfacing
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"document listing failure: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    seen: dict[str, KbImageItem] = {}
+    for doc in docs:
+        doc_id = str(doc.get("doc_id", ""))
+        doc_title = str(doc.get("doc_title", doc_id))
+        if not doc_id:
+            continue
+        try:
+            chunks = await engine.list_chunks(kb_id, doc_id)
+        except Exception as exc:  # noqa: BLE001 — Azure surfacing
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"chunk listing failure for doc {doc_id!r}: {type(exc).__name__}: {exc}",
+            ) from exc
+
+        for chunk in chunks:
+            raw = chunk.get("embedded_images_json") or "[]"
+            try:
+                images = json.loads(raw) if isinstance(raw, str) else raw
+            except (TypeError, ValueError):
+                continue  # skip malformed JSON — same fail-soft as W17 F4.1
+            if not isinstance(images, list):
+                continue
+            for img in images:
+                if not isinstance(img, dict):
+                    continue
+                sha = str(img.get("checksum_sha256") or "")
+                blob_url = str(img.get("blob_url") or "")
+                if not sha or sha in seen or not blob_url:
+                    continue
+                seen[sha] = KbImageItem(
+                    id=sha,
+                    url=blob_url,
+                    doc_id=doc_id,
+                    doc_name=doc_title,
+                    ocr_text=str(img.get("alt_text") or ""),
+                )
+
+    items = list(seen.values())
+    total = len(items)
+    paginated = items[offset : offset + limit]
+    return KbImagesResponse(items=paginated, total=total, limit=limit, offset=offset)
 
 
 def _slugify_doc_id(filename_stem: str) -> str:
@@ -365,7 +468,7 @@ async def upload_document(
     per architecture.md §3.5 ChunkRecord schema; citation thumbnails will be
     empty until R12 is fixed at W16+ cloud Blob switch).
     """
-    await _verify_kb_or_404(kb_id, service)
+    await _refuse_if_archived(kb_id, service)
     deps = _ingestion_deps_or_503(request)
     engine = _engine_or_503(request)
 
@@ -476,7 +579,7 @@ async def reindex_document(
     state (observable = "doc gone"); the actionable_hint points to retry via
     POST upload (the source file is the same — re-upload reconstructs the doc).
     """
-    await _verify_kb_or_404(kb_id, service)
+    await _refuse_if_archived(kb_id, service)
     deps = _ingestion_deps_or_503(request)
     engine = _engine_or_503(request)
 

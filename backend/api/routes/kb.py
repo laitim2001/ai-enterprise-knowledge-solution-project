@@ -250,3 +250,25 @@ async def update_kb_metadata(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/kb/{kb_id}/archive", response_model=KbStatus)
+async def archive_kb(kb_id: str, service: KbServiceDep) -> KbStatus:
+    """W20 F5.1 — soft-archive a KB per ADR-0025 (`/kb/[id]` Settings → Danger zone).
+
+    Idempotent. Returns the updated KbStatus with `archived=True`. The route
+    handler in `documents.py` (`_run_ingest_pipeline`) refuses to ingest into
+    an archived KB (403); the Azure AI Search index + screenshot blobs are
+    preserved so the chat surface keeps citing past content (per ADR-0025
+    Settings → Danger zone semantics — archive is reversible via re-create).
+
+    Tier 1 scope: no `unarchive` endpoint yet — Wave B+ surfaces both arms
+    via a single `body={'archived': bool}` PATCH if user demand emerges.
+    """
+    try:
+        return await service.archive(kb_id, archived=True)
+    except KBNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc

@@ -423,6 +423,86 @@ Real-calendar collapse pattern continues — W12-W18 + W20 F1/F2/F3a/F3b/F4 esta
 
 ---
 
+## Day 5 — 2026-05-17 (continued, fourth commit)
+
+### F5 — `/kb/[id]` 7-tab refactor per ADR-0025 minus Access(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 1 commit:`a72a5be` F4)。
+**Commits this day**:`(this commit)` — F5 backend(3 NEW endpoints + storage schema extend)+ frontend(2 NEW tabs + Danger zone Archive + Access tab disabled affordance)combined。
+
+#### What landed
+
+- **F5.1 Archive endpoint** — `backend/api/schemas/kb.py` `KbStatus.archived: bool = False`(additive);`backend/kb_management/storage.py` `KBStorageBackend.set_archived` Protocol method + InMemory impl;`backend/kb_management/postgres_backend.py` idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE` on every connect + `set_archived` UPDATE;`KBService.archive(kb_id, archived=True)` flips the flag;`POST /kb/{kb_id}/archive` route(idempotent — returns 200 + new state;404 on missing kb);`api/routes/documents.py` NEW `_refuse_if_archived(kb_id, service)` helper guards upload + reindex paths(returns 403 `kb.archived`);read paths intentionally allow archived KBs so the chat surface keeps citing past content。 **5/5 pytest pass** (`test_kb_archive.py`)。
+- **F5.2 Images endpoint** — `backend/retrieval/hybrid.py` `list_chunks` select clause additively extended with `embedded_images_json`(W17 F4.1 callers unaffected — Pydantic ChunkSummary silently drops the new field);3 NEW schemas in `api/schemas/listing.py`(`KbImageItem` + `KbImagesResponse` w/ pagination);`backend/api/routes/documents.py` NEW `list_kb_images` route walks `engine.list_documents` → per-doc `engine.list_chunks` → parses `embedded_images_json` JSON → dedupes by `checksum_sha256` → paginates。 **4/4 pytest pass** (`test_documents_route.py` — extended `_engine_mock` with optional `list_chunks_per_doc`)。
+- **F5.3 Chunking preview endpoint** — NEW `backend/api/routes/chunking.py`(stand-alone module per Karpathy §1.3 surgical — preview is a parallel concern to the real ingest pipeline);3 NEW schemas in `listing.py`(`ChunkingPreviewRequest`/`Item`/`Response`);`_build_synthetic_parser_result(sample_text)` builds a `ParserResult` from raw text(Markdown-style heading detection `#`/`##`/`###` so the chunker still produces section-bounded chunks);`LayoutAwareChunker(target_tokens=chunk_size)` runs;`sample_doc_id` returns 200 + `note` explaining the Wave B+ seam(uploader=None means we can't re-fetch parsed bytes from blob storage today);`overlap` echoed in `note` as ignored。Wired into `server.py` w/ auth dependency。 **5/5 pytest pass** (`test_chunking_preview.py`)。
+- **F5.4 Frontend 7-tab refactor** — `frontend/app/(app)/kb/[id]/page.tsx`:`VALID_TABS` 5→7(`documents` + `chunks` + `images` NEW + `chunking-lab` NEW + `pipeline` + `retrieval` + `settings`);`TAB_LABEL` synced;7 `<TabsTrigger>` icons(`<Image>` + `<Scissors>` NEW)+ 7 `<TabsContent>` mappings;url-driven via `?tab=` searchParam(W14 pattern preserved verbatim);Tabs 1/2/5/6/7 implementations preserved exactly per Karpathy §1.3 surgical(NO touch to DocumentsTab/ChunksTab/PipelineTab/RetrievalTab logic)。
+- **F5.5 Frontend `<ImagesTab>` (NEW)** — inline component in `kb/[id]/page.tsx`;`useQuery(kbApi.listImages(kb_id, 200, 0))`;3-col grid(4-col md+)of thumbnails with `doc_name` + `ocr_text` two-line preview;click → shadcn `<Dialog>` modal showing full image + OCR text overlay box;empty-state surfaces R12 context("Images surface after the screenshot pipeline runs end-to-end…")so users understand why their KB shows zero images even when chunks landed。
+- **F5.6 Frontend `<ChunkingLabTab>` (NEW)** — inline component in `kb/[id]/page.tsx`;textarea sample text + Strategy `<Select>` + chunk_size input + "Preview" button → `kbApi.chunkingPreview(...)`;result chunks render as expandable `<details>` blocks with section_path + chunk_text in a `<pre>`;"Apply" button wrapped in `<DisabledAffordance variant="p3-preview" showBadge>` Tier 2 chip(per plan F5.6 literal "re-chunking pending");`note` from response surfaces in `<CardDescription>` when set(sample-doc-id seam or overlap-ignored)so the user knows when a request landed in a forward-compat path。
+- **F5.7 Frontend Settings Danger zone Archive** — NEW `<ArchiveAction>` row added to existing `<DangerZone>`(now takes `kb: KbStatus` not `kbId: string`);`useMutation(kbApi.archive)` real backend wire;confirmation `<Dialog>` with KB-id call-out + cancel + "Archive KB" CTA;success → invalidates `['kb', kb_id]` + `['kb', 'list']` + sonner toast + closes modal;`kb.archived === true` flips button to "Archived" disabled + shows "Already archived" `<Badge>`。Archive uses neutral `border-border` not destructive `text-destructive` — soft-archive is reversible per ADR-0025。
+- **F5.8 Access tab disabled affordance** — 8th `<TabsTrigger value="access" disabled aria-disabled="true">` rendered OUTSIDE `VALID_TABS` array(so `?tab=access` can't route to it);wrapped in `<DisabledAffordance variant="p1-strict" reason="RBAC pending Wave C1 per ADR-0027 Option A backend" tier2Trigger="RBAC + audit log + group membership">`;`<Lock>` icon matches Tier 2 catalog row 4。Tab is visible but click is a no-op(Radix `<TabsTrigger disabled>` short-circuits)。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F5.1 archive endpoint + storage schema + 403 guard + 5/5 pytest pass
+- [x] F5.2 images endpoint + chunk select extend + 4/4 pytest pass
+- [x] F5.3 chunking-preview endpoint + synthetic parser result + 5/5 pytest pass
+- [x] F5.4 7-tab refactor + url-driven + 1/2/5/6/7 preserved verbatim
+- [x] F5.5 Images tab + grid + modal + R12 empty state
+- [x] F5.6 Chunking Lab tab + preview + Tier 2 Apply affordance + note surfacing
+- [x] F5.7 Settings Danger zone Archive with real backend wire + state-aware button
+- [x] F5.8 Access tab disabled affordance(Tier 1.5)
+- [x] F5.9 tokens 100% / [oklch=0 / tsc 0 / lint 0 / Vitest 21 preserved / 59 backend pytests pass
+- [x] F5.10 Vitest baseline preserved 6/21(F5 component tests 🚧 deferred F8.4)
+- [x] F5.11 File header docstrings on rewritten files
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F5.3 sample_doc_id mode | "`{kb_id, sample_doc_id?, strategy, chunk_size, overlap}` + returns N preview chunks" | sample_doc_id returns 200 + `note` Wave B+ seam — not implemented end-to-end | Today's `uploader=None`(R12)means we don't keep parsed-doc bytes addressable in blob storage;the only way to re-chunk by `sample_doc_id` would be to fetch the original doc + re-run Docling — out of scope for Wave A 1.5d budget。Wave A ships `sample_text` end-to-end which exercises the chunker entirely。Wave B+ wires sample_doc_id when Azure Blob persistent backing lands | AI per Karpathy §1.2 + plan F5.3 0.5-1.5d budget |
+| F5.3 overlap parameter | Implies overlap windowing | Accepted but echoed in `note` as ignored | The LayoutAwareChunker(W2 baseline)is heading-bounded — sections never split mid-paragraph and there's no overlap window to honour。Adding overlap requires a new chunker class — out of Wave A scope。Wave B+ candidate | AI per Karpathy §1.2 |
+| F5.2 page_num / screenshot_type / created_at | Plan literal `{id, url, doc_id, doc_name, page_num, ocr_text, screenshot_type, created_at}` | All 3 forward-compat seams return null in Tier 1 | Existing `ImageRef` schema doesn't carry `page_num` or `screenshot_type`(architecture.md §3.5 `embedded_images = list[ImageRef]` per W2 F3);`ingested_at` lives on ChunkRecord but the existing list_chunks doesn't surface it。Adding all 3 = schema changes upstream + index reflow — out of Wave A scope。Tier 1 returns `null` for the 3 fields so the response shape contract holds for Wave B+ | AI per Karpathy §1.2 + plan F5.2 1d budget |
+| F5.2 endpoint reality with R12 | Plan implies real images surface | Today returns empty list with 200 OK(uploader=None) | `uploader=None` per R12 means newly-ingested chunks have empty `embedded_images_json`;endpoint is forward-compat — when Track A IT cred lands and Azure Blob switch flips uploader on,the gallery starts populating without further code change。Empty-state in `<ImagesTab>` explicitly explains the R12 context to users | AI per Karpathy §1.2 + plan F5.2 — frontend gallery shell already valuable now |
+| F5.7 Archive button styling | Plan says Danger zone | Archive row uses neutral `border-border` not destructive `text-destructive` | Archive is a soft-state flag(reversible via service.archive(kb_id, archived=False))— not destructive。Re-index + Delete actions still use destructive styling for the genuinely-dangerous arms。Visual hierarchy preserved | AI per Karpathy §1.2 + ADR-0025 |
+| F5 commit cadence | Plan implies multi-commit | Single F5 commit(backend 3 endpoints + storage schema + frontend 4 tabs + Danger zone)| Tightly coupled — backend endpoints + matching frontend tabs ship together;splitting would obscure the unified "Wave A 7-tab Detail" intent。Same precedent as W20 F2 + F4 | AI per W20 F2/F4 commit pattern |
+
+#### Decisions / new OQ / risk surfaced
+
+- **`KbStatus.archived` defaults `False`** — Pydantic backfills the field on existing records(even when storage row doesn't have the column yet — `_row_to_kb` uses `row.get("archived", False)`)。Postgres `ALTER TABLE ADD COLUMN IF NOT EXISTS` runs on every `_connect()`(idempotent — same pattern as `CREATE TABLE IF NOT EXISTS`),so older DBs migrate without an Alembic migration step。In-memory backend already returns the field from the Pydantic default。
+- **Read paths intentionally allow archived KBs** — `_refuse_if_archived` only fires on upload + reindex(the canonical write paths);chat / query / retrieval test / list docs / list chunks all read freely。This preserves the citation surface for past content even after archive(matches ADR-0025 intent — archive freezes ingest,not retrieval)。
+- **Image gallery R12 reality surfaced in-UI** — the `<ImagesTab>` empty state explicitly mentions "the screenshot pipeline runs end-to-end (R12 — Azure Blob switch pending Track A IT cred)";users see why their KB shows zero images even when chunks are populated。Self-documenting Tier 1 state for Beta operators。
+- **`POST /chunking-preview` is preview-only by design** — no Azure index write,no doc re-parse,no persistence。Apply button wrapped in `<DisabledAffordance>` Tier 2 chip because Apply-style re-chunking requires every doc to be re-ingested through the new strategy(uploader=None today + multi-doc re-ingest cascade is Wave B+ scope)。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F5.1 archive endpoint + storage schema + Postgres ALTER TABLE + 5 pytest | 90 min | ~50 min | -44% |
+| F5.2 images endpoint + chunk select extend + 4 pytest | 120 min | ~70 min | -42% |
+| F5.3 chunking-preview endpoint + synthetic parser + 5 pytest | 180 min | ~80 min | -56% |
+| F5.4 7-tab refactor + url routing | 30 min | ~20 min | -33% |
+| F5.5 Images tab + modal | 60 min | ~35 min | -42% |
+| F5.6 Chunking Lab tab + preview UI | 60 min | ~40 min | -33% |
+| F5.7 Settings Danger zone Archive + state-aware button | 45 min | ~25 min | -44% |
+| F5.8 Access tab disabled affordance | 15 min | ~10 min | -33% |
+| F5.9 verify(tsc + lint + [oklch + Vitest + backend pytest 59)| 30 min | ~25 min | -17% |
+| F5.10 + F5.11 docstrings(no Vitest component tests this commit per F8.4 batching)| 30 min | ~20 min | -33% |
+| Progress.md F5 Day-N entry + commit | 30 min | ~25 min | -17% |
+| **F5 Day 5 total** | **~11 hours**(3.5 plan-days) | **~6.5 hours** | **-41%** |
+
+Real-calendar collapse pattern continues — W12-W18 + W20 F1/F2/F3a/F3b/F4/F5 established collapse band 1.8-4× holds(F5 lands at ~4.3× collapse — just outside upper band,driven by the unified-commit cadence avoiding context re-load cost)。
+
+#### Carry-overs to next Day-N
+
+- **F6 `/kb-upload/[id]` re-ingestion wizard polish** per ADR-0028 §5.5.3b — next deliverable(C09);existing 3-step skeleton preserved + add Multimodal toggles per KB's existing config + Tier 2 disabled affordance reuse from F4。
+- **F7 `/login` + `/register` polish** per ADR-0014 — Brand panel slot integration + Forgot password disabled affordance + 5-step register wizard preserved。
+- **F8 cross-cutting** — responsive + a11y + dark-mode + Vitest expansion(F8.4 batches 5 NEW test files from F1.7 + F3.15 + F4.7 + F5.10 — accumulating)+ Playwright E2E updates + COMPONENT_CATALOG + PAGE_INVENTORY updates。
+- **F9 phase closeout** — Gate verdict + retro + frontmatter status flip + W21+ rolling JIT decision。
+- **F8.4 Vitest scaffolding batch** — accumulating still(F1.7 + F3.15 + F4.7 + F5.10):`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + supporting fixtures。
+- **Wave B+ candidates updated**:`crag_reasoning` field;LLM-summarize conversation title;sidebar mode multi-turn aggregation;Citation `kb_id` field;real-I/O `/health` pings;**plus W20 F5 wires** for `sample_doc_id` chunking-preview path + image `page_num`/`screenshot_type`/`created_at` enrichment + chunker `overlap` window + Apply-style re-chunking pipeline + `archived` flag CASCADE to Azure index lifecycle decisions(when Track A IT cred lands)。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD

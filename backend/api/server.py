@@ -23,6 +23,7 @@ from api.routes import (
     auth as auth_routes,
 )
 from api.routes import (
+    chunking,
     chunks,
     conversations,
     debug,
@@ -248,6 +249,8 @@ app.include_router(auth_routes.router)
 # now require authentication — Beta phase prerequisite.
 app.include_router(documents.router, tags=["documents"], dependencies=_auth)
 app.include_router(chunks.router, tags=["chunks"], dependencies=_auth)
+# W20 F5.3 — POST /chunking-preview per ADR-0025 KB Detail Tab 4 Chunking Lab.
+app.include_router(chunking.router, tags=["chunking"], dependencies=_auth)
 app.include_router(retrieval_test.router, tags=["retrieval-test"], dependencies=_auth)
 app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)

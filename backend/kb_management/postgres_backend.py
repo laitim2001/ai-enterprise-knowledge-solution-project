@@ -46,12 +46,14 @@ CREATE TABLE IF NOT EXISTS {_TABLE} (
     failed_documents   JSONB NOT NULL DEFAULT '[]'::jsonb,
     last_indexed_at    TIMESTAMPTZ NOT NULL,
     storage_size_mb    DOUBLE PRECISION NOT NULL DEFAULT 0
-)
+);
+ALTER TABLE {_TABLE} ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE
 """
 
 _COLS = (
     "kb_id, name, description, config, total_documents, total_chunks, "
-    "total_screenshots, failed_documents, last_indexed_at, storage_size_mb"
+    "total_screenshots, failed_documents, last_indexed_at, storage_size_mb, "
+    "archived"
 )
 
 
@@ -67,6 +69,8 @@ def _row_to_kb(row: dict) -> KbStatus:
         failed_documents=[FailureRecord(**d) for d in row["failed_documents"]],
         last_indexed_at=row["last_indexed_at"],
         storage_size_mb=row["storage_size_mb"],
+        # W20 F5.1 — defaults False when the migration hasn't run yet (older DBs).
+        archived=bool(row.get("archived", False)),
     )
 
 
@@ -82,6 +86,7 @@ def _kb_params(kb: KbStatus) -> tuple:
         Jsonb([fr.model_dump(mode="json") for fr in kb.failed_documents]),
         kb.last_indexed_at,
         kb.storage_size_mb,
+        kb.archived,
     )
 
 
@@ -104,7 +109,7 @@ class PostgresKBBackend:
             try:
                 await cur.execute(
                     f"INSERT INTO {_TABLE} ({_COLS}) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     _kb_params(kb),
                 )
             except psycopg.errors.UniqueViolation as exc:
@@ -209,6 +214,20 @@ class PostgresKBBackend:
                     appended_failure_jsonb,
                     kb_id,
                 ),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            raise KBNotFoundError(f"KB '{kb_id}' not found")
+        return _row_to_kb(row)
+
+    async def set_archived(self, kb_id: str, archived: bool) -> KbStatus:
+        """W20 F5.1 — idempotent UPDATE of the `archived` flag. Older DBs that
+        pre-date the `ALTER TABLE ADD COLUMN` are covered by the idempotent
+        migration that runs on every `_connect()`."""
+        async with await self._connect() as conn, conn.cursor() as cur:
+            await cur.execute(
+                f"UPDATE {_TABLE} SET archived = %s WHERE kb_id = %s RETURNING {_COLS}",
+                (archived, kb_id),
             )
             row = await cur.fetchone()
         if row is None:
