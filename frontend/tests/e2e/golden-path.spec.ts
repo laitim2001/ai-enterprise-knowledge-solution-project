@@ -63,4 +63,53 @@ test.describe('Golden path — public + chat E2E', () => {
     const inputArea = page.locator('textarea, [contenteditable="true"]').first();
     await expect(inputArea).toBeVisible();
   });
+
+  test('V1 Chat page renders the Conversation History pane + advanced surfaces (W20 F3b)', async ({
+    page,
+  }) => {
+    // mock MSAL auth bypass — direct nav per webServer env NEXT_PUBLIC_AUTH_MOCK=true
+    await page.goto('/chat');
+    // Conversation History pane (lg-only via Tailwind `hidden lg:block` so the
+    // viewport must be ≥ lg breakpoint; the default Playwright project uses
+    // Desktop Chrome 1280×720 which qualifies).
+    await expect(
+      page.getByRole('heading', { name: /^conversations$/i }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /new chat/i })).toBeVisible();
+    // The 3 citation placement modes pill toggle (inline / footnote / sidebar)
+    // surfaces in the chat header fieldset.
+    await expect(
+      page.getByRole('button', { name: /^inline$/i, exact: false }).first(),
+    ).toBeVisible();
+  });
+
+  test('V8 Login renders W20 F7.1 strict-fidelity surfaces (SSO primary + Auth modes aside)', async ({
+    page,
+  }) => {
+    await page.goto('/login');
+    // SSO primary button at top of form (mockup-anchored ordering).
+    await expect(
+      page.getByRole('button', { name: /sign in with microsoft/i }),
+    ).toBeVisible();
+    // Divider label between SSO and email form.
+    await expect(page.getByText(/or continue with email/i)).toBeVisible();
+    // Auth modes mono dashed aside block at the bottom (operator-awareness surface).
+    await expect(
+      page.getByLabel(/auth modes — tier 1/i),
+    ).toBeVisible();
+  });
+
+  test('V9 Register renders W20 F7.2 polish (field reorder + Terms checkbox + Hint copy)', async ({
+    page,
+  }) => {
+    await page.goto('/register');
+    // W20 F7.2 field reorder — Full name first.
+    await expect(page.getByLabel(/full name/i)).toBeVisible();
+    await expect(page.getByLabel(/work email/i)).toBeVisible();
+    // Hint copy below email + password fields.
+    await expect(page.getByText(/6-digit verification code/i)).toBeVisible();
+    await expect(page.getByText(/scrypt-hashed via adr-0022/i)).toBeVisible();
+    // Terms of Use + Privacy Policy checkbox renders.
+    await expect(page.getByRole('checkbox')).toBeVisible();
+  });
 });

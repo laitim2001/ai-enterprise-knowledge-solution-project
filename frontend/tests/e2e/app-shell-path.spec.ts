@@ -136,4 +136,32 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow', () =
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole('navigation', { name: /primary/i })).toHaveCount(0);
   });
+
+  test('AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance (W20 F1)', async ({
+    page,
+  }) => {
+    await page.goto('/dashboard');
+    // F1.1 — Bell trigger with aria-label="notifications" is present in the topbar.
+    await expect(
+      page.getByRole('button', { name: /notifications/i }),
+    ).toBeVisible();
+    // F1.2 — Workspace switcher is rendered as a disabled affordance (the W19 §2.3 Tier 2 leak fix);
+    // the Workspace switcher container's `aria-label` carries the affordance reason via <DisabledAffordance>.
+    await expect(
+      page.getByLabel(/multi-workspace support/i).first(),
+    ).toBeVisible();
+  });
+
+  test('/kb/[id] 7-tab refactor renders Access disabled affordance OUTSIDE VALID_TABS (W20 F5)', async ({
+    page,
+  }) => {
+    await page.goto('/kb/drive_user_manuals');
+    // Wait for the KB detail page to render the tab bar.
+    const tabs = page.getByRole('tab');
+    // 7 active tabs + 1 disabled Access tab = 8.
+    await expect(tabs).toHaveCount(8);
+    // Access tab has aria-disabled="true" + Lock icon (the Tier 1.5 affordance per ADR-0027 Option A).
+    const accessTab = page.getByRole('tab', { name: /access/i });
+    await expect(accessTab).toHaveAttribute('aria-disabled', 'true');
+  });
 });

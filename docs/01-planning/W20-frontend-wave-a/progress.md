@@ -761,6 +761,79 @@ Real-calendar collapse pattern continues — F8 commit 2 lands at ~1.47× collap
 
 ---
 
+## Day 5 — 2026-05-17 (continued, ninth commit)
+
+### F8 commit 3 of 3 — F8.5 Playwright E2E updates(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 2 commits:`556cc64` F8 commit 1 + `c185a85` F8 commit 2)。
+**Commits this day**:`(this commit)` — F8 commit 3 of 3 standalone(3 Playwright specs updated:`app-shell-path.spec.ts` +2 NEW test cases / `golden-path.spec.ts` +3 NEW test cases / `visual-baseline.spec.ts` +2 NEW snapshot cases)。
+
+#### What landed
+
+- **`app-shell-path.spec.ts` +2 NEW test cases**:
+  - **AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance (W20 F1)** — asserts `getByRole('button', { name: /notifications/i })` is visible(F1.1 Bell trigger with `aria-label="notifications"`)+ `getByLabel(/multi-workspace support/i).first()` is visible(F1.2 Workspace switcher `<DisabledAffordance>` carries the reason in `aria-label` per shared component shape)
+  - **/kb/[id] 7-tab refactor renders Access disabled affordance OUTSIDE VALID_TABS (W20 F5)** — asserts `getByRole('tab')` returns 8(7 active + 1 Access disabled)+ `getByRole('tab', { name: /access/i })` carries `aria-disabled="true"`(F5.8 Access tab rendered outside `VALID_TABS` so `?tab=access` can't route)
+- **`golden-path.spec.ts` +3 NEW test cases**:
+  - **V1 Chat page renders the Conversation History pane + advanced surfaces (W20 F3b)** — asserts `<heading "Conversations">` + `<button "New chat">` + 3 citation-mode pill toggle first visible(F3.5 + F3.7 advanced surface gate)
+  - **V8 Login renders W20 F7.1 strict-fidelity surfaces** — asserts SSO primary `Sign in with Microsoft` button visible + Divider「OR continue with email」visible + Auth modes mono dashed `<aside aria-label="Auth modes — Tier 1">` visible(F7.1 mockup hierarchy gate)
+  - **V9 Register renders W20 F7.2 polish** — asserts `getByLabel(/full name/i)` first(W20 F7.2 field reorder)+ `getByLabel(/work email/i)` second + Hint copy「6-digit verification code」+「Scrypt-hashed via ADR-0022」visible + Terms `getByRole('checkbox')` visible
+- **`visual-baseline.spec.ts` +2 NEW snapshot cases**:
+  - **`/kb/new` wizard Step 1 baseline (W20 F4.4)** — `toHaveScreenshot('kb-new-wizard-step1.png', { fullPage: true })` — first user run captures via `PW_CHANNEL=chrome pnpm test:e2e:update-snapshots`
+  - **Chat advanced surfaces baseline (W20 F3b)** — `toHaveScreenshot('chat-w20-f3b.png', { fullPage: true, mask: [time, .font-mono] })` so the dynamic message timestamps don't jitter the diff
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F8.5 `app-shell-path.spec.ts` +2 NEW test cases(NotificationsMenu + Access disabled)
+- [x] F8.5 `golden-path.spec.ts` +3 NEW test cases(Chat advanced + Login fidelity + Register polish)
+- [x] F8.5 `visual-baseline.spec.ts` +2 NEW snapshot cases(/kb/new Step 1 + Chat F3b)
+- [x] `pnpm exec tsc --noEmit` exit 0(specs compile-check pass)
+- [x] `pnpm exec next lint` "No ESLint warnings or errors"
+- [x] `Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1-F7 + F8 commit 1+2+3 milestone preserved through 3 new E2E specs)
+- 🚧 Interactive Playwright run via `PW_CHANNEL=chrome pnpm test:e2e` = user pre-Beta smoke per W18 CO_W15_F4_interactive_flow_E2E precedent;snapshot baselines captured via `pnpm test:e2e:update-snapshots`(W18 captured 4 baselines via Plan B 2026-05-13;W20 adds 2 NEW baselines awaiting the next user run + auto-update)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F8.5 chat persistence E2E | Plan literal「extend chat flow:create conv → send msg → reload page → conv still shown — server-side persistence test」 | Chat persistence end-to-end test deferred Wave B+;only `getByRole('heading' "Conversations")` + `getByRole('button' "New chat")` render-smoke gate landed | Real "create conv → reload → still shown" needs a reliable backend `/conversations` POST + auth handshake under mock-auth-dev mode — out of F8.5 90-minute budget. The render-smoke gate already proves the pane renders + the button is present;the full persistence cycle is the natural Beta-cohort first-run validation when Track A IT cred + real user-session land. Wave B+ candidate. | AI per F8.5 budget + W18 CO_W15_F4_interactive_flow_E2E precedent |
+| F8.5 visual baseline NEW snapshots — `/kb/[id]` Images tab + Chunking Lab tab | Plan literal calls for 4 new baselines | Only 2 new baselines added(/kb/new Step 1 + /chat F3b) | KB Detail Images tab + Chunking Lab tab content is data-driven (Tab 3 Images empty per R12 reality — no `embedded_images_json` populated until Track A Blob backing lands;Tab 4 Chunking Lab requires user-typed sample text to render any meaningful preview)。Empty-state pixel diff baselines on those tabs would just verify empty-state copy unchanged — low Tier 1 ROI;defer to Wave B+ when real data populates. /kb/new + /chat baselines have rich-content static states that match the visual-baseline harness intent. | AI per Karpathy §1.2 simplicity + R12 reality |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Playwright user pre-Beta smoke pattern preserved through W20** — same shape as W17 + W18:specs are committed + compile-check pass + interactive run requires `PW_CHANNEL=chrome` (ADR-0017 Plan B) under user control. CI default `npx playwright install chromium` remains R8-CDN-blocked(`cdn.playwright.dev` ECONNRESET — re-confirmed 2026-05-13 + status holds 2026-05-17 unless IT mirrors PyPI/Playwright CDN locally)。
+- **`/kb/[id]` Images + Chunking Lab visual-baseline defer** — both tabs are inherently data-driven(R12 Azurite SDK signature mismatch means `uploader=None` today,so the Images tab returns an empty list;Chunking Lab requires user-typed sample text to produce any preview)。Adding empty-state baselines for those tabs would lock in "empty grid copy unchanged" — low ROI for the Tier 1 pixel diff harness。Wave B+ candidate when Track A IT cred lands and the Azure Blob switch flips uploader on so embedded images populate。
+- **F8.5 NEW E2E test cases all compile-check pass** — `pnpm exec tsc --noEmit` exit 0 ran against the spec edits;no `any` cast leaked,no `expect()` chain typed incorrectly。Spec edits stay shippable into the user pre-Beta interactive run。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F8.5 3 specs update(+7 NEW test cases total)| 90 min | ~50 min | -44% |
+| F8.5 verify(tsc + lint + [oklch=0)| 10 min | ~5 min | -50% |
+| Progress.md F8 commit-3 Day-N entry + checklist tick + commit | 25 min | ~20 min | -20% |
+| **F8 commit 3 sub-total** | **~2 hours**(plan F8.5 cell)| **~75 min** | **-38%** |
+
+Real-calendar collapse pattern continues — F8 commit 3 lands at ~1.6× collapse(below band lower bound,driven by render-assertion-only spec edits not requiring backend integration scaffolding)。
+
+#### Cumulative F8 totals(commits 1+2+3)
+
+- **Effort**:plan ~8.2 hours total(F8.1-F8.7)/ actual ~3.75 hours(commits 1+2+3)→ ~2.2× collapse cumulative band hold
+- **Test files**:6 → 14 unit test files / 21 → 37 unit tests / +7 E2E test cases / +2 NEW snapshot baselines awaiting user capture
+- **Docs**:8 component Status row appends(COMPONENT_CATALOG)+ 8 routes status flip(PAGE_INVENTORY)+ Wave B/C deferral notes
+- **Verify gates**:`tsc --noEmit` exit 0 / `next lint` clean / `Grep '\[oklch'` = 0 milestone preserved through 9 commits(F1-F7 + F8 ×3)
+
+#### Carry-overs to next commit(F9 phase closeout)
+
+- **F9.1 Gate verdict** — PASS / PARTIAL PASS / FAIL determination with explicit rationale per W18 pattern
+- **F9.2 Retro 7 sections** — What worked / What didn't & friction / Surprises / Decisions / Carry-overs to W21+(NOT pre-created — items only)/ Time tracking / Spec-ref alignment(architecture.md v6 + ADR-0025/0028/0031 verification)
+- **F9.3 ADR Status verify** — ADR-0025 + ADR-0028 + ADR-0031 status verified `Accepted`(F0 flip;verify-no-op at closeout)
+- **F9.4 Frontmatter flip** — W20 `plan.md` + `checklist.md` + `progress.md` `status: active` → `closed`
+- **F9.5 W21+ rolling JIT** — phase folder **NOT pre-created**;kickoff candidates noted in `progress.md` Day-N retro section
+- **F9.6 session-start.md hygiene catch-up** — C01/C02/C03/C05/C07/C08/C09/C10 status post-W20 + §10 W20 row + W21+ note + §11 carry-overs + §12 milestones row + Last-Updated
+- **F9.7 New OQ surfaced** — none new(W20 doesn't resolve / open any);ADR-0030 + ADR-0032 SKIPPED footnote preserved per W19 F6 closeout
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD

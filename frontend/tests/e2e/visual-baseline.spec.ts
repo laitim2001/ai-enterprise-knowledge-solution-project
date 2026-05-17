@@ -73,4 +73,29 @@ test.describe('Visual baseline — pixel diff harness', () => {
       fullPage: true,
     });
   });
+
+  // W20 F8.5 NEW snapshots — first user run via `PW_CHANNEL=chrome pnpm test:e2e:update-snapshots`
+  // captures the baseline file under `tests/e2e/visual-baseline.spec.ts-snapshots/`.
+
+  test('/kb/new wizard Step 1 baseline (W20 F4.4 — 5-step wizard)', async ({ page }) => {
+    await page.goto('/kb/new');
+    await expect(page.getByRole('heading', { name: 'Source', level: 2 })).toBeVisible();
+    await expect(page).toHaveScreenshot('kb-new-wizard-step1.png', {
+      fullPage: true,
+    });
+  });
+
+  test('Chat advanced surfaces baseline (W20 F3b — Conversation History + citation modes)', async ({
+    page,
+  }) => {
+    await page.goto('/chat');
+    await expect(
+      page.getByRole('heading', { name: /^conversations$/i }),
+    ).toBeVisible();
+    // Mask the dynamic timestamps + the empty-state copy that's data-driven.
+    await expect(page).toHaveScreenshot('chat-w20-f3b.png', {
+      fullPage: true,
+      mask: [page.locator('time'), page.locator('.font-mono')],
+    });
+  });
 });
