@@ -1,8 +1,14 @@
-"""Observability dashboard schemas (W8 D5 F5.2 + F5.4 + W10 D3 F5.2 realtime)."""
+"""Observability dashboard schemas (W8 D5 F5.2 + F5.4 + W10 D3 F5.2 realtime).
+
+W21 F2.1 — add `TraceSummary` + `TraceListResponse` for `GET /traces` list view
+per ADR-0030 absorbed scope (architecture.md v6 §5.7 Traces). Schema lives in
+this existing module per Karpathy §1.2 (group by theme = Observability) — not
+a new file.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -101,4 +107,61 @@ class TraceDetail(BaseModel):
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     stages: list[TraceStage] = []
+    note: str = ""
+
+
+# ---------------------------------------------------------------------------
+# W21 F2.1 — Trace list view (`GET /traces`) per ADR-0030 absorbed
+# ---------------------------------------------------------------------------
+# architecture.md v6 §5.7 — Traces index list view. Status enum scope is
+# trace-level (rolled up from per-observation level field) so a single trace
+# row can carry the 3 high-level filter buckets the frontend renders.
+# `crag_triggered` is a Tier 1 product-signal status (not an SDK status); it
+# co-exists with `ok`/`error` per-row because a CRAG-triggered trace that
+# also errored should still surface as `error` (priority: error > crag > ok).
+
+
+class TraceSummary(BaseModel):
+    """One row in the `/traces` index list (per ADR-0030 absorbed scope).
+
+    Maps to one Langfuse trace; fields chosen to be cheap to extract from a
+    Langfuse `fetch_traces` summary (no per-trace deep fetch) — `stage_count`
+    comes from the observations-id list length, `total_tokens`/`cost_usd`
+    come from server-computed aggregates when present, `crag_iterations`
+    from upstream-stamped trace metadata (`metadata.crag_iterations`).
+
+    Defaults are conservative (0 / None / "") so the dashboard can render
+    rows even when Langfuse server omits derived fields (older self-hosted
+    v2 deployments). Frontend distinguishes "missing data" from "zero" via
+    the `status` field on the wrapping `TraceListResponse`.
+    """
+
+    trace_id: str
+    timestamp: str  # ISO 8601
+    duration_ms: int = 0
+    status: Literal["ok", "error", "crag_triggered"] = "ok"
+    kb_id: str | None = None
+    query_preview: str = ""  # first 100 chars of input.query (or trace.name)
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+    crag_iterations: int | None = None  # None = not a CRAG trace
+    stage_count: int = 0
+
+
+class TraceListResponse(BaseModel):
+    """`GET /traces` paginated response.
+
+    `total` reflects the count AFTER `status_filter`/`since`/`kb_id` were
+    applied, BEFORE `offset`/`limit` paging — so the frontend can render
+    "Showing N of M" without an extra count fetch. `status` field carries
+    the Langfuse fetch outcome (mirrors `CostSummary.realtime_status` /
+    `TraceDetail.status` graceful-degrade pattern); the endpoint always
+    returns 200, observability fetch error never blocks list render.
+    """
+
+    items: list[TraceSummary] = []
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    status: str = "ok"  # "ok" | "no_client" | "sdk_method_missing" | "fetch_failed"
     note: str = ""

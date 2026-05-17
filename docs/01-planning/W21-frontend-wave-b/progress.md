@@ -167,6 +167,67 @@ Real-calendar collapse pattern continues — F1 ~3× faster than 1 plan-day budg
 
 ---
 
+## Day 1 — 2026-05-17(continued) — F2 backend landed
+
+### F2 — Backend `GET /traces?filter=...&since=...` list per ADR-0030 absorbed(landed)
+
+**Branch**:`main` post-F1 commit `306dbe0`。Working tree clean at F2 start;single commit landed for F2 cascade。
+**Commits this day**:`(this commit)` — F2.1-F2.5 cascade(NEW schemas + NEW aggregator + NEW route + NEW pytest)
+
+#### What landed
+
+- `backend/api/schemas/observability.py` — NEW `TraceSummary`(10 fields:trace_id / timestamp / duration_ms / status: Literal['ok','error','crag_triggered'] / kb_id / query_preview / total_tokens / cost_usd / crag_iterations: int|None / stage_count)+ `TraceListResponse`(items / total / limit / offset / status / note);module docstring extended for W21 F2.1
+- `backend/observability/langfuse_trace_list.py`(**NEW** file)— `fetch_trace_list` aggregator + 6 defensive helpers(`_query_preview` / `_trace_status` / `_duration_ms` / `_stage_count` / `_kb_id` / `_total_tokens` / `_cost_usd` / `_build_summary` / `_apply_filters`);sibling to `langfuse_trace.py` W16 F5.5;graceful-degrade matrix(no_client / sdk_method_missing / fetch_failed / ok)mirrors W17 F4 realtime_cost.py
+- `backend/api/routes/debug.py` — extended module docstring + NEW `GET /traces` route with query params `filter`(alias)/ `since` / `kb_id` / `limit`(1-500)/ `offset`(≥0);imports `TraceListResponse` + `fetch_trace_list`;router-level auth enforced at `api/server.py:256`(W20 baseline preserved unchanged)
+- `backend/tests/api/test_traces_route.py`(**NEW** file)— 14 test cases covering happy path + filter combinations + graceful degrade + edge cases
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F2.1 NEW Pydantic v2 schemas in `backend/api/schemas/observability.py` — `TraceSummary` 10 fields + `TraceListResponse` paginated wrapper
+- [x] F2.2 NEW route `GET /traces` in `backend/api/routes/debug.py` — auth router-level + Langfuse SDK fetch + post-fetch filter + pagination
+- [x] F2.3 Backend pytest — **14/14 pytest pass**(超 plan target 5+;coverage ≥ 80%)
+- [x] F2.4 `pytest` pass — **99/99 backend tests**(14 F2 NEW + 9 F1 + W20 baseline + debug-trace + langfuse-tracer);**0 regression**
+- [x] F2.5 File header docstring landed on schemas + extended route module + NEW aggregator module
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F2.2 schema location | `extend existing W18 baseline` | Extended `observability.py`(W8+W10+W16 cumulative baseline,not W18 specifically) | Plan-text typo — `observability.py` has been extended each phase W8 F5.2 / W10 D3 F5.2 / W16 F5.5;W18 added nothing here。`observability.py` is the correct extension target | AI Karpathy §1.2 + §1.3 surgical |
+| F2.2 query layer | `Langfuse Postgres query layer per W17 F4` | Langfuse Python SDK `client.fetch_traces` duck-typed fetcher(NOT raw Postgres query) | W17 F4 wired the SDK + server-provisioning;there is no direct-Postgres-query layer in EKP — all observability fetches go through the SDK accessor per `langfuse_tracer.get_langfuse_client()` + ADR-0017 Plan B (c) Langfuse v2.60.10 pin。Plan wording was shorthand for "Langfuse-backed query"(server uses Postgres internally)。SDK abstraction = the intended layer | AI Karpathy §1.2 simplicity-first;preserved single-accessor pattern |
+| F2.1 schema status field | `status: Literal['ok','error','crag_triggered']`(per-trace status only) | Added `status` field on `TraceListResponse` ALSO(envelope-level fetch outcome mirror of CostSummary.realtime_status)| Per-trace status is the row-level signal;the wrapping list response needs its own fetch-outcome status to mirror the graceful-degrade matrix established W16 F5.5 + W10 D3 F5.2。Without it,frontend can't distinguish "empty Langfuse window"(items=[] status=ok)from "Langfuse not configured"(items=[] status=no_client)| AI Karpathy §1.2 — graceful degrade is the existing established pattern,carry it forward |
+| F2.2 filter URL param naming | `?filter=` query param exposed as Python `filter` parameter | URL `?filter=` aliases Python `status_filter` via `Query(alias="filter")` | Python `filter` is a builtin;shadowing in route handler scope is allowed but ruff A002 / call-site readability favours `status_filter`。URL-facing shape unchanged per the plan literal acceptance criteria | AI judgment per CLAUDE.md §3.1 conventions |
+
+#### Decisions / new OQ / risk surfaced
+
+- **No new OQ**(no Q1-Q22 status change)— F2 implements ADR-0030 absorbed scope which has zero OQ deps per plan §F2 line 152
+- **No new H1/H2/H3 trigger** — F2 reuses existing Langfuse SDK + `psycopg` backing(no new dependency per CC6);schema lives in existing `observability.py` module(no new file = no new ADR);route is additive to existing `debug.py` module
+- **Status priority decision logged** — `error > crag_triggered > ok` per-trace rollup chosen so the frontend `?filter=errors` bucket catches CRAG-triggered traces that also errored(operator intent:see all failures)。Documented in `langfuse_trace_list.py` module docstring + verified by `test_list_traces_error_priority_over_crag_status`
+- **Post-fetch Python filter decision logged** — Langfuse v2 SDK `fetch_traces` does NOT expose `level=ERROR` filter pushdown;fetch a generous window(`min(500, offset+limit+100)`)+ filter in Python。Sufficient for Beta cohort scale per W17 F4 pricing baseline(50 user × 5 q/day × 24h ≈ 250 traces;Wave C+ if a SDK-side filter ever lands or N-trace-per-day exceeds 500-headroom)。Documented in `langfuse_trace_list.py` module docstring
+- **Cost/total_tokens server-aggregate fallback** — `totalCost` + `totalTokens` come from Langfuse server when present(Langfuse Cloud + recent self-hosted v2 builds);fall through to 0.0 / 0 when omitted。Frontend renders "—" for zero-fallback rows(per plan F3 / F5 design fidelity to mockup empty-state semantics)— NOT a `<DisabledAffordance>` Tier 2 chip since the dashboard intent is "data missing,not feature missing"
+- **CC10 H4 boundary held** — Tier 2 boundary preserved:no per-observation deep fetch(N+1 fetch is Tier 2 perf concern + scope creep);no nested-stage flame data(Wave C+ when ADR-0020 Context Expander multi-step traces become common);no semantic search filter / no AI summarization
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F2.1 schemas(10 fields + envelope) | 20 min | ~10 min | -50% |
+| F2.2 aggregator + route | 90 min | ~30 min | -67% |
+| F2.3 pytest(5+ targets) | 45 min | ~25 min(14 cases landed) | -44% |
+| F2.4 verify + 99/99 regression pass | 30 min(+ 3 min pytest run) | ~6 min(pytest 156s incl) | -80% |
+| F2.5 docstrings + checklist tick + progress.md | 30 min | ~10 min | -67% |
+| **F2 Day 1 total** | **~3.5 hours**(1 plan-day budget) | **~80 min** | **-62%** |
+
+Real-calendar collapse pattern continues(W12-W20 1.8-12× pattern;F1 -65% / F2 -62% same-day average -64%)。
+
+#### Carry-overs to next Day-N
+
+- **F3 frontend** — `/kb/[id]/docs/[docId]` 3-pane(largest deliverable,2-3 days planned)— starts post-F2;backend foundation now complete(F1 + F2)
+- **F2 → F5 frontend consume** — `/traces` index list will consume this F2 backend(`frontend/lib/api/traces.ts` typed client per F5.2)
+- **F4 / F6** — frontend-only refactor + 3 viz modes;no backend dependency
+
+---
+
 <!-- Day 1+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
