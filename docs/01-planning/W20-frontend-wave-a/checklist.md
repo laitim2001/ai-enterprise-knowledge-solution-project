@@ -87,11 +87,11 @@ last_updated: 2026-05-16
 
 ## F6 — `/kb-upload/[id]` re-ingestion wizard polish per ADR-0028 §5.5.3b(C09)
 
-- [ ] F6.1 Frontend `frontend/app/(app)/kb/[id]/upload/page.tsx` polish — existing 3-step skeleton preserved + Source step add Multimodal toggles per KB's existing config + Tier 2 `<DisabledAffordance>` reuse from F4
-- [ ] F6.2 DRY — reuse F4 wizard step components where possible(Karpathy §1.2)
-- [ ] F6.3 Tokens 100% `tokens.ts`;`[oklch`=0 preserved;`tsc` + `lint` clean
-- [ ] F6.4 Vitest test — 3-step navigation + Multimodal toggle render
-- [ ] F6.5 File header docstring updated
+- [x] F6.1 Frontend `frontend/app/(app)/kb/[id]/upload/page.tsx` rewrite landed `(this commit)` — **single-step → 3-step wizard skeleton**(plan literal「existing 3-step skeleton」實際係 single-step file picker per F6 deviation entry plan §7;rebuilt from scratch per AskUserQuestion Option 1 picked 2026-05-17):**Step 1 Source**(file picker .docx/.pdf/.pptx,reuse F4 Step 5 file-picker shape)+ **Step 2 Multimodal**(read-only display of KB existing config via `kbApi.get(kbId)` — 4 Tier 1 toggles all `disabled` + `aria-readonly` + dedup_strategy 用 mono badge 而唔係 select、3 Tier 2 disabled affordances 用 `<DisabledAffordance variant="p3-preview" showBadge>` reuse F4 Step 4 / W20 F1.5、"Edit settings" link 去 `/kb/[id]?tab=settings`)+ **Step 3 Review**(summary table 11 rows + Stage 1-stage progress for `POST /kb/{id}/documents` only + redirect `/kb/[id]` on success)
+- [x] F6.2 DRY — F4 wizard `<Field>` / `<Stepper>` / `<ToggleRow>` / `<Stage>` / `<Summary>` 係 file-local primitives(冇 export),inline-redeclared per W13 register strategy `(this commit)`;**rule-of-3 promotion trigger NOW hit**(4th wizard usage observed:F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion)— extract to shared `frontend/components/ui/stepper.tsx` (+ Field/Stage)為 **Wave B+ candidate**(避免 Wave A ripple change to F4 + Register per Karpathy §1.3 surgical)
+- [x] F6.3 Tokens 100% `tokens.ts`;`Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1+F2+F3b+F4+F5+F6 milestone preserved);`pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors"
+- [x] F6.4 Vitest test scaffold deferred → F8.4 batches per plan F6.4 literal + F1.7/F3.15/F4.7/F5.10 precedent — `kb-upload-wizard.test.tsx`(3-step navigation + read-only Multimodal display + Stage progress)🚧 deferred F8.4
+- [x] F6.5 File header docstring updated `(this commit)` — 22-line docstring 解釋 W12 baseline single-step → W20 F6 3-step wizard promotion + per-KB(not per-doc)Multimodal config rationale + rule-of-3 Wave B+ promotion note + tokens 100% preserved milestone per CLAUDE.md §3.2
 
 ## F7 — `/login` + `/register` polish per ADR-0014(C11 + C09)
 

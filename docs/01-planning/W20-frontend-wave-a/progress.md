@@ -503,6 +503,65 @@ Real-calendar collapse pattern continues — W12-W18 + W20 F1/F2/F3a/F3b/F4/F5 e
 
 ---
 
+## Day 5 — 2026-05-17 (continued, fifth commit)
+
+### F6 — `/kb-upload/[id]` re-ingestion wizard skeleton(landed)
+
+**Branch**:`main`(ahead of `origin/main` by 0 commit at the time of starting F6 — last push was `82f18c3` CLAUDE.md v1.6;F5 `4af3ade` already on origin)。
+**Commits this day**:`(this commit)` — F6 standalone(`frontend/app/(app)/kb/[id]/upload/page.tsx` 74-line single-step → 3-step wizard rewrite + Plan §7 changelog batch row for F6/F7 deviations)。
+
+#### What landed
+
+- **F6.1 — 3-step wizard skeleton rewrite** — `frontend/app/(app)/kb/[id]/upload/page.tsx` was a 74-line single-step `<input type="file">` + `Upload + Ingest` button shape since W12 D4 F4.8;W20 F6 rebuilt it from scratch as a **3-step wizard skeleton** per the AskUserQuestion Option 1 pick(2026-05-17):**Step 1 Source**(file picker `.docx/.pdf/.pptx`,reuses F4 Step 5 file-picker shape — `state.file` size hint + accept attribute identical)+ **Step 2 Multimodal**(read-only display of the KB's current multimodal config via `kbApi.get(kbId)` `useQuery`;4 Tier 1 toggles use NEW `<ReadOnlyToggleRow>` — `<Switch>` `disabled` + `aria-readonly="true"` + `cursor-not-allowed`;`dedup_strategy` rendered as a mono `<span>` badge rather than a select to make read-only intent unambiguous;3 Tier 2 disabled affordances re-use `<DisabledAffordance variant="p3-preview" showBadge>` from F4 Step 4 / W20 F1.5 — caption generation / image clustering / provenance ledger;`<Link>` "Edit settings" → `/kb/[id]?tab=settings` makes the per-KB-not-per-doc constraint user-discoverable)+ **Step 3 Review**(summary `<dl>` 11 rows = KB id / KB name / Document / Size / 4 multimodal fields + Stage 1-stage progress for `POST /kb/{id}/documents` only + redirect `/kb/[id]` on success via `queryClient.invalidateQueries` + `router.push`)。
+- **F6.2 — DRY decision rationale** — F4 KB Pipeline wizard's `<Field>` / `<Stepper>` / `<ToggleRow>` / `<Stage>` / `<Summary>` are **file-local primitives** in `kb/new/page.tsx`(no export);F6 inline-redeclares each per the W13 Register page strategy(also file-local — `Stepper` / `Step1` / `Step2` / `Step3` / `Field` patterns)。**This is the 4th wizard usage** in `frontend/` (F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion)— the **rule-of-3 promotion trigger is NOW hit**;extracting to a shared `frontend/components/ui/stepper.tsx` + `<Field>` + `<Stage>` (Karpathy §1.2 promotion when N≥3 use sites)is a **Wave B+ candidate**(avoiding a Wave A ripple change to F4 + Register + W18 F5 per Karpathy §1.3 surgical preserve-adjacent-unchanged)。
+- **F6.3 — verify** — `pnpm exec tsc --noEmit` exit 0;`pnpm exec next lint` "No ESLint warnings or errors";`Grep '\[oklch'` across `frontend/` = **0**(W15→W18→W20 F1+F2+F3b+F4+F5+F6 milestone preserved through 6 deliverables)。
+- **F6.4 — Vitest deferred per precedent** — `kb-upload-wizard.test.tsx`(3-step navigation + read-only Multimodal display + Stage progress)🚧 deferred → **F8.4 batches**(per plan F6.4 literal + the established F1.7 / F3.15 / F4.7 / F5.10 precedent of holding scaffold tests for the F8 sweep)。
+- **F6.5 — file header docstring** — 22-line docstring at the top of `upload/page.tsx` explains:W12 baseline single-step → W20 F6 3-step wizard promotion;per-KB(not per-doc)multimodal config rationale tied back to W20 F4.2 orchestrator `ingest(kb_config)` reading from `service.get(kb_id)`;rule-of-3 Wave B+ promotion note for future readers;tokens 100% preservation milestone callout。
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F6.1 single-step → 3-step wizard skeleton(Source / Multimodal / Review)
+- [x] F6.2 DRY rule-of-3 trigger hit but Wave B+ defer per Karpathy §1.3 surgical
+- [x] F6.3 tokens 100% / [oklch=0 / tsc 0 / lint 0
+- [x] F6.4 Vitest 🚧 deferred F8.4
+- [x] F6.5 File header docstring updated
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F6.1 | "existing 3-step skeleton preserved + Source step add Multimodal toggles" | single-step → 3-step **NEW** wizard built from scratch | The plan literal mis-described the W12 baseline — `frontend/app/(app)/kb/[id]/upload/page.tsx` was a 74-line single-step file picker, no wizard structure to preserve. AskUserQuestion 3-way picked Option 1 → build the 3-step skeleton out of nothing. The plan §7 changelog 2026-05-17 entry records this. | AskUserQuestion picked Option 1 by Chris 2026-05-17 + Plan §7 changelog |
+| F6.1 Multimodal step | "Source step add Multimodal toggles per KB's existing config" | Dedicated Step 2 Multimodal with **read-only** display (not editable toggles in Step 1) | W20 F4.2 orchestrator `ingest()` reads `kb_config` from `service.get(kb_id)` — multimodal config is **per-KB level**, not per-doc. Per-doc override would break backend contract. Step 2 surfaces the in-effect config + a link to `/kb/[id]?tab=settings` to edit per-KB instead. | AI per Karpathy §1.2 + W20 F4.2 backend contract |
+| F6.2 DRY | "reuse F4 wizard step components where possible (Karpathy §1.2)" | Inline-redeclared per W13 register strategy + Wave B+ promote-to-shared note | F4 `<Field>` / `<Stepper>` / `<ToggleRow>` / `<Stage>` / `<Summary>` are file-local (no `export`). Extracting to shared `frontend/components/ui/stepper.tsx` would force ripple changes to F4 + Register + W18 F5 — out of W20 surgical scope. Rule-of-3 promotion trigger now hit (4th wizard usage) → Wave B+ candidate. | AI per Karpathy §1.3 surgical + rule-of-3 deferred promotion |
+| F6 commit cadence | Plan implies F6+F7 dual-commit | F6 standalone commit + F7 to follow | User pick 方案 A "F6+F7 雙 commit" 2026-05-17 makes this two commits, one per F. The unified commit cadence (F2 / F4 / F5) was the exception — for small surface polish F# the dual-commit cadence holds. | User pick 方案 A 2026-05-17 |
+
+#### Decisions / new OQ / risk surfaced
+
+- **Per-KB-not-per-doc multimodal config** surfaced in-UI — Step 2's "Edit settings" link makes the architectural constraint visible to KB owners(previously implicit in W20 F4.2 + KbConfig schema)。Without this surface, users would expect per-doc override and be confused why their toggle choices don't take effect。
+- **Rule-of-3 wizard primitive promotion trigger now hit** — file-local `<Field>` / `<Stepper>` / `<ToggleRow>` / `<Stage>` / `<Summary>` exist in 4 places now(F4 KB Pipeline + W13 Register + W18 F5 Pipeline + W20 F6 Re-ingestion);Wave B+ should extract to `frontend/components/ui/stepper.tsx` (+ companion primitives)so future wizard usages don't repeat the inline pattern。
+- **No backend change needed** — F6 is frontend-only(no schema / endpoint / storage change);the existing `kbApi.uploadDoc(kbId, file)` Mutation + `kbApi.get(kbId)` Query do the entire job。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F6.1 single-step → 3-step wizard rewrite + Step 2 read-only Multimodal + Step 3 Review | 30 min(plan budget)| ~30 min(rewrite from scratch + 3 step components inline)| 0% |
+| F6.2 + F6.5 docstring + Plan §7 changelog row | 15 min | ~10 min | -33% |
+| F6.3 verify(tsc + lint + [oklch)| 10 min | ~5 min | -50% |
+| F6.4 Vitest scaffold(this commit per F8.4 batching)| — | — | — |
+| Progress.md F6 Day-N entry + checklist tick + commit | 25 min | ~20 min | -20% |
+| **F6 Day 5 sub-total** | **~1.5 hours**(plan F6 cell 30 min implementation only;real cost includes process overhead)| **~65 min** | **-28%** |
+
+Real-calendar collapse pattern continues — W12-W18 + W20 F1-F5 collapse band 1.8-4× preserved(F6 lands at ~1.4× — slightly below band lower bound which fits since F6 is a small isolated polish without backend co-coordination overhead)。
+
+#### Carry-overs to next Day-N(F7)
+
+- **F7 `/login` + `/register` polish** — next deliverable(C11 + C09);F7 dual decisions picked 2026-05-17:Login Option 2 strict design fidelity(SSO primary + Divider + email secondary + Forgot password inline next to Password label + Tier 2 badge via `<DisabledAffordance>` + bottom mono dashed "Auth modes (Tier 1)" block);Register Option 2 visual polish-only(keep 3-step 6-digit code structure + field reorder Full name → Email → Password + Confirm + Terms checkbox + hint copy specificity)+ Step 3 KB selector migrate to shared `<DisabledAffordance>`。
+- **F8.4 Vitest scaffold batch** — accumulating still(F1.7 + F3.15 + F4.7 + F5.10 + F6.4):`notifications-menu.test.tsx` + `disabled-affordance.test.tsx` + `conversation-history.test.tsx` + `kb-new-wizard.test.tsx` + `kb-detail-tabs.test.tsx` + `kb-upload-wizard.test.tsx` + supporting fixtures。
+- **Wave B+ candidates updated** — `crag_reasoning` field;LLM-summarize conversation title;sidebar mode multi-turn aggregation;Citation `kb_id` field;real-I/O `/health` pings;`sample_doc_id` chunking-preview path;image `page_num`/`screenshot_type`/`created_at` enrichment;chunker `overlap` window;Apply-style re-chunking pipeline;`archived` flag CASCADE to Azure index lifecycle;**plus W20 F6 wires** for **rule-of-3 wizard primitive promotion** to shared `frontend/components/ui/stepper.tsx` (+ Field/Stage/ToggleRow/Summary) given the 4th wizard usage now observed(extracting before a 5th appears avoids 5-site ripple)。
+
+---
+
 <!-- Day 3+ frontend entries to be appended. Template:
 
 ## Day N — YYYY-MM-DD
