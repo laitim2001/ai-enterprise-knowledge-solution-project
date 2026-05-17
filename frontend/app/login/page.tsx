@@ -1,37 +1,31 @@
 'use client';
 
 /**
- * V8 Login page (`/login`) — public entry per architecture.md v6 §5.10 + ADR-0014.
+ * V8 Login page (`/login`) — W22 F2 direct-copy from mockup
+ * `references/design-mockups/ekp-page-auth.jsx:5-65` PageLogin
+ * (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18 — supersedes W17 F2 +
+ * W18 F7 + W20 F7.1 strict-fidelity refactor;those used shadcn primitives +
+ * Tailwind utilities;F2 rebuild uses mockup CSS classes directly).
  *
- * Layout per `references/design-mockups/ekp-page-auth.jsx` mockup
- * (canonical visual spec, CLAUDE.md §3.2.1 design fidelity rule). Brand panel
- * left + form pane right (split via flex-col md:flex-row). Form pane visual
- * hierarchy (W20 F7.1 strict-fidelity realign 2026-05-17):
- *   1. SSO primary button (Sign in with Microsoft, full-width, top)
- *   2. Divider "OR continue with email"
- *   3. Email + Password form (secondary)
- *      · Forgot password inline next to Password label, right-aligned,
- *        Tier 2 badge via shared <DisabledAffordance variant="p3-preview">
- *   4. Sign in submit button (full-width)
- *   5. "Don't have an account?" → /register link
- *   6. Bottom mono dashed "Auth modes (Tier 1)" block — surfaces the hybrid
- *      auth contract per ADR-0014 + ADR-0022 for operator awareness
+ * Structure mirrors mockup PageLogin:
+ *   - Header: h1 "Welcome back" + subtitle (SSO + email)
+ *   - Primary: SSO `<button class="btn btn-primary btn-lg">` full-width
+ *   - Divider "OR continue with email" via shared <AuthDivider />
+ *   - Email `<input class="input">` inside `<div class="field">`
+ *   - Password `<input>` with right-aligned "Forgot password?" Tier 2 chip
+ *   - Submit `<button class="btn btn-accent btn-lg">` full-width
+ *   - "Don't have an account? Create one" link
+ *   - Auth-modes mono dashed block (Tier 1 hybrid auth surface)
  *
- * Previous (W17 F2 + W18 F7) layout had email primary + SSO secondary; that
- * order pre-dated the high-fidelity mockup landing in W19. The mock-auth
- * default dev reality (Q11 Track A pending W16+) is unchanged — the SSO
- * button still calls `useAuthStore.signIn` (mock_msal in dev / real MSAL
- * Beta+); only the visual ordering moves to match the mockup.
+ * Preserved from W17 F2 + W20 F7 (per CLAUDE.md §4 authority: backend wins):
+ *   - useAuthStore.signIn for SSO (mock-auth bridge / real MSAL Beta+)
+ *   - authApi.login for self-register (POST /auth/login → httpOnly cookie
+ *     + CSRF double-submit per ADR-0022)
+ *   - ApiError.code → toast variant mapping (INVALID_CREDENTIALS /
+ *     EMAIL_NOT_VERIFIED / fallthrough)
+ *   - router.push('/dashboard') on success
  *
- * W17 F2 (per ADR-0022): self-register path POSTs `/auth/login`; the backend
- * sets the httpOnly `ekp_session` cookie + `ekp_csrf` cookie on the response
- * (the browser / `/api/backend` proxy carry it), so the page no longer
- * persists the token in localStorage. Error.code from the ApiError envelope
- * drives toast variants per F3.7.
- *
- * W18 F7 (per ADR-0024): successful sign-in routes to `/dashboard`. Stays
- * OUTSIDE the `app/(app)/` shell — the login page gets no app chrome
- * (the BrandPanel split layout is its own).
+ * Renders OUTSIDE `app/(app)/` — no AppShell (per ADR-0024 + W18 F7).
  */
 
 import { Loader2 } from 'lucide-react';
@@ -40,12 +34,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-import { BrandPanel } from '@/components/auth/brand-panel';
-import { Button } from '@/components/ui/button';
-import { DisabledAffordance } from '@/components/ui/disabled-affordance';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { AuthDivider, AuthFrame, MicrosoftIcon } from '@/components/auth/auth-frame';
 import { ApiError } from '@/lib/api-client';
 import { AuthErrorCodes, authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/providers/auth-provider';
@@ -94,143 +83,178 @@ export default function LoginPage() {
   const anyPending = isFormPending || isSsoPending;
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <BrandPanel />
-      <main className="flex flex-1 items-center justify-center bg-background px-6 py-12">
-        <div className="w-full max-w-sm">
-          <header className="mb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sign in with your Ricoh corporate account or with email.
-            </p>
-          </header>
-
-          {/* Primary: Entra ID SSO */}
-          <Button
-            type="button"
-            size="lg"
-            className="w-full"
-            onClick={handleSsoClick}
-            disabled={anyPending}
+    <AuthFrame>
+      <form onSubmit={handleSelfSubmit}>
+        {/* Heading — mockup lines 8-13 */}
+        <div style={{ marginBottom: 18 }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              margin: 0,
+              marginBottom: 6,
+            }}
           >
-            {isSsoPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Redirecting…
-              </>
-            ) : (
-              <>
-                <MicrosoftIcon className="mr-2 h-4 w-4" />
-                Sign in with Microsoft
-              </>
-            )}
-          </Button>
-
-          <DividerWithLabel label="OR continue with email" />
-
-          <form onSubmit={handleSelfSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@ricoh.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={anyPending}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center">
-                <Label htmlFor="password" className="flex-1">
-                  Password
-                </Label>
-                <DisabledAffordance
-                  variant="p3-preview"
-                  reason="Password recovery — coming in a later tier (post-Beta)"
-                  tier2Trigger="Tier 2 — per ADR-0014"
-                  showBadge
-                >
-                  <span className="text-xs text-muted-foreground">
-                    Forgot password?
-                  </span>
-                </DisabledAffordance>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={anyPending}
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full bg-accent text-accent-foreground shadow hover:bg-accent/90"
-              disabled={anyPending}
-            >
-              {isFormPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in…
-                </>
-              ) : (
-                'Sign in →'
-              )}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-accent transition-colors hover:underline"
-            >
-              Create one
-            </Link>
+            Welcome back
+          </h1>
+          <p
+            style={{
+              fontSize: 14,
+              color: 'oklch(var(--muted-foreground))',
+              margin: 0,
+            }}
+          >
+            Sign in with your Ricoh corporate account or with email.
           </p>
-
-          {/* Auth modes (Tier 1) — operator-awareness mono block per mockup */}
-          <aside
-            className="mt-6 rounded-md border border-dashed border-border p-3 font-mono text-[11px] leading-relaxed text-muted-foreground"
-            aria-label="Auth modes — Tier 1"
-          >
-            <p className="font-semibold text-foreground">Auth modes (Tier 1)</p>
-            <p>· Hybrid: Entra ID SSO primary + email self-register fallback (ADR-0022)</p>
-            <p>· httpOnly cookie + CSRF double-submit + /auth/refresh</p>
-            <p>· Mock-auth default in dev (Track A IT cred populate W16+)</p>
-          </aside>
         </div>
-      </main>
-    </div>
-  );
-}
 
-function DividerWithLabel({ label }: { label: string }) {
-  return (
-    <div className="my-6 flex items-center gap-3">
-      <Separator className="flex-1" />
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <Separator className="flex-1" />
-    </div>
-  );
-}
+        {/* Primary: Entra ID SSO — mockup lines 15-19 */}
+        <button
+          type="button"
+          className="btn btn-primary btn-lg"
+          style={{
+            width: '100%',
+            marginBottom: 14,
+            justifyContent: 'center',
+            gap: 10,
+          }}
+          onClick={handleSsoClick}
+          disabled={anyPending}
+        >
+          {isSsoPending ? (
+            <>
+              <Loader2 className="animate-spin" size={14} />
+              Redirecting…
+            </>
+          ) : (
+            <>
+              <MicrosoftIcon />
+              Sign in with Microsoft
+            </>
+          )}
+        </button>
 
-function MicrosoftIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="2" y="2" width="9.5" height="9.5" fill="#F25022" />
-      <rect x="12.5" y="2" width="9.5" height="9.5" fill="#7FBA00" />
-      <rect x="2" y="12.5" width="9.5" height="9.5" fill="#00A4EF" />
-      <rect x="12.5" y="12.5" width="9.5" height="9.5" fill="#FFB900" />
-    </svg>
+        <AuthDivider label="OR continue with email" />
+
+        {/* Email — mockup lines 23-26 */}
+        <div className="field">
+          <label className="label" htmlFor="login-email">
+            Work email
+          </label>
+          <input
+            id="login-email"
+            className="input"
+            type="email"
+            autoComplete="email"
+            placeholder="you@ricoh.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={anyPending}
+            required
+          />
+        </div>
+
+        {/* Password — mockup lines 28-37 */}
+        <div className="field">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <label
+              className="label"
+              htmlFor="login-password"
+              style={{ flex: 1, marginBottom: 0 }}
+            >
+              Password
+            </label>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="btn btn-ghost btn-xs btn-ghost-muted"
+              title="Forgot password — Tier 2 (post-Beta)"
+            >
+              Forgot password?{' '}
+              <span
+                className="badge badge-muted"
+                style={{ marginLeft: 4, fontSize: 9.5 }}
+              >
+                Tier 2
+              </span>
+            </button>
+          </div>
+          <input
+            id="login-password"
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={anyPending}
+            required
+            style={{ marginTop: 6 }}
+          />
+        </div>
+
+        {/* Submit — mockup lines 39-41 */}
+        <button
+          type="submit"
+          className="btn btn-accent btn-lg"
+          style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
+          disabled={anyPending}
+        >
+          {isFormPending ? (
+            <>
+              <Loader2 className="animate-spin" size={14} />
+              Signing in…
+            </>
+          ) : (
+            'Sign in →'
+          )}
+        </button>
+
+        {/* Sign-up link — mockup lines 43-45 */}
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: 18,
+            fontSize: 13,
+            color: 'oklch(var(--muted-foreground))',
+          }}
+        >
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/register"
+            style={{
+              color: 'oklch(var(--accent))',
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            Create one
+          </Link>
+        </div>
+
+        {/* Auth modes (Tier 1) mono dashed block — mockup lines 48-62 */}
+        <div
+          style={{
+            marginTop: 24,
+            padding: '10px 12px',
+            border: '1px dashed oklch(var(--border-strong))',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 11.5,
+            color: 'oklch(var(--muted-foreground))',
+            lineHeight: 1.6,
+            fontFamily: 'var(--font-mono)',
+          }}
+          aria-label="Auth modes — Tier 1"
+        >
+          <b style={{ color: 'oklch(var(--foreground))' }}>Auth modes (Tier 1)</b>
+          <br />· Hybrid: Entra ID SSO primary + email self-register fallback (ADR-0022)
+          <br />· httpOnly cookie + CSRF double-submit + /auth/refresh
+          <br />· Mock-auth default in dev (Track A IT cred populate W16+)
+        </div>
+      </form>
+    </AuthFrame>
   );
 }
 

@@ -1,53 +1,42 @@
 'use client';
 
 /**
- * V9 Register page (`/register`) — public entry per architecture.md v6 §5.11 + ADR-0014.
+ * V9 Register page (`/register`) — W22 F2 direct-copy from mockup
+ * `references/design-mockups/ekp-page-auth.jsx:68-175` PageRegister
+ * (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18 — visual rebuild).
  *
- * 3-step wizard: Account info → Email verify → Welcome.
+ * 3-step structure (PRESERVED from W17 F2 + W20 F7.2 — backend wins per
+ * CLAUDE.md §4 authority + §13 "Mockup vs backend contract 衝突 → backend
+ * wins per §4"):
+ *   1. Account info (full name / email / password / terms)
+ *   2. Email verify (6-digit code, NOT mockup's email-link — backend
+ *      contract per ADR-0014 + architecture.md v6 §3.7)
+ *   3. Welcome (post-verify success state)
  *
- * W13 D5 cont CO_F5d: auth wire deferral resolved — F5 backend cascade landed
- * (commit 054679d). Step submit handlers POST to /auth/register +
- * /auth/verify-email; resend hits /auth/resend-verification. Error.code from
- * the ApiError envelope drives toast variants per F4.7 acceptance.
+ * Mockup PageRegister is 2-step (form + click-email-link landing) because
+ * its design assumed Magic Link verification. EKP backend ships 6-digit
+ * code verification → Step 2 keeps W20 6-digit boxes + auto-advance focus
+ * + paste distribution UX. Step 2 visual treatment (IcInbox + "Check your
+ * inbox" + ACS footer) lifted from mockup; the 6-digit input replaces
+ * mockup's "click the link" copy + Resend button.
  *
- * Layout: V8 BrandPanel (shared) left + form area right (split via flex-col
- * md:flex-row). Stepper visual pattern parallel to W12 F4.9 Pipeline wizard
- * — inlined per Karpathy §1.2 simplicity-first. **W20 F6 promoted this to the
- * 4th wizard usage** in `frontend/` (F4 KB Pipeline + W13 Register + W18 F5
- * Pipeline + W20 F6 Re-ingestion) → rule-of-3 trigger hit; extract to shared
- * `frontend/components/ui/stepper.tsx` is now a Wave B+ candidate.
+ * Visual rebuild (per H7):
+ *   - <AuthFrame> wrapper (shared with /login)
+ *   - All Tailwind utility / shadcn primitives replaced by mockup CSS
+ *     classes (`.btn .input .label .field .hint .badge`)
+ *   - Mockup inline styles preserved 1:1
  *
- * Step 2 6-digit verification code input: 6 separate boxes with auto-advance
- * focus + paste distribution (industry-standard verification UX per design ref
- * §2.9 wireframe).
+ * Preserved auth flow (per CLAUDE.md §4):
+ *   - authApi.register / authApi.verifyEmail / authApi.resendVerification
+ *   - ApiError.code → toast variant mapping
+ *   - 60s resend cooldown
+ *   - Password strength heuristic (passwordStrength)
+ *   - validateAccountInfo + EMAIL_PATTERN
  *
- * Step 3 first-KB selector disabled per Q7 default Tier 1 single-KB POC.
- *
- * W18 F7 (per ADR-0024): Step 3's CTA routes to `/dashboard` (the new post-login
- * home) instead of `/chat` — the verify-email auto-login (ADR-0022) means Step 3
- * lands authenticated, so /dashboard resolves inside <AppShell>. The register
- * page itself stays OUTSIDE `app/(app)/` (no app chrome — BrandPanel split layout).
- *
- * W20 F7.2 (2026-05-17 visual polish per `references/design-mockups/ekp-page-auth.jsx`
- * + CLAUDE.md §3.2.1 design fidelity, AskUserQuestion Option 2 picked):
- *   · Step 1 field order: Full name → Email → Password → Confirm password
- *   · Email + Password inline hint copy specificity (verification + scrypt
- *     mechanism + Beta cohort @ricoh.com restriction surface for awareness)
- *   · NEW Terms of Use + Privacy Policy checkbox (required to submit Step 1)
- *   · Step 3 KB selector migrated to shared <DisabledAffordance variant=
- *     "p3-preview" showBadge> (was inline cursor-not-allowed)
- * Step count + 6-digit verification + backend contract preserved
- * (mockup's 2-step email-link design conflicts with ADR-0014 + architecture.md
- * v6 §3.7 backend reality — backend wins per CLAUDE.md §4 authority ordering).
+ * Renders OUTSIDE `app/(app)/` — no AppShell.
  */
 
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Loader2,
-  MailCheck,
-  PartyPopper,
-} from 'lucide-react';
+import { ArrowLeft, Inbox, Loader2, PartyPopper, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -61,14 +50,9 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { BrandPanel } from '@/components/auth/brand-panel';
-import { Button } from '@/components/ui/button';
-import { DisabledAffordance } from '@/components/ui/disabled-affordance';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { AuthFrame } from '@/components/auth/auth-frame';
 import { ApiError } from '@/lib/api-client';
 import { AuthErrorCodes, authApi } from '@/lib/api/auth';
-import { cn } from '@/lib/utils';
 
 const RESEND_COOLDOWN_SEC = 60;
 const CODE_LENGTH = 6;
@@ -166,189 +150,38 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <BrandPanel />
-      <main className="flex flex-1 flex-col items-center justify-center bg-background px-6 py-12">
-        <div className="w-full max-w-md">
-          <Stepper current={step} />
-
-          <div className="mt-8">
-            {step === 1 && (
-              <Step1
-                info={info}
-                errors={errors}
-                isPending={isPending}
-                onChange={setInfo}
-                onSubmit={handleStep1Submit}
-              />
-            )}
-            {step === 2 && (
-              <Step2
-                email={info.email}
-                code={code}
-                isPending={isPending}
-                resendCooldown={resendCooldown}
-                onCodeChange={setCode}
-                onResend={handleResend}
-                onSubmit={handleStep2Submit}
-                onBack={() => setStep(1)}
-              />
-            )}
-            {step === 3 && (
-              <Step3
-                displayName={info.displayName}
-                onContinue={handleGoToDashboard}
-              />
-            )}
-          </div>
-
-          {step !== 3 && (
-            <p className="mt-6 text-center text-xs text-muted-foreground">
-              Already have an account?{' '}
-              <Link
-                href="/login"
-                className="text-foreground transition-colors hover:text-accent hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          )}
-        </div>
-      </main>
-    </div>
+    <AuthFrame>
+      {step === 1 && (
+        <Step1
+          info={info}
+          errors={errors}
+          isPending={isPending}
+          onChange={setInfo}
+          onSubmit={handleStep1Submit}
+        />
+      )}
+      {step === 2 && (
+        <Step2
+          email={info.email}
+          code={code}
+          isPending={isPending}
+          resendCooldown={resendCooldown}
+          onCodeChange={setCode}
+          onResend={handleResend}
+          onSubmit={handleStep2Submit}
+          onBack={() => setStep(1)}
+        />
+      )}
+      {step === 3 && (
+        <Step3 displayName={info.displayName} onContinue={handleGoToDashboard} />
+      )}
+    </AuthFrame>
   );
 }
 
-function validateAccountInfo(info: AccountInfo): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (!info.displayName.trim()) errors.displayName = 'Required.';
-
-  if (!info.email) errors.email = 'Required.';
-  else if (!EMAIL_PATTERN.test(info.email))
-    errors.email = 'Invalid email format.';
-
-  if (!info.password) errors.password = 'Required.';
-  else if (info.password.length < 8) errors.password = 'Min 8 characters.';
-  else if (!/[A-Z]/.test(info.password))
-    errors.password = 'Must include an uppercase letter.';
-  else if (!/[\d!@#$%^&*]/.test(info.password))
-    errors.password = 'Must include a digit or symbol.';
-
-  if (!info.confirmPassword) errors.confirmPassword = 'Required.';
-  else if (info.confirmPassword !== info.password)
-    errors.confirmPassword = 'Passwords do not match.';
-
-  if (!info.acceptedTerms)
-    errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';
-
-  return errors;
-}
-
-function passwordStrength(password: string): { label: string; score: number } {
-  let score = 0;
-  if (password.length >= 8) score += 1;
-  if (password.length >= 12) score += 1;
-  if (/[A-Z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[!@#$%^&*]/.test(password)) score += 1;
-
-  const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong', 'Very strong'];
-  return { label: labels[Math.min(score, labels.length - 1)] ?? 'Strong', score };
-}
-
-function handleRegisterError(err: unknown): void {
-  if (err instanceof ApiError) {
-    if (err.code === AuthErrorCodes.EMAIL_ALREADY_EXISTS) {
-      toast.error('An account with that email already exists.', {
-        description: err.actionableHint ?? 'Sign in instead, or use a different email.',
-      });
-    } else if (err.code === AuthErrorCodes.INVALID_EMAIL) {
-      toast.error('Email format is invalid.');
-    } else if (err.code === AuthErrorCodes.WEAK_PASSWORD) {
-      toast.error(err.message);
-    } else {
-      toast.error(err.message, { description: err.actionableHint ?? undefined });
-    }
-    return;
-  }
-  toast.error('Registration failed.', {
-    description: err instanceof Error ? err.message : String(err),
-  });
-}
-
-function handleVerifyError(err: unknown): void {
-  if (err instanceof ApiError) {
-    if (err.code === AuthErrorCodes.VERIFICATION_EXPIRED) {
-      toast.error('Verification code has expired.', {
-        description: err.actionableHint ?? 'Request a new code via Resend.',
-      });
-    } else if (err.code === AuthErrorCodes.VERIFICATION_FAILED) {
-      toast.error('Verification code is incorrect.');
-    } else {
-      toast.error(err.message);
-    }
-    return;
-  }
-  toast.error('Verification failed.', {
-    description: err instanceof Error ? err.message : String(err),
-  });
-}
-
-function handleResendError(err: unknown): void {
-  if (err instanceof ApiError && err.code === AuthErrorCodes.RESEND_RATE_LIMITED) {
-    toast.error('Resend rate limit hit.', {
-      description: err.actionableHint ?? 'Wait a bit before trying again.',
-    });
-    return;
-  }
-  toast.error('Resend failed.', {
-    description: err instanceof Error ? err.message : String(err),
-  });
-}
-
-function Stepper({ current }: { current: Step }) {
-  const steps = [
-    { id: 1, label: 'Account info' },
-    { id: 2, label: 'Email verify' },
-    { id: 3, label: 'Welcome' },
-  ] as const;
-
-  return (
-    <ol className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide">
-      {steps.map((s, idx) => {
-        const isActive = s.id === current;
-        const isDone = s.id < current;
-        return (
-          <li key={s.id} className="flex flex-1 items-center gap-2">
-            <span
-              className={cn(
-                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px]',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : isDone
-                    ? 'bg-success text-success-foreground'
-                    : 'border border-border text-muted-foreground',
-              )}
-            >
-              {isDone ? '✓' : s.id}
-            </span>
-            <span
-              className={cn(
-                'hidden sm:inline',
-                isActive ? 'text-foreground' : 'text-muted-foreground',
-              )}
-            >
-              {s.label}
-            </span>
-            {idx < steps.length - 1 && (
-              <span className="ml-2 flex-1 border-t border-dashed border-border" />
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+// ──────────────────────────────────────────────────────────────────────────
+// Step 1 — Account info (direct-copy mockup PageRegister lines 133-174)
+// ──────────────────────────────────────────────────────────────────────────
 
 function Step1({
   info,
@@ -363,26 +196,50 @@ function Step1({
   onChange: (next: AccountInfo) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 }) {
-  const strength = passwordStrength(info.password);
-  const showStrength = info.password.length > 0;
   const isFormValid = Object.keys(errors).length === 0;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Step 1 of 3 — set up your credentials.
+    <form onSubmit={onSubmit}>
+      {/* Heading — mockup lines 135-140 */}
+      <div style={{ marginBottom: 18 }}>
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: 600,
+            letterSpacing: '-0.02em',
+            margin: 0,
+            marginBottom: 6,
+          }}
+        >
+          Create your account
+        </h1>
+        <p
+          style={{
+            fontSize: 14,
+            color: 'oklch(var(--muted-foreground))',
+            margin: 0,
+          }}
+        >
+          Self-register with email · SSO via{' '}
+          <Link
+            href="/login"
+            style={{ color: 'oklch(var(--foreground))', fontWeight: 500, textDecoration: 'none' }}
+          >
+            Sign in
+          </Link>{' '}
+          if you have Entra ID.
         </p>
-      </header>
+      </div>
 
-      <Field
-        label="Full name"
-        htmlFor="reg-display-name"
-        error={errors.displayName}
-      >
-        <Input
+      {/* Full name — mockup lines 142-145 */}
+      <div className="field">
+        <label className="label" htmlFor="reg-display-name">
+          Full name
+        </label>
+        <input
           id="reg-display-name"
+          className="input"
+          type="text"
           autoComplete="name"
           placeholder="Chris Lai"
           value={info.displayName}
@@ -390,11 +247,25 @@ function Step1({
           disabled={isPending}
           required
         />
-      </Field>
+        {errors.displayName && (
+          <div
+            className="hint"
+            style={{ color: 'oklch(var(--destructive))' }}
+            role="alert"
+          >
+            {errors.displayName}
+          </div>
+        )}
+      </div>
 
-      <Field label="Work email" htmlFor="reg-email" error={errors.email}>
-        <Input
+      {/* Email — mockup lines 147-151 */}
+      <div className="field">
+        <label className="label" htmlFor="reg-email">
+          Work email
+        </label>
+        <input
           id="reg-email"
+          className="input"
           type="email"
           autoComplete="email"
           placeholder="you@ricoh.com"
@@ -403,52 +274,59 @@ function Step1({
           disabled={isPending}
           required
         />
-        <p className="mt-1 text-xs text-muted-foreground">
+        <div className="hint">
           We&apos;ll send a 6-digit verification code · Beta cohort restricted to{' '}
-          <span className="font-mono">@ricoh.com</span>
-        </p>
-      </Field>
+          <span className="mono">@ricoh.com</span>
+        </div>
+        {errors.email && (
+          <div
+            className="hint"
+            style={{ color: 'oklch(var(--destructive))' }}
+            role="alert"
+          >
+            {errors.email}
+          </div>
+        )}
+      </div>
 
-      <Field label="Password" htmlFor="reg-password" error={errors.password}>
-        <Input
+      {/* Password — mockup lines 153-157 */}
+      <div className="field">
+        <label className="label" htmlFor="reg-password">
+          Password
+        </label>
+        <input
           id="reg-password"
+          className="input"
           type="password"
           autoComplete="new-password"
+          placeholder="At least 8 characters"
           value={info.password}
           onChange={(e) => onChange({ ...info, password: e.target.value })}
           disabled={isPending}
           required
         />
-        <p className="mt-1 text-xs text-muted-foreground">
+        <div className="hint">
           Scrypt-hashed via ADR-0022 · 8+ chars, 1 uppercase, 1 digit or symbol
-        </p>
-        {showStrength && (
-          <div className="mt-2 space-y-1">
-            <div className="flex h-1 gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    'flex-1 rounded-full',
-                    i < strength.score ? 'bg-accent' : 'bg-muted',
-                  )}
-                />
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Strength: <span className="text-foreground">{strength.label}</span>
-            </p>
+        </div>
+        {errors.password && (
+          <div
+            className="hint"
+            style={{ color: 'oklch(var(--destructive))' }}
+            role="alert"
+          >
+            {errors.password}
           </div>
         )}
-      </Field>
+      </div>
 
-      <Field
-        label="Confirm password"
-        htmlFor="reg-confirm-password"
-        error={errors.confirmPassword}
-      >
-        <Input
+      {/* Confirm password — preserved per W20 F7.2 */}
+      <div className="field">
+        <label className="label" htmlFor="reg-confirm-password">
+          Confirm password
+        </label>
+        <input
           id="reg-confirm-password"
+          className="input"
           type="password"
           autoComplete="new-password"
           value={info.confirmPassword}
@@ -458,63 +336,121 @@ function Step1({
           disabled={isPending}
           required
         />
-      </Field>
-
-      <div className="space-y-1">
-        <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={info.acceptedTerms}
-            onChange={(e) =>
-              onChange({ ...info, acceptedTerms: e.target.checked })
-            }
-            disabled={isPending}
-            className="mt-0.5 h-4 w-4 cursor-pointer accent-accent"
-            aria-describedby="terms-description"
-          />
-          <span id="terms-description">
-            I agree to the{' '}
-            <a
-              href="#"
-              className="text-accent hover:underline"
-              onClick={(e) => e.preventDefault()}
-            >
-              Terms of Use
-            </a>{' '}
-            and{' '}
-            <a
-              href="#"
-              className="text-accent hover:underline"
-              onClick={(e) => e.preventDefault()}
-            >
-              Privacy Policy
-            </a>{' '}
-            · I understand my queries are logged for evaluation (Langfuse) and
-            visible only to me.
-          </span>
-        </label>
-        {errors.acceptedTerms && (
-          <p className="text-xs text-destructive">{errors.acceptedTerms}</p>
+        {errors.confirmPassword && (
+          <div
+            className="hint"
+            style={{ color: 'oklch(var(--destructive))' }}
+            role="alert"
+          >
+            {errors.confirmPassword}
+          </div>
         )}
       </div>
 
-      <Button
+      {/* Terms checkbox — mockup lines 159-164 */}
+      <div
+        className="row"
+        style={{ marginBottom: 16, alignItems: 'flex-start', gap: 8, display: 'flex' }}
+      >
+        <input
+          type="checkbox"
+          checked={info.acceptedTerms}
+          onChange={(e) =>
+            onChange({ ...info, acceptedTerms: e.target.checked })
+          }
+          disabled={isPending}
+          style={{ marginTop: 3 }}
+          aria-describedby="terms-description"
+        />
+        <span
+          id="terms-description"
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.5,
+            color: 'oklch(var(--muted-foreground))',
+          }}
+        >
+          I agree to the{' '}
+          <a
+            href="#"
+            style={{ color: 'oklch(var(--accent))' }}
+            onClick={(e) => e.preventDefault()}
+          >
+            Terms of Use
+          </a>{' '}
+          and{' '}
+          <a
+            href="#"
+            style={{ color: 'oklch(var(--accent))' }}
+            onClick={(e) => e.preventDefault()}
+          >
+            Privacy Policy
+          </a>{' '}
+          · I understand my queries are logged for evaluation (Langfuse) and
+          visible only to me.
+        </span>
+      </div>
+      {errors.acceptedTerms && (
+        <div
+          className="hint"
+          style={{
+            color: 'oklch(var(--destructive))',
+            marginTop: -10,
+            marginBottom: 12,
+          }}
+          role="alert"
+        >
+          {errors.acceptedTerms}
+        </div>
+      )}
+
+      {/* Submit — mockup lines 166-168 */}
+      <button
         type="submit"
-        className="w-full"
+        className="btn btn-accent btn-lg"
+        style={{ width: '100%', justifyContent: 'center' }}
         disabled={!isFormValid || isPending}
       >
         {isPending ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="animate-spin" size={14} />
             Creating account…
           </>
         ) : (
-          <>Continue →</>
+          'Create account →'
         )}
-      </Button>
+      </button>
+
+      {/* Sign-in link — mockup lines 170-172 */}
+      <div
+        style={{
+          textAlign: 'center',
+          marginTop: 18,
+          fontSize: 13,
+          color: 'oklch(var(--muted-foreground))',
+        }}
+      >
+        Already have an account?{' '}
+        <Link
+          href="/login"
+          style={{
+            color: 'oklch(var(--accent))',
+            fontWeight: 500,
+            textDecoration: 'none',
+          }}
+        >
+          Sign in
+        </Link>
+      </div>
     </form>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Step 2 — Email verify (6-digit code, backend wins per CLAUDE.md §13)
+// Mockup visual treatment lifted from `ekp-page-auth.jsx:72-130`; the
+// "click the link" copy is REPLACED by the 6-digit code form.
+// ──────────────────────────────────────────────────────────────────────────
 
 function Step2({
   email,
@@ -579,29 +515,74 @@ function Step2({
   const isCodeComplete = code.every((c) => c.length === 1);
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <header className="flex flex-col items-center text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
-          <MailCheck className="h-6 w-6" />
-        </span>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+    <form onSubmit={onSubmit}>
+      {/* Centred icon + heading — mockup lines 75-91 */}
+      <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'oklch(var(--accent) / 0.12)',
+            color: 'oklch(var(--accent))',
+            display: 'grid',
+            placeItems: 'center',
+            margin: '0 auto 16px',
+          }}
+        >
+          <Inbox size={26} />
+        </div>
+        <h1
+          style={{
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: '-0.018em',
+            margin: 0,
+            marginBottom: 8,
+          }}
+        >
           Check your inbox
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p
+          style={{
+            fontSize: 14,
+            color: 'oklch(var(--muted-foreground))',
+            lineHeight: 1.55,
+            margin: 0,
+            maxWidth: 320,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        >
           We sent a 6-digit code to{' '}
-          <span className="font-medium text-foreground">{email}</span>
+          <b style={{ color: 'oklch(var(--foreground))' }}>{email}</b>. Enter
+          it below to activate your account.
         </p>
-      </header>
+      </div>
 
-      <div className="space-y-2">
-        <Label className="block text-center">Verification code</Label>
-        <div className="flex justify-center gap-2">
+      {/* 6-digit code input — EKP backend wins (replaces mockup's "click the link" copy) */}
+      <div className="field" style={{ alignItems: 'center' }}>
+        <label
+          className="label"
+          style={{ textAlign: 'center', width: '100%' }}
+        >
+          Verification code
+        </label>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 4,
+          }}
+        >
           {code.map((digit, idx) => (
-            <Input
+            <input
               key={idx}
               ref={(el) => {
                 inputsRef.current[idx] = el;
               }}
+              className="input"
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -612,52 +593,128 @@ function Step2({
               onPaste={idx === 0 ? handlePaste : undefined}
               disabled={isPending}
               aria-label={`Digit ${idx + 1}`}
-              className="h-12 w-10 text-center font-mono text-lg"
+              style={{
+                width: 44,
+                height: 48,
+                textAlign: 'center',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 18,
+                padding: 0,
+              }}
             />
           ))}
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <button
-          type="button"
-          onClick={onResend}
-          disabled={resendCooldown > 0 || isPending}
-          className="text-foreground transition-colors hover:text-accent disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+      {/* What happens next mono block — mockup lines 93-108, adapted for 6-digit flow */}
+      <div
+        style={{
+          padding: '12px 14px',
+          background: 'oklch(var(--muted) / 0.4)',
+          border: '1px solid oklch(var(--border))',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: 16,
+        }}
+      >
+        <div
+          className="text-xs muted mono"
+          style={{
+            marginBottom: 4,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
         >
-          {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend code'}
-        </button>
-        <span>Didn&apos;t receive it? Check spam folder.</span>
+          What happens next
+        </div>
+        <ol
+          style={{
+            margin: 0,
+            paddingLeft: 18,
+            fontSize: 12.5,
+            lineHeight: 1.7,
+            color: 'oklch(var(--foreground))',
+          }}
+        >
+          <li>Enter the 6-digit code (expires in 24h)</li>
+          <li>
+            You&apos;ll be auto-signed in and routed to{' '}
+            <span className="mono">/dashboard</span>
+          </li>
+          <li>
+            Your workspace is <b>Ricoh · RAPO</b> (Beta cohort)
+          </li>
+        </ol>
       </div>
 
-      <Button
+      {/* Verify submit */}
+      <button
         type="submit"
-        className="w-full"
+        className="btn btn-accent btn-lg"
+        style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }}
         disabled={!isCodeComplete || isPending}
       >
         {isPending ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="animate-spin" size={14} />
             Verifying…
           </>
         ) : (
-          <>Verify email →</>
+          'Verify email →'
         )}
-      </Button>
+      </button>
 
-      <Button
+      {/* Resend — mockup lines 110-112 */}
+      <button
         type="button"
-        variant="ghost"
+        className="btn btn-secondary"
+        style={{ width: '100%', justifyContent: 'center', marginBottom: 8, gap: 6 }}
+        onClick={onResend}
+        disabled={resendCooldown > 0 || isPending}
+      >
+        <RefreshCw size={13} />
+        {resendCooldown > 0
+          ? `Resend in ${resendCooldown}s`
+          : 'Resend verification code'}
+      </button>
+
+      {/* Back — mockup lines 113-115 */}
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        style={{ width: '100%', justifyContent: 'center', gap: 6 }}
         onClick={onBack}
         disabled={isPending}
-        className="w-full"
       >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to step 1
-      </Button>
+        <ArrowLeft size={13} /> Change email
+      </button>
+
+      {/* ACS footer block — mockup lines 117-128 */}
+      <div
+        style={{
+          marginTop: 18,
+          padding: '10px 12px',
+          border: '1px dashed oklch(var(--border-strong))',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: 11,
+          color: 'oklch(var(--muted-foreground))',
+          lineHeight: 1.55,
+          fontFamily: 'var(--font-mono)',
+        }}
+      >
+        Powered by{' '}
+        <b style={{ color: 'oklch(var(--foreground))' }}>
+          Azure Communication Services
+        </b>{' '}
+        (C13 Email Verification Service · architecture.md v6 §3.7). Dev mode
+        falls back to <span className="mono">ConsoleEmailProvider</span>.
+      </div>
     </form>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Step 3 — Welcome (post-verify success;preserved W20 pattern)
+// ──────────────────────────────────────────────────────────────────────────
 
 function Step3({
   displayName,
@@ -667,60 +724,189 @@ function Step3({
   onContinue: () => void;
 }) {
   return (
-    <div className="space-y-6 text-center">
-      <header className="flex flex-col items-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
-          <PartyPopper className="h-7 w-7" />
-        </span>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+    <div>
+      <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'oklch(var(--success) / 0.15)',
+            color: 'oklch(var(--success))',
+            display: 'grid',
+            placeItems: 'center',
+            margin: '0 auto 16px',
+          }}
+        >
+          <PartyPopper size={26} />
+        </div>
+        <h1
+          style={{
+            fontSize: 22,
+            fontWeight: 600,
+            letterSpacing: '-0.018em',
+            margin: 0,
+            marginBottom: 8,
+          }}
+        >
           Welcome, {displayName || 'friend'}!
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your account is ready. Head to your dashboard to get started.
-        </p>
-      </header>
-
-      <div className="rounded-md border border-dashed border-border bg-muted/30 p-4 text-left">
-        <Label className="text-muted-foreground">Default knowledge base</Label>
-        <DisabledAffordance
-          variant="p3-preview"
-          reason="Multi-KB selector — Tier 1 ships with a single shared KB per Q7 default"
-          tier2Trigger="multi-KB / multi-workspace"
-          className="mt-2 block w-full"
+        <p
+          style={{
+            fontSize: 14,
+            color: 'oklch(var(--muted-foreground))',
+            lineHeight: 1.55,
+            margin: 0,
+            maxWidth: 320,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
         >
-          <div className="flex w-full items-center justify-between rounded-sm border border-border bg-muted/40 px-3 py-2 text-sm">
-            <span className="font-mono">drive_user_manuals</span>
-            <CheckCircle2 className="h-4 w-4 text-success" />
-          </div>
-        </DisabledAffordance>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Multi-KB selection arrives later — Tier 1 ships with a single shared KB.
+          Your account is ready. Head to your dashboard to get started.
         </p>
       </div>
 
-      <Button onClick={onContinue} size="lg" className="w-full">
+      <div
+        style={{
+          padding: '12px 14px',
+          background: 'oklch(var(--muted) / 0.4)',
+          border: '1px solid oklch(var(--border))',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: 16,
+        }}
+      >
+        <div
+          className="text-xs muted mono"
+          style={{
+            marginBottom: 6,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Default knowledge base
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 10px',
+            background: 'oklch(var(--muted))',
+            borderRadius: 'var(--radius-sm)',
+            opacity: 0.7,
+            cursor: 'default',
+          }}
+          aria-disabled="true"
+          title="Multi-KB selector — Tier 1 ships with a single shared KB per Q7 default"
+        >
+          <span className="mono" style={{ fontSize: 13 }}>
+            drive_user_manuals
+          </span>
+          <span
+            className="badge badge-muted"
+            style={{ fontSize: 9.5 }}
+          >
+            Tier 2
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: 11.5,
+            color: 'oklch(var(--muted-foreground))',
+            marginTop: 8,
+          }}
+        >
+          Multi-KB selection arrives later — Tier 1 ships with a single shared KB.
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="btn btn-accent btn-lg"
+        style={{ width: '100%', justifyContent: 'center' }}
+        onClick={onContinue}
+      >
         Go to your dashboard →
-      </Button>
+      </button>
     </div>
   );
 }
 
-function Field({
-  label,
-  htmlFor,
-  error,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  );
+// ──────────────────────────────────────────────────────────────────────────
+// Validation + error handling (preserved from W20 F7.2)
+// ──────────────────────────────────────────────────────────────────────────
+
+function validateAccountInfo(info: AccountInfo): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (!info.displayName.trim()) errors.displayName = 'Required.';
+
+  if (!info.email) errors.email = 'Required.';
+  else if (!EMAIL_PATTERN.test(info.email))
+    errors.email = 'Invalid email format.';
+
+  if (!info.password) errors.password = 'Required.';
+  else if (info.password.length < 8) errors.password = 'Min 8 characters.';
+  else if (!/[A-Z]/.test(info.password))
+    errors.password = 'Must include an uppercase letter.';
+  else if (!/[\d!@#$%^&*]/.test(info.password))
+    errors.password = 'Must include a digit or symbol.';
+
+  if (!info.confirmPassword) errors.confirmPassword = 'Required.';
+  else if (info.confirmPassword !== info.password)
+    errors.confirmPassword = 'Passwords do not match.';
+
+  if (!info.acceptedTerms)
+    errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';
+
+  return errors;
+}
+
+function handleRegisterError(err: unknown): void {
+  if (err instanceof ApiError) {
+    if (err.code === AuthErrorCodes.EMAIL_ALREADY_EXISTS) {
+      toast.error('An account with that email already exists.', {
+        description: err.actionableHint ?? 'Sign in instead, or use a different email.',
+      });
+    } else if (err.code === AuthErrorCodes.INVALID_EMAIL) {
+      toast.error('Email format is invalid.');
+    } else if (err.code === AuthErrorCodes.WEAK_PASSWORD) {
+      toast.error(err.message);
+    } else {
+      toast.error(err.message, { description: err.actionableHint ?? undefined });
+    }
+    return;
+  }
+  toast.error('Registration failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
+}
+
+function handleVerifyError(err: unknown): void {
+  if (err instanceof ApiError) {
+    if (err.code === AuthErrorCodes.VERIFICATION_EXPIRED) {
+      toast.error('Verification code has expired.', {
+        description: err.actionableHint ?? 'Request a new code via Resend.',
+      });
+    } else if (err.code === AuthErrorCodes.VERIFICATION_FAILED) {
+      toast.error('Verification code is incorrect.');
+    } else {
+      toast.error(err.message);
+    }
+    return;
+  }
+  toast.error('Verification failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
+}
+
+function handleResendError(err: unknown): void {
+  if (err instanceof ApiError && err.code === AuthErrorCodes.RESEND_RATE_LIMITED) {
+    toast.error('Resend rate limit hit.', {
+      description: err.actionableHint ?? 'Wait a bit before trying again.',
+    });
+    return;
+  }
+  toast.error('Resend failed.', {
+    description: err instanceof Error ? err.message : String(err),
+  });
 }
