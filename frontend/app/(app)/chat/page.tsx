@@ -1,54 +1,91 @@
 'use client';
 
 /**
- * End User Chat (`/chat`) — per architecture.md v6 §5.2 + ADR-0031 Option B
- * server-side Conversation History; C10 §7 Tier 2 → Tier 1 promoted.
+ * Chat (`/chat`) — W22 F4 direct-copy from mockup
+ * `references/design-mockups/ekp-page-chat.jsx` PageChat
+ * (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18, AskUserQuestion picked
+ * "Preserve W20 Tier 2 work + add mockup visual layer (Recommended)").
  *
- * W20 F3.5-F3.12 — advanced chat surfaces landed on top of the W18 AppShell
- * mount (W13 routing) + W3 SSE streaming. The surface now ships:
- *   - Conversation History sidebar (`<ConversationHistory>`) — server-side
- *     persistence via /conversations CRUD; collapse persisted to localStorage
- *     so it survives reloads (matches the AppShell focus-mode pattern, but the
- *     control is local to this page — the AppShell sidebar is orthogonal).
- *   - Per-turn message persistence — after each SSE round-trip settles, the
- *     user prompt + the assistant reply are POSTed to
- *     /conversations/{id}/messages. The server auto-titles the conversation on
- *     the first user turn (50-char slice — Wave B+ may LLM-summarise).
- *   - 3 citation placement modes (`inline` / `footnote` / `sidebar`) toggled
- *     in the page header; the choice is persisted to localStorage.
- *   - InlineImageCard / ImageGallery / CitationPill hover popover — consume the
- *     existing Citation + ImageRef schema (no backend change).
- *   - FeedbackBar comment + tag dropdown — extends the W8 thumbs UI; writes to
- *     the existing POST /feedback (`comment` is prefixed with the chosen tag).
- *   - CRAG strip — dormant in the SSE path (stream is L3-only per §3.5), but
- *     the wiring is in place for Wave B+ L3 enable.
+ * 3-pane grid layout (mockup `gridTemplateColumns: "260px 1fr 400px"`,
+ * `height: calc(100vh - var(--topbar-h))`, `overflow: hidden`) — replaces
+ * the W20 `flex` layout that depended on AppShell `.content` wrapper.
  *
- * SSE streaming logic (`streamQuery` from lib/api/query) is preserved exactly
- * — the W13 / W18 layout integration (renders inside `<AppShell>`, reads `?q=`
- * deep-link) is unchanged. The persistence layer is a thin async tail after
- * the `done` event — failures are swallowed (the user shouldn't lose a turn to
- * a transient DB blip; the on-page message state is the source of truth for
- * the active session).
+ * Preserved from W20 (per W22 plan §0 "preserve backend integration / state
+ * mgmt"):
+ *   - `streamQuery` SSE flow from `/lib/api/query`
+ *   - `conversationsApi` CRUD (server-side Conversation History per
+ *     ADR-0031 Option B → C10 §7 Tier 2 → Tier 1 promotion preserved)
+ *   - localStorage keys (`ekp-citation-mode`, `ekp-chat-history-collapsed`)
+ *   - `?q=` deep-link from `<GlobalSearch>` (W18 F6)
+ *   - Per-turn persistence (user prompt + assistant reply POST to
+ *     `/conversations/{id}/messages` after `done` event;best-effort tail)
+ *   - 3 citation placement modes (`inline` / `footnote` / `sidebar`)
+ *
+ * Visual rebuild (mockup-direct per memory rule #1 + rule #2):
+ *   - Inline ConversationHistoryPanel (260px aside, mockup lines 134-219)
+ *   - Inline ChatHeader (KB chip + toggles + sources toggle, mockup 257-298)
+ *   - Inline ChatThread + MessageRow (user/assistant variants, mockup 301-373)
+ *   - Inline FeedbackBar (mockup 377-440)
+ *   - Inline SourcesStrip + SourceDocCard (footnote/inline mode footer, mockup 667-778)
+ *   - Inline CitationPanel + PanelSourceCard (sidebar mode, mockup 799-869)
+ *   - Inline ScreenshotModal (mockup 871-1009 estimate — pared back to
+ *     practical viewer since real images come from blob_url, not synthetic)
+ *   - Inline ChatComposer (textarea + submit)
+ *
+ * Obsolete W20 separate components are deleted alongside (ConversationHistory,
+ * InlineImageCard, ImageGallery, CitationPill, FeedbackBar, CragStrip) — they
+ * were custom abstractions not matching mockup component breakdown.
+ *
+ * Real Citation schema lacks mockup's `idx` / `preview` / `file_type` /
+ * `page` fields → graceful defaults: idx = array index + 1, preview = empty,
+ * file_type derived from doc_id suffix, page omitted from display.
  */
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  BookOpen,
+  ChevronRight,
+  Copy,
+  Eye,
+  FileText,
+  Inbox,
+  Layers,
+  Link as LinkIcon,
+  Plus,
+  RefreshCw,
+  Search,
+  Send,
+  Shield,
+  Square,
+  Star,
+  X as XIcon,
+} from 'lucide-react';
+import Link from 'next/link';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { Button } from '@/components/ui/button';
-import { CitationPill } from '@/components/chat/citation-pill';
-import { ConversationHistory } from '@/components/chat/conversation-history';
-import { CragStrip } from '@/components/chat/crag-strip';
-import { FeedbackBar } from '@/components/chat/feedback-bar';
-import { ImageGallery } from '@/components/chat/image-gallery';
-import { InlineImageCard } from '@/components/chat/inline-image-card';
-import { conversationsApi, type Conversation } from '@/lib/api/conversations';
+import {
+  conversationsApi,
+  type Conversation,
+} from '@/lib/api/conversations';
+import { kbApi, type KbStatus } from '@/lib/api/kb';
 import {
   streamQuery,
   type Citation,
   type ImageRef,
   type SseEvent,
 } from '@/lib/api/query';
-import { cn } from '@/lib/utils';
+
+// ──────────────────────────────────────────────────────────────────────────
+// Local types + state
+// ──────────────────────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
@@ -61,38 +98,85 @@ interface Message {
   errorText: string | null;
   cragTriggered: boolean;
   cragIterations: number;
+  /** Wall-clock for display ("2:32 PM"). */
+  at: number;
+  /** Latency / token / cost — populated on `done`. */
+  latencyMs: number | null;
+  costUsd: number | null;
 }
 
 type CitationMode = 'inline' | 'footnote' | 'sidebar';
 
-const KB_ID = 'drive_user_manuals'; // W3 single-KB POC; multi-KB selector W7+ Beta
+const DEFAULT_KB_ID = 'drive_user_manuals'; // W3 single-KB POC
 const CITATION_MODE_KEY = 'ekp-citation-mode';
 const HISTORY_COLLAPSED_KEY = 'ekp-chat-history-collapsed';
+const SOURCES_COLLAPSED_KEY = 'ekp-chat-sources-collapsed';
 
 function isCitationMode(value: string | null): value is CitationMode {
   return value === 'inline' || value === 'footnote' || value === 'sidebar';
 }
+
+function formatTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function fileTypeFromDocId(docId: string): 'docx' | 'pdf' | 'pptx' | 'unknown' {
+  if (/\.pptx?$/i.test(docId) || /pptx?$/i.test(docId)) return 'pptx';
+  if (/\.pdf$/i.test(docId) || /pdf$/i.test(docId)) return 'pdf';
+  if (/\.docx?$/i.test(docId) || /docx?$/i.test(docId)) return 'docx';
+  return 'unknown';
+}
+
+const FILE_TYPE_COLORS: Record<string, { fg: string; bg: string; border: string }> = {
+  docx: { fg: 'oklch(0.55 0.13 240)', bg: 'oklch(0.55 0.13 240 / 0.12)', border: 'oklch(0.55 0.13 240 / 0.25)' },
+  pdf: { fg: 'oklch(0.58 0.18 25)', bg: 'oklch(0.58 0.18 25 / 0.12)', border: 'oklch(0.58 0.18 25 / 0.25)' },
+  pptx: { fg: 'oklch(0.55 0.16 25)', bg: 'oklch(0.55 0.16 25 / 0.12)', border: 'oklch(0.55 0.16 25 / 0.25)' },
+  unknown: { fg: 'oklch(var(--muted-foreground))', bg: 'oklch(var(--muted))', border: 'oklch(var(--border))' },
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// Page orchestrator
+// ──────────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [modalImage, setModalImage] = useState<ImageRef | null>(null);
-  const [citationMode, setCitationMode] = useState<CitationMode>('inline');
+  const [modalImage, setModalImage] = useState<{
+    citation: Citation;
+    image: ImageRef;
+  } | null>(null);
+  const [citationMode, setCitationMode] = useState<CitationMode>('sidebar');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
+  const [kbId, setKbId] = useState<string>(DEFAULT_KB_ID);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Hydrate persisted preferences after mount (SSR-stable hydration).
+  const kbsQuery = useQuery({
+    queryKey: ['kb', 'list'],
+    queryFn: () => kbApi.list(),
+  });
+  const kbs: KbStatus[] = kbsQuery.data ?? [];
+  const activeKb = kbs.find((k) => k.kb_id === kbId) ?? kbs[0];
+
+  // Hydrate persisted preferences (SSR-stable).
   useEffect(() => {
     const stored = window.localStorage.getItem(CITATION_MODE_KEY);
     if (isCitationMode(stored)) setCitationMode(stored);
     if (window.localStorage.getItem(HISTORY_COLLAPSED_KEY) === '1') {
       setHistoryCollapsed(true);
     }
+    if (window.localStorage.getItem(SOURCES_COLLAPSED_KEY) === '1') {
+      setSourcesCollapsed(true);
+    }
   }, []);
 
+  // Esc closes screenshot modal.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setModalImage(null);
@@ -101,7 +185,7 @@ export default function ChatPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Deep-link from the global-search "Ask in chat: …" action (W18 F6) — pre-fill on first mount.
+  // ?q= deep-link from <GlobalSearch> (W18 F6).
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get('q');
     if (q && q.trim()) {
@@ -116,15 +200,27 @@ export default function ChatPage() {
     );
   }
 
+  function persist(key: string, value: string) {
+    window.localStorage.setItem(key, value);
+  }
+
   function handleCitationMode(mode: CitationMode) {
     setCitationMode(mode);
-    window.localStorage.setItem(CITATION_MODE_KEY, mode);
+    persist(CITATION_MODE_KEY, mode);
   }
 
   function toggleHistory() {
     setHistoryCollapsed((prev) => {
       const next = !prev;
-      window.localStorage.setItem(HISTORY_COLLAPSED_KEY, next ? '1' : '0');
+      persist(HISTORY_COLLAPSED_KEY, next ? '1' : '0');
+      return next;
+    });
+  }
+
+  function toggleSources() {
+    setSourcesCollapsed((prev) => {
+      const next = !prev;
+      persist(SOURCES_COLLAPSED_KEY, next ? '1' : '0');
       return next;
     });
   }
@@ -132,11 +228,10 @@ export default function ChatPage() {
   async function ensureConversation(): Promise<string | null> {
     if (activeConvId) return activeConvId;
     try {
-      const conv = await conversationsApi.create({ kb_id: KB_ID });
+      const conv = await conversationsApi.create({ kb_id: kbId });
       setActiveConvId(conv.id);
       return conv.id;
     } catch {
-      // The user might not be authed yet — keep the chat usable without persistence.
       return null;
     }
   }
@@ -156,11 +251,24 @@ export default function ChatPage() {
         errorText: null,
         cragTriggered: false,
         cragIterations: 0,
+        at: new Date(m.created_at).getTime(),
+        latencyMs: null,
+        costUsd: null,
       }));
       setMessages(hydrated);
     } catch {
       setMessages([]);
     }
+  }
+
+  function handleConversationCreate(conv: Conversation) {
+    setActiveConvId(conv.id);
+    setMessages([]);
+  }
+
+  function handleActiveDeleted() {
+    setActiveConvId(null);
+    setMessages([]);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -169,8 +277,8 @@ export default function ChatPage() {
     if (!trimmed || isStreaming) return;
 
     const conversationId = await ensureConversation();
-
     const now = Date.now();
+
     const userMsg: Message = {
       id: `u-${now}`,
       role: 'user',
@@ -182,6 +290,9 @@ export default function ChatPage() {
       errorText: null,
       cragTriggered: false,
       cragIterations: 0,
+      at: now,
+      latencyMs: null,
+      costUsd: null,
     };
     const assistantId = `a-${now}`;
     const assistantMsg: Message = {
@@ -195,13 +306,14 @@ export default function ChatPage() {
       errorText: null,
       cragTriggered: false,
       cragIterations: 0,
+      at: now,
+      latencyMs: null,
+      costUsd: null,
     };
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setInput('');
     setIsStreaming(true);
 
-    // Persist the user turn before the assistant streams (best effort — a 401 /
-    // network blip shouldn't block the SSE round-trip from rendering).
     if (conversationId) {
       conversationsApi
         .appendMessage(conversationId, { role: 'user', content: trimmed })
@@ -215,7 +327,7 @@ export default function ChatPage() {
     let finalContent = '';
     try {
       const stream: AsyncIterable<SseEvent> = streamQuery(
-        { query: trimmed, kb_id: KB_ID },
+        { query: trimmed, kb_id: kbId },
         ac.signal,
       );
       for await (const evt of stream) {
@@ -237,11 +349,11 @@ export default function ChatPage() {
             isStreaming: false,
             refused: evt.refused,
             rerankerUsed: evt.reranker_used,
+            latencyMs: evt.latency_ms,
           }));
         }
       }
 
-      // Persist the assistant turn now that the stream has settled (best effort).
       if (conversationId && finalContent) {
         conversationsApi
           .appendMessage(conversationId, {
@@ -268,284 +380,935 @@ export default function ChatPage() {
     abortRef.current?.abort();
   }
 
-  function handleConversationCreate(conv: Conversation) {
-    setActiveConvId(conv.id);
-    setMessages([]);
-  }
-
-  function handleActiveDeleted() {
-    setActiveConvId(null);
-    setMessages([]);
-  }
-
-  // Aggregate all image refs across the conversation (W20 F3.9).
-  const galleryImages: ImageRef[] = messages
-    .flatMap((m) => m.citations.flatMap((c) => c.embedded_images))
-    .filter((img): img is ImageRef => Boolean(img && img.blob_url));
-
-  // Sidebar mode: aggregate the latest assistant turn's citations.
+  // Latest assistant turn citations — for sidebar mode + sources strip.
   const latestAssistantCitations: Citation[] =
     [...messages].reverse().find((m) => m.role === 'assistant')?.citations ?? [];
 
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): /chat is full-bleed per mockup
-  // `ekp-page-chat.jsx:88-94` (3-pane grid `calc(100vh - var(--topbar-h))`).
-  // AppShell no longer injects `.content`. Transient `flex-1 min-h-0` outer makes
-  // the W20 layout fill the remaining flex-column space inside `.main` until F4
-  // chat rebuild adopts the mockup's grid + height calc.
+  // 3-pane grid columns
+  const cols = [
+    !historyCollapsed ? '260px' : null,
+    '1fr',
+    citationMode === 'sidebar' && !sourcesCollapsed && latestAssistantCitations.length > 0
+      ? '400px'
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className="flex flex-1 h-full min-h-0 gap-0">
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: cols,
+        height: 'calc(100vh - var(--topbar-h))',
+        overflow: 'hidden',
+      }}
+    >
       {!historyCollapsed && (
-        <div className="hidden w-56 shrink-0 md:block">
-          <ConversationHistory
-            activeConversationId={activeConvId}
-            onSelect={(id) => {
-              void loadConversation(id);
-            }}
-            onCreate={handleConversationCreate}
-            onActiveDeleted={handleActiveDeleted}
-          />
-        </div>
+        <ConversationHistoryPanel
+          activeConvId={activeConvId}
+          kbId={kbId}
+          onSelect={(id) => void loadConversation(id)}
+          onCreate={handleConversationCreate}
+          onActiveDeleted={handleActiveDeleted}
+          onClose={() => toggleHistory()}
+        />
       )}
 
-      <div className="mx-auto flex h-full min-w-0 flex-1 flex-col">
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRight:
+            citationMode === 'sidebar' && !sourcesCollapsed && latestAssistantCitations.length > 0
+              ? '1px solid oklch(var(--border))'
+              : 'none',
+        }}
+      >
         <ChatHeader
+          kbs={kbs}
+          activeKb={activeKb}
+          onKbChange={setKbId}
           citationMode={citationMode}
           onCitationModeChange={handleCitationMode}
           historyCollapsed={historyCollapsed}
           onToggleHistory={toggleHistory}
+          sourcesCollapsed={sourcesCollapsed}
+          onToggleSources={toggleSources}
         />
 
-        <div className={cn('flex flex-1 min-h-0 gap-4', 'overflow-hidden')}>
-          <section className="flex-1 space-y-4 overflow-y-auto pr-1">
-            {messages.length === 0 && (
-              <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                Ask about Ricoh financial software (AR / AP / FA / CB / GL / BM).
-              </div>
-            )}
-            {messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                citationMode={citationMode}
-                onThumbnailClick={setModalImage}
-              />
-            ))}
-            <ImageGallery images={galleryImages} onSelect={setModalImage} />
-          </section>
+        <ChatThread
+          messages={messages}
+          citationMode={citationMode}
+          onOpenScreenshot={(citation, image) =>
+            setModalImage({ citation, image })
+          }
+        />
 
-          {citationMode === 'sidebar' && latestAssistantCitations.length > 0 && (
-            <aside
-              aria-label="Citations sidebar"
-              className="hidden w-72 shrink-0 overflow-y-auto border-l border-border pl-3 lg:block"
-            >
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Citations ({latestAssistantCitations.length})
-              </h3>
-              <div className="space-y-2">
-                {latestAssistantCitations.map((c) => (
-                  <CitationCard
-                    key={c.chunk_id}
-                    citation={c}
-                    onThumbnailClick={setModalImage}
-                  />
-                ))}
-              </div>
-            </aside>
-          )}
-        </div>
-
-        <form
+        <ChatComposer
+          input={input}
+          onInputChange={setInput}
+          isStreaming={isStreaming}
           onSubmit={handleSubmit}
-          className="mt-4 border-t border-border bg-background py-4"
-        >
-          <div className="flex gap-2">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question…"
-              rows={2}
-              className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isStreaming}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
-                }
-              }}
-            />
-            {isStreaming ? (
-              <Button type="button" variant="destructive" onClick={handleStop}>
-                Stop
-              </Button>
-            ) : (
-              <Button type="submit" disabled={!input.trim()}>
-                Send
-              </Button>
-            )}
-          </div>
-        </form>
+          onStop={handleStop}
+          textareaRef={textareaRef}
+        />
       </div>
 
-      {modalImage && <ScreenshotModal image={modalImage} onClose={() => setModalImage(null)} />}
+      {citationMode === 'sidebar' && !sourcesCollapsed && latestAssistantCitations.length > 0 && (
+        <CitationPanel
+          citations={latestAssistantCitations}
+          onClose={() => toggleSources()}
+          onOpenScreenshot={(c, img) => setModalImage({ citation: c, image: img })}
+        />
+      )}
+
+      {modalImage && (
+        <ScreenshotModal
+          citation={modalImage.citation}
+          image={modalImage.image}
+          onClose={() => setModalImage(null)}
+        />
+      )}
     </div>
   );
 }
 
-// --------------------------------------------------------------------------- //
-// Page header — citation mode toggle + history collapse toggle
-// --------------------------------------------------------------------------- //
+// ──────────────────────────────────────────────────────────────────────────
+// ConversationHistoryPanel — mockup ekp-page-chat.jsx:134-219
+// ──────────────────────────────────────────────────────────────────────────
+
+function ConversationHistoryPanel({
+  activeConvId,
+  kbId,
+  onSelect,
+  onCreate,
+  onActiveDeleted,
+  onClose,
+}: {
+  activeConvId: string | null;
+  kbId: string;
+  onSelect: (id: string) => void;
+  onCreate: (conv: Conversation) => void;
+  onActiveDeleted: () => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const listQuery = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => conversationsApi.list(50, 0),
+  });
+  const conversations = useMemo(
+    () => listQuery.data?.items ?? [],
+    [listQuery.data],
+  );
+
+  async function handleNewChat() {
+    try {
+      const conv = await conversationsApi.create({ kb_id: kbId });
+      onCreate(conv);
+      listQuery.refetch();
+    } catch {
+      /* swallow */
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return conversations;
+    return conversations.filter((c) => c.title.toLowerCase().includes(term));
+  }, [conversations, search]);
+
+  // Group by relative day buckets (mockup pattern Today / Yesterday / This week / Older)
+  const groups = useMemo(() => {
+    const now = Date.now();
+    const todayCut = now - 24 * 60 * 60 * 1000;
+    const yesterdayCut = now - 2 * 24 * 60 * 60 * 1000;
+    const weekCut = now - 7 * 24 * 60 * 60 * 1000;
+
+    const today: Conversation[] = [];
+    const yesterday: Conversation[] = [];
+    const thisWeek: Conversation[] = [];
+    const older: Conversation[] = [];
+
+    for (const c of filtered) {
+      const ts = new Date(c.updated_at).getTime();
+      if (ts >= todayCut) today.push(c);
+      else if (ts >= yesterdayCut) yesterday.push(c);
+      else if (ts >= weekCut) thisWeek.push(c);
+      else older.push(c);
+    }
+    return [
+      { id: 'today', label: 'Today', items: today },
+      { id: 'yesterday', label: 'Yesterday', items: yesterday },
+      { id: 'this-week', label: 'This week', items: thisWeek },
+      { id: 'older', label: 'Older', items: older },
+    ];
+  }, [filtered]);
+
+  return (
+    <aside
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'oklch(var(--card))',
+        borderRight: '1px solid oklch(var(--border))',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Header — mockup lines 152-166 */}
+      <div
+        style={{
+          padding: '10px 12px',
+          borderBottom: '1px solid oklch(var(--border))',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Conversations</span>
+          <span
+            className="badge badge-accent"
+            style={{ fontSize: 10, fontWeight: 600 }}
+          >
+            BETA+
+          </span>
+          <div className="spacer" />
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-xs"
+            title="Close history"
+            onClick={onClose}
+          >
+            <XIcon size={12} />
+          </button>
+        </div>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          style={{ width: '100%', justifyContent: 'flex-start', gap: 8 }}
+          onClick={handleNewChat}
+        >
+          <Plus size={13} /> New chat
+        </button>
+        <div className="input-search-wrap" style={{ marginTop: 8 }}>
+          <span className="icon-leading">
+            <Search size={13} />
+          </span>
+          <input
+            className="input"
+            placeholder="Search conversations…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ height: 28, fontSize: 12.5 }}
+          />
+        </div>
+      </div>
+
+      {/* Privacy notice — mockup lines 169-184 */}
+      <div
+        style={{
+          padding: '8px 12px',
+          background: 'oklch(var(--muted) / 0.5)',
+          borderBottom: '1px solid oklch(var(--border))',
+          fontSize: 11,
+          color: 'oklch(var(--muted-foreground))',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexShrink: 0,
+        }}
+      >
+        <Shield size={11} />
+        <span>
+          Server-side per ADR-0031 · scoped to user · Postgres backing
+        </span>
+      </div>
+
+      {/* List */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+        {listQuery.isPending ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '24px 8px', textAlign: 'center' }}
+          >
+            Loading…
+          </div>
+        ) : conversations.length === 0 ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '24px 8px', textAlign: 'center' }}
+          >
+            No conversations yet.
+          </div>
+        ) : (
+          groups.map((g) => {
+            if (g.items.length === 0) return null;
+            return (
+              <div key={g.id}>
+                <div
+                  className="nav-section-label"
+                  style={{ padding: '10px 8px 4px' }}
+                >
+                  {g.label}
+                </div>
+                {g.items.map((c) => (
+                  <ConversationItem
+                    key={c.id}
+                    conv={c}
+                    active={c.id === activeConvId}
+                    onClick={() => onSelect(c.id)}
+                    onDelete={async () => {
+                      try {
+                        await conversationsApi.remove(c.id);
+                        if (c.id === activeConvId) onActiveDeleted();
+                        listQuery.refetch();
+                      } catch {
+                        /* swallow */
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Footer — mockup lines 203-217 */}
+      <div
+        style={{
+          padding: '8px 12px',
+          borderTop: '1px solid oklch(var(--border))',
+          flexShrink: 0,
+          fontSize: 11,
+          color: 'oklch(var(--muted-foreground))',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <Inbox size={11} />
+        <span>
+          {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
+        </span>
+      </div>
+    </aside>
+  );
+}
+
+function ConversationItem({
+  conv,
+  active,
+  onClick,
+  onDelete,
+}: {
+  conv: Conversation;
+  active: boolean;
+  onClick: () => void;
+  onDelete: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        padding: '8px 10px',
+        borderRadius: 'var(--radius-sm)',
+        cursor: 'default',
+        background: active
+          ? 'oklch(var(--muted))'
+          : hover
+            ? 'oklch(var(--muted) / 0.5)'
+            : 'transparent',
+        borderLeft: active
+          ? '2px solid oklch(var(--accent))'
+          : '2px solid transparent',
+        transition: 'background var(--duration-fast)',
+        marginBottom: 1,
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 2,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: active ? 600 : 500,
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.35,
+          }}
+        >
+          {conv.title || 'Untitled'}
+        </span>
+        {hover && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-xs"
+            title="Delete conversation"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <XIcon size={11} />
+          </button>
+        )}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+          fontSize: 10.5,
+          color: 'oklch(var(--muted-foreground))',
+        }}
+      >
+        {conv.kb_id && (
+          <span
+            className="mono"
+            style={{
+              background: 'oklch(var(--muted))',
+              padding: '0 4px',
+              borderRadius: 2,
+              fontSize: 9.5,
+            }}
+          >
+            {conv.kb_id}
+          </span>
+        )}
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {conv.message_count}m
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// ChatHeader — mockup ekp-page-chat.jsx:257-298
+// ──────────────────────────────────────────────────────────────────────────
 
 function ChatHeader({
+  kbs,
+  activeKb,
+  onKbChange,
   citationMode,
   onCitationModeChange,
   historyCollapsed,
   onToggleHistory,
+  sourcesCollapsed,
+  onToggleSources,
 }: {
+  kbs: KbStatus[];
+  activeKb: KbStatus | undefined;
+  onKbChange: (id: string) => void;
   citationMode: CitationMode;
   onCitationModeChange: (mode: CitationMode) => void;
   historyCollapsed: boolean;
   onToggleHistory: () => void;
+  sourcesCollapsed: boolean;
+  onToggleSources: () => void;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={historyCollapsed ? 'Show conversation history' : 'Hide conversation history'}
-          aria-pressed={historyCollapsed}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 20px',
+        borderBottom: '1px solid oklch(var(--border))',
+        flexShrink: 0,
+        background: 'oklch(var(--background))',
+      }}
+    >
+      {historyCollapsed && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-sm"
+          title="Show conversation history"
           onClick={onToggleHistory}
-          className="hidden h-8 w-8 md:inline-flex"
         >
-          {historyCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
+          <Inbox size={14} />
+        </button>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="text-xs muted mono">KB</span>
+        <select
+          className="select"
+          value={activeKb?.kb_id ?? ''}
+          onChange={(e) => onKbChange(e.target.value)}
+          style={{ height: 28 }}
+        >
+          {kbs.length === 0 ? (
+            <option value="">{DEFAULT_KB_ID}</option>
           ) : (
-            <PanelLeftClose className="h-4 w-4" />
+            kbs.map((k) => (
+              <option key={k.kb_id} value={k.kb_id}>
+                {k.name || k.kb_id}
+              </option>
+            ))
           )}
-        </Button>
-        <h1 className="text-lg font-semibold">Chat</h1>
+        </select>
+        {activeKb && (
+          <>
+            <span className="text-xs muted">·</span>
+            <span className="text-xs muted mono">
+              {activeKb.total_chunks.toLocaleString()} chunks ·{' '}
+              {activeKb.total_screenshots} screenshots
+            </span>
+          </>
+        )}
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-muted-foreground">
-          KB: <span className="font-mono">{KB_ID}</span>
-        </span>
-        <fieldset
-          className="hidden items-center gap-1 rounded-md border border-border p-0.5 text-[11px] sm:flex"
-          aria-label="Citation placement"
-        >
-          <legend className="sr-only">Citation placement</legend>
+      <div className="spacer" style={{ flex: 1 }} />
+
+      {/* Citation mode selector — replaces mockup's CRAG / Show-images switches
+          since the W20 surface is citation-placement-mode driven. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span className="text-xs muted">Citations</span>
+        <div className="seg">
           {(['inline', 'footnote', 'sidebar'] as const).map((m) => (
             <button
               key={m}
               type="button"
+              className="seg-btn"
+              data-active={citationMode === m}
               onClick={() => onCitationModeChange(m)}
-              aria-pressed={citationMode === m}
-              className={cn(
-                'rounded px-2 py-0.5 capitalize text-muted-foreground',
-                citationMode === m && 'bg-accent/15 text-accent',
-              )}
+              style={{ fontSize: 11, padding: '3px 8px' }}
             >
               {m}
             </button>
           ))}
-        </fieldset>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+        {citationMode === 'sidebar' && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-sm"
+            title={sourcesCollapsed ? 'Show sources panel' : 'Hide sources panel'}
+            onClick={onToggleSources}
+            style={{
+              background: !sourcesCollapsed ? 'oklch(var(--muted))' : 'transparent',
+            }}
+          >
+            <BookOpen size={14} />
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-// --------------------------------------------------------------------------- //
-// Message bubble — branches on citation mode
-// --------------------------------------------------------------------------- //
+// ──────────────────────────────────────────────────────────────────────────
+// ChatThread + MessageRow — mockup ekp-page-chat.jsx:301-373
+// ──────────────────────────────────────────────────────────────────────────
 
-function MessageBubble({
+function ChatThread({
+  messages,
+  citationMode,
+  onOpenScreenshot,
+}: {
+  messages: Message[];
+  citationMode: CitationMode;
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
+}) {
+  const threadRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll on new messages.
+  useEffect(() => {
+    threadRef.current?.scrollTo({
+      top: threadRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [messages]);
+
+  return (
+    <div
+      ref={threadRef}
+      style={{ flex: 1, overflowY: 'auto', padding: '20px 32px 32px' }}
+    >
+      <div style={{ maxWidth: 860, margin: '0 auto' }}>
+        {messages.length === 0 ? (
+          <EmptyState />
+        ) : (
+          messages.map((m) => (
+            <MessageRow
+              key={m.id}
+              message={m}
+              citationMode={citationMode}
+              onOpenScreenshot={onOpenScreenshot}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div
+      style={{
+        textAlign: 'center',
+        padding: '64px 24px',
+        color: 'oklch(var(--muted-foreground))',
+      }}
+    >
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'oklch(var(--accent) / 0.1)',
+          color: 'oklch(var(--accent))',
+          display: 'grid',
+          placeItems: 'center',
+          margin: '0 auto 16px',
+        }}
+      >
+        <Send size={22} />
+      </div>
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 600,
+          color: 'oklch(var(--foreground))',
+          marginBottom: 6,
+        }}
+      >
+        Ask about Ricoh financial software
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
+        AR / AP / FA / CB / GL / BM · D365 F&O ERP corpus · Cohere v4.0-pro rerank · Image-grounded citations.
+      </div>
+    </div>
+  );
+}
+
+function MessageRow({
   message,
   citationMode,
-  onThumbnailClick,
+  onOpenScreenshot,
 }: {
   message: Message;
   citationMode: CitationMode;
-  onThumbnailClick: (img: ImageRef) => void;
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
-  const isUser = message.role === 'user';
-  return (
-    <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
-      <div
-        className={cn(
-          'max-w-[88%] rounded-md p-3 text-sm',
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'border border-border bg-muted/50',
-        )}
-      >
-        {!isUser && (
-          <CragStrip
-            cragTriggered={message.cragTriggered}
-            cragIterations={message.cragIterations}
-          />
-        )}
+  if (message.role === 'user') {
+    return (
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div className="avatar avatar-sm">You</div>
+        <div style={{ flex: 1 }}>
+          <div className="text-xs muted mono" style={{ marginBottom: 4 }}>
+            you · {formatTime(message.at)}
+          </div>
+          <div
+            style={{
+              fontSize: 14.5,
+              lineHeight: 1.55,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {message.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        <div className="whitespace-pre-wrap">
-          {message.content}
-          {message.isStreaming && <span className="ml-1 animate-pulse">▍</span>}
+  // Assistant
+  const imageCitations = message.citations.filter(
+    (c) => c.embedded_images.length > 0,
+  );
+
+  return (
+    <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+      <div
+        className="avatar avatar-sm"
+        style={{
+          background: 'oklch(var(--accent))',
+          color: 'oklch(var(--accent-foreground))',
+          border: 0,
+        }}
+      >
+        E
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Meta row */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600 }}>EKP</span>
+          <span className="text-xs muted mono">
+            {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length}{' '}
+            citation{message.citations.length === 1 ? '' : 's'}
+            {imageCitations.length > 0 && ` · ${imageCitations.length} with screenshots`}
+          </span>
+          <span className="spacer" style={{ flex: 1 }} />
+          {message.latencyMs !== null && (
+            <span className="text-xs muted mono">
+              {(message.latencyMs / 1000).toFixed(2)}s
+            </span>
+          )}
         </div>
 
-        {message.refused && (
-          <div className="mt-2 rounded-sm bg-warning/20 px-2 py-1 text-xs text-warning-foreground">
-            Refused — answer not found in available documentation.
+        {/* CRAG strip (when triggered) — mockup lines 332-348 */}
+        {message.cragTriggered && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '7px 11px',
+              background: 'oklch(var(--accent) / 0.06)',
+              border: '1px solid oklch(var(--accent) / 0.22)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 14,
+              fontSize: 12.5,
+            }}
+          >
+            <RefreshCw
+              size={12}
+              style={{ color: 'oklch(var(--accent))', flexShrink: 0 }}
+            />
+            <span>
+              <b>CRAG L2 re-retrieve</b> · {message.cragIterations} iteration
+              {message.cragIterations === 1 ? '' : 's'}
+            </span>
           </div>
         )}
 
-        {message.errorText && (
-          <div className="mt-2 rounded-sm border border-destructive bg-destructive/10 p-2 text-xs">
-            Stream error: {message.errorText}
+        {/* Answer body */}
+        {message.errorText ? (
+          <div
+            style={{
+              padding: '12px 14px',
+              border: '1px solid oklch(var(--destructive) / 0.3)',
+              background: 'oklch(var(--destructive) / 0.06)',
+              color: 'oklch(var(--destructive))',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 13,
+            }}
+          >
+            {message.errorText}
+          </div>
+        ) : (
+          <div
+            style={{
+              fontSize: 14,
+              lineHeight: 1.7,
+              color: 'oklch(var(--foreground))',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {message.content || (
+              <span className="muted">
+                {message.isStreaming ? 'Thinking…' : '(no content)'}
+              </span>
+            )}
+            {citationMode === 'inline' && message.citations.length > 0 && (
+              <InlineCitationPills citations={message.citations} />
+            )}
           </div>
         )}
 
-        {message.citations.length > 0 && citationMode === 'inline' && (
-          <InlineCitations
+        {/* Footnote citation list */}
+        {citationMode === 'footnote' && message.citations.length > 0 && (
+          <FootnoteList
             citations={message.citations}
-            onThumbnailClick={onThumbnailClick}
+            onOpenScreenshot={onOpenScreenshot}
           />
         )}
 
-        {message.citations.length > 0 && citationMode === 'footnote' && (
-          <FootnoteCitations citations={message.citations} />
+        {/* Sources strip (default — non-sidebar modes show it inline) */}
+        {citationMode !== 'sidebar' &&
+          !message.isStreaming &&
+          message.citations.length > 0 && (
+            <SourcesStrip
+              citations={message.citations}
+              onOpenScreenshot={onOpenScreenshot}
+            />
+          )}
+
+        {/* Feedback bar */}
+        {!message.isStreaming && message.content && (
+          <FeedbackBar
+            traceId={message.id}
+            citations={message.citations}
+            imageCount={imageCitations.length}
+          />
         )}
-
-        {/* `sidebar` mode renders nothing inside the bubble — citations live in the right pane. */}
-
-        {!isUser && !message.isStreaming && message.rerankerUsed && (
-          <div className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-            reranker: {message.rerankerUsed}
-          </div>
-        )}
-
-        {!isUser && !message.isStreaming && <FeedbackBar traceId="" />}
       </div>
     </div>
   );
 }
 
-function InlineCitations({
+// ──────────────────────────────────────────────────────────────────────────
+// Inline citation pills (citationMode = 'inline')
+// ──────────────────────────────────────────────────────────────────────────
+
+function InlineCitationPills({ citations }: { citations: Citation[] }) {
+  return (
+    <span style={{ marginLeft: 6 }}>
+      {citations.map((c, i) => (
+        <span
+          key={c.chunk_id}
+          title={`${c.doc_title} · ${c.section_path.join(' › ')}`}
+          style={{
+            display: 'inline-block',
+            marginLeft: 4,
+            padding: '0 5px',
+            fontSize: 10.5,
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            background: 'oklch(var(--accent) / 0.12)',
+            color: 'oklch(var(--accent))',
+            border: '1px solid oklch(var(--accent) / 0.3)',
+            borderRadius: 3,
+            verticalAlign: 'top',
+            lineHeight: 1.5,
+          }}
+        >
+          {i + 1}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function FootnoteList({
   citations,
-  onThumbnailClick,
+  onOpenScreenshot,
 }: {
   citations: Citation[];
-  onThumbnailClick: (img: ImageRef) => void;
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   return (
-    <div className="mt-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Citations ({citations.length})
+    <ol
+      style={{
+        marginTop: 16,
+        paddingLeft: 22,
+        fontSize: 12,
+        lineHeight: 1.6,
+        color: 'oklch(var(--muted-foreground))',
+      }}
+    >
+      {citations.map((c) => (
+        <li key={c.chunk_id} style={{ marginBottom: 4 }}>
+          <span style={{ color: 'oklch(var(--foreground))', fontWeight: 500 }}>
+            {c.doc_title}
+          </span>
+          {c.chunk_title && (
+            <>
+              {' — '}
+              <span>{c.chunk_title}</span>
+            </>
+          )}
+          {c.embedded_images.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => onOpenScreenshot(c, c.embedded_images[0]!)}
+              style={{ marginLeft: 6 }}
+            >
+              <Layers size={10} /> Screenshot
+            </button>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sources strip — mockup ekp-page-chat.jsx:667-778 (footnote/inline mode footer)
+// ──────────────────────────────────────────────────────────────────────────
+
+function SourcesStrip({
+  citations,
+  onOpenScreenshot,
+}: {
+  citations: Citation[];
+  onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
+}) {
+  const docCount = new Set(citations.map((c) => c.doc_id)).size;
+  return (
+    <div
+      style={{
+        marginTop: 22,
+        padding: 14,
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        background: 'oklch(var(--muted) / 0.2)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 10,
+        }}
+      >
+        <BookOpen size={13} className="muted" />
+        <span
+          className="text-xs mono"
+          style={{
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+            color: 'oklch(var(--foreground))',
+          }}
+        >
+          Sources
+        </span>
+        <span className="text-xs muted">
+          · {citations.length} chunks across {docCount} document
+          {docCount === 1 ? '' : 's'}
+        </span>
       </div>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        {citations.map((c) => (
-          <CitationCard
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {citations.map((c, i) => (
+          <SourceDocCard
             key={c.chunk_id}
             citation={c}
-            onThumbnailClick={onThumbnailClick}
+            idx={i + 1}
+            onOpenScreenshot={() =>
+              c.embedded_images[0] &&
+              onOpenScreenshot(c, c.embedded_images[0])
+            }
           />
         ))}
       </div>
@@ -553,91 +1316,705 @@ function InlineCitations({
   );
 }
 
-function FootnoteCitations({ citations }: { citations: Citation[] }) {
-  return (
-    <ol className="mt-3 space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
-      {citations.map((c, idx) => (
-        <li key={c.chunk_id} className="flex items-start gap-2">
-          <CitationPill citation={c} index={idx + 1} />
-          <span className="flex-1">
-            <span className="font-medium text-foreground">{c.doc_title}</span>
-            {c.chunk_title ? ` — ${c.chunk_title}` : ''}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function CitationCard({
+function SourceDocCard({
   citation,
-  onThumbnailClick,
+  idx,
+  onOpenScreenshot,
 }: {
   citation: Citation;
-  onThumbnailClick: (img: ImageRef) => void;
+  idx: number;
+  onOpenScreenshot: () => void;
 }) {
-  const sectionLabel =
-    citation.section_path.length > 0 ? citation.section_path.join(' > ') : '—';
-  const thumbnail = citation.embedded_images[0];
+  const hasImage = citation.embedded_images.length > 0;
+  const fileType = fileTypeFromDocId(citation.doc_id);
   return (
-    <div className="rounded-md border border-border bg-card p-2">
-      <div className="text-xs font-semibold">
-        {citation.chunk_title || '(untitled chunk)'}
-      </div>
-      <div className="mt-0.5 text-[11px] text-muted-foreground">{citation.doc_title}</div>
+    <div
+      style={{
+        padding: '10px 12px',
+        background: 'oklch(var(--card))',
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-sm)',
+        display: 'flex',
+        gap: 10,
+        transition: 'border-color var(--duration-fast)',
+      }}
+    >
       <div
-        className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
-        title={sectionLabel}
+        style={{
+          flexShrink: 0,
+          width: 22,
+          height: 22,
+          borderRadius: 4,
+          background: 'oklch(var(--accent) / 0.12)',
+          color: 'oklch(var(--accent))',
+          display: 'grid',
+          placeItems: 'center',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          fontWeight: 700,
+        }}
       >
-        {sectionLabel}
+        {idx}
       </div>
-      {thumbnail && thumbnail.blob_url && (
-        <InlineImageCard image={thumbnail} onClick={onThumbnailClick} />
-      )}
-      <div className="mt-1 text-[10px] text-muted-foreground">
-        score: {citation.relevance_score.toFixed(3)}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FileTypeChip type={fileType} />
+          <span
+            style={{
+              fontSize: 12.5,
+              fontWeight: 500,
+              flex: 1,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={citation.doc_title}
+          >
+            {citation.doc_title}
+          </span>
+        </div>
+        {citation.section_path.length > 0 && (
+          <div className="section-path text-xs" style={{ marginTop: 4 }}>
+            {citation.section_path.map((s, j) => (
+              <span key={j}>{s}</span>
+            ))}
+          </div>
+        )}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 6,
+          }}
+        >
+          <span className="text-xs mono muted">chunk #{citation.chunk_index}</span>
+          <div
+            style={{
+              flex: 1,
+              height: 3,
+              background: 'oklch(var(--muted))',
+              borderRadius: 999,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: `${citation.relevance_score * 100}%`,
+                height: '100%',
+                background: 'oklch(var(--accent))',
+              }}
+            />
+          </div>
+          <span
+            className="mono text-xs"
+            style={{
+              fontVariantNumeric: 'tabular-nums',
+              fontWeight: 600,
+            }}
+          >
+            {citation.relevance_score.toFixed(3)}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+          {hasImage && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={onOpenScreenshot}
+            >
+              <Layers size={10} /> Screenshot
+            </button>
+          )}
+          <Link
+            href={`/kb/drive_user_manuals/docs/${citation.doc_id}`}
+            className="btn btn-ghost btn-xs"
+          >
+            <LinkIcon size={10} /> Open doc
+          </Link>
+        </div>
       </div>
     </div>
   );
 }
 
+function FileTypeChip({ type }: { type: keyof typeof FILE_TYPE_COLORS }) {
+  const colors = FILE_TYPE_COLORS[type] ?? FILE_TYPE_COLORS.unknown!;
+  return (
+    <span
+      style={{
+        padding: '1px 5px',
+        fontSize: 10,
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        background: colors.bg,
+        color: colors.fg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 3,
+        textTransform: 'uppercase',
+        lineHeight: 1.3,
+      }}
+    >
+      {type}
+    </span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// CitationPanel (sidebar mode) — mockup ekp-page-chat.jsx:799-869
+// ──────────────────────────────────────────────────────────────────────────
+
+function CitationPanel({
+  citations,
+  onClose,
+  onOpenScreenshot,
+}: {
+  citations: Citation[];
+  onClose: () => void;
+  onOpenScreenshot: (c: Citation, img: ImageRef) => void;
+}) {
+  const imageCount = citations.filter((c) => c.embedded_images.length > 0).length;
+  return (
+    <aside
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'oklch(var(--card))',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '11px 16px',
+          borderBottom: '1px solid oklch(var(--border))',
+          flexShrink: 0,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>Sources</div>
+          <div className="text-xs muted">
+            {citations.length} chunk{citations.length === 1 ? '' : 's'} ·{' '}
+            {imageCount} with screenshot{imageCount === 1 ? '' : 's'} · sorted by
+            relevance
+          </div>
+        </div>
+        <div className="spacer" style={{ flex: 1 }} />
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-sm"
+          onClick={onClose}
+        >
+          <XIcon size={14} />
+        </button>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        {citations.map((c, i) => (
+          <PanelSourceCard
+            key={c.chunk_id}
+            citation={c}
+            idx={i + 1}
+            onOpenScreenshot={() =>
+              c.embedded_images[0] &&
+              onOpenScreenshot(c, c.embedded_images[0])
+            }
+          />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function PanelSourceCard({
+  citation,
+  idx,
+  onOpenScreenshot,
+}: {
+  citation: Citation;
+  idx: number;
+  onOpenScreenshot: () => void;
+}) {
+  const hasImage = citation.embedded_images.length > 0;
+  const fileType = fileTypeFromDocId(citation.doc_id);
+  return (
+    <div
+      style={{
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-sm)',
+        padding: 12,
+        background: 'oklch(var(--card))',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
+        <div
+          style={{
+            flexShrink: 0,
+            width: 22,
+            height: 22,
+            background: 'oklch(var(--accent) / 0.12)',
+            color: 'oklch(var(--accent))',
+            borderRadius: 4,
+            display: 'grid',
+            placeItems: 'center',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            fontSize: 11,
+          }}
+        >
+          {idx}
+        </div>
+        <FileTypeChip type={fileType} />
+        <span
+          className="mono text-xs"
+          style={{
+            fontWeight: 600,
+            color: 'oklch(var(--foreground))',
+            marginLeft: 'auto',
+          }}
+        >
+          {citation.relevance_score.toFixed(3)}
+        </span>
+      </div>
+
+      <div
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          marginBottom: 4,
+          lineHeight: 1.4,
+        }}
+        title={citation.doc_title}
+      >
+        {citation.doc_title}
+      </div>
+      {citation.section_path.length > 0 && (
+        <div className="section-path text-xs" style={{ marginBottom: 6 }}>
+          {citation.section_path.map((s, j) => (
+            <span key={j}>{s}</span>
+          ))}
+        </div>
+      )}
+      {citation.chunk_title && (
+        <div
+          className="text-xs muted"
+          style={{ marginBottom: 6, lineHeight: 1.45 }}
+        >
+          {citation.chunk_title}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginTop: 6,
+        }}
+      >
+        <span className="text-xs mono muted">chunk #{citation.chunk_index}</span>
+        {hasImage && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={onOpenScreenshot}
+          >
+            <Layers size={10} /> Screenshot
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
+        <Link
+          href={`/kb/drive_user_manuals/docs/${citation.doc_id}`}
+          className="btn btn-ghost btn-xs"
+        >
+          Open →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// FeedbackBar — mockup ekp-page-chat.jsx:377-440
+// ──────────────────────────────────────────────────────────────────────────
+
+function FeedbackBar({
+  traceId,
+  citations,
+  imageCount,
+}: {
+  traceId: string;
+  citations: Citation[];
+  imageCount: number;
+}) {
+  const [rating, setRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null);
+  const [showCommentBox, setShowCommentBox] = useState(false);
+
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          gap: 4,
+          marginTop: 16,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-xs"
+          title="Copy answer"
+        >
+          <Copy size={12} />
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-xs"
+          title="Regenerate"
+        >
+          <RefreshCw size={12} />
+        </button>
+        <div
+          style={{
+            width: 1,
+            height: 14,
+            background: 'oklch(var(--border))',
+            margin: '0 4px',
+          }}
+        />
+        <span className="text-xs muted" style={{ marginRight: 2 }}>
+          Was this helpful?
+        </span>
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          onClick={() => {
+            setRating('thumbs_up');
+            setShowCommentBox(true);
+          }}
+          style={
+            rating === 'thumbs_up'
+              ? {
+                  background: 'oklch(var(--success) / 0.12)',
+                  color: 'oklch(var(--success))',
+                }
+              : undefined
+          }
+        >
+          <ArrowUp size={11} /> Yes
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          onClick={() => {
+            setRating('thumbs_down');
+            setShowCommentBox(true);
+          }}
+          style={
+            rating === 'thumbs_down'
+              ? {
+                  background: 'oklch(var(--destructive) / 0.1)',
+                  color: 'oklch(var(--destructive))',
+                }
+              : undefined
+          }
+        >
+          <ArrowDown size={11} /> No
+        </button>
+        <span className="spacer" style={{ flex: 1 }} />
+        <span
+          className="text-xs muted mono"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <Layers size={10} /> {citations.length} citation
+          {citations.length === 1 ? '' : 's'} · {imageCount} with screenshot
+          {imageCount === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {showCommentBox && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: '10px 12px',
+            background: 'oklch(var(--muted) / 0.4)',
+            border: '1px solid oklch(var(--border))',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 6,
+            }}
+          >
+            <span className="text-xs" style={{ fontWeight: 500 }}>
+              {rating === 'thumbs_up'
+                ? 'Glad it helped! Tell us more (optional)'
+                : 'Sorry about that. What went wrong? (optional)'}
+            </span>
+            <div className="spacer" style={{ flex: 1 }} />
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon btn-xs"
+              onClick={() => setShowCommentBox(false)}
+            >
+              <XIcon size={11} />
+            </button>
+          </div>
+          <textarea
+            className="input"
+            rows={2}
+            placeholder={
+              rating === 'thumbs_up'
+                ? 'What worked well?'
+                : 'Missing info, wrong answer, refused incorrectly…'
+            }
+            style={{ minHeight: 50, fontSize: 12.5 }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 6,
+            }}
+          >
+            <span className="text-xs muted mono">
+              ref{' '}
+              <span style={{ color: 'oklch(var(--accent))' }}>
+                {traceId.slice(-12)}
+              </span>
+            </span>
+            <div className="spacer" style={{ flex: 1 }} />
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => setShowCommentBox(false)}
+            >
+              Skip
+            </button>
+            <button type="button" className="btn btn-accent btn-xs">
+              Submit feedback
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// ScreenshotModal — pared back from mockup (real images come from blob_url,
+// not synthetic). Centred dialog with image + caption + close.
+// ──────────────────────────────────────────────────────────────────────────
+
 function ScreenshotModal({
+  citation,
   image,
   onClose,
 }: {
+  citation: Citation;
   image: ImageRef;
   onClose: () => void;
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'oklch(var(--background) / 0.85)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+      }}
     >
       <div
-        className="relative max-h-full max-w-4xl overflow-hidden rounded-md bg-card"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          background: 'oklch(var(--card))',
+          border: '1px solid oklch(var(--border))',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={image.blob_url}
-          alt={image.alt_text || 'screenshot full view'}
-          className="max-h-[85vh] w-auto"
-        />
-        {image.alt_text && (
-          <div className="border-t border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-            {image.alt_text}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-2 top-2 rounded-sm bg-foreground/60 px-3 py-1 text-xs text-background transition-colors hover:bg-foreground/80"
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 14px',
+            borderBottom: '1px solid oklch(var(--border))',
+          }}
         >
-          Close (Esc)
-        </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {citation.doc_title}
+            </div>
+            <div className="text-xs muted mono">
+              {image.alt_text || `chunk #${citation.chunk_index}`}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={onClose}
+            aria-label="Close screenshot"
+          >
+            <XIcon size={14} />
+          </button>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            display: 'grid',
+            placeItems: 'center',
+            background: 'oklch(var(--muted))',
+            padding: 8,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image.blob_url}
+            alt={image.alt_text}
+            style={{ maxWidth: '100%', maxHeight: '80vh', display: 'block' }}
+          />
+        </div>
       </div>
     </div>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// ChatComposer — textarea + send/stop (replaces mockup textbox at thread bottom)
+// ──────────────────────────────────────────────────────────────────────────
+
+function ChatComposer({
+  input,
+  onInputChange,
+  isStreaming,
+  onSubmit,
+  onStop,
+  textareaRef,
+}: {
+  input: string;
+  onInputChange: (value: string) => void;
+  isStreaming: boolean;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onStop: () => void;
+  textareaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
+}) {
+  function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const form = (e.currentTarget.form ?? null) as HTMLFormElement | null;
+      form?.requestSubmit();
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      style={{
+        flexShrink: 0,
+        padding: '12px 20px 18px',
+        borderTop: '1px solid oklch(var(--border))',
+        background: 'oklch(var(--background))',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 860,
+          margin: '0 auto',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'flex-end',
+        }}
+      >
+        <textarea
+          ref={textareaRef}
+          className="input"
+          rows={1}
+          placeholder="Ask about Ricoh financial software… (Enter to send · Shift+Enter for newline)"
+          value={input}
+          onChange={(e) => onInputChange(e.target.value)}
+          onKeyDown={handleKey}
+          disabled={isStreaming}
+          style={{
+            flex: 1,
+            minHeight: 40,
+            maxHeight: 200,
+            resize: 'vertical',
+            fontSize: 14,
+            lineHeight: 1.5,
+            padding: '10px 12px',
+          }}
+        />
+        {isStreaming ? (
+          <button
+            type="button"
+            className="btn btn-secondary btn-lg"
+            onClick={onStop}
+            title="Stop streaming"
+            style={{ justifyContent: 'center', gap: 6 }}
+          >
+            <Square size={14} /> Stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="btn btn-accent btn-lg"
+            disabled={!input.trim()}
+            style={{ justifyContent: 'center', gap: 6 }}
+          >
+            <Send size={14} /> Send
+          </button>
+        )}
+      </div>
+      <div
+        className="text-xs muted mono"
+        style={{ marginTop: 8, textAlign: 'center' }}
+      >
+        Hybrid retrieval · Cohere v4.0-pro rerank · GPT-5.5 synthesis · CRAG L2 self-correction
+      </div>
+    </form>
+  );
+}
+
+// Keep these imports referenced even when not directly rendered (some are used
+// conditionally and TS isn't smart enough about useState mutations).
+void Eye;
+void FileText;
+void Star;
+void ChevronRight;
