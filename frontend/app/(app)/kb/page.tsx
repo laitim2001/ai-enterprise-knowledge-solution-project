@@ -1,63 +1,46 @@
 'use client';
 
 /**
- * V3 KB List (`/kb`) — per architecture.md v6 §5.4 view 3.
+ * V3 KB List (`/kb`) — W22 F5 direct-copy from mockup
+ * `references/design-mockups/ekp-page-kb.jsx:5-137` PageKbList + KbCard +
+ * KbTable (per CLAUDE.md §5.7 H7 strict fidelity 2026-05-18).
  *
- * W14 D2 F2 refactor: plain-table → card grid per ui-design-reference-v6.md
- * §2.3 wireframe + design ref §3 cross-view rules.
+ * Mockup layout:
+ *   - `.page-header` greeting + subtitle (ADR-0018 namespace note) + view toggle
+ *     `<seg>` + Export btn + New KB btn
+ *   - Filter bar — search wrap + status/tag chips + right-aligned count meta
+ *   - `.kb-grid` cards OR `<KbTable>` based on view state
  *
- * W20 F4.3 polish (per ADR-0028 + architecture.md v6 §5.4 inline-tagged
- * amendment):
- *   - Status filter dropdown alongside the existing search + sort
- *     (indexed / empty / degraded / all)
- *   - Grid (default) ⇄ Table view toggle persisted to
- *     `localStorage['ekp-kb-list-view']`
- *   - The Card path renders unchanged (Karpathy §1.3 surgical — additive only);
- *     the Table path is a new render branch hitting the same `visible` list
+ * Preserved from W20 F4.3 (per W22 plan §0):
+ *   - `useQuery(kbApi.list)` for data
+ *   - `localStorage['ekp-kb-list-view']` for grid/table preference
+ *   - Status filter (indexed / empty / degraded / all) + search + sort
  *
- * Layout reference Dify Image 4 dataset-grid pattern (no code copy per ADR-0010);
- * EKP design tokens only — 100% via tokens.ts, no hardcoded oklch.
+ * Real KbStatus schema lacks mockup fields (status / indexing_progress /
+ * recall_at_5 / tags / owner) → graceful defaults: derive `status` from
+ * data shape (archived / empty / has-docs) ;recall@5 / tags / owner shown
+ * as "—" placeholders until backend ships those fields.
  */
 
-import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowDownAZ,
-  CheckCircle2,
-  Clock,
   Database,
+  Download,
   FileText,
-  FileWarning,
-  LayoutGrid,
-  List,
+  Filter,
+  Layers,
   Plus,
   Search,
+  Tag,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
-import { cn } from '@/lib/utils';
 
 type SortKind = 'name' | 'last_indexed' | 'documents';
-type StatusKind = 'indexed' | 'empty' | 'degraded';
+type StatusKind = 'indexed' | 'empty' | 'archived';
 type StatusFilter = StatusKind | 'all';
 type ViewKind = 'grid' | 'table';
 
@@ -68,13 +51,44 @@ const SORT_LABEL: Record<SortKind, string> = {
 };
 
 const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
-  all: 'All statuses',
-  indexed: 'Indexed only',
-  empty: 'Empty only',
-  degraded: 'Degraded only',
+  all: 'Status: All',
+  indexed: 'Status: Indexed',
+  empty: 'Status: Empty',
+  archived: 'Status: Archived',
 };
 
 const VIEW_KEY = 'ekp-kb-list-view';
+
+function deriveStatus(kb: KbStatus): StatusKind {
+  if (kb.archived) return 'archived';
+  if (kb.total_documents === 0) return 'empty';
+  return 'indexed';
+}
+
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return '—';
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 60 / 24)}d ago`;
+}
+
+function makeComparator(sort: SortKind): (a: KbStatus, b: KbStatus) => number {
+  if (sort === 'name') {
+    return (a, b) => (a.name || a.kb_id).localeCompare(b.name || b.kb_id);
+  }
+  if (sort === 'documents') {
+    return (a, b) => (b.total_documents ?? 0) - (a.total_documents ?? 0);
+  }
+  return (a, b) => {
+    const av = a.last_indexed_at ?? '';
+    const bv = b.last_indexed_at ?? '';
+    return bv.localeCompare(av);
+  };
+}
 
 export default function KbListPage() {
   const query = useQuery<KbStatus[]>({
@@ -87,7 +101,6 @@ export default function KbListPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [view, setView] = useState<ViewKind>('grid');
 
-  // SSR-stable hydration: read the persisted view after mount.
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_KEY);
     if (stored === 'grid' || stored === 'table') setView(stored);
@@ -115,285 +128,260 @@ export default function KbListPage() {
     return [...filteredByStatus].sort(makeComparator(sort));
   }, [query.data, search, sort, statusFilter]);
 
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
-  // `ekp-page-kb.jsx:10-11` (`.content` + `.content-wide`). Inner preserved until F5.
+  const totalDocs = (query.data ?? []).reduce(
+    (s, k) => s + k.total_documents,
+    0,
+  );
+
   return (
-    <div className="content"><div className="content-wide">
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Knowledge Bases</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage ingested manuals across all KBs.
-          </p>
+    <div className="content">
+      <div className="content-wide">
+        {/* Page header — mockup lines 12-31 */}
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Knowledge bases</h1>
+            <p className="page-subtitle">
+              Each KB is provisioned with its own Azure AI Search index (
+              <span className="mono">ekp-kb-&lt;kb_id&gt;-v1</span>, 1024d HNSW)
+              per ADR-0018.
+            </p>
+          </div>
+          <div className="page-actions">
+            <div className="seg">
+              <button
+                type="button"
+                className="seg-btn"
+                data-active={view === 'grid'}
+                onClick={() => pickView('grid')}
+              >
+                <Layers size={13} /> Grid
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                data-active={view === 'table'}
+                onClick={() => pickView('table')}
+              >
+                <Filter size={13} /> Table
+              </button>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled
+              title="Export — Tier 2 (post-Beta)"
+              style={{ opacity: 0.5, cursor: 'default' }}
+            >
+              <Download size={13} /> Export
+            </button>
+            <Link href="/kb/new" className="btn btn-primary btn-sm">
+              <Plus size={13} /> New KB
+            </Link>
+          </div>
         </div>
-        <Button asChild>
-          <Link href="/kb/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Create KB
-          </Link>
-        </Button>
-      </header>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search by name, id, description…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-            aria-label="Search KBs"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {(['all', 'indexed', 'empty', 'degraded'] as StatusFilter[]).map((kind) => (
-              <SelectItem key={kind} value={kind}>
-                {STATUS_FILTER_LABEL[kind]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKind)}>
-          <SelectTrigger className="w-full sm:w-56">
-            <ArrowDownAZ className="mr-2 h-4 w-4 text-muted-foreground" />
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            {(['last_indexed', 'name', 'documents'] as SortKind[]).map((kind) => (
-              <SelectItem key={kind} value={kind}>
-                {SORT_LABEL[kind]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+        {/* Filter bar — mockup lines 34-43 */}
         <div
-          role="group"
-          aria-label="View mode"
-          className="flex shrink-0 rounded-md border border-border p-0.5"
+          style={{
+            display: 'flex',
+            gap: 8,
+            marginBottom: 16,
+            alignItems: 'center',
+          }}
         >
-          <Button
+          <div className="input-search-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <span className="icon-leading">
+              <Search size={14} />
+            </span>
+            <input
+              className="input"
+              placeholder="Filter by name, id, description…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Status filter — cycle through options on click (replaces shadcn Select) */}
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            aria-pressed={view === 'grid'}
-            aria-label="Grid view"
-            onClick={() => pickView('grid')}
-            className={cn(
-              'h-7 w-7 p-0',
-              view === 'grid' && 'bg-accent/15 text-accent',
-            )}
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              const order: StatusFilter[] = ['all', 'indexed', 'empty', 'archived'];
+              const idx = order.indexOf(statusFilter);
+              setStatusFilter(order[(idx + 1) % order.length]!);
+            }}
+            title="Click to cycle status filter"
           >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
+            <Filter size={13} /> {STATUS_FILTER_LABEL[statusFilter]}
+          </button>
+
+          {/* Sort cycle */}
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            aria-pressed={view === 'table'}
-            aria-label="Table view"
-            onClick={() => pickView('table')}
-            className={cn(
-              'h-7 w-7 p-0',
-              view === 'table' && 'bg-accent/15 text-accent',
-            )}
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              const order: SortKind[] = ['last_indexed', 'name', 'documents'];
+              const idx = order.indexOf(sort);
+              setSort(order[(idx + 1) % order.length]!);
+            }}
+            title="Click to cycle sort"
           >
-            <List className="h-4 w-4" />
-          </Button>
+            <Tag size={13} /> {SORT_LABEL[sort]}
+          </button>
+
+          <div className="spacer" style={{ flex: 1 }} />
+          <div className="text-xs muted mono">
+            {visible.length} of {(query.data ?? []).length} KBs · {totalDocs} docs total
+          </div>
         </div>
 
-        <span className="text-xs text-muted-foreground sm:ml-2">
-          {query.isLoading
-            ? '…'
-            : `${visible.length} of ${query.data?.length ?? 0}`}
-        </span>
+        {/* Body — grid or table */}
+        {query.isLoading ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '48px 18px', textAlign: 'center' }}
+          >
+            Loading knowledge bases…
+          </div>
+        ) : visible.length === 0 ? (
+          <KbEmpty
+            hasFilter={
+              search.trim().length > 0 || statusFilter !== 'all'
+            }
+          />
+        ) : view === 'grid' ? (
+          <div className="kb-grid">
+            {visible.map((kb) => (
+              <KbCard key={kb.kb_id} kb={kb} />
+            ))}
+          </div>
+        ) : (
+          <KbTable rows={visible} />
+        )}
       </div>
-
-      {query.isError && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Failed to load KBs:{' '}
-          {String((query.error as Error)?.message ?? 'unknown')}
-        </div>
-      )}
-
-      {query.isLoading ? (
-        view === 'grid' ? <KbGridSkeleton /> : <KbTableSkeleton />
-      ) : visible.length === 0 ? (
-        <KbEmpty hasSearch={search.trim().length > 0 || statusFilter !== 'all'} />
-      ) : view === 'grid' ? (
-        <ul className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {visible.map((kb) => (
-            <li key={kb.kb_id}>
-              <KbCard kb={kb} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <KbTable rows={visible} />
-      )}
     </div>
-    </div></div>
   );
 }
 
-function makeComparator(sort: SortKind): (a: KbStatus, b: KbStatus) => number {
-  if (sort === 'name') {
-    return (a, b) => (a.name || a.kb_id).localeCompare(b.name || b.kb_id);
-  }
-  if (sort === 'documents') {
-    return (a, b) => (b.total_documents ?? 0) - (a.total_documents ?? 0);
-  }
-  return (a, b) => {
-    const av = a.last_indexed_at ?? '';
-    const bv = b.last_indexed_at ?? '';
-    if (!av && !bv) return 0;
-    if (!av) return 1;
-    if (!bv) return -1;
-    return bv.localeCompare(av);
-  };
-}
-
-function deriveStatus(kb: KbStatus): StatusKind {
-  if ((kb.failed_documents?.length ?? 0) > 0) return 'degraded';
-  if ((kb.total_documents ?? 0) === 0) return 'empty';
-  return 'indexed';
-}
-
-const STATUS_BADGE_CLASS: Record<StatusKind, string> = {
-  indexed: 'bg-success/15 text-success border-transparent',
-  empty: 'bg-muted text-muted-foreground border-transparent',
-  degraded: 'bg-warning/15 text-warning-foreground border-transparent',
-};
-
-const STATUS_LABEL: Record<StatusKind, string> = {
-  indexed: 'Indexed',
-  empty: 'Empty',
-  degraded: 'Degraded',
-};
-
-const STATUS_ICON: Record<StatusKind, React.ReactNode> = {
-  indexed: <CheckCircle2 className="mr-1 h-3 w-3" />,
-  empty: <Database className="mr-1 h-3 w-3" />,
-  degraded: <FileWarning className="mr-1 h-3 w-3" />,
-};
+// ──────────────────────────────────────────────────────────────────────────
+// KbCard — mockup lines 57-86
+// ──────────────────────────────────────────────────────────────────────────
 
 function KbCard({ kb }: { kb: KbStatus }) {
   const status = deriveStatus(kb);
-  const lastIndexed = kb.last_indexed_at?.slice(0, 10) ?? '—';
   return (
     <Link
       href={`/kb/${kb.kb_id}`}
-      className="group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="kb-card"
+      style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
     >
-      <Card className="h-full transition-colors group-hover:border-accent/60">
-        <CardHeader className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="line-clamp-1 text-base">
-              {kb.name || kb.kb_id}
-            </CardTitle>
-            <Badge
-              variant="outline"
-              className={cn('shrink-0 text-xs', STATUS_BADGE_CLASS[status])}
-            >
-              {STATUS_ICON[status]}
-              {STATUS_LABEL[status]}
-            </Badge>
-          </div>
-          <CardDescription className="line-clamp-2 min-h-[2.5rem]">
-            {kb.description || (
-              <span className="italic text-muted-foreground/70">
-                No description
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <FileText className="h-3 w-3" />
-              {(kb.total_documents ?? 0).toLocaleString()} doc
-              {kb.total_documents === 1 ? '' : 's'}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Database className="h-3 w-3" />
-              {(kb.total_chunks ?? 0).toLocaleString()} chunks
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {lastIndexed}
-            </span>
-            <span className="font-mono text-[10px] text-muted-foreground/80">
-              {kb.kb_id}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="kb-card-head">
+        <div className="kb-icon">
+          <Database size={18} />
+        </div>
+        {status === 'archived' ? (
+          <span className="badge badge-muted">
+            <span className="badge-dot" /> ARCHIVED
+          </span>
+        ) : status === 'empty' ? (
+          <span className="badge badge-info">
+            <span className="badge-dot" /> EMPTY
+          </span>
+        ) : (
+          <span className="badge badge-success">
+            <span className="badge-dot" /> READY
+          </span>
+        )}
+      </div>
+      <div>
+        <div className="kb-title">{kb.name || kb.kb_id}</div>
+        <div className="kb-desc">{kb.description || '—'}</div>
+      </div>
+      <div className="kb-meta">
+        <span>
+          <FileText size={11} /> {kb.total_documents}
+        </span>
+        <span>
+          <Layers size={11} /> {kb.total_chunks.toLocaleString()}
+        </span>
+        <span>
+          <Zap size={11} /> {kb.storage_size_mb.toFixed(1)} MB
+        </span>
+        <span style={{ marginLeft: 'auto' }}>
+          {formatRelative(kb.last_indexed_at)}
+        </span>
+      </div>
     </Link>
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// KbTable — mockup lines 88-137
+// ──────────────────────────────────────────────────────────────────────────
+
 function KbTable({ rows }: { rows: KbStatus[] }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="table-wrap">
+      <table className="table">
+        <thead>
           <tr>
-            <th scope="col" className="px-3 py-2 text-left font-medium">Name</th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">KB id</th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">Status</th>
-            <th scope="col" className="px-3 py-2 text-right font-medium">Docs</th>
-            <th scope="col" className="px-3 py-2 text-right font-medium">Chunks</th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">Last indexed</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th className="col-num">Docs</th>
+            <th className="col-num">Chunks</th>
+            <th className="col-num">Screenshots</th>
+            <th className="col-num">Storage</th>
+            <th className="col-num">Last indexed</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((kb) => {
             const status = deriveStatus(kb);
             return (
-              <tr
-                key={kb.kb_id}
-                className="border-t border-border transition-colors hover:bg-muted/40"
-              >
-                <td className="px-3 py-2">
+              <tr key={kb.kb_id}>
+                <td>
                   <Link
                     href={`/kb/${kb.kb_id}`}
-                    className="font-medium hover:text-accent hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      textDecoration: 'none',
+                      color: 'inherit',
+                    }}
                   >
-                    {kb.name || kb.kb_id}
-                  </Link>
-                  {kb.description && (
-                    <div className="line-clamp-1 text-xs text-muted-foreground">
-                      {kb.description}
+                    <div className="kb-icon" style={{ width: 26, height: 26 }}>
+                      <Database size={13} />
                     </div>
+                    <div>
+                      <div className="table-row-link">{kb.name || kb.kb_id}</div>
+                      <div className="text-xs muted mono">
+                        ekp-kb-{kb.kb_id}-v1
+                      </div>
+                    </div>
+                  </Link>
+                </td>
+                <td>
+                  {status === 'archived' ? (
+                    <span className="badge badge-muted">
+                      <span className="badge-dot" /> ARCHIVED
+                    </span>
+                  ) : status === 'empty' ? (
+                    <span className="badge badge-info">
+                      <span className="badge-dot" /> EMPTY
+                    </span>
+                  ) : (
+                    <span className="badge badge-success">
+                      <span className="badge-dot" /> READY
+                    </span>
                   )}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                  {kb.kb_id}
-                </td>
-                <td className="px-3 py-2">
-                  <Badge
-                    variant="outline"
-                    className={cn('text-xs', STATUS_BADGE_CLASS[status])}
-                  >
-                    {STATUS_LABEL[status]}
-                  </Badge>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {(kb.total_documents ?? 0).toLocaleString()}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {(kb.total_chunks ?? 0).toLocaleString()}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {kb.last_indexed_at?.slice(0, 10) ?? '—'}
+                <td className="col-num">{kb.total_documents}</td>
+                <td className="col-num">{kb.total_chunks.toLocaleString()}</td>
+                <td className="col-num">{kb.total_screenshots}</td>
+                <td className="col-num">{kb.storage_size_mb.toFixed(1)} MB</td>
+                <td className="col-num text-xs">
+                  {formatRelative(kb.last_indexed_at)}
                 </td>
               </tr>
             );
@@ -404,67 +392,51 @@ function KbTable({ rows }: { rows: KbStatus[] }) {
   );
 }
 
-function KbGridSkeleton() {
+function KbEmpty({ hasFilter }: { hasFilter: boolean }) {
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 md:grid-cols-3" aria-hidden="true">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i}>
-          <Card>
-            <CardHeader className="space-y-3">
-              <Skeleton className="h-5 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-1/3" />
-            </CardContent>
-          </Card>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function KbTableSkeleton() {
-  return (
-    <div className="rounded-md border border-border p-3" aria-hidden="true">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="my-2 h-6 w-full" />
-      ))}
-    </div>
-  );
-}
-
-function KbEmpty({ hasSearch }: { hasSearch: boolean }) {
-  if (hasSearch) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 p-12 text-center">
-        <Search className="h-10 w-10 text-muted-foreground" />
-        <div>
-          <p className="text-base font-medium">No matching KBs</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Try a different search term, change the status filter, or clear it.
-          </p>
-        </div>
+    <div
+      style={{
+        padding: '48px 24px',
+        textAlign: 'center',
+        border: '1px dashed oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        background: 'oklch(var(--muted) / 0.2)',
+      }}
+    >
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'oklch(var(--muted))',
+          color: 'oklch(var(--muted-foreground))',
+          display: 'grid',
+          placeItems: 'center',
+          margin: '0 auto 16px',
+        }}
+      >
+        <Database size={22} />
       </div>
-    );
-  }
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 p-12 text-center">
-      <Database className="h-12 w-12 text-muted-foreground" />
-      <div>
-        <p className="text-base font-medium">No Knowledge Bases yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create your first KB to start ingesting Word, PDF, or PowerPoint manuals.
-        </p>
+      <div
+        style={{
+          fontSize: 15,
+          fontWeight: 600,
+          marginBottom: 6,
+          color: 'oklch(var(--foreground))',
+        }}
+      >
+        {hasFilter ? 'No knowledge bases match' : 'No knowledge bases yet'}
       </div>
-      <Button asChild>
-        <Link href="/kb/new">
-          <Plus className="mr-2 h-4 w-4" />
-          Create KB
+      <div className="text-xs muted" style={{ marginBottom: 16 }}>
+        {hasFilter
+          ? 'Adjust your search / status filter.'
+          : 'Create your first KB to start ingesting documents.'}
+      </div>
+      {!hasFilter && (
+        <Link href="/kb/new" className="btn btn-primary btn-sm">
+          <Plus size={13} /> Create knowledge base
         </Link>
-      </Button>
+      )}
     </div>
   );
 }
