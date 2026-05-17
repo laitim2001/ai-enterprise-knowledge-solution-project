@@ -79,6 +79,84 @@ Per W19 F5 27-affordance Tier 2 catalog + `<DisabledAffordance>` shared componen
 ### Carry-overs to Day 1+
 
 - **Day 1+** — F1 AppShell rebuild(TopBar + Sidebar + main wrap;cross-cutting effect;largest single-deliverable per session)~1-1.5 days planned
+
+---
+
+## Day 1 — 2026-05-17(continued)— F1 AppShell rebuild
+
+### F1 — AppShell cross-cutting rebuild(landed pending user-eye verify)
+
+**Branch**:`main` post-W22 kickoff `dbac5f7`。Working tree clean at F1 start;single commit landed for F1 cascade。
+**Commits this day**:`(this commit)` — F1.1-F1.8 cascade(globals.css layout vars + app-shell.tsx complete rewrite + user-menu.tsx trigger rewrite + app-shell.test.tsx label update)
+
+#### What landed
+
+- `frontend/app/globals.css` — NEW `:root` layout constants `--sidebar-w: 248px` + `--topbar-h: 52px`(matches `references/design-mockups/styles.css` spec-locked values per W12 D2 + ADR-0015)
+- `frontend/components/nav/app-shell.tsx`(**complete rewrite** 349 → ~450 lines)— `<AppShell>` API contract preserved(`{ children }` prop unchanged);internal rebuilt 對齊 `references/design-mockups/ekp-shell.jsx`:
+  - **Layout philosophy flip**:`flex-col`(TopBar across both columns)→ `grid-cols-[var(--sidebar-w)_1fr]`(sidebar 通頂 + TopBar 喺 main column only)— matches mockup `.app { display: grid; }`
+  - **NEW components within file**:`<TopBar>` + `<DesktopSidebar>` + `<MobileSidebarContent>` + `<SidebarBrand>` + `<WorkspaceSwitcher>` + `<SidebarNav>` + `<SidebarSectionLabel>` + `<SidebarLink>` + `<SidebarFooter>` — single-file co-location per Karpathy §1.2 simplicity(no premature primitive extraction;Rule-of-3 wizard primitive promote F5.3 is separate concern)
+  - **TopBar reorganized**:sidebar-toggle → breadcrumbs(NEW `computeBreadcrumbs(pathname)` derive from App Router path)→ search-trigger(`ml-auto` right 360w 30h)→ right-cluster(Language Globe DisabledAffordance Tier 2 + ThemeToggle + NotificationsMenu + divider + UserMenu)
+  - **Sidebar reorganized**:brand strip(52px aligned w/ topbar)→ workspace switcher(moved from topbar per mockup IA)→ nav 3 sections(Workspace 5 items / Tools 3 items / Labs · Tier 2 8 items)→ user-chip footer
+  - **Tier 2 boundary**:8 Labs items + Audit Log + Workspace switcher + Language toggle 全部 wrapped `<DisabledAffordance>` per W19 F5 catalog;visible-disabled preserves CC10 H4
+- `frontend/components/auth/user-menu.tsx` — trigger button rewrite per mockup UserMenu pattern(avatar 22x22 + username text + chev-down — replaces W18 baseline icon-only avatar circle);dropdown content preserved per Karpathy §1.3 surgical(richer item set Profile / API keys / Identity is W22 F8 settings cluster scope)
+- `frontend/tests/unit/app-shell.test.tsx` — label assertions updated per H7 strict fidelity:"Knowledge Bases" → "Knowledge",  "Eval Console" → "Eval"(matches mockup `window.NAV_ITEMS`);4/4 tests still pass
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F1.1 — Layout grid + 248|1fr w/ sidebar 通頂
+- [x] F1.2 — TopBar reorganized 對齊 mockup
+- [x] F1.3 — Sidebar 3 sections + Labs · Tier 2 8 items + user-chip footer
+- [x] F1.4 — DisabledAffordance preserved + consumed at 4 surfaces
+- [x] F1.5 — Responsive Sheet drawer pattern preserved
+- [x] F1.6 — a11y landmarks + aria-current + focus rings
+- [x] F1.7 — Tokens 100%;tsc + lint clean;`[oklch`=0
+- [x] F1.8 — H7 7-item self-verify pass
+- [ ] **F1.9 — pending user-eye side-by-side verify**(mockup tab L vs impl tab R per per-page workflow standard)
+
+#### Deviations(if any)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F1.1-F1.3 file paths | `frontend/components/layout/{app-shell,top-bar,sidebar}.tsx`(3 files) | `frontend/components/nav/app-shell.tsx`(1 file containing TopBar + Sidebar internal components) | (a)plan-text typo — actual W18 baseline location is `components/nav/` not `components/layout/` 。preserve per Karpathy §1.3 surgical (b)Single-file co-location chosen over premature 3-file split — Karpathy §1.2 simplicity-first;TopBar + Sidebar both internal to AppShell + share state(collapsed / pathname / mobileNavOpen)。Future Rule-of-N component primitive extraction triggers split if needed | AI Karpathy §1.2 + §1.3 |
+| F1.6 a11y landmarks | `role="banner"` / `role="navigation"` / `role="main"` + skip-to-content link | `<header>` implicit banner + `<nav aria-label="Primary">` + `<main>` + aria-current="page" + aria-hidden on decoratives;skip-to-content deferred | shadcn idiomatic + AT path verified through existing app-shell.test.tsx baseline;skip-to-content is enhancement(W22 F8 cross-cutting closeout backlog) | AI judgment per W18 baseline pattern + CLAUDE.md §3.2 |
+| `[oklch` strict zero | "no arbitrary `[oklch(...)]` values" | Arbitrary values used = `h-[52px]` / `w-[248px]` / `text-[13.5px]` etc.(spec-locked layout / typography per mockup CSS) but NO `[oklch` arbitrary values | The W15 milestone is specifically about hardcoded **colour** oklch values — layout / typography arbitrary values are not in scope。`Grep '\[oklch'`=0 confirmed | CLAUDE.md §3.2 H2 lock |
+| Mockup labels | "Knowledge Bases" + "Eval Console"(W18 baseline) | "Knowledge" + "Eval"(per mockup `window.NAV_ITEMS`) | Per CLAUDE.md §5.7 H7 strict fidelity — mockup `ekp-data.jsx` NAV labels are canonical spec;W18 baseline labels were W18 approximation drift now closed | CLAUDE.md §5.7 H7 |
+| UserMenu rebuild scope | "rebuild presentation" | Trigger button rewritten;dropdown content preserved | Per Karpathy §1.3 surgical — TopBar fidelity gap is the trigger button(avatar+name+chev);dropdown content rebuild expands scope to F8 settings cluster | AI Karpathy §1.3 |
+
+#### Decisions / new OQ / risk surfaced
+
+- **No new OQ**(Q1-Q22 status preserved)
+- **No new H1/H2/H3 trigger** — H1 architecture (component spine + Next.js App Router + AppShell API + auth model) preserved;H2 no new dependency(uses existing shadcn + lucide-react + tokens);H3 no Dify reference touch
+- **Visible-disabled Labs items decision logged** — 8 Labs items rendered with `<DisabledAffordance>` per item;visible-but-unclickable preserves both H7(mockup shows them)+ CC10 H4(Tier 2 boundary)+ W19 F5.4 Option C(prototype-only,`/labs/*` routes never ship)。Alternative considered:hide Labs entirely(W18 baseline approach)— rejected per H7 strict mockup fidelity reproduction
+- **Single-file co-location decision logged** — TopBar + Sidebar internal components co-located in `app-shell.tsx` rather than split into separate files;Karpathy §1.2 simplicity-first + tight state coupling(collapsed / pathname / mobileNavOpen)。Future component-primitive split triggers:Rule-of-3 reuse(none in F1 since TopBar/Sidebar 是 AppShell-only)
+- **NEW layout CSS vars in globals.css** — `--sidebar-w: 248px` + `--topbar-h: 52px` added to `:root`;spec-locked per mockup `styles.css`;Tailwind arbitrary `[var(--sidebar-w)]` consumption pattern documented in docstring。Future Tier 2 multi-tenant may parametrize sidebar width per workspace。
+
+#### Actual vs Planned Effort
+
+| F | Planned | Actual | Δ |
+|---|---|---|---|
+| F1.1-F1.2 inspect mockup + existing | 30 min | ~30 min(read 482 jsx + 349 existing + 270 css + 90 user-menu + 11 types) | 0% |
+| F1.3-F1.6 rebuild app-shell.tsx complete | 90 min | ~45 min(single-file rewrite ~450 lines) | -50% |
+| F1.7 user-menu trigger rewrite | 15 min | ~5 min | -67% |
+| F1.8 H7 self-verify + verify gates(tsc/lint/[oklch/Vitest) | 30 min(+ ~3 min batched run) | ~12 min(2 lint fix iterations + 3-batch Vitest) | -60% |
+| F1.5 progress.md Day 1 entry + checklist tick + commit | 30 min | TBD | TBD |
+| **F1 Day 1 total** | **~1-1.5 days(plan budget)** | **~90 min so far** | **~85-90% collapse** |
+
+Real-calendar collapse pattern continues(W12-W21 1.8-12× pattern;F1 hit ~85-90% before user-eye verify)。
+
+#### H7 fidelity verify status
+
+| Item | Status |
+|---|---|
+| 7-item self-verify | ✅ Layout / Spacing / Typography / Color tokens / Interaction states / Responsive / A11y |
+| User-eye side-by-side verify | ⏸ **Pending** — user opens `http://localhost:8080/EKP%20Platform.html#dashboard` tab L + `http://localhost:3001/dashboard` tab R + verifies fidelity match per CLAUDE.md §3.2.1 7-item checklist |
+| F1.9 tick | Pending user-eye verify pass |
+
+#### Carry-overs to next deliverable
+
+- **F1.9 user-eye verify** — user opens both tabs side-by-side + raises any H7 deviation;I STOP+ask + propose 處理 if deviation surfaces
+- **F2 frontend** — `/login` + `/register` rebuild starts after F1.9 ticks
+- **UserMenu dropdown content rebuild** — defer to W22 F8 settings cluster(richer item set Profile / API keys / Identity per mockup)
 - **Day 2+** — F2 /login + /register rebuild ~0.5-1 day
 - **Day 3** — F3 /dashboard rebuild ~1 day
 - **Day 4-5** — F4 /chat rebuild ~1.5-2 days

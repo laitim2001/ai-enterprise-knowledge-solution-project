@@ -1,5 +1,5 @@
 /**
- * Unit tests — `<AppShell>` unified application chrome (W18 F8.4).
+ * Unit tests — `<AppShell>` unified application chrome (W18 F8.4 + W22 F1).
  *
  * Covers: (1) the 5 sidebar nav modules render under `<nav aria-label="Primary">`,
  * (2) the active route gets `aria-current="page"`, (3) the focus-mode toggle
@@ -7,6 +7,10 @@
  * trigger is present. `<UserMenu>` shows "Signing in…" with no AuthProvider
  * mounted (fine — that path is exercised); `<ThemeToggle>` + `<GlobalSearch open=false>`
  * render inertly. Render/interaction smoke — deep coverage is Tier 2.
+ *
+ * W22 F1 label updates per CLAUDE.md §5.7 H7 strict mockup fidelity —
+ * "Knowledge Bases" → "Knowledge", "Eval Console" → "Eval" (matches
+ * `references/design-mockups/ekp-data.jsx` `window.NAV_ITEMS` shape).
  */
 
 import { render, screen } from '@testing-library/react';
@@ -45,7 +49,7 @@ describe('AppShell', () => {
   it('renders the 5 sidebar nav modules', () => {
     renderShell();
     expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
-    for (const label of ['Dashboard', 'Chat', 'Knowledge Bases', 'Eval Console', 'Traces']) {
+    for (const label of ['Dashboard', 'Chat', 'Knowledge', 'Eval', 'Traces']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });
