@@ -2,6 +2,8 @@
 
 > **What this folder contains**
 > A high-fidelity, click-through HTML prototype of the entire EKP (Enterprise Knowledge Platform) frontend, plus this reference document explaining every screen's purpose. Use it as the **design spec** when implementing or evolving the real Next.js frontend at `frontend/`.
+>
+> **📐 Implementing or modifying `frontend/`?** Read [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) — the dev API reference (tokens / primitives / layout patterns / composite patterns like PopMenu + Stepper + OptionRow + DisabledAffordance / sync protocol). This README explains *what's in the folder*; DESIGN_SYSTEM.md explains *how to consume the design system in code*.
 
 This is **NOT runnable code for the Next.js app**. It is a visual + interaction spec implemented in plain HTML + React (in-browser Babel) so you can open `EKP Platform.html` directly in a browser without installing anything.
 
