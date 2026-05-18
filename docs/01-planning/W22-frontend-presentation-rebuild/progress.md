@@ -528,7 +528,31 @@ Per D1/D8/D9 process amendment recursive(NOW 3rd cumulative confirmed applicatio
 
 #### Carry-overs to Day 6+
 
-- **F7.10 user-eye verify** — 3 routes side-by-side per F6.9 pattern:`localhost:3001/eval` / `/traces` / `/traces/{traceId}` vs mockup hash routes;outcome may surface secondary H7 deviation per F4 ChatHeader / F6 audit pattern(post-ship fidelity audit)
+- **F7.10 user-eye verify COMPLETE 2026-05-18 D8** — 3 of 3 routes verified pass:
+  - ✅ `/traces` D6 user-eye pre-commit verify pass(Success button surfaced + restored)
+  - ✅ `/eval` D7 user-eye post-commit verify pass(eval-set picker surfaced + dropped per pre-commit D7 fix already in `ad3ec90`)
+  - ✅ `/traces/[traceId]` D8 post-backend-fix verify pass(blocked initially by backend Langfuse `_DEFAULT_FETCH_LIMIT` 500 exceeding cloud cap 100 — fixed in same session per §5.1 H1 bug-fix exemption);**F7 phase-gate CLOSED**
+
+### D8 in-session backend regression fix(2026-05-18 post user `/traces` browser refresh)
+
+User refresh `localhost:3001/traces` post-backend-restart surfaced `Langfuse: fetch_failed (...status_code: 400, body: {'message': 'Invalid request data', 'error': [{'code': 'too_big', 'maximum': 100, 'type': 'number', 'inclusive': True, 'exact': False, 'message': 'Number must be less than or equal to 100', 'path': ['limit']}]})`。Root cause:`backend/observability/langfuse_trace_list.py:47` `_DEFAULT_FETCH_LIMIT = 500`(W21 F2 commit `55f876b` assumed-permissive value)exceeds Langfuse cloud per-page cap of 100(server-side enforcement,likely tightened post-`55f876b` 2026-05-17 by Langfuse cloud build update OR newer SDK version installed locally in `.venv`)。Frontend `tracesApi.list({ limit: 50 })` → backend `fetch_window = min(500, 50+0+100) = 150` → SDK call fails 400。
+
+**Fix landed(2 files,2-line core change)**:
+- `backend/observability/langfuse_trace_list.py:47` `_DEFAULT_FETCH_LIMIT = 500` → `100` + 6-line comment explaining W22 D8 context + W17 F4 sufficiency reasoning + Wave C+ pagination scope note
+- `backend/api/routes/debug.py:73` docstring stale `min(500, ...)` reference → `min(100, ...)` + W22 D8 mention
+
+**Verify**:
+- Backend pytest 30/30 pass(`test_traces_route.py` + `test_debug_trace.py` + `test_langfuse_tracer.py`)— CC8 verified
+- Backend restart killed stale PID 37036(W21 F2 vintage 2026-05-16 process without `--reload`)→ intermediate stuck process cleanup → fresh PID 2092 via `.venv/Scripts/python.exe -m uvicorn`
+- `curl localhost:8000/openapi.json` confirmed both `/debug/trace/{trace_id}` + NEW `/traces` registered
+- `curl localhost:8000/traces` 401(expected — auth dep enforced)
+- User browser refresh `/traces` → page rendered successfully + clicked into `/traces/[traceId]` for F7.10 final verify pass
+
+**Process meta — D8 不同 category vs D1/D6/D7/D9**:相對 D1/D6/D7/D9 4 條 **frontend fidelity** empirical-finding patterns,D8 係 **backend regression caught mid-frontend-phase** — separate category。Anti-pattern catalog naming candidate:「assumed-permissive vendor SDK cap that vendor later tightened」— W21 F2 hypothesised reasonable buffer(500 as "safe upper bound")but vendor enforced 100;mitigation = grep vendor docs for hard limits during dependency-touching code AND production-shape integration test。Per §5.1 H1 exempt bug-fix from architectural-change ask;CC8 backend pytest preserved;F8 closeout memory append catalog should consider 新 category vs combining w/ existing fidelity patterns。
+
+### Carry-overs to Day 6+
+
+- **F8 closeout** unblocked — /settings baseline rebuild + phase Gate verdict + 7-section retro + Vitest re-verify(F6.1+F7.1+F7.3 complete rewrite 可能 break render-smoke tests)+ Playwright pixel baseline capture all 15 pages + PAGE_INVENTORY + COMPONENT_CATALOG + memory `feedback_design_fidelity.md` append(D1/D6/D7/D9 fidelity patterns)+ possibly NEW memory entry for D8 backend-regression pattern
 - **F8** /settings baseline + cross-cutting closeout ~0.5-1 day:phase Gate verdict + 7-section retro + Vitest re-verify post-F6+F7 rewrites + Playwright pixel baseline capture for all 15 rebuilt pages + PAGE_INVENTORY + COMPONENT_CATALOG update + memory `feedback_design_fidelity.md` D5 empirical-finding append(3rd recursive catch evidence)
 - **Vitest render-smoke test re-verify** post-F7 complete rewrites(F8.7 acceptance gate — test count may shift but coverage not regress)
 

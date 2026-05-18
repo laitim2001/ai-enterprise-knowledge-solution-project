@@ -69,8 +69,11 @@ async def list_traces(
 
     Filter is applied post-fetch in Python (Langfuse v2 SDK `fetch_traces`
     doesn't expose status/error filter pushdown). Fetch window sized to
-    `min(500, offset + limit + 100)` — sufficient for Beta cohort scale
-    per W17 F4 pricing baseline (50 user × 5 q/day × 24h ≈ 250 traces).
+    `min(100, offset + limit + 100)` — Langfuse cloud enforces ≤100 per page
+    (W22 D8 clamp landed 2026-05-18; pre-clamp was 500 + W21 F2 regression).
+    Sufficient for Beta cohort scale per W17 F4 pricing baseline (50 user ×
+    5 q/day × 24h ≈ 250 traces); beyond 100 paginate via repeated SDK calls
+    (Wave C+ scope).
 
     Parameter naming: URL param `?filter=` aliases Python `status_filter` —
     avoids Python builtin shadow + improves call-site readability while

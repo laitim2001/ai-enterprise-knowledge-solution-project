@@ -44,7 +44,14 @@ from observability.langfuse_tracer import get_langfuse_client
 logger = structlog.get_logger(__name__)
 
 
-_DEFAULT_FETCH_LIMIT = 500  # Langfuse SDK v2 max per page;safe upper bound
+# Langfuse cloud enforces `limit ≤ 100` server-side per page (verified W22 D8
+# 2026-05-18 — 400 "Number must be less than or equal to 100" surfaced via the
+# `/traces` route when frontend requested limit=50 + headroom=100 → fetch_window
+# 150 > 100). W21 F2 originally assumed 500 (likely self-hosted dev tolerance);
+# the cloud SDK + newer self-hosted versions tightened the cap. For Tier 1 +
+# W17 F4 baseline (50 user × 5 q/day × 24h ≈ 250 traces) 100 per page is
+# sufficient — beyond that, paginate via repeated SDK calls (Wave C+ scope).
+_DEFAULT_FETCH_LIMIT = 100
 
 
 def _coerce_iso(value: Any) -> str:
