@@ -159,14 +159,17 @@ ADR mapping per page-cluster:
 - **Spec ref**:`ekp-page-chat.jsx PageChat`
 - **OQ deps**:none(consumes existing `POST /query` SSE + `/conversations` CRUD + `POST /feedback` — all Wave A backend preserved)
 - **Acceptance criteria**:
-  - F4.1 Rebuild `frontend/app/(app)/chat/page.tsx` 對齊 `PageChat`(message list + composer + sidebar + citation modes + image surfaces)
-  - F4.2 Rebuild 7 NEW Wave A components per mockup:`<ConversationHistory>` + `<InlineImageCard>` + `<ImageGallery>` + `<CitationPill>` + `<FeedbackBar>` + `<CragStrip>` + composer rewrite — preserve existing data hooks + SSE streamQuery + localStorage `ekp-citation-mode` persistence
-  - F4.3 3 citation modes(inline / footnote / sidebar)preserved + toggle UI 對齊 mockup
-  - F4.4 Preserve `useChat` SSE wiring + `/conversations` CRUD + `/feedback` tag-prefix integration(Wave A backend unchanged)
-  - F4.5 Loading + error + empty states first-class
-  - F4.6 Tokens 100%;`tsc` + `lint` clean
-  - F4.7 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify + user-eye side-by-side verify
-- **Effort estimate**:1.5-2 days(W22 D4-D5)— largest single-page surface(7 NEW components + SSE + citation modes)
+  - F4.1 Rebuild `frontend/app/(app)/chat/page.tsx` 對齊 `PageChat`(3-pane grid + ChatHeader + ChatThread + composer)
+  - F4.2 Rebuild presentation per mockup `ekp-page-chat.jsx PageChat` actual decomposition(lines 72-132):**ConversationHistoryPanel + ChatHeader + ChatThread + MessageRow + SourcesStrip + SourceDocCard + CitationPanel + PanelSourceCard + ScreenshotModal + ChatComposer** — mockup uses single-file functions so inline within `page.tsx`(per mockup pattern,not separate component files);DELETE obsolete W20 components that don't match mockup decomposition(`conversation-history.tsx` / `inline-image-card.tsx` / `image-gallery.tsx` / `citation-pill.tsx` / `feedback-bar.tsx` / `crag-strip.tsx`)— ⚠️ **W20 component identity list is NOT the mockup decomposition,do not preserve W20 abstraction names**
+  - F4.3 citationMode state machine preserved at PageChat level + consumers(MessageRow / SourcesStrip / CitationPanel)render per mode;**default `inline`**(no user-facing toggle UI per mockup ChatHeader line 257-298 which has CRAG + Show images switches + Focus eye + Sources book ONLY — **NO** seg-toggle);localStorage `ekp-citation-mode` reader preserved(writer removed — future ADR can re-introduce toggle without state-shape change);mode set externally via `tweaks.citationPlacement` per ADR-0031 Decision § Citation modes — **toggle UI 喺 mockup 入面唔存在,本 deliverable 唔可以 invent 一個**
+  - F4.4 Preserve `streamQuery` SSE wiring + `/conversations` CRUD + `/feedback` tag-prefix integration + per-turn persistence(Wave A backend unchanged per CC6)
+  - F4.5 ChatHeader right-side per mockup line 282-296:`<div className="row">` CRAG `<span className="switch" data-on="true" />` + Show images `<span className="switch" data-on="true" />`(visual-only,mockup parity)`<div className="spacer">` then `<div className="row">` Focus `<Eye>` + Sources `<BookOpen>`(BookOpen conditional on `citationMode === 'sidebar'` per mockup line 290-294)
+  - F4.6 Loading + error + empty states align mockup
+  - F4.7 Tokens 100%;`tsc` + `lint` clean;`[oklch`=0 preserved
+  - F4.8 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
+  - F4.9 User-eye side-by-side verify before tick(NEW gate per W21 retro;no smoke-user-deferred allowance)
+- **Effort estimate**:1.5-2 days(W22 D4-D5)— largest single-page surface(mockup decomposition + SSE + citation modes)
+- **Implementation status**:✅ F4.1-F4.4 + F4.6-F4.8 landed `4ec8e47` 2026-05-17;⚠️ F4.5 mockup-divergent originally(W20 seg-toggle inherited)— **fixed `fee7836` 2026-05-18** post user-eye fidelity audit;F4.9 user-eye verify pass pending
 
 ### F5 — /kb list + /kb/new rebuild(KB cluster part 1)
 
@@ -176,7 +179,7 @@ ADR mapping per page-cluster:
 - **Acceptance criteria**:
   - F5.1 Rebuild `frontend/app/(app)/kb/page.tsx` 對齊 `PageKbList`(grid+table+filter polish)
   - F5.2 Rebuild `frontend/app/(app)/kb/new/page.tsx` 對齊 `PageKbNew`(5-step wizard per ADR-0028 + KbConfig +4 multimodal fields per Wave A)
-  - F5.3 **Rule-of-3 wizard primitive promotion**(W20 F6.2 carry-over now realized — 4 wizard surfaces:F5.2 `/kb/new` 5-step + F6 `/kb/[id]/upload` 3-step + F2 `/register` 2-step + W18 `/settings`?)— extract shared `frontend/components/ui/stepper.tsx` + `<Stepper.Stage>` + `<Stepper.Field>` primitive;refactor all 4 wizard surfaces to consume
+  - F5.3 **Rule-of-3 wizard primitive promotion — CONDITIONAL on mockup styling 一致 verify**(W20 F6.2 carry-over candidate;4 candidate wizard surfaces:F5.2 `/kb/new` 5-step + F6.2 `/kb/[id]/upload` 3-step + F2.2 `/register` 2-step + W13 verify-email)。Per CLAUDE.md §5.7 H7:**先打開 mockup 4 個 wizard 並排對比 stepper header styling**;若 4 個 styling identical → extract shared `frontend/components/ui/stepper.tsx` + `<Stepper.Stage>` + `<Stepper.Field>` + refactor 4 wizards to consume;若任何一個 wizard 嘅 stepper header 有 bespoke styling → **defer primitive extraction 去 W23+**(per Karpathy §1.2「3 similar lines is better than premature abstraction」+ H7「mockup wins,不可 forced uniformity」)
   - F5.4 Preserve `GET /kb` + `POST /kb` backend integration
   - F5.5 Tokens 100%;`tsc` + `lint` clean
   - F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify + user-eye side-by-side verify
@@ -269,7 +272,7 @@ ADR mapping per page-cluster:
 
 - **No new OQ**(Q1-Q22 status preserved per W21 closeout)
 - **No new ADR**(W22 implements existing ADR-0014 / 0015 / 0024 / 0025 / 0028 / 0029 / 0031 + skipped-absorbed 0030;ADR-0026 + 0027 Wave C scope unchanged)
-- **No new dependency**(per CC6 H2 lock — shadcn primitives + Tailwind tokens + existing `psycopg` backing all preserved;Wave C 2 new deps Key Vault SDK + Entra Graph SDK 仍然 Wave C scope)
+- **No new dependency**(per CC6 H2 lock — **F1 mid-session CSS-first pivot landed**:mockup `styles.css` 1073 lines verbatim adopted as `frontend/app/styles-mockup.css`(1048 lines after `@tailwind` directive elision);visual layer driven by mockup CSS classes(`.btn .btn-primary .btn-lg .card .field .label .input .hint .seg .badge` etc.);shadcn primitives consumed where Radix a11y benefits(Dialog / DropdownMenu / Sheet / Toast / Tabs etc.);Tailwind utility classes for one-off layout;existing `psycopg` backing all preserved;Wave C 2 new deps Key Vault SDK + Entra Graph SDK 仍然 Wave C scope)
 - **No new R8 occurrence expected**(no new package install;W22 limited to existing codebase rewrite + shadcn primitive consumption)
 - **Existing W22 dev workflow:**
   - Frontend dev server `localhost:3001`(`pnpm dev`)
@@ -306,18 +309,20 @@ Earlier carry-overs from W12-W20 that affect W22:
 | Date | Author | Change |
 |---|---|---|
 | **2026-05-17 D0** | AI per Chris directive | **W22 phase kickoff cascade landed** — `plan.md` + `checklist.md` + `progress.md` created `status: active`;authorization = user explicit directive 2026-05-17 post-screenshot fidelity audit「我認為應該是重新地去建立和準備所有本項目的頁面...presentation layer 的一致,而不是把整個 frontend 架構重構」+ 3 AskUserQuestion Recommended picks(immediate close W21 + page ordering by user-facing impact + shadcn primitive 重寫);per CLAUDE.md §10 R1 rolling JIT + §5.7 H7 enforcement;no `frontend/` code change at kickoff(F0 governance only per W19+W20+W21 F0 precedent);F1-F8 detailed in §2 with rolling-JIT detail-refine cadence。**Pre-active-flip grep verification 5-step formalized** for W22 per CO_W14_process_grep_verify 10+ cumulative:(1)Read plan literal acceptance criteria;(2)Grep code base for referenced files / functions / patterns;(3)Surface mismatches via Karpathy §1.1 think-before-coding upfront;(4)Document deviations in plan §7 changelog at plan kickoff;(5)Adjust acceptance criteria per actual reality。**Per-page H7 verification gate formalized** — every F-deliverable acceptance criteria 包含 `CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify + user-eye side-by-side verify`;NO「smoke-user-deferred」allowance for fidelity itself(only multi-viewport responsive細項 / dark-mode drift / Playwright interactive flow can be deferred)。 |
+| **2026-05-18 D1** | AI per user directive | **W20-era residual planning audit landed** post user-eye `/chat` fidelity audit catching the F4 ChatHeader silent drift(`fee7836` 2026-05-18 ChatHeader right-side `Citations seg-toggle` → mockup CRAG switch + Show images switch + Focus Eye + Sources BookOpen)。7 contamination signals(D1-D7)identified in W22 plan + checklist text — all inherited from W20/W21 plan文字 without per-line mockup grep verify at W22 kickoff(meta-irony:`Pre-active-flip 5-step` formalized D0 but not applied to plan-text itself,only to code-vs-spec at active-flip time)。 **Fixes landed this changelog entry**:F4.3 "toggle UI 對齊 mockup" → "**NO** user-facing toggle UI per mockup ChatHeader" + state-machine-preserved + reader-only localStorage + default `inline`;F4.2 W20 component identity list `<ConversationHistory>...<CragStrip>` → mockup actual decomposition `ConversationHistoryPanel + ChatHeader + ChatThread + MessageRow + SourcesStrip + CitationPanel + ScreenshotModal + ChatComposer` inlined per mockup single-file pattern;F4.2 obsolete W20 components DELETE list explicit;F5.3 Rule-of-3 wizard primitive promotion **conditionalize** on mockup-4-wizards styling 一致 verify(else defer W23+);§5 dependency text + per-page workflow standard updated:**F1 mid-session CSS-first pivot baseline**(mockup `styles.css` 1073 lines verbatim as `styles-mockup.css` 1048 lines + mockup CSS classes drive visual layer + shadcn primitives only where Radix a11y benefits + Tailwind utility for one-off layout)— previous "shadcn primitives + Tailwind tokens" only-mention under-represented actual approach;Per-page workflow #6 NEW explicit「mockup is canonical;do not invent a UI surface mockup doesn't have」guard with F4 ChatHeader as named example。**Process amendment**:Pre-active-flip 5-step now applies **recursively** to plan-text at plan kickoff,not just at code time(catch W20-era residual text before it propagates to implementation)。**Cross-page propagation risk acknowledged**:F5-F8 acceptance criteria may have similar W20-inheritance — D6(F1.2 UserMenu dropdown content「preserving」)deferred to F1.9 user-eye verify;F5b-F8 each F-deliverable kickoff must read mockup decomposition first before kickoff plan-text refinement。 |
 
 ---
 
 **Plan ready for F1 kickoff.** F0 cascade landed at this commit;F1 AppShell rebuild starts next session(or continuation per user direction)。每 F-deliverable kickoff time refine acceptance criteria + identify NEW components per mockup component list inspection。
 
-**Per-page workflow standard**(applies F1-F7):
+**Per-page workflow standard**(applies F1-F7,F1 mid-session CSS-first pivot baseline):
 1. Open `references/design-mockups/EKP Platform.html#<route>` in Chrome tab L(via `localhost:8080`)
 2. Open `localhost:3001/<route>` in Chrome tab R
-3. Read `references/design-mockups/ekp-page-*.jsx` corresponding file for component decomposition
-4. Read existing `frontend/app/(app)/<route>/page.tsx` to identify PRESERVE(data hooks + API client + state)vs REBUILD(presentation)
-5. Rebuild presentation 100% 對齊 mockup using shadcn primitives + Tailwind tokens
-6. H7 7-item self-verify each item
-7. User-eye side-by-side verify before tick checklist
-8. Commit
-9. Day-N entry in progress.md
+3. Read `references/design-mockups/ekp-page-*.jsx` corresponding file for **mockup's actual decomposition**(⚠️ NOT W20 / W21 abstraction names — mockup decomposition wins per H7)
+4. Read existing `frontend/app/(app)/<route>/page.tsx` to identify PRESERVE(data hooks + API client + state)vs REBUILD(presentation);DELETE existing components that don't match mockup decomposition(per Karpathy §1.3 surgical — orphans manufactured by your rebuild get cleaned)
+5. Rebuild presentation 100% 對齊 mockup using **mockup CSS classes**(`styles-mockup.css` verbatim adoption — `.btn .card .field .input .label .hint .seg .badge` etc.)+ **shadcn primitives** where Radix a11y benefits + **Tailwind utility** for one-off layout + inline `style={{}}` for one-off mockup details not covered by CSS classes
+6. **Mockup is canonical**:if mockup ChatHeader has CRAG switch + Show images switch + Focus Eye + Sources BookOpen,that's the ChatHeader — do NOT add a W20-inherited Citations seg-toggle because "preserving W20 surface" was in some earlier plan text
+7. H7 7-item self-verify each item(layout / spacing / typography / color tokens / interaction states / responsive / a11y)
+8. User-eye side-by-side verify before tick checklist(NEW gate per W21 retro;NO smoke-user-deferred)
+9. Commit
+10. Day-N entry in progress.md

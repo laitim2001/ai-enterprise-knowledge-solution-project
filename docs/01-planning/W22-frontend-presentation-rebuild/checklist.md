@@ -55,20 +55,21 @@ last_updated: 2026-05-17
 
 ## F4 — /chat rebuild
 
-- [ ] F4.1 Rebuild `frontend/app/(app)/chat/page.tsx` 對齊 `ekp-page-chat.jsx PageChat`(message list + composer + sidebar + citation modes + image surfaces)
-- [ ] F4.2 Rebuild 7 NEW Wave A components per mockup:`<ConversationHistory>` + `<InlineImageCard>` + `<ImageGallery>` + `<CitationPill>` + `<FeedbackBar>` + `<CragStrip>` + composer rewrite — preserve existing data hooks + SSE streamQuery + localStorage `ekp-citation-mode` persistence
-- [ ] F4.3 3 citation modes(inline / footnote / sidebar)preserved + toggle UI 對齊 mockup
-- [ ] F4.4 Preserve `useChat` SSE wiring + `/conversations` CRUD + `/feedback` tag-prefix integration(Wave A backend unchanged per CC6)
-- [ ] F4.5 Loading + error + empty states first-class
-- [ ] F4.6 Tokens 100%;`tsc` + `lint` clean
-- [ ] F4.7 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
-- [ ] F4.8 User-eye side-by-side verify before tick
+- [x] F4.1 Rebuild `frontend/app/(app)/chat/page.tsx` 對齊 `ekp-page-chat.jsx PageChat`(3-pane grid + ChatHeader + ChatThread + composer)`4ec8e47`
+- [x] F4.2 Rebuild presentation per mockup actual decomposition(`ekp-page-chat.jsx:72-132` PageChat):**ConversationHistoryPanel + ChatHeader + ChatThread + MessageRow + SourcesStrip + SourceDocCard + CitationPanel + PanelSourceCard + ScreenshotModal + ChatComposer** — inline in page.tsx per mockup single-file pattern;DELETE obsolete W20 components(`conversation-history.tsx` / `inline-image-card.tsx` / `image-gallery.tsx` / `citation-pill.tsx` / `feedback-bar.tsx` / `crag-strip.tsx`)— ⚠️ W20 component identity list is NOT mockup decomposition;do not preserve W20 abstraction names `4ec8e47`
+- [x] F4.3 citationMode state machine preserved + consumers(MessageRow / SourcesStrip / CitationPanel)render per mode;**default `inline`**;**NO** user-facing toggle UI(mockup ChatHeader 唔存在 seg-toggle — toggle 留俾未來 ADR);localStorage reader preserved,writer removed `fee7836`
+- [x] F4.4 Preserve `streamQuery` SSE wiring + `/conversations` CRUD + `/feedback` tag-prefix integration + per-turn persistence(Wave A backend unchanged per CC6)`4ec8e47`
+- [x] F4.5 ChatHeader right-side per mockup line 282-296:CRAG switch + Show images switch(visual-only)+ Focus Eye + Sources BookOpen(conditional `citationMode === 'sidebar'`)`fee7836`(initial F4 inherited W20 seg-toggle — fixed post-audit)
+- [x] F4.6 Loading + error + empty states align mockup `4ec8e47`
+- [x] F4.7 Tokens 100%;`tsc` + `lint` clean;`[oklch`=0 preserved `4ec8e47` + `fee7836`
+- [x] F4.8 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify(7 items 全綠 post-`fee7836`)
+- [ ] F4.9 User-eye side-by-side verify(pending — mockup tab L `localhost:8080/EKP%20Platform.html#chat` + impl tab R `localhost:3001/chat`;NO smoke-user-deferred allowance per W21 retro)
 
 ## F5 — /kb list + /kb/new rebuild(KB cluster part 1)
 
 - [ ] F5.1 Rebuild `frontend/app/(app)/kb/page.tsx` 對齊 `ekp-page-kb.jsx PageKbList`(grid+table+filter polish)
 - [ ] F5.2 Rebuild `frontend/app/(app)/kb/new/page.tsx` 對齊 `ekp-page-kb.jsx PageKbNew`(5-step wizard per ADR-0028 + KbConfig +4 multimodal fields per Wave A)
-- [ ] F5.3 **Rule-of-3 wizard primitive promotion**(now Rule-of-4 with W22 wizard surfaces:F5.2 `/kb/new` 5-step + F6.2 `/kb/[id]/upload` 3-step + F2.2 `/register` 2-step + W13 verify-email)— extract shared `frontend/components/ui/stepper.tsx` + `<Stepper.Stage>` + `<Stepper.Field>` primitive;refactor all 4 wizard surfaces to consume
+- [ ] F5.3 **Rule-of-3 wizard primitive promotion — CONDITIONAL on mockup 4-wizard styling 一致 verify**(per H7 — extract only if 4 wizards' stepper header styling identical;else defer W23+ per Karpathy §1.2 + H7「mockup wins,不可 forced uniformity」)
 - [ ] F5.4 Preserve `GET /kb` + `POST /kb` backend integration
 - [ ] F5.5 Tokens 100%;`tsc` + `lint` clean
 - [ ] F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify

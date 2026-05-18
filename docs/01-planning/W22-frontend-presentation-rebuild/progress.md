@@ -168,7 +168,85 @@ Real-calendar collapse pattern continues(W12-W21 1.8-12× pattern;F1 hit ~85-90%
 
 ---
 
-<!-- Day 1+ entries appended as F1-F8 land. Template:
+## Day 2 — 2026-05-18 — F2-F5a rebuild burst + F4 fidelity correction + W20-era residue audit
+
+### Burst summary
+
+User pause directive 2026-05-17 evening → next-session 5-commit burst landed F2-F5a + 1 fidelity-correction commit + 1 plan-audit commit:
+
+| Commit | Scope | F-deliverable |
+|---|---|---|
+| `1cc7eb3` | `/login` + `/register` direct-copy from `ekp-page-auth.jsx`;NEW `auth-frame.tsx`;DELETED `brand-panel.tsx` orphan;preserved 6-digit code per CLAUDE.md §13 backend-wins | F2 |
+| `7e35590` | `/dashboard` direct-copy from `ekp-page-dashboard.jsx`(`.page-header` + 4-stat strip + 5-card grid) | F3 |
+| `4ec8e47` | `/chat` direct-copy from `ekp-page-chat.jsx PageChat`;inline mockup decomposition;DELETED 7 obsolete W20 components | F4(initial) |
+| `23630f8` | `/kb` list direct-copy from `ekp-page-kb.jsx PageKbList` | F5a |
+| `fee7836` | **F4 fidelity correction** — ChatHeader right-side rebuilt:`<seg>` 3-mode toggle → CRAG switch + Show images switch + Focus Eye + Sources BookOpen per mockup lines 282-296;citationMode default `sidebar` → `inline`;`handleCitationMode` orphan removed | F4(corrected) |
+| `(this commit)` | **W20-era residual planning audit fix** — W22 plan + checklist 7 contamination signals(D1-D7)corrected per CLAUDE.md §10 R3 changelog | F4 plan-side |
+
+### Trigger for fidelity correction + audit
+
+User-eye side-by-side verify on `/chat`(`localhost:3001/chat` vs mockup screenshot `Screenshot 2026-05-18 093904.png`)caught:
+
+- **ChatHeader right-side mismatch**:mockup has CRAG switch + Show images switch + Focus Eye + Sources BookOpen;F4 commit `4ec8e47` shipped W20-inherited 3-mode Citations seg-toggle(`inline / footnote / sidebar`)— deliberate W20 deviation comment in code rationalized this(line 889-890):「replaces mockup's CRAG / Show-images switches since the W20 surface is citation-placement-mode driven」
+- **Automated gates 全綠 pre-fix**(`tsc` exit 0 / `next lint` clean / `[oklch`=0 / 4 commits diff)but none of these measure presentation fidelity
+- **Source = W22 plan.md F4.3 + checklist.md F4.3 literal text**:「3 citation modes(inline / footnote / sidebar)preserved + **toggle UI 對齊 mockup**」— mockup has NO toggle UI so this instruction is **unsatisfiable**;F4 commit silently inherited W20 toggle thinking "preserve W20" applied
+- **Meta-irony**:CO_W14_process_grep_verify 5-step `pre-active-flip` formalized D0 BUT not applied to plan-text itself,only to code-vs-spec at active-flip time
+
+### W20-era residue audit findings(D1-D7)
+
+User explicitly asked「現在所有的前端開發規劃中, 會否還殘留了之前的規劃, 而會可能影響到現在的以mockup作為開發版本的規劃方向」→ system-wide grep audit landed 7 contamination signals:
+
+| # | Severity | Location | Issue |
+|---|---|---|---|
+| **D1** | 🔴 Critical | plan F4.3 + checklist F4.3 | 「toggle UI 對齊 mockup」unsatisfiable — mockup ChatHeader 唔存在 seg-toggle |
+| **D2** | 🔴 Critical | plan F4.2 + checklist F4.2 | W20 component identity list `<ConversationHistory> ... <CragStrip>` 非 mockup decomposition |
+| **D3** | 🔴 Critical | plan F4.2 + checklist F4.2 | localStorage `ekp-citation-mode` "persistence" 暗示 writer(toggle)必須 preserve;mockup 冇 writer |
+| **D4** | 🟡 Cross-page | plan §3 + per-page workflow #5 | 「shadcn primitives + Tailwind tokens」under-represents F1 mid-session CSS-first pivot(`styles-mockup.css` 1048 lines verbatim) |
+| **D5** | 🟡 Cross-page | plan §5 dependencies | 同 D4 |
+| **D6** | 🟢 Yellow flag | checklist F1.2 | UserMenu「preserving dropdown content」— defer to F1.9 user-eye verify per F-deliverable |
+| **D7** | 🟡 Cross-page | plan F5.3 + checklist F5.3 | Rule-of-3 wizard primitive promotion 假設 4 wizards styling 一致;未 verify;forced uniformity 可能 violate H7 |
+
+### Fixes landed `(this commit)`
+
+- **D1-D3**:plan F4.3 + F4.2 + checklist F4.3 + F4.2 全部 rewrite — F4.3 改成「**NO** user-facing toggle UI per mockup;state preserved + default `inline` + localStorage reader-only」;F4.2 改成 mockup actual decomposition(ConversationHistoryPanel + ChatHeader + ChatThread + MessageRow + SourcesStrip + CitationPanel + ScreenshotModal + ChatComposer)+ explicit DELETE list for obsolete W20 components;checklist F4.1-F4.4 + F4.6-F4.8 ticked per `4ec8e47` + `fee7836` commits;F4.9 user-eye verify pending
+- **D4-D5**:plan §5 dependency text + per-page workflow #3-#5 updated — `styles-mockup.css` verbatim + mockup CSS classes + shadcn primitives where Radix a11y benefits + Tailwind utility for one-off layout(三層並行)
+- **D6**:deferred to F1.9 user-eye verify per F-deliverable(no plan-text edit;next user-eye pass to validate)
+- **D7**:plan F5.3 + checklist F5.3 改成「CONDITIONAL on mockup-4-wizards styling 一致 verify」;若 bespoke → defer W23+ per Karpathy §1.2 + H7
+- **Plan §7 changelog entry NEW**:2026-05-18 D1 row records the audit fix + process amendment(Pre-active-flip 5-step now applies **recursively** to plan-text at plan kickoff,not just at code time);F5b-F8 each kickoff must read mockup decomposition before plan-text refinement
+
+### Process amendment
+
+**Pre-active-flip 5-step recursion**:CO_W14_process_grep_verify formalize 5 steps to apply at active-flip(code vs plan)— but plan itself can have stale text。新 amendment:每 F-deliverable kickoff 之前,plan author / AI 必須:
+
+1. Read mockup `ekp-page-<route>.jsx` 對應 page function decomposition
+2. Read plan F<n> 文字 + checklist F<n> 文字
+3. Grep mismatch:plan-text vs mockup decomposition vs current code base reality
+4. Document mismatch in plan §7 changelog at F-deliverable kickoff(not later)
+5. Adjust plan + checklist text before code starts
+
+W20 plan inheritance bias 喺 W22 plan kickoff hit 過一次(D0)— W22 W20-era residue audit 喺 D1 hit 第二次。Pre-active-flip 5-step recursion 係 prevent measure。
+
+### F4.9 user-eye verify status
+
+**Pending** — 等用戶 hard-refresh `localhost:3001/chat` 再對 `Screenshot 2026-05-18 093904.png` mockup 揭露剩餘 deviation(if any)— 然後 tick F4.9 or surface next H7 trigger。
+
+### Acceptance criteria status(per checklist.md)
+
+- [x] F2.1-F2.7(`1cc7eb3`)
+- [x] F3.1-F3.6(`7e35590`)
+- [x] F4.1-F4.8(`4ec8e47` + `fee7836`);F4.9 pending user-eye verify
+- [x] F5.1(`23630f8` — `/kb` list);F5.2-F5.7 pending(F5b /kb/new wizard rebuild next)
+
+### Carry-overs to Day 3+
+
+- **F4.9 user-eye verify** — first concrete user-eye verify gate per W22 per-page protocol;outcome determines whether F2-F5a sweep needs similar audit before F5b kickoff
+- **F2 + F3 + F5a user-eye verify sweep** — if F4.9 finds additional drift,user-eye sweep all 5 shipped pages before F5b proceed
+- **F5b** — `/kb/new` 5-step wizard rebuild per `ekp-page-kb-new.jsx` PageKbNew
+- **F5.3 Rule-of-3 wizard primitive promotion CONDITIONAL** — opens at F5b kickoff:open mockup 4 wizards side-by-side;styling 一致 → extract;styling bespoke → defer W23+
+
+---
+
+<!-- Day 3+ entries appended as F5b-F8 land. Template:
 
 ## Day N — YYYY-MM-DD
 
