@@ -112,7 +112,9 @@ Multi-step task 要先講 plan:
 | **Risk-related decision / mitigation update** | [`docs/01-planning/RISK_REGISTER.md`](./docs/01-planning/RISK_REGISTER.md)(living)+ `docs/architecture.md §8`(frozen baseline)| 新 risk / status update 入 living register,§8 不動 |
 | Setup local dev environment | `docs/setup.md` | 包括 Azurite、Langfuse、docker-compose、env vars |
 | 寫 / 改 backend feature | `docs/architecture.md` §3 + §4 | RAG core + application architecture |
-| 寫 / 改 frontend feature | **`references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` FIRST**(high-fidelity click-through HTML prototype + per-route Cn mapping + Tier 1/2 boundary)→ `docs/architecture.md` §5 + Dify ref(see §7) | UI work first stop:open `references/design-mockups/EKP Platform.html` 喺 browser、click 入要實作嘅頁、inspect `ekp-page-*.jsx`;然後再睇 spec §5。Prototype 對 spec 有 3 處 design-stage expansion(KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)— 屬 proposal,implementation trigger H1 ADR(per §5.1)|
+| 寫 / 改 frontend feature(page-level) | **`references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md` FIRST**(high-fidelity click-through HTML prototype + per-route Cn mapping + Tier 1/2 boundary)→ `docs/architecture.md` §5 + Dify ref(see §7) | UI work first stop:open `references/design-mockups/EKP Platform.html` 喺 browser、click 入要實作嘅頁、inspect `ekp-page-*.jsx`;然後再睇 spec §5。Prototype 對 spec 有 3 處 design-stage expansion(KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)— 屬 proposal,implementation trigger H1 ADR(per §5.1)|
+| 揾 class catalog / layout pattern / composite pattern recipe(primitive-level)| **[`references/design-mockups/DESIGN_SYSTEM.md`](./references/design-mockups/DESIGN_SYSTEM.md)** — dev API reference(tokens / 13 primitives index / layout patterns / composite patterns 含 PopMenu viewport-anchored / Stepper / OptionRow / DisabledAffordance / Modal / sync protocol / drift incident log)| §0 quick reference card 一頁睇晒所有 class combo;唔好 grep `styles.css` 再 re-derive。寫 component 之前先睇 §2-§4,寫嘅時候 cross-ref §5 color semantics + §6 interaction states |
+| 修 design tokens / mockup CSS class / dark mode override | **[`references/design-mockups/DESIGN_SYSTEM.md` §7 sync protocol](./references/design-mockups/DESIGN_SYSTEM.md)** — 4-layer chain `styles.css → styles-mockup.css → globals.css → tokens.ts` | Token change 跟 §7.1 七步;class change 跟 §7.2 五步;改完 append §7.3 drift incident log;季度跑 §8 health check |
 | 加 / 改 API endpoint | `docs/api-contract.md`(W2 末 ready) | 在此之前用 `docs/architecture.md` §4.4 + §4.5 |
 | 加 vendor / 換 component | **STOP** — 必須先確認(see §5.2 Hard Constraint H2) | 寫 ADR `docs/adr/`(W2 末 framework ready) |
 | 改架構 / 違反 §3 / §4 設計 | **STOP** — 必須先確認(see §5.1 Hard Constraint H1) | 同 |
@@ -151,6 +153,7 @@ Multi-step task 要先講 plan:
 - **shadcn/ui** components only — no Material UI、Ant Design、Chakra
 - **Tailwind utility classes**;custom CSS 限 `frontend/styles/` 全局
 - **Design tokens via `frontend/lib/theming/tokens.ts`** — 絕對唔可以 hardcode 顏色 / spacing
+- **修 design tokens / mockup CSS / dark mode 一定要跟 4-layer sync protocol** — `styles.css(canonical)→ styles-mockup.css(verbatim copy)→ globals.css(Tailwind bridge)→ tokens.ts(TS mirror)`;procedure 見 [`references/design-mockups/DESIGN_SYSTEM.md` §7](./references/design-mockups/DESIGN_SYSTEM.md);silent drift 已發生過(W22 F1 `--popover` dark 0.20 vs 0.22 incident),所以呢條 mandatory
 - **State management**:React state for local;Zustand for cross-component;**no Redux**
 - **Data fetching**:Vercel AI SDK 嘅 `useChat` for streaming;TanStack Query for non-streaming
 - **Test framework**:Vitest + React Testing Library
@@ -166,6 +169,7 @@ Multi-step task 要先講 plan:
 前端設計係本項目嘅 critical surface — implementation 對 mockup 必須做到 **完整重現**(complete reproduction),不是 approximate / similar / inspired-by。具體規則:
 
 - **shadcn/ui 規限 *技術*,唔規限 *fidelity***:用 shadcn primitives + Tailwind tokens 係 H2 要求(`references/design-mockups/` 嘅 stripped components 不可 verbatim copy),**但 visual output 必須 pixel-faithful match mockup**。換句話講:用 `<Button>` 唔等於可以改 size / padding / variant —— 要對齊 mockup 入面嗰個 button 嘅實際樣貌。
+- **揾 class combo / pattern recipe 之前 first stop = [`DESIGN_SYSTEM.md`](./references/design-mockups/DESIGN_SYSTEM.md)**(dev API reference,W22 F5b session 整合 landed):§0 quick reference card / §2 13-primitive index(`.btn` / `.card` / `.field` / `.input` / `.label` / `.hint` / `.badge` / `.switch` / `.seg` / `.tabs` / `.table` / `.banner` / `.progress` / `.status-dot` / `.avatar` / utility classes)/ §3 layout patterns(`.content` shell / `.page-header` / `.stat-grid` / `.kb-grid` / `.activity-list` / `.app` AppShell)/ §4 composite patterns(**PopMenu viewport-anchored gutter chain** + anti-pattern「DO NOT use Radix DropdownMenu」/ **Stepper 28px circle** wizard / **OptionRow** toggle-row / **DisabledAffordance** Tier 2 boundary / **Modal** / **Chunk inspector**)/ §5 color semantics / §6 interaction state convention(data-active / data-on / data-popmenu-trigger)。**唔好** 直接 grep `styles.css` 或 `ekp-shell.jsx` re-derive — 已 documented 嘅 pattern 重複推導等於 violate Karpathy §1.1 think-before-coding。Mockup spec 同 DESIGN_SYSTEM.md 詮釋衝突時 → mockup spec wins(DESIGN_SYSTEM.md 係 dev convenience layer)。
 - **必須逐項對齊**:layout 結構(`<div>` 階層 / flex / grid)、spacing(margin / padding / gap)、typography(`text-*` size / weight / leading)、color tokens(用 mockup 用嘅 token,唔可以「換相近顏色」)、interaction states(hover / focus / active / disabled / loading / empty / error)、responsive breakpoints(sm / md / lg / xl 行為)、a11y affordances(aria-* / role / focus-ring)
 - **唔肯定就開 mockup 對住做**:寫 / 改前端 page 之前 + 寫到一半 + 寫完之前,**都應該打開** `references/design-mockups/EKP Platform.html` 嘅對應頁面(URL hash 例:`#kb-detail/drive-manuals`)、inspect 對應 `ekp-page-*.jsx`,逐個 section 對齊。係 routing first-stop(§2)嘅延伸 — 唔係一次性 reference。
 - **Mockup detail 不清晰 / 唔可以用 shadcn 重現** → **STOP and ask**,**絕對唔可以自行 approximate**。例:mockup 有一個 custom popover 動效 shadcn 冇 primitive —— 唔好「用 dropdown 代替算」,要 surface 個 gap 等用戶決定(加 primitive / 寫 vanilla / 改 mockup)。
@@ -288,7 +292,7 @@ Refs: docs/architecture.md §3.2
 | Image storage | Azure Blob(local: Azurite) |
 | Observability | Langfuse |
 | Eval | RAGAs |
-| Frontend | Next.js 14 + shadcn/ui + Tailwind |
+| Frontend | Next.js 14 + shadcn/ui + Tailwind[^design-system-chain] |
 | Backend | FastAPI + uvicorn |
 | Persistent storage | Postgres 16 via `psycopg>=3.2`(KB metadata + users/sessions backing per ADR-0023 W17 F1;in-memory fallback when `DATABASE_URL` unset) |
 | Email verification | Azure Communication Services Email(per ADR-0014 + Q22 Resolved;`ConsoleEmailProvider` stub when `feature_email_mock=true`) |
@@ -303,6 +307,8 @@ Refs: docs/architecture.md §3.2
 - Pure utility library(e.g. `tenacity` for retry,`structlog` for logging)
 - Type stub package(`types-*`)
 - Dev dependency(test、linter、formatter)
+
+[^design-system-chain]: **Frontend design system source-of-truth chain** documented in [`references/design-mockups/DESIGN_SYSTEM.md` §7](./references/design-mockups/DESIGN_SYSTEM.md):`styles.css(canonical)→ styles-mockup.css(verbatim copy)→ globals.css(Tailwind bridge)→ tokens.ts(TS mirror)`。任何 layer 修改必須跟 §7.1(token change 7-step)/ §7.2(class change 5-step)/ §7.3(quarterly drift detection + incident log)procedure;silent drift 已發生過(W22 F1 `--popover` dark 0.20 vs 0.22 incident `a385180`),所以 mandatory。
 
 ### 5.3 H3 — Dify Reference Constraint
 
@@ -634,6 +640,12 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 1.8 — 2026-05-18 DESIGN_SYSTEM.md routing landed**(W22 F5b session post-NotificationsMenu portal pattern fix `c3ca1a3` + DESIGN_SYSTEM.md initial draft `c225b95`)。具體變動:
+- §2 Document Routing 表加 2 條 NEW row:**「揾 class catalog / layout pattern / composite pattern recipe(primitive-level)」**→ DESIGN_SYSTEM.md §0-§6;**「修 design tokens / mockup CSS class / dark mode override」**→ DESIGN_SYSTEM.md §7 4-layer sync protocol。原「寫 / 改 frontend feature」row scoped 為 page-level(架構決定 vs primitive 用法分流)。
+- §3.2 Frontend conventions 加一 bullet 明文 4-layer sync protocol mandatory(reason cite W22 F1 `--popover` dark drift incident)
+- §3.2.1 Design Fidelity Rule 加 NEW bullet 列 DESIGN_SYSTEM.md 完整 section 結構(§0 quick reference / §2 13 primitives / §3 layouts / §4 composite patterns 含 PopMenu anti-pattern「DO NOT use Radix DropdownMenu」/ §5 color semantics / §6 interaction states)+ 解 conflict rule(mockup spec > DESIGN_SYSTEM.md dev convenience layer)+ 反 grep-and-rederive 嘅 Karpathy §1.1 cite
+- §5.2 H2 Vendor lock table Frontend row 加 footnote `[^design-system-chain]` 指 DESIGN_SYSTEM.md §7 source-of-truth chain
+- **Maintenance gap G1-G4 未 close**(executable layer:owner-of-record / schedule integration / drift log auto-update / cross-link enforcement)— user pick「Wave 1 only」per W22 plan §6 carry-over scope。Wave 2(session-start.md sync)+ Wave 3(maintenance executable layer)留 F8 closeout 或 W23+ explicit trigger。
 **Version 1.7 — 2026-05-17 design fidelity promoted to H7 hard constraint**(per user explicit framing「**前端頁面的設計是非常重要的**」+「**100%完整地把mockup 的效果重現出來,而不是大概地模仿**」+「**必須要留意和遵守的規則**」= binding level = H1-H6 同層 hard constraint level)。具體變動:
 - §5 加 NEW §5.7 H7 — Design Fidelity Constraint(5 條 trigger 條件:layout/spacing/typography/color tokens/interaction states/responsive/a11y 任一唔對齊 + mockup detail 不清晰 + shadcn 冇 primitive 重現 + layout philosophy 偏離 + design-stage expansion 之外偏離);Required behavior(STOP + propose 處理方案 + 等 user 決定,絕對唔可以 approximate);唔屬於 H7 trigger 範圍(pure backend / test / logging / refactor 無 visual 改動 / design-stage expansion proposal ADR-routed / 修 visual drift bug)
 - §3.2.1 加 binding-level cross-ref 到 §5.7 H7(detail checklist 喺 §3.2.1;trigger + Required behavior 喺 §5.7)
