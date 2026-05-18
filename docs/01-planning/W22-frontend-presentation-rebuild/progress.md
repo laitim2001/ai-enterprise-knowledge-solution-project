@@ -246,7 +246,73 @@ W20 plan inheritance bias 喺 W22 plan kickoff hit 過一次(D0)— W22 W20-era 
 
 ---
 
-<!-- Day 3+ entries appended as F5b-F8 land. Template:
+## Day 3 — 2026-05-18 — F5b /kb/new wizard rebuild + Rule-of-3 defer
+
+### Commits this day
+
+- `(this commit)` — F5b rebuild + W22 plan/checklist/progress updates
+
+### Pre-rebuild Rule-of-3 verify(per F5.3 conditional)
+
+Per CLAUDE.md §5.7 H7 + Karpathy §1.2,F5b kickoff first read mockup 4 wizards' stepper styling:
+
+| Wizard mockup file | Stepper UI present? | Style notes |
+|---|---|---|
+| `ekp-page-kb-new.jsx PageKbNew` lines 64-91 | ✅ Card wrapper + 28px circle | Base style — no letterSpacing / no transition / no divider margin |
+| `ekp-page-misc.jsx PageUploadWizard` lines 29-59 | ✅ Card wrapper + 28px circle | +`letterSpacing: -0.005em` on label / +`transition: all 0.2s` on circle / +`margin: 0 4px` on divider |
+| `ekp-page-auth.jsx PageRegister` lines 133-175 | ❌ No stepper bar — view switching Step 1↔Step 2 only | N/A |
+| W13 verify-email(part of PageRegister Step 2)| ❌ Same as PageRegister | N/A |
+
+**Verdict**:Only 2 wizards use stepper UI(not 4)。Rule-of-3 threshold(3+ instances)未達;per Karpathy §1.2「3 similar lines is better than premature abstraction」+ H7「mockup wins,不可 forced uniformity」→ **F5.3 DEFER W23+** 🚧。Even if 4 wizards existed,minor styling drift between PageKbNew + PageUploadWizard(3 variations)suggests mockup author hand-tuned each — forced unified `<Stepper>` would violate H7。
+
+### F5b rebuild details
+
+**Mockup mapping**(`ekp-page-kb-new.jsx` 586 lines):
+- `PageKbNew` lines 6-101 → `KbNewPage` default export
+- `StepIdentity` lines 350-396 → inline component
+- `StepConfig` lines 398-491 → inline component(2 cards embedding model + seg embedding dimension + 4 cards chunk strategy + warning banner)
+- `StepMultimodal` lines 103-312 → inline component(5-col pipeline diagram + 3 OptionRows extraction sources + 3 captioning Tier 2 cards + dedup select + low_value Tier 2 slider + UI behavior switch + outcome preview)
+- `StepDefaults` lines 493-538 → inline component(top_k slider + rerank_k slider + locked reranker select + info banner)
+- `StepReview` lines 540-584 → inline component(16-row Locked/Editable badge table + create button)
+- `OptionRow` lines 314-348 → inline helper
+
+**Scope change(per H7 — mockup wins)**:File picker removed from /kb/new wizard(W20 invention)。Mockup `/kb/new` provisions empty KB only;document ingestion is F6.2 `/kb/[id]/upload` `PageUploadWizard` scope。`/kb/new` Create button calls `kbApi.create` → redirects to `/kb/[id]` → user adds docs via upload wizard。
+
+**Preserve list(per W22 plan §0)**:
+- `useMutation(kbApi.create)` mutation hook
+- `useQueryClient().invalidateQueries({ queryKey: ['kb'] })` after create
+- `useRouter().push('/kb/{kb_id}')` on success
+- `KbConfig` schema(all 9 backend fields)— `embedding_model` / `embedding_dimension` / `chunk_strategy` / `extract_embedded_images` / `slide_screenshots` / `dedup_strategy` / `return_images_in_chat` / `default_top_k` / `default_rerank_k`
+- `KB_ID_PATTERN` regex validator
+- Auto-derive `kb_id` from name(mockup useEffect lines 31-36 pattern)
+
+**UI-only state(never sent to backend per CC10 H4 boundary)**:
+- `kb_id_auto` switch
+- `captioning_model`(Tier 2 preview — 3 options)
+- `low_value_threshold`(Tier 2 preview slider)
+- `render_pdf_pages`(Tier 2 preview)
+
+**Backend behavior unchanged**:`POST /kb` body shape identical(`{kb_id, name, description, config: KbConfig}`)。Tier 2 preview fields stripped at submit per `handleCreate` 函數的 `config: KbConfig` explicit construction(no spread of form into config)。
+
+### Acceptance criteria status(per checklist.md F5)
+
+- [x] F5.1 — F5a /kb list landed `23630f8` + audit fix `62493f8`
+- [x] F5.2 — F5b /kb/new landed `(this commit)`
+- [x] F5.3 — Rule-of-3 DEFER 🚧(per mockup audit)
+- [x] F5.4 — Backend integration preserved(kbApi.create + KbConfig + useRouter + invalidateQueries)
+- [x] F5.5 — Tokens 100%;`tsc --noEmit` exit 0;`next lint` clean;`[oklch`=0 preserved
+- [x] F5.6 — H7 7-item self-verify pass(layout / spacing / typography / color tokens / interaction states / responsive / a11y)
+- [ ] **F5.7 — User-eye side-by-side verify pending**(mockup tab `localhost:8080/EKP%20Platform.html#kb-new` + impl tab `localhost:3001/kb/new`;NO smoke-user-deferred per W21 retro;walk all 5 steps + verify stepper card visual + step components against mockup)
+
+### Carry-overs to Day 4+
+
+- **F5.7 user-eye verify** — same protocol as F4.9 / F2-5a sweep:user hard-refresh + side-by-side + surface H7 deviation before tick
+- **F6** /kb/[id] 7-tab + /kb/[id]/upload + /kb/[id]/docs/[docId] cluster(W21 F3 fold)~2-3 days
+- **F6.2** `/kb/[id]/upload` rebuild stepper inherits same style as F5b stepper(both use `Card wrapper + 28px circles`);F6.2 may surface secondary minor styling drift(letterSpacing / transition / margin)— decide at F6 kickoff whether to harmonize back to F5b style or preserve mockup variation per-page
+
+---
+
+<!-- Day 4+ entries appended as F6-F8 land. Template:
 
 ## Day N — YYYY-MM-DD
 

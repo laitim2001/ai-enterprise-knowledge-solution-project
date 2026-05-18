@@ -67,13 +67,13 @@ last_updated: 2026-05-17
 
 ## F5 — /kb list + /kb/new rebuild(KB cluster part 1)
 
-- [ ] F5.1 Rebuild `frontend/app/(app)/kb/page.tsx` 對齊 `ekp-page-kb.jsx PageKbList`(grid+table+filter polish)
-- [ ] F5.2 Rebuild `frontend/app/(app)/kb/new/page.tsx` 對齊 `ekp-page-kb.jsx PageKbNew`(5-step wizard per ADR-0028 + KbConfig +4 multimodal fields per Wave A)
-- [ ] F5.3 **Rule-of-3 wizard primitive promotion — CONDITIONAL on mockup 4-wizard styling 一致 verify**(per H7 — extract only if 4 wizards' stepper header styling identical;else defer W23+ per Karpathy §1.2 + H7「mockup wins,不可 forced uniformity」)
-- [ ] F5.4 Preserve `GET /kb` + `POST /kb` backend integration
-- [ ] F5.5 Tokens 100%;`tsc` + `lint` clean
-- [ ] F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
-- [ ] F5.7 User-eye side-by-side verify before tick
+- [x] F5.1 Rebuild `frontend/app/(app)/kb/page.tsx` 對齊 `ekp-page-kb.jsx PageKbList` `23630f8` + W20-era Wave A audit fix `62493f8`(grid+table+filter polish + Sort cycle button removed + Tag:Any disabled button added + KbTable Chunk strategy/R@5/Owner/actions columns added + Screenshots column dropped + KbCard R@5 placeholder + tags slot added)
+- [x] F5.2 Rebuild `frontend/app/(app)/kb/new/page.tsx` 對齊 `ekp-page-kb-new.jsx PageKbNew` `(this commit)` — 5-step wizard reordered to mockup canonical sequence(Identity → Format & chunking → Multimodal → Retrieval defaults → Review)+ stepper card 28px circles + StepIdentity/StepConfig/StepMultimodal/StepDefaults/StepReview + OptionRow helper inlined + Multimodal pipeline diagram + captioning Tier 2 cards + dedup select + low_value Tier 2 slider + UI behavior switch + outcome preview;**file upload removed**(mockup wins — document ingestion is F6.2 `/kb/[id]/upload` scope);KbConfig + kbApi.create preserved
+- [x] F5.3 **Rule-of-3 wizard primitive promotion — DEFER W23+** 🚧 — mockup audit reveals only 2 wizards use stepper UI(`/kb/new` 5-step + `/kb/[id]/upload` 3-step;`/register` 2-step + verify-email use view-switching NOT stepper bar);Rule-of-3 threshold(3+ instances)未達;per Karpathy §1.2「3 similar lines is better than premature abstraction」+ H7「mockup wins,不可 forced uniformity」→ defer primitive extraction
+- [x] F5.4 Preserve `GET /kb` + `POST /kb` backend integration(`23630f8` + `62493f8` for list;`(this commit)` for create)
+- [x] F5.5 Tokens 100%;`tsc` + `lint` clean(`[oklch`=0 preserved through F5a + F5b)
+- [x] F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify(F5b — 7 items 全綠 against mockup PageKbNew lines 6-584)
+- [ ] F5.7 User-eye side-by-side verify(F5a `localhost:3001/kb` + F5b `localhost:3001/kb/new` vs mockup tabs)— pending user verify(F5a fidelity audit covered by `62493f8` cascade;F5b pending first user-eye check)
 
 ## F6 — /kb/[id] 7-tab + /kb/[id]/upload + /kb/[id]/docs/[docId] rebuild(KB cluster part 2 — folds W21 F3)
 
