@@ -551,7 +551,7 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 
 當你 reply 喺 chat 入面:
 
-- 用**繁體中文**回覆(team primary language)
+- 用**繁體中文**回覆(team primary language)— **包括 markdown table heading / section heading / status word**(寫「下一步」唔係「Next」、「項目 / 狀態 / 已完成 / 待驗證」唔係「F / Status / Done / pending」、「驗證閘 / 已 tick」唔係「Verify gates / ticked」)。**只可保留原文**:程式碼識別符 / 檔案路徑 / API 端點 / commit hash / ADR 編號 / vendor 名。詳細 anti-pattern + 2026-05-18 empirical findings 見 memory `feedback_chinese_primary_replies.md`(用戶第二次提醒後 promote 至此 standing instruction 級別)
 - **唔好過度 disclaimer**(避免「嗱呢個都係要視乎情況...」呢類 hedging)
 - 重要決定要**明確 surface**,唔好 bury 喺長文最後
 - Code change 要**說明 what + why**,唔需要重複 code 內容
