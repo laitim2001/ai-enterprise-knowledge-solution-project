@@ -194,10 +194,21 @@ export function NotificationsMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
-        sideOffset={4}
         className="topbar-popmenu p-0"
-        style={{ width: 380 }}
+        style={{
+          width: 380,
+          // Mockup `ekp-shell.jsx:86-101` PopMenu uses viewport-anchored
+          // absolute positioning (`right: 66` from topbar container = viewport
+          // since topbar spans full width), NOT Radix trigger-anchored align.
+          // Override Floating UI positioning to match mockup line 152
+          // `<PopMenu width={380} right={66}>`.
+          position: 'fixed',
+          top: 'calc(var(--topbar-h) - 4px)',
+          right: 66,
+          left: 'auto',
+          bottom: 'auto',
+          transform: 'none',
+        }}
       >
         {/* Header — direct copy mockup ekp-shell.jsx lines 153-160 */}
         <div
