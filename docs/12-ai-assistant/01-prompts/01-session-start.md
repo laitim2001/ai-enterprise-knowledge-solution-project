@@ -96,13 +96,17 @@ docs/architecture.md v6 § 1-14 (content lock; v5→v5.1→v6 amendment W11 D2 c
 依序讀完先對齊上下文:
 
 1. **本 prompt**(你正在讀)— 高層 onboarding
-2. **`CLAUDE.md`**(專案根目錄,v1.5)— Standing instructions + §1 Karpathy baseline + §5 H1–H6 hard constraints + §10 Phase Workflow R1–R5
+2. **`CLAUDE.md`**(專案根目錄,v1.8 2026-05-18)— Standing instructions + §1 Karpathy baseline + §5 H1–H7 hard constraints(H7 design fidelity per W22)+ §10 Phase Workflow R1–R5 + §2 routing 表分流 page-level(DESIGN_README + PAGE_INVENTORY)vs primitive-level(DESIGN_SYSTEM.md)
 3. **`docs/01-planning/PROCESS.md`**(v2.0)— 3 task types(Phase / Change / Bug-fix)+ R1–R5 binding rules + AI auto-classification
 4. **Active phase plan.md + checklist.md + progress.md**(當前 W{NN} folder)— Sprint scope + next un-checked item + last 3 Day-N entries
 5. **`docs/architecture.md`**(frozen v5)— 涉及 §3 RAG core / §4 application / §5 UI / §6 sprint timeline 嗰陣按需讀對應 section
 
 按需要再讀:
-- **`references/design-mockups/DESIGN_README.md` + `PAGE_INVENTORY.md`**(寫 / 改 frontend 之前 **first stop** per CLAUDE.md §2 routing — high-fidelity click-through HTML prototype `EKP Platform.html` + 17 `ekp-page-*.jsx` + 5-sidebar `<AppShell>` + Cmd+K + 14 Tier 1 routes + 8 Labs Tier 2 preview;real backend schema 對齊 `backend/api/schemas/*.py`;Warm Charcoal + Coral Accent oklch tokens lock per ADR-0015 W12 D2;**勿直接 copy stripped components**,必須用 shadcn/ui 重寫;prototype 對 spec 有 3 處 design-stage expansion 待 implementation H1 ADR — KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)
+- **`references/design-mockups/`**(**寫 / 改 frontend 之前 first stop** per CLAUDE.md §2 routing 分 3 個 doc audience):
+  - **`DESIGN_README.md`** — folder overview + how to view + Cn mapping(newcomer audience)
+  - **`PAGE_INVENTORY.md`** — 14 Tier 1 routes + 8 Labs Tier 2 + 3 處 design-stage expansion 待 implementation H1 ADR(KB Detail 5→8 tabs / Settings v1→6 tabs / `/users` NET NEW Tier 1.5)
+  - **`DESIGN_SYSTEM.md`**(NEW 2026-05-18 c225b95)— **dev API reference**(primitive-level implementation),1099 行 / 8 sections:§0 quick reference card + §1 token reference + §2 13-primitive index + §3 layout patterns + §4 composite patterns(PopMenu viewport-anchored anti-pattern 警告 / Stepper 28px circle / OptionRow / DisabledAffordance / Modal / Chunk inspector)+ §5 color semantics(coral accent NOT for "active" — reserved Tier 2)+ §6 interaction state convention + §7 4-layer sync protocol + §8 maintenance checklist。**揾 class combo / pattern recipe 唔好 grep `styles.css` re-derive** — DESIGN_SYSTEM.md 已 documented 嘅 pattern repeat-derive 等於 violate Karpathy §1.1
+  - 視覺 spec:high-fidelity click-through HTML prototype `EKP Platform.html` + 17 `ekp-page-*.jsx` + 5-sidebar `<AppShell>` + Cmd+K + Warm Charcoal + Coral Accent oklch tokens lock per ADR-0015 W12 D2;real backend schema 對齊 `backend/api/schemas/*.py`;**勿直接 copy stripped components**,必須用 shadcn/ui 重寫 per H2
 - `docs/02-architecture/COMPONENT_CATALOG.md` + 對應 `components/Cn-*.md`(改 / 新加 component 時)
 - `docs/01-planning/RISK_REGISTER.md`(living)— risk-related decision
 - `docs/decision-form.md`(21 條 OQ 狀態)

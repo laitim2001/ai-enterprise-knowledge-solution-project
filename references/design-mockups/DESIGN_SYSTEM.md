@@ -1023,7 +1023,8 @@ The design system has 4 source layers that must stay synchronized. When `styles.
 4. **If color token changed**: update the matching `oklch(...)` string in `frontend/lib/theming/tokens.ts` `colorsLight` (or `colorsDark`) object
 5. **Run `pnpm exec tsc --noEmit`** + **`pnpm exec next lint`** + **`Grep '\[oklch' frontend/**/*.{ts,tsx}`** (expect 0 hits — no hardcoded `[oklch(...)]` arbitrary values)
 6. **Test dark mode toggle** via theme switcher — verify changed token applies to both modes correctly
-7. **Commit** with message format: `style(tokens): <what changed> — sync styles.css → styles-mockup.css + globals.css + tokens.ts`
+7. **If this was a drift repair** (not a planned token change): append a row to §7.3 drift incident log table **in the same commit** — preserves institutional memory
+8. **Commit** with message format: `style(tokens): <what changed> — sync styles.css → styles-mockup.css + globals.css + tokens.ts`
 
 ### 7.2 When class definitions change (new primitive, modified hover, etc.)
 
@@ -1031,7 +1032,8 @@ The design system has 4 source layers that must stay synchronized. When `styles.
 2. **Re-copy** to `frontend/app/styles-mockup.css`
 3. **No `globals.css` or `tokens.ts` changes needed** (those layers only carry tokens, not class defs)
 4. **If a NEW class is added**, add a row to this doc's §2 primitive index
-5. **Commit** with message format: `style(<class>): <what changed> — sync styles.css → styles-mockup.css`
+5. **If this was a drift repair**: append a row to §7.3 drift incident log table **in the same commit**
+6. **Commit** with message format: `style(<class>): <what changed> — sync styles.css → styles-mockup.css`
 
 ### 7.3 Drift detection (quarterly manual)
 
@@ -1067,7 +1069,13 @@ diff references/design-mockups/styles.css frontend/app/styles-mockup.css
 
 ## §8 Maintenance checklist
 
-End-of-quarter health check (suggested cadence: every 3 months or before any beta-cohort cohort expansion):
+End-of-quarter health check (cadence: every 3 months;**Next due**: `2026-08-18` — set at v1.0 land 2026-05-18 + 3 months). Skip if there's a Beta-cohort expansion or major release within the same quarter — bring the check forward instead.
+
+**Trigger owner**: **Chris** (technical lead). To delegate: assign the run to an AI session by including the §8 checklist in the prompt + the most recent `git log -10 references/design-mockups/` snapshot;the AI returns a pass-fail report and proposes any repair commits;Chris reviews + approves before merge.
+
+**Calendar mechanism**: Chris's choice — `/schedule` skill reminder at `Next due` date, calendar event, or rely on phase F8 closeout self-check (whichever phase first crosses the due date appends "Run §8 health check" to its F8.x acceptance criteria).
+
+**Checklist**:
 
 - [ ] Run §7.3 diff — `diff references/design-mockups/styles.css frontend/app/styles-mockup.css`; investigate any unexpected diff
 - [ ] Run `Grep '\[oklch' frontend/**/*.{ts,tsx}` — expect 0 hits; if any, refactor to `oklch(var(--token))` reference
@@ -1076,7 +1084,7 @@ End-of-quarter health check (suggested cadence: every 3 months or before any bet
 - [ ] Open `references/design-mockups/EKP Platform.html` in browser; click through 5 random routes; verify visual matches `localhost:3001` for same routes
 - [ ] Toggle dark mode in browser; verify no color drift between light/dark on same component
 - [ ] Review §7.3 drift incident log — append any new repair commits since last check
-- [ ] Update this doc's "Last reviewed" line below
+- [ ] Update this doc's "Last reviewed" line below AND advance the **Next due** date 3 months forward
 
 ---
 
@@ -1095,5 +1103,6 @@ End-of-quarter health check (suggested cadence: every 3 months or before any bet
 
 ---
 
-**Last reviewed**: 2026-05-18 (W22 F5b session — initial draft)
-**Owner**: Chris (technical lead) + AI assistants per CLAUDE.md §5.7 H7
+**Last reviewed**: 2026-05-18 (W22 F5b session — initial draft + Wave 3 maintenance executable layer landed `(this commit)`)
+**Next quarterly review due**: 2026-08-18 — see §8 for trigger owner + calendar mechanism + delegation handoff
+**Owner**: Chris (technical lead — trigger owner) + AI assistants (review runners on user request per CLAUDE.md §5.7 H7);ownership transfer must update this line + §8 trigger owner line
