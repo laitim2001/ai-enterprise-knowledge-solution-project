@@ -1,91 +1,63 @@
 'use client';
 
 /**
- * V4 KB Detail (`/kb/[id]`) — per architecture.md v6 §5.5 view 4.
+ * /kb/[id] — KB Detail per architecture.md v6 §5.5 view 4 + ADR-0025 8-tab.
  *
- * W14 D3 F3 refactor — 5-tab nav (Documents / Chunks / Pipeline / Retrieval
- * Testing / Settings) per ui-design-reference-v6.md §2.4 wireframe. Tab state
- * lives in Next.js searchParams (`?tab=documents`) so URLs are bookmark-friendly.
+ * W22 F6.1 rebuild per CLAUDE.md §5.7 H7 — 100% mockup fidelity match against
+ * references/design-mockups/ekp-page-kb.jsx:140 PageKbDetail (sub-tabs spread
+ * across ekp-page-kb.jsx + ekp-page-kb-extras.jsx).
  *
- * Plan §7 changelog (D3) deviations:
- * - F3.2 Documents tab: (W14 D3 — backend stub) → W17 F4.1: now wired to the
- *   real GET /kb/{id}/documents (W16 F5.1.1 / CO_F3a — Azure AI Search chunk
- *   aggregation by doc_id); renders a doc table; empty index → Upload prompt.
- * - F3.3 Chunks tab: CH-002 F7 (2026-05-12) — wired to the real
- *   GET /kb/{id}/documents/{doc_id}/chunks (W16 F5.1.2); doc picker (from the
- *   doc listing, honours ?doc=<doc_id>) + ChunkSummary table (index / title /
- *   section path / flags / chunk_id). Was a 501-stub placeholder. Chunk body
- *   text is not bulk-listed (use Retrieval Testing / /query for that).
- * - F3.4 Pipeline tab: read-only config visualization Tier 1 (no PATCH inline).
- * - F3.6 Settings: CH-002 F10 (2026-05-12) — name + description are now
- *   editable, saved via PATCH /kb/{id} (W16 F5.2 / CO_F3b — partial update);
- *   KbConfig settings stay in PATCH /kb/{id}/settings. Was display-only.
- * - F3.8 Stepper rule-of-3 NOT triggered: Pipeline tab read-only display, not
- *   wizard state machine; inline retention preserved per W13 D4 decision.
+ * Mockup decomposition adopted (single-file pattern):
+ *   - DocumentsTab / ChunksTab / ImagesTab / ChunkingLabTab / PipelineTab /
+ *     RetrievalTab / SettingsTab — all inline within page.tsx (mockup-faithful)
+ *   - Access tab — DisabledAffordance per CC10 H4 + ADR-0027 Wave C1
  *
- * Layout reference Dify Image 1+2+4+5+6 (no code copy per ADR-0010).
+ * Backend integration preserved (per F6.5):
+ *   kbApi.get / kbApi.listImages / kbApi.chunkingPreview / kbApi.patchSettings /
+ *   kbApi.patchMetadata / kbApi.archive + documentsApi.list + listChunks +
+ *   retrievalTestApi.run
+ *
+ * CSS-first pivot baseline (per W22 F1 D2): visual layer via mockup CSS classes
+ * (.tabs, .tab, .card, .field, .seg, .badge, .table, .banner, .stat-grid)
+ * with inline style only for one-off mockup specifics. shadcn primitives ONLY
+ * where Radix a11y benefits (DisabledAffordance wrap).
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   AlertTriangle,
   Archive,
-  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Copy,
   Database,
+  Download,
+  Edit,
   FileText,
-  FlaskConical,
   Image as ImageIcon,
-  Loader2,
+  Layers,
   Lock,
-  Scissors,
+  MoreHorizontal,
+  RefreshCw,
   Search,
   Settings as SettingsIcon,
-  SlidersHorizontal,
+  Shield,
   Sparkles,
+  Trash2,
   Upload,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ApiError } from '@/lib/api-client';
 import {
   documentsApi,
   type ChunkSummary,
@@ -93,20 +65,19 @@ import {
 } from '@/lib/api/documents';
 import {
   kbApi,
-  type FailureRecord,
   type KbConfig,
+  type KbImageItem,
   type KbStatus,
 } from '@/lib/api/kb';
-import { streamQuery, type Citation, type QueryRequest } from '@/lib/api/query';
 import {
   retrievalTestApi,
   type RetrievalMode,
+  type RetrievalTestChunk,
   type RetrievalTestResult,
 } from '@/lib/api/retrieval-test';
 
-// W20 F5.4 — 7-tab refactor per ADR-0025 (`-Access` Wave A scope; Access tab
-// is rendered as a disabled affordance, not in VALID_TABS routing so it can't
-// be ?tab=access-targeted).
+// Active tabs (mockup-faithful;Access tab rendered separately as a
+// DisabledAffordance per CC10 H4 + ADR-0027 Wave C1).
 const VALID_TABS = [
   'documents',
   'chunks',
@@ -118,15 +89,30 @@ const VALID_TABS = [
 ] as const;
 type TabKey = (typeof VALID_TABS)[number];
 
-const TAB_LABEL: Record<TabKey, string> = {
-  documents: 'Documents',
-  chunks: 'Chunks',
-  images: 'Images',
-  'chunking-lab': 'Chunking Lab',
-  pipeline: 'Pipeline',
-  retrieval: 'Retrieval Testing',
-  settings: 'Settings',
-};
+const TAB_DEFS: { id: TabKey; label: string; icon: LucideIcon }[] = [
+  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'chunks', label: 'Chunks', icon: Layers },
+  { id: 'images', label: 'Images', icon: ImageIcon },
+  { id: 'chunking-lab', label: 'Chunking Lab', icon: Zap },
+  { id: 'pipeline', label: 'Pipeline', icon: Zap },
+  { id: 'retrieval', label: 'Retrieval Testing', icon: Search },
+  { id: 'settings', label: 'Settings', icon: SettingsIcon },
+];
+
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '—';
+  const diff = Date.now() - then;
+  const minutes = Math.round(diff / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 export default function KbDetailPage() {
   const params = useParams<{ id: string }>();
@@ -145,319 +131,405 @@ export default function KbDetailPage() {
     enabled: !!kbId,
   });
 
-  function handleTabChange(next: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', next);
-    router.push(`/kb/${kbId}?${params.toString()}`, { scroll: false });
+  function handleTabChange(next: TabKey) {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set('tab', next);
+    router.push(`/kb/${kbId}?${sp.toString()}`, { scroll: false });
   }
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading KB…
+      <div className="content">
+        <div className="content-wide">
+          <div className="banner banner-info">
+            <span className="spinner" />
+            <div style={{ flex: 1 }}>Loading KB…</div>
+          </div>
+        </div>
       </div>
     );
   }
   if (query.isError) {
     return (
-      <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-        Failed to load KB {kbId}:{' '}
-        {String((query.error as Error)?.message ?? 'unknown')}
+      <div className="content">
+        <div className="content-wide">
+          <div className="banner banner-error">
+            <AlertTriangle size={16} />
+            <div style={{ flex: 1 }}>
+              Failed to load KB {kbId}:{' '}
+              {String((query.error as Error)?.message ?? 'unknown')}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
   if (!query.data) return null;
 
   const kb = query.data;
+  const totalCounts: Partial<Record<TabKey, number>> = {
+    documents: kb.total_documents,
+    chunks: kb.total_chunks,
+    images: kb.total_screenshots,
+  };
 
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
-  // `ekp-page-kb.jsx:156-157` (`.content` + `.content-wide`). Inner preserved until F6.
   return (
-    <div className="content"><div className="content-wide">
-    <div className="space-y-6">
-      <div>
-        <Link
-          href="/kb"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to KBs
-        </Link>
-      </div>
-
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {kb.name || kb.kb_id}
-          </h1>
-          <p className="font-mono text-xs text-muted-foreground">{kb.kb_id}</p>
-          {kb.description && (
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {kb.description}
-            </p>
-          )}
-        </div>
-        <Button asChild>
-          <Link href={`/kb/${kbId}/upload`}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Document
-          </Link>
-        </Button>
-      </header>
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="documents">
-              <FileText className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.documents}
-            </TabsTrigger>
-            <TabsTrigger value="chunks">
-              <Database className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.chunks}
-            </TabsTrigger>
-            <TabsTrigger value="images">
-              <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.images}
-            </TabsTrigger>
-            <TabsTrigger value="chunking-lab">
-              <Scissors className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL['chunking-lab']}
-            </TabsTrigger>
-            <TabsTrigger value="pipeline">
-              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.pipeline}
-            </TabsTrigger>
-            <TabsTrigger value="retrieval">
-              <FlaskConical className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.retrieval}
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <SettingsIcon className="mr-1.5 h-3.5 w-3.5" />
-              {TAB_LABEL.settings}
-            </TabsTrigger>
-            {/* W20 F5.8 — Access tab disabled affordance (Tier 1.5;Wave C1
-                activates per ADR-0027 Option A RBAC backend). Render the tab
-                visibly but block ?tab=access routing + click via TabsTrigger
-                disabled + wrap in <DisabledAffordance>. */}
-            <DisabledAffordance
-              variant="p1-strict"
-              reason="RBAC pending Wave C1 per ADR-0027 Option A backend"
-              tier2Trigger="RBAC + audit log + group membership"
-              className="inline-flex"
+    <div className="content">
+      <div className="content-wide">
+        <div className="page-header">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs btn-ghost-muted"
+                onClick={() => router.push('/kb')}
+              >
+                <ChevronLeft size={12} /> Knowledge
+              </button>
+              <span className="text-xs muted mono">·</span>
+              <span className="text-xs muted mono">ekp-kb-{kb.kb_id}-v1</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <h1 className="page-title">{kb.name || kb.kb_id}</h1>
+              {kb.archived ? (
+                <span className="badge badge-muted">
+                  <span className="badge-dot" /> ARCHIVED
+                </span>
+              ) : (
+                <span className="badge badge-success">
+                  <span className="badge-dot" /> READY
+                </span>
+              )}
+            </div>
+            {kb.description && <p className="page-subtitle">{kb.description}</p>}
+          </div>
+          <div className="page-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleTabChange('retrieval')}
             >
-              <TabsTrigger value="access" disabled aria-disabled="true">
-                <Lock className="mr-1.5 h-3.5 w-3.5" />
-                Access
-              </TabsTrigger>
-            </DisabledAffordance>
-          </TabsList>
+              <Search size={13} /> Retrieval test
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" disabled>
+              <RefreshCw size={13} /> Re-index
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => router.push(`/kb/${kb.kb_id}/upload`)}
+            >
+              <Upload size={13} /> Upload documents
+            </button>
+          </div>
         </div>
 
-        <TabsContent value="documents" className="mt-6">
-          <DocumentsTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="chunks" className="mt-6">
-          <ChunksTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="images" className="mt-6">
-          <ImagesTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="chunking-lab" className="mt-6">
-          <ChunkingLabTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="pipeline" className="mt-6">
-          <PipelineTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="retrieval" className="mt-6">
-          <RetrievalTab kb={kb} />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <SettingsTab kb={kb} />
-        </TabsContent>
-      </Tabs>
+        {kb.failed_documents.length > 0 && (
+          <div className="banner banner-warning">
+            <AlertTriangle size={16} style={{ color: 'oklch(var(--warning))' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>
+                {kb.failed_documents.length} document
+                {kb.failed_documents.length > 1 ? 's' : ''} failed to index
+              </div>
+              <div className="text-xs muted">
+                Review parser errors in the Documents tab → &ldquo;failed&rdquo; filter.
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => handleTabChange('documents')}
+            >
+              View errors
+            </button>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="tabs" role="tablist" aria-label="KB sections">
+          {TAB_DEFS.map((t) => {
+            const Ic = t.icon;
+            const count = totalCounts[t.id];
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === t.id}
+                className="tab"
+                data-active={activeTab === t.id}
+                onClick={() => handleTabChange(t.id)}
+              >
+                <Ic size={14} /> {t.label}
+                {count != null && (
+                  <span className="count">{count.toLocaleString()}</span>
+                )}
+              </button>
+            );
+          })}
+          {/* Access tab — DisabledAffordance per ADR-0027 Wave C1 + CC10 H4 */}
+          <DisabledAffordance
+            variant="p1-strict"
+            reason="RBAC pending Wave C1 per ADR-0027 Option A backend"
+            tier2Trigger="RBAC + audit log + group membership"
+            className="inline-flex"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-disabled="true"
+              className="tab"
+              data-active={false}
+              disabled
+            >
+              <Lock size={14} /> Access
+            </button>
+          </DisabledAffordance>
+        </div>
+
+        {activeTab === 'documents' && <DocumentsTab kb={kb} />}
+        {activeTab === 'chunks' && <ChunksTab kb={kb} />}
+        {activeTab === 'images' && <ImagesTab kb={kb} />}
+        {activeTab === 'chunking-lab' && <ChunkingLabTab kb={kb} />}
+        {activeTab === 'pipeline' && <PipelineTab kb={kb} />}
+        {activeTab === 'retrieval' && <RetrievalTab kb={kb} />}
+        {activeTab === 'settings' && <SettingsTab kb={kb} />}
+      </div>
     </div>
-    </div></div>
   );
 }
 
-// --- Documents tab -----------------------------------------------------------
+// ── Tab: Documents ──────────────────────────────────────────────────────────
+type DocStatusFilter = 'all' | 'indexed' | 'indexing' | 'failed' | 'queued';
 
 function DocumentsTab({ kb }: { kb: KbStatus }) {
-  // W17 F4.1 — wire the real GET /kb/{id}/documents (backend impl per W16 F5.1.1
-  // CO_F3a: Azure AI Search chunk aggregation by doc_id). Empty index → empty
-  // list (kb exists but no chunks ingested yet) → show the upload prompt.
+  const router = useRouter();
+  const [filter, setFilter] = useState<DocStatusFilter>('all');
   const docs = useQuery<DocumentSummary[]>({
     queryKey: ['kb', kb.kb_id, 'documents'],
     queryFn: () => documentsApi.list(kb.kb_id),
   });
 
+  const all = docs.data ?? [];
+  // Backend currently exposes indexed docs only; surface filter UX faithfully
+  // and route everything to `all` for now (Wave C+ wires real status field).
+  const filtered = filter === 'all' ? all : filter === 'indexed' ? all : [];
+  const filterCounts: Record<DocStatusFilter, number> = {
+    all: all.length,
+    indexed: all.length,
+    indexing: 0,
+    failed: kb.failed_documents.length,
+    queued: 0,
+  };
+
+  if (docs.isLoading) {
+    return (
+      <div className="banner banner-info">
+        <span className="spinner" />
+        <div style={{ flex: 1 }}>Loading documents…</div>
+      </div>
+    );
+  }
+  if (docs.isError) {
+    return (
+      <div className="banner banner-error">
+        <AlertTriangle size={16} />
+        <div style={{ flex: 1 }}>
+          Failed to load documents — backend unreachable or Azure AI Search not
+          configured. {String((docs.error as Error)?.message ?? 'unknown')}
+        </div>
+      </div>
+    );
+  }
+  if (all.length === 0) {
+    return (
+      <div className="empty">
+        <div className="empty-icon">
+          <Upload size={20} />
+        </div>
+        <div className="empty-title">No documents yet</div>
+        <div>
+          Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds.
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          style={{ marginTop: 12 }}
+          onClick={() => router.push(`/kb/${kb.kb_id}/upload`)}
+        >
+          <Upload size={13} /> Upload Document
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total documents" value={kb.total_documents} />
-        <StatCard label="Total chunks" value={kb.total_chunks} />
-        <StatCard
-          label="Storage"
-          value={`${kb.storage_size_mb.toFixed(1)} MB`}
-        />
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 12,
+          alignItems: 'center',
+        }}
+      >
+        <div className="input-search-wrap" style={{ flex: 1, maxWidth: 340 }}>
+          <span className="icon-leading">
+            <Search size={14} />
+          </span>
+          <input
+            className="input"
+            placeholder="Search documents by title or doc_id…"
+          />
+        </div>
+        <div className="seg">
+          {(['all', 'indexed', 'indexing', 'failed', 'queued'] as DocStatusFilter[]).map(
+            (f) => (
+              <button
+                type="button"
+                key={f}
+                className="seg-btn"
+                data-active={filter === f}
+                onClick={() => setFilter(f)}
+              >
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                <span className="text-xs mono" style={{ opacity: 0.6 }}>
+                  {filterCounts[f]}
+                </span>
+              </button>
+            ),
+          )}
+        </div>
+        <div className="spacer" />
+        <button type="button" className="btn btn-secondary btn-sm" disabled>
+          <Download size={13} /> Export CSV
+        </button>
       </div>
 
-      {kb.failed_documents.length > 0 && (
-        <FailuresSection rows={kb.failed_documents} />
-      )}
-
-      <section className="space-y-3">
-        <header className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold tracking-tight">Documents</h2>
-          <span className="text-xs text-muted-foreground">
-            {docs.isLoading
-              ? 'Loading…'
-              : docs.isError
-                ? '—'
-                : `${docs.data?.length ?? 0} document${(docs.data?.length ?? 0) === 1 ? '' : 's'} indexed`}
-          </span>
-        </header>
-
-        {docs.isLoading ? (
-          <DocumentsSkeleton />
-        ) : docs.isError ? (
-          <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-            Failed to load documents — backend unreachable or Azure AI Search not
-            configured. Error:{' '}
-            {String((docs.error as Error)?.message ?? 'unknown')}
-          </div>
-        ) : (docs.data?.length ?? 0) === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center">
-            <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm font-medium">No documents yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds
-            </p>
-            <Button asChild className="mt-4">
-              <Link href={`/kb/${kb.kb_id}/upload`}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Document
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <DocumentsTable rows={docs.data ?? []} />
-        )}
-      </section>
-    </div>
-  );
-}
-
-function DocumentsSkeleton() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-12 animate-pulse rounded-md border border-border bg-muted/30"
-        />
-      ))}
-    </div>
-  );
-}
-
-function DocumentsTable({ rows }: { rows: DocumentSummary[] }) {
-  return (
-    <div className="overflow-hidden rounded-md border border-border">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
             <tr>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Title</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Format</th>
-              <th scope="col" className="px-3 py-2 text-right font-medium">Chunks</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Last indexed</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Doc id</th>
+              <th>Document</th>
+              <th>Type</th>
+              <th className="col-num">Chunks</th>
+              <th>Tags</th>
+              <th>Status</th>
+              <th className="col-num">Indexed</th>
+              <th className="col-shrink" aria-label="row actions" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((doc) => (
-              <tr key={doc.doc_id} className="bg-background">
-                <td className="px-3 py-2">
-                  <span className="font-medium">{doc.doc_title || doc.doc_id}</span>
-                  {doc.tags.length > 0 && (
-                    <span className="ml-2 inline-flex gap-1">
-                      {doc.tags.slice(0, 3).map((t) => (
-                        <Badge key={t} variant="outline" className="text-[10px]">
+          <tbody>
+            {filtered.map((d) => (
+              <tr
+                key={d.doc_id}
+                onClick={() =>
+                  router.push(`/kb/${kb.kb_id}/docs/${encodeURIComponent(d.doc_id)}`)
+                }
+                style={{ cursor: 'default' }}
+              >
+                <td style={{ maxWidth: 360 }}>
+                  <div
+                    className="table-row-link"
+                    style={{
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      color: 'oklch(var(--accent))',
+                    }}
+                  >
+                    {d.doc_title || d.doc_id}
+                  </div>
+                  <div className="text-xs muted mono">{d.doc_id}</div>
+                </td>
+                <td>
+                  <span
+                    className="mono text-xs"
+                    style={{ textTransform: 'uppercase' }}
+                  >
+                    {d.doc_format || '—'}
+                  </span>
+                </td>
+                <td className="col-num">{d.total_chunks}</td>
+                <td>
+                  {d.tags.length > 0 ? (
+                    <span
+                      style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}
+                    >
+                      {d.tags.slice(0, 3).map((t) => (
+                        <span key={t} className="badge badge-muted">
                           {t}
-                        </Badge>
+                        </span>
                       ))}
                     </span>
+                  ) : (
+                    <span className="text-xs muted">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2">
-                  <Badge variant="outline" className="text-xs uppercase">
-                    {doc.doc_format || '—'}
-                  </Badge>
+                <td>
+                  <span className="badge badge-success">
+                    <span className="badge-dot" /> INDEXED
+                  </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {doc.total_chunks.toLocaleString()}
+                <td className="col-num text-xs">
+                  {formatRelative(d.last_indexed_at)}
                 </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {doc.last_indexed_at ? doc.last_indexed_at.slice(0, 10) : '—'}
-                </td>
-                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                  {doc.doc_id}
+                <td className="col-shrink">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-icon btn-xs"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 12,
+          fontSize: 12,
+        }}
+      >
+        <div className="muted">
+          Showing {filtered.length} of {all.length}
+        </div>
+        <div className="row">
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-xs"
+            disabled
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="mono text-xs">1 / 1</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon btn-xs"
+            disabled
+            aria-label="Next page"
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function FailuresSection({ rows }: { rows: FailureRecord[] }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="h-4 w-4 text-warning-foreground" />
-          Failed documents
-        </CardTitle>
-        <CardDescription>
-          {rows.length} document{rows.length === 1 ? '' : 's'} failed during
-          ingestion.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2 text-sm">
-          {rows.map((failure) => (
-            <li
-              key={failure.doc_id}
-              className="rounded-md border border-border p-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs text-muted-foreground">
-                  {failure.doc_id}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {failure.stage}
-                </Badge>
-              </div>
-              <p className="mt-2 text-xs">{failure.error}</p>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-}
-
-// --- Chunks tab --------------------------------------------------------------
-
+// ── Tab: Chunks ─────────────────────────────────────────────────────────────
 function ChunksTab({ kb }: { kb: KbStatus }) {
-  // CH-002 F7 — wired to the real GET /kb/{id}/documents/{doc_id}/chunks
-  // (W16 F5.1.2). Needs a doc_id, so: a doc picker from the doc listing
-  // (already-wired GET /kb/{id}/documents, W17 F4.1), honouring ?doc=<doc_id>.
+  const router = useRouter();
   const searchParams = useSearchParams();
   const docs = useQuery<DocumentSummary[]>({
     queryKey: ['kb', kb.kb_id, 'documents'],
@@ -466,1311 +538,1543 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
 
   const docList = docs.data ?? [];
   const docParam = searchParams.get('doc');
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const effectiveDocId =
-    selectedDocId ??
-    (docParam && docList.some((d) => d.doc_id === docParam)
+  const selectedDocId =
+    docParam && docList.some((d) => d.doc_id === docParam)
       ? docParam
-      : (docList[0]?.doc_id ?? null));
+      : docList[0]?.doc_id;
 
   const chunks = useQuery<ChunkSummary[]>({
-    queryKey: ['kb', kb.kb_id, 'chunks', effectiveDocId],
-    queryFn: () => documentsApi.listChunks(kb.kb_id, effectiveDocId as string),
-    enabled: !!effectiveDocId,
+    queryKey: ['kb', kb.kb_id, 'chunks', selectedDocId],
+    queryFn: () => documentsApi.listChunks(kb.kb_id, selectedDocId!),
+    enabled: !!selectedDocId,
   });
 
+  const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
+  const chunkList = chunks.data ?? [];
+  const activeChunk =
+    chunkList.find((c) => c.chunk_id === selectedChunkId) ?? chunkList[0];
+
+  if (docs.isLoading) {
+    return (
+      <div className="banner banner-info">
+        <span className="spinner" />
+        <div style={{ flex: 1 }}>Loading documents…</div>
+      </div>
+    );
+  }
+  if (docList.length === 0) {
+    return (
+      <div className="empty">
+        <div className="empty-icon">
+          <Layers size={20} />
+        </div>
+        <div className="empty-title">No chunks yet</div>
+        <div>Upload a document first — chunks emit during ingestion.</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Total chunks" value={kb.total_chunks} />
-        <StatCard label="Screenshots" value={kb.total_screenshots} />
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        <label className="label" style={{ marginBottom: 0 }}>
+          Document
+        </label>
+        <select
+          className="select"
+          value={selectedDocId ?? ''}
+          onChange={(e) => {
+            const sp = new URLSearchParams(searchParams.toString());
+            sp.set('doc', e.target.value);
+            router.push(`/kb/${kb.kb_id}?${sp.toString()}`, { scroll: false });
+            setSelectedChunkId(null);
+          }}
+          style={{ maxWidth: 480 }}
+        >
+          {docList.map((d) => (
+            <option key={d.doc_id} value={d.doc_id}>
+              {d.doc_title || d.doc_id} ({d.total_chunks} chunks)
+            </option>
+          ))}
+        </select>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Chunk inspection</CardTitle>
-          <CardDescription>
-            Per-chunk metadata(<span className="font-mono">chunk_id</span> /{' '}
-            <span className="font-mono">section_path</span> / index / flags)for a
-            document. Chunk body text is not bulk-listed — use the Retrieval
-            Testing tab(or <span className="font-mono">/query</span>)to see the
-            text of a retrieved chunk.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {docs.isLoading ? (
-            <DocumentsSkeleton />
-          ) : docs.isError ? (
-            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-              Failed to load documents — backend unreachable or Azure AI Search
-              not configured. Error:{' '}
-              {String((docs.error as Error)?.message ?? 'unknown')}
-            </div>
-          ) : docList.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              No documents in this KB yet — upload one to inspect its chunks.
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Label
-                  htmlFor="chunks-doc"
-                  className="text-xs text-muted-foreground sm:w-24 sm:shrink-0"
-                >
-                  Document
-                </Label>
-                <Select
-                  value={effectiveDocId ?? undefined}
-                  onValueChange={setSelectedDocId}
-                >
-                  <SelectTrigger id="chunks-doc" className="w-full sm:w-96">
-                    <SelectValue placeholder="Select a document" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docList.map((d) => (
-                      <SelectItem key={d.doc_id} value={d.doc_id}>
-                        {d.doc_title || d.doc_id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <div className="split-2">
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">Browse chunks</h3>
+              <div className="card-desc">
+                {chunkList.length.toLocaleString()} chunks in selected doc
               </div>
-
-              {chunks.isLoading ? (
-                <DocumentsSkeleton />
-              ) : chunks.isError ? (
-                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-                  Failed to load chunks. Error:{' '}
-                  {String((chunks.error as Error)?.message ?? 'unknown')}
-                </div>
-              ) : (chunks.data?.length ?? 0) === 0 ? (
-                <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  No chunks for this document.
-                </div>
-              ) : (
-                <ChunksTable rows={chunks.data ?? []} />
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ChunksTable({ rows }: { rows: ChunkSummary[] }) {
-  return (
-    <div className="overflow-hidden rounded-md border border-border">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th scope="col" className="px-3 py-2 text-left font-medium">#</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Title</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Section path</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Flags</th>
-              <th scope="col" className="px-3 py-2 text-left font-medium">Chunk id</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((c) => (
-              <tr key={c.chunk_id} className="bg-background">
-                <td className="px-3 py-2 tabular-nums text-xs text-muted-foreground">
-                  {c.chunk_index + 1}/{c.chunk_total}
-                </td>
-                <td className="px-3 py-2 font-medium">{c.chunk_title || '—'}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {c.section_path.length > 0 ? c.section_path.join(' › ') : '—'}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-1">
-                    {!c.enabled && (
-                      <Badge variant="outline" className="text-[10px]">
-                        disabled
-                      </Badge>
-                    )}
-                    {c.low_value_flag && (
-                      <Badge
-                        variant="outline"
-                        className="bg-warning/15 text-warning-foreground border-transparent text-[10px]"
-                      >
-                        low-value
-                      </Badge>
-                    )}
-                    {c.enabled && !c.low_value_flag && (
-                      <span className="text-[10px] text-muted-foreground">—</span>
-                    )}
+            </div>
+          </div>
+          <div
+            className="card-body card-body-tight"
+            style={{ maxHeight: 540, overflowY: 'auto' }}
+          >
+            {chunks.isLoading && (
+              <div style={{ padding: 14 }} className="text-xs muted">
+                Loading chunks…
+              </div>
+            )}
+            {chunks.isError && (
+              <div style={{ padding: 14 }} className="text-xs">
+                Failed to load chunks: {String((chunks.error as Error)?.message)}
+              </div>
+            )}
+            {chunkList.map((c) => {
+              const active = activeChunk?.chunk_id === c.chunk_id;
+              return (
+                <div
+                  key={c.chunk_id}
+                  onClick={() => setSelectedChunkId(c.chunk_id)}
+                  style={{
+                    padding: '10px 16px',
+                    borderBottom: '1px solid oklch(var(--border))',
+                    cursor: 'default',
+                    background: active ? 'oklch(var(--muted) / 0.5)' : 'transparent',
+                    borderLeft: active
+                      ? '2px solid oklch(var(--accent))'
+                      : '2px solid transparent',
+                  }}
+                >
+                  <div className="text-xs mono muted" style={{ marginBottom: 2 }}>
+                    #{c.chunk_id}
                   </div>
-                </td>
-                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                  {c.chunk_id}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>
+                    {c.chunk_title}
+                  </div>
+                  <div className="section-path text-xs">
+                    {c.section_path.map((s, j) => (
+                      <span key={j}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">Chunk preview</h3>
+              <div className="card-desc">
+                {activeChunk ? (
+                  <span className="mono">{activeChunk.chunk_id}</span>
+                ) : (
+                  '—'
+                )}
+              </div>
+            </div>
+            <div className="row">
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon btn-sm"
+                aria-label="Edit"
+                disabled
+              >
+                <Edit size={14} />
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon btn-sm"
+                aria-label="Copy"
+                onClick={() => {
+                  if (activeChunk) {
+                    void navigator.clipboard
+                      .writeText(activeChunk.chunk_id)
+                      .then(() => toast.success('Chunk id copied'))
+                      .catch(() => toast.error('Copy failed'));
+                  }
+                }}
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
+            {activeChunk ? (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 6,
+                    marginBottom: 12,
+                  }}
+                >
+                  <span className="badge badge-muted">
+                    chunk_index <b style={{ marginLeft: 2 }}>{activeChunk.chunk_index}</b>
+                  </span>
+                  <span className="badge badge-muted">
+                    of <b style={{ marginLeft: 2 }}>{activeChunk.chunk_total}</b>
+                  </span>
+                  {activeChunk.low_value_flag && (
+                    <span className="badge badge-warning">low_value</span>
+                  )}
+                  {!activeChunk.enabled && (
+                    <span className="badge badge-error">disabled</span>
+                  )}
+                </div>
+                <div
+                  className="section-path text-sm"
+                  style={{ marginBottom: 14 }}
+                >
+                  {activeChunk.section_path.map((s, j) => (
+                    <span key={j}>{s}</span>
+                  ))}
+                </div>
+                <div className="text-xs muted">
+                  Chunk body text not bulk-listed — use Retrieval Testing tab to
+                  view full chunk text per query.
+                </div>
+              </>
+            ) : (
+              <div className="text-xs muted">Select a chunk to preview.</div>
+            )}
+          </div>
+          {activeChunk && (
+            <div className="card-footer">
+              <div className="text-xs muted mono">
+                embedding_model · {kb.config.embedding_model} ·{' '}
+                {kb.config.embedding_dimension}d MRL
+              </div>
+              <button type="button" className="btn btn-ghost btn-xs" disabled>
+                View raw embedding →
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// --- Images tab (W20 F5.5 per ADR-0025) --------------------------------------
-
+// ── Tab: Images ─────────────────────────────────────────────────────────────
 function ImagesTab({ kb }: { kb: KbStatus }) {
   const images = useQuery({
     queryKey: ['kb', kb.kb_id, 'images'],
     queryFn: () => kbApi.listImages(kb.kb_id, 200, 0),
   });
-  const [selected, setSelected] = useState<string | null>(null);
 
   const items = images.data?.items ?? [];
-  const selectedItem = items.find((i) => i.id === selected) ?? null;
+  const totalRefs = items.length;
+  const dedupSavings = 0; // Backend hasn't surfaced this yet (mockup-only viz).
+  const totalSizeKb = 0; // Same — surfaced when KbImagesResponse adds size_kb.
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">Cited screenshots</h2>
-          <p className="text-xs text-muted-foreground">
-            Images surfaced during ingest, aggregated across all chunks (deduplicated by SHA-256).
-          </p>
+    <div>
+      <div
+        className="stat-grid"
+        style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}
+      >
+        <div className="stat">
+          <div className="stat-label">
+            <Layers size={13} /> Extracted images
+          </div>
+          <div className="stat-value">{kb.total_screenshots}</div>
+          <div className="stat-meta">
+            Across {kb.total_documents} document
+            {kb.total_documents === 1 ? '' : 's'}
+          </div>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {images.isLoading ? 'Loading…' : `${items.length} image${items.length === 1 ? '' : 's'}`}
-        </span>
-      </header>
-
-      {images.isError && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Failed to load images:{' '}
-          {String((images.error as Error)?.message ?? 'unknown')}
+        <div className="stat">
+          <div className="stat-label">
+            <Shield size={13} /> SHA256 dedup
+          </div>
+          <div className="stat-value">
+            {dedupSavings}
+            <span className="stat-unit"> deduped</span>
+          </div>
+          <div className="stat-meta">
+            Same hash → single Blob; {totalRefs} chunk references total
+          </div>
         </div>
-      )}
-
-      {!images.isLoading && !images.isError && items.length === 0 && (
-        <div className="rounded-md border border-dashed border-border bg-muted/30 p-8 text-center">
-          <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">No images yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Images surface after the screenshot pipeline runs end-to-end (R12 — Azure Blob
-            switch pending Track A IT cred). Upload Word, PDF, or PowerPoint docs to populate.
-          </p>
+        <div className="stat">
+          <div className="stat-label">
+            <Database size={13} /> Blob storage
+          </div>
+          <div className="stat-value">
+            {(totalSizeKb / 1024).toFixed(1)}
+            <span className="stat-unit"> MB</span>
+          </div>
+          <div className="stat-meta mono">ekp-kb-{kb.kb_id}-screenshots</div>
         </div>
-      )}
+        <div className="stat">
+          <div className="stat-label">
+            <AlertTriangle size={13} /> low_value flagged
+          </div>
+          <div className="stat-value">0</div>
+          <div className="stat-meta">Excluded from retrieval — logos, decorations</div>
+        </div>
+      </div>
 
-      {items.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {items.map((img) => (
-            <button
-              key={img.id}
-              type="button"
-              onClick={() => setSelected(img.id)}
-              className="overflow-hidden rounded-md border border-border text-left transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              aria-label={`Open image from ${img.doc_name}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.url}
-                alt={img.ocr_text || `Image from ${img.doc_name}`}
-                className="h-32 w-full object-cover"
-              />
-              <div className="border-t border-border bg-background p-2">
-                <div className="line-clamp-1 text-xs font-medium">{img.doc_name}</div>
-                {img.ocr_text && (
-                  <div className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
-                    {img.ocr_text}
-                  </div>
-                )}
-              </div>
-            </button>
+      <div className="banner banner-info" style={{ marginBottom: 16 }}>
+        <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
+        <div style={{ flex: 1, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            How chunks reference images
+          </div>
+          <div className="text-xs muted mono" style={{ marginTop: 2 }}>
+            Parser extracts <b style={{ color: 'oklch(var(--foreground))' }}>
+              EmbeddedImage{`{sha256, alt_text, doc_order}`}
+            </b>{' '}
+            → Extractor adds kb_id/doc_id → Uploader pushes blob with{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>
+              {'{sha256}.{ext}'}
+            </b>{' '}
+            path (cross-doc dedup) → Chunker references via{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>
+              embedded_image_positions
+            </b>{' '}
+            → Orchestrator resolves to{' '}
+            <b style={{ color: 'oklch(var(--foreground))' }}>ImageRef.blob_url</b>{' '}
+            in ChunkRecord.
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <div className="input-search-wrap" style={{ maxWidth: 320, flex: 1 }}>
+          <span className="icon-leading">
+            <Search size={14} />
+          </span>
+          <input
+            className="input"
+            placeholder="Search by alt text or SHA256…"
+          />
+        </div>
+        <div className="spacer" />
+        <button type="button" className="btn btn-secondary btn-sm" disabled>
+          <Download size={13} /> Export manifest
+        </button>
+      </div>
+
+      {images.isLoading ? (
+        <div className="banner banner-info">
+          <span className="spinner" />
+          <div style={{ flex: 1 }}>Loading images…</div>
+        </div>
+      ) : images.isError ? (
+        <div className="banner banner-error">
+          <AlertTriangle size={16} />
+          <div style={{ flex: 1 }}>
+            Failed to load images:{' '}
+            {String((images.error as Error)?.message ?? 'unknown')}
+          </div>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon">
+            <ImageIcon size={20} />
+          </div>
+          <div className="empty-title">No images extracted yet</div>
+          <div>Embedded images appear once a doc with figures is ingested.</div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 12,
+          }}
+        >
+          {items.map((img, i) => (
+            <ImageCard key={img.id} img={img} idx={i} />
           ))}
         </div>
       )}
-
-      <Dialog open={selectedItem !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="line-clamp-1">
-              {selectedItem?.doc_name ?? 'Image preview'}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedItem && (
-            <div className="space-y-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedItem.url}
-                alt={selectedItem.ocr_text || selectedItem.doc_name}
-                className="max-h-[60vh] w-full rounded-md border border-border object-contain"
-              />
-              {selectedItem.ocr_text && (
-                <div className="rounded-md border border-border bg-muted/40 p-3 text-xs">
-                  <div className="font-semibold uppercase tracking-wide text-muted-foreground">
-                    OCR / alt text
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap">{selectedItem.ocr_text}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-// --- Chunking Lab tab (W20 F5.6 per ADR-0025) --------------------------------
+function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
+  const colors = [
+    'oklch(var(--accent))',
+    'oklch(0.62 0.13 200)',
+    'oklch(0.65 0.14 145)',
+    'oklch(0.60 0.16 285)',
+    'oklch(0.65 0.18 25)',
+  ];
+  const c = colors[idx % colors.length];
+  return (
+    <div
+      style={{
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden',
+        background: 'oklch(var(--card))',
+        cursor: 'default',
+      }}
+    >
+      <div
+        style={{
+          height: 130,
+          backgroundImage: `linear-gradient(135deg, ${c.replace(
+            ')',
+            ' / 0.2)',
+          )}, ${c.replace(')', ' / 0.05)')})`,
+          position: 'relative',
+          display: 'grid',
+          placeItems: 'center',
+          color: c,
+        }}
+      >
+        <Layers size={28} />
+        <span
+          style={{
+            position: 'absolute',
+            bottom: 6,
+            right: 8,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'oklch(var(--muted-foreground))',
+            background: 'oklch(var(--background) / 0.7)',
+            padding: '1px 5px',
+            borderRadius: 3,
+          }}
+        >
+          {img.page_num != null ? `p.${img.page_num}` : '—'}
+        </span>
+      </div>
+      <div style={{ padding: '10px 12px' }}>
+        <div
+          style={{
+            fontSize: 12.5,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            height: 36,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {img.ocr_text || <span className="muted">(no ocr text)</span>}
+        </div>
+        <div
+          className="text-xs muted mono"
+          style={{
+            marginTop: 6,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {img.doc_name}
+        </div>
+        <div
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 11,
+          }}
+        >
+          <span className="badge badge-muted" style={{ fontSize: 10 }}>
+            {img.screenshot_type || 'screenshot'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab: Chunking Lab ───────────────────────────────────────────────────────
+const CHUNK_STRATEGIES: {
+  id: KbConfig['chunk_strategy'];
+  label: string;
+  hint: string;
+  supported: boolean;
+  skip_reason?: string;
+}[] = [
+  {
+    id: 'layout_aware',
+    label: 'Layout-aware',
+    hint: 'Docling — preserves tables, lists, sections',
+    supported: true,
+  },
+  {
+    id: 'slide_based',
+    label: 'Slide-based',
+    hint: 'python-pptx — one chunk per slide',
+    supported: true,
+  },
+  {
+    id: 'heading_aware',
+    label: 'Heading-aware',
+    hint: 'Splits at H1/H2/H3 — for narrative docs',
+    supported: false,
+    skip_reason: 'NotImplementedError — W3+ deferred per ingestion/chunker/strategies.py',
+  },
+  {
+    id: 'auto',
+    label: 'Auto',
+    hint: 'Detect doc type, pick strategy',
+    supported: true,
+  },
+];
 
 function ChunkingLabTab({ kb }: { kb: KbStatus }) {
-  const [sampleText, setSampleText] = useState(
-    '## Example heading\n\nPaste sample content here to preview how the chunker will split it.\n\nAdd more paragraphs separated by blank lines.',
+  const [activeStrategy, setActiveStrategy] = useState<KbConfig['chunk_strategy']>(
+    kb.config.chunk_strategy,
   );
-  const [strategy, setStrategy] = useState<KbConfig['chunk_strategy']>(kb.config.chunk_strategy);
-  const [chunkSize, setChunkSize] = useState(700);
-
+  const [chunkSize, setChunkSize] = useState(800);
+  const [overlap, setOverlap] = useState(100);
+  const [sampleText, setSampleText] = useState('');
   const preview = useMutation({
     mutationFn: () =>
       kbApi.chunkingPreview({
         kb_id: kb.kb_id,
-        sample_text: sampleText,
-        strategy,
+        sample_text: sampleText || ' ',
+        strategy: activeStrategy,
         chunk_size: chunkSize,
-        overlap: 0,
+        overlap,
       }),
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : 'preview failed';
+      toast.error(msg);
+    },
   });
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h2 className="text-base font-semibold tracking-tight">Chunking Lab</h2>
-        <p className="text-xs text-muted-foreground">
-          Preview how the current chunker will split sample text — no persistence, no
-          Azure index writes. Apply changes via Settings → Chunk strategy.
-        </p>
-      </header>
+    <div>
+      <div className="banner banner-info" style={{ marginBottom: 16 }}>
+        <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
+        <div style={{ flex: 1, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            Preview chunking on a sample document
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 2 }}>
+            Strategies are picked by{' '}
+            <span className="mono">ingestion/chunker/strategies.py</span>. Only{' '}
+            <span className="mono">layout_aware</span> and{' '}
+            <span className="mono">slide_based</span> are implemented;{' '}
+            <span className="mono">heading_aware</span> raises{' '}
+            <span className="mono">NotImplementedError</span> (W3+ deferred).
+          </div>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Inputs</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="lab-text">Sample text</Label>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1.4fr 1fr',
+          gap: 16,
+          marginBottom: 16,
+        }}
+      >
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">Sample text</h3>
+              <div className="card-desc">
+                Paste a few paragraphs to preview chunk boundaries
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
             <textarea
-              id="lab-text"
+              className="input"
+              rows={6}
+              placeholder="Paste sample document text…"
               value={sampleText}
               onChange={(e) => setSampleText(e.target.value)}
-              rows={6}
-              className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="lab-strategy">Strategy</Label>
-              <Select
-                value={strategy}
-                onValueChange={(v) => setStrategy(v as KbConfig['chunk_strategy'])}
-              >
-                <SelectTrigger id="lab-strategy">
-                  <SelectValue placeholder="Strategy" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">auto</SelectItem>
-                  <SelectItem value="layout_aware">layout_aware</SelectItem>
-                  <SelectItem value="heading_aware">heading_aware</SelectItem>
-                  <SelectItem value="slide_based">slide_based</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lab-size">Chunk size (tokens)</Label>
-              <Input
-                id="lab-size"
-                type="number"
-                min={50}
-                max={4000}
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Chunking parameters</h3>
+          </div>
+          <div className="card-body">
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label className="label">
+                Chunk size (tokens){' '}
+                <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+                  {chunkSize}
+                </span>
+              </label>
+              <input
+                type="range"
+                min={200}
+                max={1200}
+                step={50}
                 value={chunkSize}
-                onChange={(e) => setChunkSize(Number(e.target.value))}
+                onChange={(e) => setChunkSize(+e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">
+                Overlap{' '}
+                <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+                  {overlap}
+                </span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={300}
+                step={10}
+                value={overlap}
+                onChange={(e) => setOverlap(+e.target.value)}
+                style={{ width: '100%' }}
               />
             </div>
           </div>
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <Button type="button" onClick={() => preview.mutate()} disabled={preview.isPending}>
-              {preview.isPending ? 'Previewing…' : 'Preview'}
-            </Button>
-            {/* Apply is a Tier 2 affordance — Wave B+ re-chunking pipeline. */}
-            <DisabledAffordance
-              variant="p3-preview"
-              reason="Re-chunking requires re-ingest of every doc — arrives in a later tier"
-              tier2Trigger="re-chunking pipeline"
-              showBadge
-            >
-              <Button type="button" variant="outline" disabled>
-                Apply
-              </Button>
-            </DisabledAffordance>
-          </div>
-        </CardContent>
-      </Card>
-
-      {preview.isError && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-          Preview failed: {String((preview.error as Error)?.message ?? 'unknown')}
         </div>
-      )}
+      </div>
 
-      {preview.data && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              Preview ({preview.data.total} chunk{preview.data.total === 1 ? '' : 's'})
-            </CardTitle>
-            {preview.data.note && (
-              <CardDescription className="text-xs">{preview.data.note}</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {preview.data.items.length === 0 && (
-              <p className="text-xs text-muted-foreground">No chunks emitted from the sample.</p>
-            )}
-            {preview.data.items.map((item) => (
-              <details
-                key={item.chunk_index}
-                className="rounded-md border border-border bg-muted/30 p-2 text-xs"
+      <h3 className="card-title" style={{ marginBottom: 10 }}>
+        Strategy comparison
+      </h3>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        {CHUNK_STRATEGIES.map((s) => (
+          <div
+            key={s.id}
+            onClick={() => s.supported && setActiveStrategy(s.id)}
+            style={{
+              border: `1px solid ${
+                activeStrategy === s.id
+                  ? 'oklch(var(--accent))'
+                  : 'oklch(var(--border))'
+              }`,
+              background:
+                activeStrategy === s.id
+                  ? 'oklch(var(--accent) / 0.05)'
+                  : 'oklch(var(--card))',
+              borderRadius: 'var(--radius-md)',
+              padding: 14,
+              opacity: s.supported ? 1 : 0.55,
+              cursor: 'default',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 4,
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 13.5 }}>{s.label}</span>
+              {!s.supported && <span className="badge badge-muted">N/A</span>}
+            </div>
+            <div
+              className="text-xs muted"
+              style={{ marginBottom: 10, lineHeight: 1.4 }}
+            >
+              {s.hint}
+            </div>
+            {!s.supported && s.skip_reason && (
+              <div
+                className="text-xs muted"
+                style={{ lineHeight: 1.5, padding: '8px 0' }}
               >
-                <summary className="cursor-pointer">
-                  <span className="font-medium">#{item.chunk_index}</span>{' '}
-                  {item.chunk_title || '(untitled section)'}
-                  <span className="ml-2 text-muted-foreground">
-                    · {item.chunk_token_count} tokens
+                <span
+                  style={{
+                    color: 'oklch(var(--destructive))',
+                    fontWeight: 500,
+                  }}
+                >
+                  Not available ·
+                </span>
+                {s.skip_reason}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">
+              Output preview ·{' '}
+              {CHUNK_STRATEGIES.find((s) => s.id === activeStrategy)?.label}
+            </h3>
+            <div className="card-desc">
+              First {preview.data?.items.length ?? 0} chunks from sample text
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-accent btn-sm"
+            disabled={preview.isPending || !sampleText.trim()}
+            onClick={() => preview.mutate()}
+          >
+            {preview.isPending ? (
+              <>
+                <span className="spinner" /> Running…
+              </>
+            ) : (
+              <>
+                <Zap size={13} /> Run preview
+              </>
+            )}
+          </button>
+        </div>
+        <div className="card-body card-body-tight">
+          {preview.data?.items.length ? (
+            preview.data.items.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: '14px 18px',
+                  borderBottom:
+                    i < preview.data!.items.length - 1
+                      ? '1px solid oklch(var(--border))'
+                      : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span
+                    className="mono text-xs"
+                    style={{
+                      background: 'oklch(var(--muted))',
+                      padding: '1px 6px',
+                      borderRadius: 3,
+                      fontWeight: 600,
+                    }}
+                  >
+                    #{c.chunk_index + 1}
                   </span>
-                </summary>
-                <div className="mt-2 space-y-1">
-                  {item.section_path.length > 0 && (
-                    <div className="font-mono text-[10px] text-muted-foreground">
-                      {item.section_path.join(' › ')}
-                    </div>
+                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>
+                    {c.chunk_title}
+                  </span>
+                  {c.low_value_flag && (
+                    <span className="badge badge-warning">low_value</span>
                   )}
-                  <pre className="whitespace-pre-wrap rounded bg-background p-2 font-mono text-[11px]">
-                    {item.chunk_text}
-                  </pre>
+                  <span className="text-xs mono muted">
+                    {c.chunk_token_count} tok
+                  </span>
                 </div>
-              </details>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    lineHeight: 1.55,
+                    color: 'oklch(var(--foreground) / 0.85)',
+                  }}
+                >
+                  {c.chunk_text.slice(0, 240)}
+                  {c.chunk_text.length > 240 ? '…' : ''}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="empty">
+              <div className="empty-icon">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="empty-title">
+                {preview.isError ? 'Preview failed' : 'No preview yet'}
+              </div>
+              <div>
+                {preview.isError
+                  ? String((preview.error as Error)?.message ?? 'unknown')
+                  : 'Paste sample text + click Run preview.'}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// --- Pipeline tab ------------------------------------------------------------
-
+// ── Tab: Pipeline ───────────────────────────────────────────────────────────
 function PipelineTab({ kb }: { kb: KbStatus }) {
-  const { config } = kb;
+  const stages = [
+    {
+      name: '1. Source ingestion',
+      desc: 'SharePoint / Drive / share folder',
+      duration: '—',
+    },
+    {
+      name: '2. Document extraction',
+      desc: 'Docling (PDF + DOCX) · python-pptx (slide_based)',
+      duration: 'avg 8s/doc',
+    },
+    {
+      name: '3. Chunking',
+      desc: `${kb.config.chunk_strategy} · 800 tokens · 100 overlap`,
+      duration: 'avg 1s/doc',
+    },
+    {
+      name: '4. Embedding',
+      desc: `Azure OpenAI ${kb.config.embedding_model} · ${kb.config.embedding_dimension}d MRL truncate`,
+      duration: 'avg 0.4s/chunk',
+    },
+    {
+      name: '5. Index upsert',
+      desc: `ekp-kb-${kb.kb_id}-v1 · HNSW vector + BM25 lexical`,
+      duration: 'avg 0.1s/chunk',
+    },
+    {
+      name: '6. Eval suite (nightly)',
+      desc: 'RAGAs 4-metric · per W17 F3',
+      duration: '—',
+    },
+  ];
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Indexing</CardTitle>
-          <CardDescription>
-            Read-only Tier 1 view. Inline tuning lands W15+ per design ref §6
-            sequencing.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ConfigRow label="Embedding model" value={config.embedding_model} />
-          <ConfigRow
-            label="Embedding dimension"
-            value={String(config.embedding_dimension)}
-          />
-          <ConfigRow label="Chunk strategy" value={config.chunk_strategy} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Retrieval</CardTitle>
-          <CardDescription>
-            Defaults applied to every query against this KB unless overridden.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ConfigRow
-            label="Default top_k retrieval"
-            value={String(config.default_top_k)}
-          />
-          <ConfigRow
-            label="Default rerank_k"
-            value={String(config.default_rerank_k)}
-          />
-        </CardContent>
-      </Card>
+    <div>
+      <div className="banner banner-success" style={{ marginBottom: 16 }}>
+        <Check size={15} style={{ color: 'oklch(var(--success))' }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 500 }}>Pipeline healthy</div>
+          <div className="text-xs muted">
+            All stages running within SLOs · last full re-index{' '}
+            {formatRelative(kb.last_indexed_at)}
+          </div>
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" disabled>
+          Trigger full re-index
+        </button>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Indexing pipeline</h3>
+        </div>
+        <div className="card-body card-body-tight">
+          {stages.map((s, i) => (
+            <div
+              key={s.name}
+              style={{
+                display: 'flex',
+                gap: 16,
+                padding: '16px 20px',
+                borderBottom:
+                  i < stages.length - 1
+                    ? '1px solid oklch(var(--border))'
+                    : 'none',
+              }}
+            >
+              <div style={{ flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'oklch(var(--accent) / 0.1)',
+                    color: 'oklch(var(--accent))',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  {i + 1}
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <span style={{ fontWeight: 500 }}>{s.name}</span>
+                  <span className="badge badge-success">
+                    <span className="badge-dot" /> OK
+                  </span>
+                </div>
+                <div className="text-sm muted mono" style={{ marginTop: 2 }}>
+                  {s.desc}
+                </div>
+              </div>
+              <div className="text-xs muted mono">{s.duration}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function ConfigRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-mono text-sm">{value}</span>
-    </div>
-  );
-}
-
-// --- Retrieval Testing tab ---------------------------------------------------
-// Per architecture.md §5.5.4 (ADR-0021): Vector / Full-Text / Hybrid mode
-// selector + Top K + Score Threshold + Rerank toggle → ranked result preview
-// (pure retrieval); plus the EKP-specific CRAG toggle + LLM selector on the
-// end-to-end synthesis sub-panel.
-
-const RETRIEVAL_MODES: { value: RetrievalMode; label: string; hint: string }[] = [
-  {
-    value: 'hybrid',
-    label: 'Hybrid (BM25 + vector RRF)',
-    hint: 'Default — keyword + semantic fused, with semantic rerank.',
-  },
-  {
-    value: 'vector',
-    label: 'Vector only',
-    hint: 'Pure embedding similarity; no keyword scoring.',
-  },
-  {
-    value: 'fulltext',
-    label: 'Full-Text only (BM25)',
-    hint: 'Keyword scoring only; no vector, no semantic rerank.',
-  },
-];
-
+// ── Tab: Retrieval Testing ──────────────────────────────────────────────────
 function RetrievalTab({ kb }: { kb: KbStatus }) {
-  return (
-    <div className="space-y-6">
-      <RetrievalTestPanel kb={kb} />
-      <EndToEndQueryPanel kb={kb} />
-    </div>
+  const [query, setQuery] = useState(
+    'How do I configure multi-currency posting definitions?',
   );
-}
-
-function RetrievalTestPanel({ kb }: { kb: KbStatus }) {
-  const [query, setQuery] = useState('');
   const [mode, setMode] = useState<RetrievalMode>('hybrid');
   const [topK, setTopK] = useState(5);
   const [rerank, setRerank] = useState(true);
-  const [scoreThreshold, setScoreThreshold] = useState(0);
-
-  const thresholdApplies = mode !== 'fulltext';
+  const [scoreThreshold, setScoreThreshold] = useState(0.4);
+  const [vizMode, setVizMode] = useState<'list' | 'bars'>('bars');
 
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (body: { query: string }) =>
       retrievalTestApi.run(kb.kb_id, {
-        query: query.trim(),
+        query: body.query,
         mode,
         top_k: topK,
         rerank,
-        score_threshold: thresholdApplies ? scoreThreshold : 0,
+        score_threshold: mode === 'fulltext' ? undefined : scoreThreshold,
       }),
-    onError: (err) => {
-      if (err instanceof ApiError) {
-        toast.error('Retrieval test failed', { description: err.message });
-      }
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : 'retrieval failed';
+      toast.error(msg);
     },
   });
-  const result: RetrievalTestResult | null = mutation.data ?? null;
+
+  const result: RetrievalTestResult | undefined = mutation.data;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Search className="h-4 w-4" />
-          Retrieval test
-        </CardTitle>
-        <CardDescription>
-          Pure retrieval against{' '}
-          <span className="font-mono text-foreground">{kb.kb_id}</span> — compare
-          Vector / Full-Text / Hybrid modes, tune Top-K + score threshold + rerank.
-          No CRAG, no LLM synthesis (per architecture.md §5.5.4).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="rt-query">Test query</Label>
-          <Input
-            id="rt-query"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. how do I reconcile AR invoices?"
-            disabled={mutation.isPending}
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="rt-mode">Search mode</Label>
-            <Select value={mode} onValueChange={(v) => setMode(v as RetrievalMode)}>
-              <SelectTrigger id="rt-mode">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RETRIEVAL_MODES.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {RETRIEVAL_MODES.find((m) => m.value === mode)?.hint}
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Top K</Label>
-              <span className="font-mono text-sm text-muted-foreground">{topK}</span>
+    <div className="split-2" style={{ gridTemplateColumns: '360px 1fr' }}>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Query</h3>
+            <div className="card-desc">
+              Pure retrieval pass · no LLM synthesis · ADR-0021
             </div>
-            <Slider
-              aria-label="Top K"
-              value={[topK]}
-              onValueChange={(v) => setTopK(v[0] ?? 5)}
-              min={1}
-              max={50}
-              step={1}
+          </div>
+        </div>
+        <div className="card-body">
+          <div className="field">
+            <label className="label">Query</label>
+            <textarea
+              className="input"
+              rows={4}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              Final chunk count{rerank ? ' (after rerank)' : ''}.
-            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Score threshold</Label>
-              <span className="font-mono text-sm text-muted-foreground">
-                {thresholdApplies ? scoreThreshold.toFixed(2) : 'n/a'}
+          <div className="field">
+            <label className="label">Retrieval mode</label>
+            <div className="seg" style={{ width: '100%' }}>
+              {(
+                [
+                  { id: 'hybrid', label: 'Hybrid', hint: 'BM25 + Vector + RRF' },
+                  { id: 'vector', label: 'Vector', hint: 'Dense only' },
+                  { id: 'fulltext', label: 'Full-text', hint: 'BM25 only' },
+                ] as { id: RetrievalMode; label: string; hint: string }[]
+              ).map((m) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  className="seg-btn"
+                  data-active={mode === m.id}
+                  onClick={() => setMode(m.id)}
+                  style={{
+                    flex: 1,
+                    flexDirection: 'column',
+                    padding: '6px 8px',
+                    gap: 2,
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 600 }}>{m.label}</span>
+                  <span className="text-xs muted" style={{ fontSize: 10 }}>
+                    {m.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="label">
+              Top-K{' '}
+              <span className="text-xs muted mono">retrieve before rerank</span>
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input
+                type="range"
+                min={1}
+                max={50}
+                value={topK}
+                onChange={(e) => setTopK(+e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <span
+                className="mono"
+                style={{ width: 26, textAlign: 'right', fontSize: 13 }}
+              >
+                {topK}
               </span>
             </div>
-            <Slider
-              aria-label="Score threshold"
-              value={[scoreThreshold]}
-              onValueChange={(v) => setScoreThreshold(v[0] ?? 0)}
-              min={0}
-              max={1}
-              step={0.01}
-              disabled={!thresholdApplies}
-            />
-            <p className="text-xs text-muted-foreground">
-              {thresholdApplies
-                ? 'Drop chunks below this similarity score (0 = keep all).'
-                : 'Full-Text BM25 scores have no 0–1 range — threshold disabled.'}
-            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="rt-rerank">Rerank model</Label>
-              <Switch id="rt-rerank" checked={rerank} onCheckedChange={setRerank} />
+          <div className="field">
+            <label className="label">
+              Score threshold{' '}
+              <span className="text-xs muted mono" style={{ marginLeft: 6 }}>
+                {mode === 'fulltext' ? 'n/a — BM25 unbounded' : '0.0 – 1.0'}
+              </span>
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={scoreThreshold}
+                disabled={mode === 'fulltext'}
+                onChange={(e) => setScoreThreshold(+e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <span
+                className="mono"
+                style={{ width: 38, textAlign: 'right', fontSize: 13 }}
+              >
+                {scoreThreshold.toFixed(2)}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {rerank
-                ? 'Cohere v4.0-pro (Tier 1 locked — ADR-0012 / Q21).'
-                : 'No reranker — raw mode-native ordering.'}
-            </p>
+          </div>
+
+          <div className="row" style={{ marginBottom: 16 }}>
+            <span
+              className="switch"
+              data-on={rerank}
+              onClick={() => setRerank(!rerank)}
+              role="switch"
+              aria-checked={rerank}
+              tabIndex={0}
+            />
+            <span style={{ fontSize: 13 }}>Apply rerank after retrieval</span>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-accent"
+            style={{ width: '100%' }}
+            disabled={mutation.isPending || !query.trim()}
+            onClick={() => mutation.mutate({ query })}
+          >
+            {mutation.isPending ? (
+              <>
+                <span className="spinner" /> Running…
+              </>
+            ) : (
+              <>
+                <Zap size={14} /> Run retrieval
+              </>
+            )}
+          </button>
+
+          <div className="hr" />
+
+          <div
+            className="text-xs muted mono"
+            style={{ lineHeight: 1.6 }}
+          >
+            POST <span style={{ color: 'oklch(var(--foreground))' }}>
+              /kb/{kb.kb_id}/retrieval-test
+            </span>
+            <br />
+            mode = {mode}, top_k = {topK}, rerank = {rerank.toString()}
+            <br />
+            score_threshold = {scoreThreshold.toFixed(2)}
           </div>
         </div>
+      </div>
 
-        <Button
-          onClick={() => mutation.mutate()}
-          disabled={!query.trim() || mutation.isPending}
-        >
-          {mutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Running…
-            </>
-          ) : (
-            <>
-              <Search className="mr-2 h-4 w-4" />
-              Test retrieval
-            </>
-          )}
-        </Button>
-
-        {mutation.isError && (
-          <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-            Retrieval failed:{' '}
-            {String((mutation.error as Error)?.message ?? 'unknown error')}
+      <div>
+        {!result && !mutation.isPending && (
+          <div className="empty">
+            <div className="empty-icon">
+              <Search size={20} />
+            </div>
+            <div className="empty-title">No results yet</div>
+            <div>Tune the query + parameters → click Run retrieval.</div>
           </div>
         )}
 
         {result && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/40 p-2 font-mono text-xs text-muted-foreground">
-              <span>mode: {result.mode}</span>
-              <span>reranker: {result.reranker}</span>
-              <span>
-                hits: {result.chunks.length} / {result.total_hits}
-              </span>
-              <span>embed {result.embed_latency_ms}ms</span>
-              <span>search {result.search_latency_ms}ms</span>
-              {result.reranked && <span>rerank {result.rerank_latency_ms}ms</span>}
-              <span>total {result.total_latency_ms}ms</span>
-            </div>
-            {result.chunks.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                No chunks{' '}
-                {result.total_hits > 0
-                  ? `above the score threshold (${result.total_hits} retrieved before filter)`
-                  : 'retrieved for this query'}
-                .
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {result.chunks.map((c) => (
-                  <li
-                    key={c.chunk_id}
-                    className="rounded-md border border-border p-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="text-sm font-semibold">
-                          {c.rank}. {c.chunk_title || '(untitled chunk)'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {c.doc_title}
-                        </div>
-                        <div className="truncate font-mono text-[11px] text-muted-foreground">
-                          {c.section_path.join(' > ') || '—'}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 text-xs">
-                        score {c.score.toFixed(4)}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                      {c.chunk_text_preview}
-                    </p>
-                    <div className="mt-1 font-mono text-[10px] text-muted-foreground">
-                      {c.chunk_id}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function EndToEndQueryPanel({ kb }: { kb: KbStatus }) {
-  const [query, setQuery] = useState('');
-  const [enableCrag, setEnableCrag] = useState(true);
-  const [llmModel, setLlmModel] = useState<'gpt-5.5' | 'gpt-5.4-mini'>('gpt-5.5');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [answer, setAnswer] = useState('');
-  const [citations, setCitations] = useState<Citation[]>([]);
-  const [refused, setRefused] = useState(false);
-  const [rerankerUsed, setRerankerUsed] = useState('');
-  const [errorText, setErrorText] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed || isStreaming) return;
-    setAnswer('');
-    setCitations([]);
-    setRefused(false);
-    setRerankerUsed('');
-    setErrorText(null);
-    setIsStreaming(true);
-    const ac = new AbortController();
-    abortRef.current = ac;
-    const req: QueryRequest = {
-      query: trimmed,
-      kb_id: kb.kb_id,
-      llm_model: llmModel,
-      enable_crag: enableCrag,
-    };
-    try {
-      for await (const evt of streamQuery(req, ac.signal)) {
-        if (evt.type === 'text-delta') {
-          setAnswer((prev) => prev + evt.content);
-        } else if (evt.type === 'citation') {
-          setCitations((prev) => [...prev, evt.citation]);
-        } else if (evt.type === 'done') {
-          setRefused(evt.refused);
-          setRerankerUsed(evt.reranker_used);
-        }
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorText(msg);
-      if (err instanceof ApiError) {
-        toast.error('Query failed', { description: err.message });
-      }
-    } finally {
-      setIsStreaming(false);
-      abortRef.current = null;
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Sparkles className="h-4 w-4" />
-          End-to-end query (synthesis)
-        </CardTitle>
-        <CardDescription>
-          Full RAG against{' '}
-          <span className="font-mono text-foreground">{kb.kb_id}</span> — hybrid
-          retrieval → Cohere rerank → optional CRAG → LLM synthesis with citations.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="e2e-query">Query</Label>
-            <textarea
-              id="e2e-query"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              rows={3}
-              placeholder="Ask a question — e.g. How do I reconcile AR invoices?"
-              disabled={isStreaming}
-              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="e2e-crag">CRAG correction loop</Label>
-              <Switch
-                id="e2e-crag"
-                checked={enableCrag}
-                onCheckedChange={setEnableCrag}
-                disabled={isStreaming}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="e2e-llm">LLM model</Label>
-              <Select
-                value={llmModel}
-                onValueChange={(v) => setLlmModel(v as 'gpt-5.5' | 'gpt-5.4-mini')}
-                disabled={isStreaming}
-              >
-                <SelectTrigger id="e2e-llm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gpt-5.5">gpt-5.5 (synthesis default)</SelectItem>
-                  <SelectItem value="gpt-5.4-mini">gpt-5.4-mini</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button type="submit" disabled={!query.trim() || isStreaming}>
-            {isStreaming ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Running…
-              </>
-            ) : (
-              <>
-                <FlaskConical className="mr-2 h-4 w-4" />
-                Run end-to-end
-              </>
-            )}
-          </Button>
-        </form>
-
-        {errorText && (
-          <div className="mt-4 rounded-md border border-destructive bg-destructive/10 p-3 text-sm">
-            Stream error: {errorText}
-          </div>
-        )}
-
-        {refused && (
-          <div className="mt-4 rounded-md border border-warning bg-warning/10 p-3 text-sm">
-            Refused — answer not found in available documentation.
-          </div>
-        )}
-
-        {answer && (
-          <div className="mt-4 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>Synthesized answer</Label>
-              {rerankerUsed && (
-                <Badge variant="outline" className="text-xs">
-                  reranker: {rerankerUsed}
-                </Badge>
-              )}
-            </div>
-            <p className="whitespace-pre-wrap rounded-md border border-border p-3 text-sm">
-              {answer}
-              {isStreaming && <span className="ml-1 animate-pulse">▍</span>}
-            </p>
-          </div>
-        )}
-
-        {citations.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <Label>Citations ({citations.length})</Label>
-            <ul className="space-y-2">
-              {citations.map((c, idx) => (
-                <li
-                  key={c.chunk_id}
-                  className="rounded-md border border-border p-3"
+          <>
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-body" style={{ padding: 0 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="text-sm font-semibold">
-                        {idx + 1}. {c.chunk_title || '(untitled chunk)'}
+                  {[
+                    { label: 'Embed', val: `${result.embed_latency_ms}ms` },
+                    { label: 'Search', val: `${result.search_latency_ms}ms` },
+                    {
+                      label: 'Rerank',
+                      val: result.reranked ? `${result.rerank_latency_ms}ms` : '—',
+                    },
+                    { label: 'Total', val: `${result.total_latency_ms}ms` },
+                    { label: 'Hits', val: String(result.total_hits) },
+                  ].map((m, i) => (
+                    <div
+                      key={m.label}
+                      style={{
+                        padding: '14px 18px',
+                        borderRight:
+                          i < 4 ? '1px solid oklch(var(--border))' : 'none',
+                      }}
+                    >
+                      <div className="text-xs muted" style={{ marginBottom: 4 }}>
+                        {m.label}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.doc_title}
-                      </div>
-                      <div className="truncate font-mono text-[11px] text-muted-foreground">
-                        {c.section_path.join(' > ') || '—'}
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 600,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {m.val}
                       </div>
                     </div>
-                    <Badge variant="outline" className="shrink-0 text-xs">
-                      score {c.relevance_score.toFixed(3)}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 font-mono text-[10px] text-muted-foreground">
-                    {c.chunk_id}
-                  </div>
-                </li>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="row"
+              style={{ marginBottom: 12, alignItems: 'center' }}
+            >
+              <h3 className="card-title">
+                Ranked chunks{' '}
+                <span
+                  className="text-xs muted mono"
+                  style={{ marginLeft: 8 }}
+                >
+                  {result.chunks.length} of {result.total_hits} (threshold)
+                </span>
+              </h3>
+              <div className="spacer" />
+              <span className="text-xs muted">Visualization →</span>
+              <div className="seg">
+                <button
+                  type="button"
+                  className="seg-btn"
+                  data-active={vizMode === 'list'}
+                  onClick={() => setVizMode('list')}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  className="seg-btn"
+                  data-active={vizMode === 'bars'}
+                  onClick={() => setVizMode('bars')}
+                >
+                  Bars
+                </button>
+              </div>
+            </div>
+
+            <div className="col" style={{ gap: 10 }}>
+              {result.chunks.map((c) => (
+                <ChunkResultRow key={c.chunk_id} chunk={c} viz={vizMode} />
               ))}
-            </ul>
-          </div>
+            </div>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// --- Settings tab ------------------------------------------------------------
+function ChunkResultRow({
+  chunk,
+  viz,
+}: {
+  chunk: RetrievalTestChunk;
+  viz: 'list' | 'bars';
+}) {
+  return (
+    <div className="chunk">
+      <div className="chunk-head">
+        <div
+          className={`chunk-rank ${chunk.rank <= 3 ? 'chunk-rank-top' : ''}`}
+        >
+          #{chunk.rank}
+        </div>
+        <div className="chunk-source">
+          <FileText size={13} />
+          <span className="doc-title">{chunk.doc_title}</span>
+        </div>
+        <div className="chunk-score-wrap">
+          {viz === 'bars' && (
+            <div
+              className="score-bar"
+              title={`score ${chunk.score.toFixed(4)}`}
+            >
+              <i style={{ width: `${Math.min(1, chunk.score) * 100}%` }} />
+            </div>
+          )}
+          <span className="chunk-score">{chunk.score.toFixed(4)}</span>
+        </div>
+      </div>
+      <div className="section-path">
+        {chunk.section_path.map((s, j) => (
+          <span key={j}>{s}</span>
+        ))}
+      </div>
+      <div className="chunk-body">{chunk.chunk_text_preview}</div>
+      <div className="chunk-foot">
+        <span>
+          chunk_id{' '}
+          <span style={{ color: 'oklch(var(--foreground))' }}>
+            {chunk.chunk_id}
+          </span>
+        </span>
+        <span>
+          chunk_index{' '}
+          <span style={{ color: 'oklch(var(--foreground))' }}>
+            #{chunk.chunk_index}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
 
+// ── Tab: Settings ───────────────────────────────────────────────────────────
 function SettingsTab({ kb }: { kb: KbStatus }) {
   const queryClient = useQueryClient();
-  const [config, setConfig] = useState<KbConfig>(kb.config);
   const [name, setName] = useState(kb.name);
   const [description, setDescription] = useState(kb.description);
+  const [topK, setTopK] = useState(kb.config.default_top_k);
+  const [rerankK, setRerankK] = useState(kb.config.default_rerank_k);
 
-  useEffect(() => {
-    setConfig(kb.config);
-    setName(kb.name);
-    setDescription(kb.description);
-  }, [kb.config, kb.name, kb.description]);
+  const dirty = useMemo(
+    () =>
+      name !== kb.name ||
+      description !== kb.description ||
+      topK !== kb.config.default_top_k ||
+      rerankK !== kb.config.default_rerank_k,
+    [name, description, topK, rerankK, kb],
+  );
 
-  function invalidateKb() {
-    queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
-    queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
-  }
-
-  const patchMutation = useMutation({
-    mutationFn: (next: Partial<KbConfig>) =>
-      kbApi.patchSettings(kb.kb_id, next),
-    onSuccess: () => {
-      invalidateKb();
-      toast.success('Settings saved.');
+  const metaMutation = useMutation({
+    mutationFn: () =>
+      kbApi.patchMetadata(kb.kb_id, {
+        name: name !== kb.name ? name : undefined,
+        description: description !== kb.description ? description : undefined,
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['kb', kb.kb_id], updated);
+      toast.success('Metadata saved');
     },
-    onError: (err) => {
-      toast.error('Save failed.', {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'save failed'),
   });
 
-  // CH-002 F10 — name + description are editable now; partial PATCH /kb/{id}
-  // (W16 F5.2 / CO_F3b). KbConfig stays in patchSettings.
-  const metadataMutation = useMutation({
-    mutationFn: (patch: { name?: string; description?: string }) =>
-      kbApi.patchMetadata(kb.kb_id, patch),
-    onSuccess: () => {
-      invalidateKb();
-      toast.success('Identity saved.');
+  const configMutation = useMutation({
+    mutationFn: () =>
+      kbApi.patchSettings(kb.kb_id, {
+        default_top_k: topK,
+        default_rerank_k: rerankK,
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['kb', kb.kb_id], updated);
+      toast.success('Config saved');
     },
-    onError: (err) => {
-      toast.error('Save failed.', {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'save failed'),
   });
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    patchMutation.mutate(config);
-  }
-
-  function handleIdentitySubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // True partial PATCH — only send the fields that actually changed.
-    const patch: { name?: string; description?: string } = {};
-    if (name !== kb.name) patch.name = name;
-    if (description !== kb.description) patch.description = description;
-    if (Object.keys(patch).length === 0) {
-      toast.info('No changes to save.');
-      return;
+  function handleSave(e: FormEvent) {
+    e.preventDefault();
+    if (name !== kb.name || description !== kb.description) {
+      metaMutation.mutate();
     }
-    metadataMutation.mutate(patch);
+    if (
+      topK !== kb.config.default_top_k ||
+      rerankK !== kb.config.default_rerank_k
+    ) {
+      configMutation.mutate();
+    }
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Identity</CardTitle>
-          <CardDescription>
-            Display name + description — saved via PATCH /kb/&#123;id&#125;
-            (partial update; the KB id is immutable). Indexing config is below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleIdentitySubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-id">KB ID</Label>
-              <Input id="kb-id" value={kb.kb_id} readOnly className="font-mono" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-name">Display name</Label>
-              <Input
-                id="kb-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+    <form
+      onSubmit={handleSave}
+      style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}
+    >
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">General</h3>
+          <span className="badge badge-success">
+            <Edit size={10} /> Editable
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="field">
+            <label className="label">Name</label>
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <div className="hint">PATCH /kb/{kb.kb_id} · KbMetadataPatch.name</div>
+          </div>
+          <div className="field">
+            <label className="label">Description</label>
+            <textarea
+              className="input"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label className="label">
+              kb_id{' '}
+              <Shield
+                size={11}
+                style={{
+                  verticalAlign: '-2px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--warning))',
+                }}
               />
+            </label>
+            <input className="input mono" disabled value={kb.kb_id} />
+            <div className="hint">
+              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b> Forms index{' '}
+              <span className="mono">ekp-kb-{kb.kb_id}-v1</span> · cannot be changed
+              without recreating the KB.
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-description">Description</Label>
-              <Input
-                id="kb-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <div className="pt-2">
-              <Button type="submit" disabled={metadataMutation.isPending}>
-                {metadataMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  'Save identity'
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Indexing config</CardTitle>
-          <CardDescription>
-            Editable. Save persists to backend via PATCH /kb/&#123;id&#125;/settings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-embedding-model">Embedding model</Label>
-              <Input
-                id="kb-embedding-model"
-                value={config.embedding_model}
-                onChange={(e) =>
-                  setConfig({ ...config, embedding_model: e.target.value })
-                }
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Retrieval config</h3>
+          <span className="badge badge-warning">
+            <Shield size={10} /> Mix of locked + editable
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="field">
+            <label className="label">
+              Embedding model{' '}
+              <Shield
+                size={11}
+                style={{
+                  verticalAlign: '-2px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--warning))',
+                }}
               />
+            </label>
+            <select
+              className="select"
+              defaultValue={kb.config.embedding_model}
+              disabled
+            >
+              <option>{kb.config.embedding_model}</option>
+            </select>
+            <div className="hint">
+              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b>{' '}
+              {kb.config.embedding_dimension}d MRL truncate · changing requires full
+              re-index.
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-embedding-dim">Embedding dimension</Label>
-              <Input
-                id="kb-embedding-dim"
-                type="number"
-                value={config.embedding_dimension}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    embedding_dimension: Number(e.target.value),
-                  })
-                }
+          </div>
+          <div className="field">
+            <label className="label">
+              Chunk strategy{' '}
+              <Shield
+                size={11}
+                style={{
+                  verticalAlign: '-2px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--warning))',
+                }}
               />
+            </label>
+            <div className="seg" style={{ width: '100%', opacity: 0.7 }}>
+              {(
+                ['heading_aware', 'layout_aware', 'slide_based', 'auto'] as KbConfig['chunk_strategy'][]
+              ).map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  className="seg-btn"
+                  data-active={kb.config.chunk_strategy === s}
+                  style={{ flex: 1, padding: '5px 6px', fontSize: 11.5 }}
+                  disabled
+                >
+                  {s}
+                </button>
+              ))}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="kb-chunk-strategy">Chunk strategy</Label>
-              <Select
-                value={config.chunk_strategy}
-                onValueChange={(v) =>
-                  setConfig({
-                    ...config,
-                    chunk_strategy: v as KbConfig['chunk_strategy'],
-                  })
-                }
-              >
-                <SelectTrigger id="kb-chunk-strategy">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">auto (per format)</SelectItem>
-                  <SelectItem value="layout_aware">layout_aware (Word/PDF)</SelectItem>
-                  <SelectItem value="heading_aware">heading_aware</SelectItem>
-                  <SelectItem value="slide_based">slide_based (PPT)</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="hint">
+              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b> Changing
+              affects chunk boundaries → requires re-index.
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="kb-top-k">Default top_k retrieval</Label>
-                <Input
-                  id="kb-top-k"
-                  type="number"
-                  value={config.default_top_k}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      default_top_k: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="kb-rerank-k">Default rerank_k</Label>
-                <Input
-                  id="kb-rerank-k"
-                  type="number"
-                  value={config.default_rerank_k}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      default_rerank_k: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
+          </div>
+          <div className="field">
+            <label className="label">
+              Default top_k (retrieval){' '}
+              <Edit
+                size={10}
+                style={{
+                  verticalAlign: '-1px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--success))',
+                }}
+              />
+            </label>
+            <input
+              type="number"
+              className="input mono"
+              value={topK}
+              min={1}
+              max={100}
+              onChange={(e) => setTopK(+e.target.value)}
+            />
+            <div className="hint">
+              Editable any time · doesn&rsquo;t require re-index
             </div>
-            <div className="pt-2">
-              <Button type="submit" disabled={patchMutation.isPending}>
-                {patchMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  'Save settings'
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">
+              Default rerank_k{' '}
+              <Edit
+                size={10}
+                style={{
+                  verticalAlign: '-1px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--success))',
+                }}
+              />
+            </label>
+            <input
+              type="number"
+              className="input mono"
+              value={rerankK}
+              min={1}
+              max={50}
+              onChange={(e) => setRerankK(+e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="card-footer">
+          <div className="text-xs muted">
+            Last indexed: <span className="mono">{formatRelative(kb.last_indexed_at)}</span>
+          </div>
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setName(kb.name);
+                setDescription(kb.description);
+                setTopK(kb.config.default_top_k);
+                setRerankK(kb.config.default_rerank_k);
+              }}
+              disabled={!dirty}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={!dirty || metaMutation.isPending || configMutation.isPending}
+            >
+              {metaMutation.isPending || configMutation.isPending
+                ? 'Saving…'
+                : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <DangerZone kb={kb} />
-    </div>
+    </form>
   );
 }
 
 function DangerZone({ kb }: { kb: KbStatus }) {
-  return (
-    <Card className="border-destructive/30">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base text-destructive">
-          <AlertTriangle className="h-4 w-4" />
-          Danger zone
-        </CardTitle>
-        <CardDescription>
-          Archive freezes new ingest but keeps the index + screenshots queryable;
-          Re-index sweeps every document(idempotent);Delete drops the KB +
-          all its chunks + screenshots(non-recoverable).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* W20 F5.7 — Archive action lands real backend (POST /kb/{id}/archive). */}
-        <ArchiveAction kb={kb} />
-        <DangerAction
-          label="Re-index KB"
-          description="Re-run the ingestion pipeline against every document in this KB."
-          confirmTitle="Re-index this KB?"
-          confirmMessage="This will queue a re-ingestion job for every document. Existing chunks remain queryable until the job completes."
-          confirmCta="Re-index"
-          stub="POST /kb/{id}/reindex"
-          issue="W2 stub — confirms UX wire only."
-          kbId={kb.kb_id}
-        />
-        <DangerAction
-          label="Delete KB"
-          description="Permanently delete this KB, its chunks, and screenshots."
-          confirmTitle="Delete this KB?"
-          confirmMessage="This action is non-recoverable. Type the KB id to confirm in a future iteration; for now the action is gated to a UI confirm only."
-          confirmCta="Delete KB"
-          stub="DELETE /kb/{id}"
-          issue="Stub — UI wire only."
-          variant="destructive"
-          kbId={kb.kb_id}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-// W20 F5.7 — Archive action with real backend wire (POST /kb/{id}/archive).
-function ArchiveAction({ kb }: { kb: KbStatus }) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-
-  const mutation = useMutation({
+  const router = useRouter();
+  const archiveMutation = useMutation({
     mutationFn: () => kbApi.archive(kb.kb_id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
-      queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
-      toast.success(`KB '${kb.kb_id}' archived.`);
-      setOpen(false);
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['kb', kb.kb_id], updated);
+      void queryClient.invalidateQueries({ queryKey: ['kb'] });
+      toast.success(`KB archived — read-only`);
+      router.push('/kb');
     },
-    onError: (err) => {
-      toast.error('Archive failed.', {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'archive failed'),
   });
 
   return (
-    <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Archive className="h-3.5 w-3.5" />
-          Archive KB
-          {kb.archived && (
-            <Badge variant="outline" className="bg-muted text-xs text-muted-foreground">
-              Already archived
-            </Badge>
-          )}
+    <div
+      className="card"
+      style={{
+        gridColumn: '1 / -1',
+        borderColor: 'oklch(var(--destructive) / 0.3)',
+      }}
+    >
+      <div
+        className="card-header"
+        style={{ background: 'oklch(var(--destructive) / 0.04)' }}
+      >
+        <div>
+          <h3
+            className="card-title"
+            style={{ color: 'oklch(var(--destructive))' }}
+          >
+            Danger zone
+          </h3>
+          <div className="card-desc">Irreversible · audit-logged</div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Freeze new ingest. The Azure search index + screenshot blobs are preserved so
-          the chat surface keeps citing past content.
-        </p>
       </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" disabled={kb.archived || mutation.isPending}>
-            {kb.archived ? 'Archived' : 'Archive'}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Archive this KB?</DialogTitle>
-            <DialogDescription>
-              <span className="font-mono">{kb.kb_id}</span> will reject new uploads + reindex
-              requests. Existing chunks remain queryable from the chat surface.
-              Re-create the KB to resume ingest.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={mutation.isPending}>
-              Cancel
-            </Button>
-            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? 'Archiving…' : 'Archive KB'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div
+        className="card-body"
+        style={{ display: 'flex', gap: 8 }}
+      >
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => archiveMutation.mutate()}
+          disabled={kb.archived || archiveMutation.isPending}
+        >
+          <Archive size={14} />
+          {kb.archived ? ' Already archived' : ' Archive KB (read-only)'}
+        </button>
+        <div className="spacer" />
+        <button type="button" className="btn btn-destructive" disabled>
+          <Trash2 size={14} /> Delete KB
+        </button>
+      </div>
     </div>
   );
 }
-
-function DangerAction({
-  label,
-  description,
-  confirmTitle,
-  confirmMessage,
-  confirmCta,
-  stub,
-  issue,
-  variant = 'outline',
-  kbId,
-}: {
-  label: string;
-  description: string;
-  confirmTitle: string;
-  confirmMessage: string;
-  confirmCta: string;
-  stub: string;
-  issue: string;
-  variant?: 'outline' | 'destructive';
-  kbId: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant={variant} size="sm" className="shrink-0">
-            {label}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{confirmTitle}</DialogTitle>
-            <DialogDescription>{confirmMessage}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/40 p-3 text-xs">
-            <p className="font-medium">Backend status</p>
-            <p className="text-muted-foreground">
-              <span className="font-mono">{stub}</span> — {issue}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant={variant === 'destructive' ? 'destructive' : 'default'}
-              onClick={() => {
-                setOpen(false);
-                toast.info(`${label} pending backend (${stub})`, {
-                  description: `KB: ${kbId}`,
-                });
-              }}
-            >
-              {confirmCta}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// --- Shared helpers ----------------------------------------------------------
-
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="space-y-1 pb-2">
-        <CardDescription className="text-xs uppercase tracking-wide">
-          {label}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold">
-          {typeof value === 'number' ? value.toLocaleString() : value}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-

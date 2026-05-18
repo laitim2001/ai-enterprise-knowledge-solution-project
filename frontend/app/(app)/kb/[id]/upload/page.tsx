@@ -1,53 +1,50 @@
 'use client';
 
 /**
- * KB Re-ingestion Wizard (`/kb/[id]/upload`) — per architecture.md v6 §5.5.3b
- * + ADR-0028 §5.5.3b extension (W20 F6.1).
+ * /kb/[id]/upload — KB Pipeline Wizard per architecture.md v6 §5.5.3b + ADR-0028.
  *
- * W12 baseline shipped a single-step file picker. W20 F6 promotes it to a
- * **3-step wizard** so the KB owner sees the multimodal config in effect before
- * the document lands:
- *   1. Source       — file picker (.docx / .pdf / .pptx)
- *   2. Multimodal   — read-only display of the KB's current multimodal config
- *                     (per-KB level, not per-doc — orchestrator `ingest()` reads
- *                     `kb_config` from `service.get(kb_id)` per W20 F4.2)
- *                     + Tier 2 disabled affordances (caption / clustering /
- *                     ledger) + "Edit settings" link → `/kb/[id]?tab=settings`
- *   3. Review       — summary + Stage progress (POST /kb/{id}/documents only)
- *                     + redirect /kb/[id] on success
+ * W22 F6.2 rebuild per CLAUDE.md §5.7 H7 — 100% mockup fidelity match against
+ * references/design-mockups/ekp-page-misc.jsx:4 PageUploadWizard 3-step
+ * (Data source / Document processing / Execute).
  *
- * Step-skeleton primitives (`<Stepper>` / `<Field>` / `<ReadOnlyToggleRow>` /
- * `<Stage>` / `<Summary>`) inline-redeclared per W13 register strategy. This is
- * the 4th wizard usage in `frontend/` (F4 KB Pipeline + W13 Register + W18 F5
- * Pipeline + W20 F6 Re-ingestion) — rule-of-3 promotion trigger NOW hit;
- * extracting to a shared `frontend/components/ui/stepper.tsx` (+ Field/Stage)
- * is a Wave B+ candidate to avoid a Wave A ripple change.
+ * Backend integration preserved (per F6.5):
+ *   useMutation(kbApi.uploadDoc) — single-file per call (architecture.md §3.3
+ *   POST /kb/{id}/documents). Mockup Step 1 multi-doc drag-drop UI is
+ *   aspirational; real impl single-file via input[type=file] + drag-and-drop
+ *   styling. Backend wins per CLAUDE.md §13 When-in-Doubt.
  *
- * 100% design tokens via `tokens.ts`; no hardcoded `oklch()` arbitrary values
- * (W15→W18→W20 F1-F5 milestone preserved).
+ * Mockup wizard stepper styling (per W22 D2 audit):
+ *   - 28px circle + 2px border on active + transition 0.2s
+ *   - letterSpacing: -0.005em on active label
+ *   - divider margin 0 4px
+ *   Rule-of-3 wizard primitive promotion DEFERRED W23+ per W22 F5.3
+ *   (mockup has only 2 stepper wizards; threshold 3+未達).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Cloud,
+  Globe,
+  Link as LinkIcon,
+  Upload,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { Fragment, useState, type ChangeEvent, type DragEvent } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { DisabledAffordance } from '@/components/ui/disabled-affordance';
-import { Switch } from '@/components/ui/switch';
-import { kbApi, type KbStatus } from '@/lib/api/kb';
-import { cn } from '@/lib/utils';
+import { kbApi, type KbConfig, type KbStatus } from '@/lib/api/kb';
 
-type Step = 1 | 2 | 3;
+type Step = 0 | 1 | 2;
+type SourceKind = 'upload' | 'sharepoint' | 'drive' | 'url';
 
-interface WizardState {
-  file: File | null;
-}
-
-const STEPS: { id: Step; label: string }[] = [
-  { id: 1, label: 'Source' },
-  { id: 2, label: 'Multimodal' },
-  { id: 3, label: 'Review' },
+const STEPS: { id: Step; label: string; hint: string }[] = [
+  { id: 0, label: 'Data source', hint: 'Pick where docs come from' },
+  { id: 1, label: 'Document processing', hint: 'Chunker + embedder' },
+  { id: 2, label: 'Execute', hint: 'Index + monitor progress' },
 ];
 
 export default function KbUploadPage() {
@@ -55,8 +52,9 @@ export default function KbUploadPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState<Step>(1);
-  const [state, setState] = useState<WizardState>({ file: null });
+  const [step, setStep] = useState<Step>(0);
+  const [source, setSource] = useState<SourceKind>('upload');
+  const [file, setFile] = useState<File | null>(null);
 
   const kbQuery = useQuery({
     queryKey: ['kb', params.id],
@@ -64,520 +62,803 @@ export default function KbUploadPage() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => kbApi.uploadDoc(params.id, file),
+    mutationFn: (f: File) => kbApi.uploadDoc(params.id, f),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kb', params.id] });
-      queryClient.invalidateQueries({ queryKey: ['kb', 'list'] });
-      router.push(`/kb/${params.id}`);
+      void queryClient.invalidateQueries({ queryKey: ['kb', params.id] });
+      void queryClient.invalidateQueries({ queryKey: ['kb'] });
     },
   });
 
-  const fileError = !state.file ? 'Pick a document to ingest.' : '';
+  const kb = kbQuery.data;
 
-  function next() {
-    if (step === 1 && state.file) setStep(2);
-    else if (step === 2) setStep(3);
-  }
-  function back() {
-    if (step > 1) setStep((step - 1) as Step);
-  }
-
-  function handleExecute() {
-    if (!state.file) return;
-    uploadMutation.mutate(state.file);
-  }
-
-  // F1-pivot per CLAUDE.md §5.7 H7 (2026-05-18): page-level self-wrap per mockup
-  // `ekp-page-misc.jsx:15-16` (`.content` + `.content-narrow`). Inner preserved until F6.
   return (
-    <div className="content"><div className="content-narrow">
-    <div className="max-w-3xl">
-      <Link
-        href={`/kb/${params.id}`}
-        className="text-sm text-accent hover:underline"
-      >
-        ← Back to KB
-      </Link>
-      <h1 className="mt-2 text-2xl font-semibold">Upload Document</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Walk through the three-step re-ingestion wizard. The document will be
-        parsed with the KB&apos;s current multimodal config.
-      </p>
+    <div className="content">
+      <div className="content-narrow">
+        <div className="page-header">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 4,
+              }}
+            >
+              <Link
+                href={`/kb/${params.id}`}
+                className="btn btn-ghost btn-xs btn-ghost-muted"
+              >
+                <ChevronLeft size={12} /> {kb?.name || params.id}
+              </Link>
+            </div>
+            <h1 className="page-title">Upload documents</h1>
+            <p className="page-subtitle">
+              Add documents to <span className="mono">ekp-kb-{params.id}-v1</span>.
+              New chunks are embedded with{' '}
+              <span className="mono">{kb?.config.embedding_model ?? 'text-embedding-3-large'}</span>
+              {' '}
+              ({kb?.config.embedding_dimension ?? 1024}d) and upserted to Azure AI
+              Search.
+            </p>
+          </div>
+        </div>
 
-      <Stepper current={step} />
-
-      <div className="mt-8">
-        {step === 1 && (
-          <Step1
-            state={state}
-            error={fileError}
-            onChange={setState}
-            onSubmit={(e) => {
-              e.preventDefault();
-              next();
+        {/* Step indicator — mockup 28px circle + letterSpacing -0.005em + transition + divider */}
+        <div className="card" style={{ marginBottom: 16, overflow: 'visible' }}>
+          <div
+            style={{
+              display: 'flex',
+              padding: '18px 24px',
+              alignItems: 'center',
+              gap: 12,
             }}
+          >
+            {STEPS.map((s, i) => (
+              <Fragment key={s.id}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    cursor: 'default',
+                  }}
+                  onClick={() => {
+                    // Allow going back to a previous step only
+                    if (s.id <= step) setStep(s.id);
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background:
+                        step >= s.id
+                          ? 'oklch(var(--primary))'
+                          : 'oklch(var(--muted))',
+                      color:
+                        step >= s.id
+                          ? 'oklch(var(--primary-foreground))'
+                          : 'oklch(var(--muted-foreground))',
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      border:
+                        step === s.id ? '2px solid oklch(var(--accent))' : '0',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {step > s.id ? <Check size={14} /> : i + 1}
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: step === s.id ? 600 : 500,
+                        letterSpacing: '-0.005em',
+                      }}
+                    >
+                      {s.label}
+                    </div>
+                    <div className="text-xs muted">{s.hint}</div>
+                  </div>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div
+                    style={{
+                      flex: 1,
+                      height: 1,
+                      background:
+                        step > i
+                          ? 'oklch(var(--foreground))'
+                          : 'oklch(var(--border))',
+                      margin: '0 4px',
+                    }}
+                  />
+                )}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+
+        {step === 0 && (
+          <StepDataSource
+            source={source}
+            file={file}
+            onSourceChange={setSource}
+            onFileChange={setFile}
+            onNext={() => setStep(1)}
+          />
+        )}
+        {step === 1 && (
+          <StepDocumentProcessing
+            kb={kb}
+            onBack={() => setStep(0)}
+            onNext={() => setStep(2)}
           />
         )}
         {step === 2 && (
-          <Step2
+          <StepExecute
             kbId={params.id}
-            kb={kbQuery.data}
-            isLoading={kbQuery.isLoading}
-            isError={kbQuery.isError}
-            onBack={back}
-            onSubmit={(e) => {
-              e.preventDefault();
-              next();
+            file={file}
+            kb={kb}
+            isPending={uploadMutation.isPending}
+            isSuccess={uploadMutation.isSuccess}
+            error={uploadMutation.error as Error | null}
+            onBack={() => setStep(1)}
+            onRun={() => {
+              if (file) uploadMutation.mutate(file);
             }}
-          />
-        )}
-        {step === 3 && (
-          <Step3
-            state={state}
-            kb={kbQuery.data}
-            fileError={fileError}
-            uploadPending={uploadMutation.isPending}
-            uploadSuccess={uploadMutation.isSuccess}
-            uploadError={uploadMutation.error as Error | null}
-            onBack={back}
-            onExecute={handleExecute}
+            onDone={() => router.push(`/kb/${params.id}`)}
           />
         )}
       </div>
     </div>
-    </div></div>
   );
 }
 
-// --------------------------------------------------------------------------- //
-// Stepper indicator
-// --------------------------------------------------------------------------- //
-
-function Stepper({ current }: { current: Step }) {
-  return (
-    <ol
-      className="mt-8 flex items-center gap-2 text-xs font-medium uppercase tracking-wide"
-      aria-label="Wizard steps"
-    >
-      {STEPS.map((s, idx) => {
-        const isActive = s.id === current;
-        const isDone = s.id < current;
-        return (
-          <li key={s.id} className="flex flex-1 items-center gap-2">
-            <span
-              aria-current={isActive ? 'step' : undefined}
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-full text-[11px]',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : isDone
-                    ? 'bg-success text-success-foreground'
-                    : 'border border-border text-muted-foreground',
-              )}
-            >
-              {isDone ? '✓' : s.id}
-            </span>
-            <span className={isActive ? 'text-foreground' : 'text-muted-foreground'}>
-              {s.label}
-            </span>
-            {idx < STEPS.length - 1 && (
-              <span className="ml-2 flex-1 border-t border-dashed border-border" />
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-// --------------------------------------------------------------------------- //
-// Step 1 — Source (file picker)
-// --------------------------------------------------------------------------- //
-
-function Step1({
-  state,
-  error,
-  onChange,
-  onSubmit,
+// ── Step 0 — Data source ────────────────────────────────────────────────────
+function StepDataSource({
+  source,
+  file,
+  onSourceChange,
+  onFileChange,
+  onNext,
 }: {
-  state: WizardState;
-  error: string;
-  onChange: (next: WizardState) => void;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  source: SourceKind;
+  file: File | null;
+  onSourceChange: (s: SourceKind) => void;
+  onFileChange: (f: File | null) => void;
+  onNext: () => void;
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const sources: {
+    id: SourceKind;
+    label: string;
+    hint: string;
+    icon: typeof Upload;
+    ready: boolean;
+  }[] = [
+    {
+      id: 'upload',
+      label: 'Local files',
+      hint: '.docx, .pdf, .pptx · Drag & drop',
+      icon: Upload,
+      ready: true,
+    },
+    {
+      id: 'sharepoint',
+      label: 'SharePoint',
+      hint: 'OAuth-connected sites & libraries',
+      icon: Cloud,
+      ready: false,
+    },
+    {
+      id: 'drive',
+      label: 'Drive folder',
+      hint: 'Mounted share folder · network path',
+      icon: Globe,
+      ready: false,
+    },
+    {
+      id: 'url',
+      label: 'URL crawler',
+      hint: 'Tier 2 — disabled',
+      icon: LinkIcon,
+      ready: false,
+    },
+  ];
+
+  function handleFileInput(e: ChangeEvent<HTMLInputElement>) {
+    onFileChange(e.target.files?.[0] ?? null);
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) onFileChange(dropped);
+  }
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <h2 className="text-lg font-medium">Source</h2>
-      <p className="text-sm text-muted-foreground">
-        Pick the document to re-ingest. Supported formats per
-        architecture.md §3.3: <span className="font-mono">.docx</span>{' / '}
-        <span className="font-mono">.pdf</span>{' / '}
-        <span className="font-mono">.pptx</span>.
-      </p>
-
-      <Field label="Document">
-        <input
-          type="file"
-          accept=".docx,.pdf,.pptx"
-          onChange={(e) =>
-            onChange({ ...state, file: e.target.files?.[0] ?? null })
-          }
-          className="block w-full text-sm"
-        />
-        {state.file && (
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Selected: <span className="font-mono">{state.file.name}</span>
-            {' · '}
-            {(state.file.size / 1024).toFixed(1)} KB
-          </span>
-        )}
-      </Field>
-
-      <div className="flex justify-end pt-2">
-        <Button type="submit" disabled={!!error}>
-          Next →
-        </Button>
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Data source</h3>
       </div>
-    </form>
+      <div className="card-body">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 10,
+            marginBottom: 20,
+          }}
+        >
+          {sources.map((s) => {
+            const Ic = s.icon;
+            const active = source === s.id;
+            return (
+              <div
+                key={s.id}
+                onClick={() => s.ready && onSourceChange(s.id)}
+                style={{
+                  border: `1px solid ${
+                    active ? 'oklch(var(--accent))' : 'oklch(var(--border))'
+                  }`,
+                  background: active
+                    ? 'oklch(var(--accent) / 0.05)'
+                    : 'oklch(var(--card))',
+                  padding: '14px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                  opacity: s.ready ? 1 : 0.5,
+                  cursor: 'default',
+                  transition: 'border-color 0.15s',
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 'var(--radius-sm)',
+                    background: active
+                      ? 'oklch(var(--accent) / 0.15)'
+                      : 'oklch(var(--muted))',
+                    color: active
+                      ? 'oklch(var(--accent))'
+                      : 'oklch(var(--foreground))',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Ic size={16} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{s.label}</span>
+                    {!s.ready && (
+                      <span className="badge badge-muted">SOON</span>
+                    )}
+                  </div>
+                  <div className="text-xs muted" style={{ marginTop: 2 }}>
+                    {s.hint}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {source === 'upload' && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            style={{
+              border: `2px dashed ${
+                isDragging
+                  ? 'oklch(var(--accent))'
+                  : 'oklch(var(--border-strong))'
+              }`,
+              borderRadius: 'var(--radius-md)',
+              padding: '40px 24px',
+              textAlign: 'center',
+              background: isDragging
+                ? 'oklch(var(--accent) / 0.04)'
+                : 'oklch(var(--muted) / 0.3)',
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                padding: 12,
+                borderRadius: '50%',
+                background: 'oklch(var(--accent) / 0.1)',
+                color: 'oklch(var(--accent))',
+                marginBottom: 12,
+              }}
+            >
+              <Upload size={24} />
+            </div>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+              {file ? file.name : 'Drag and drop a document here'}
+            </div>
+            <div className="text-sm muted">
+              {file ? `${(file.size / 1024).toFixed(1)} KB` : 'or click to browse'}
+            </div>
+            <div
+              className="text-xs muted mono"
+              style={{ marginTop: 14 }}
+            >
+              Accepted: .docx · .pdf · .pptx
+            </div>
+            <label
+              className="btn btn-secondary btn-sm"
+              style={{ marginTop: 14, cursor: 'pointer', display: 'inline-flex' }}
+            >
+              <input
+                type="file"
+                accept=".docx,.pdf,.pptx"
+                onChange={handleFileInput}
+                style={{ display: 'none' }}
+              />
+              {file ? 'Choose another file' : 'Browse files…'}
+            </label>
+          </div>
+        )}
+
+        {source === 'sharepoint' && (
+          <div
+            style={{
+              padding: 24,
+              textAlign: 'center',
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <div className="text-sm">
+              <b>SharePoint site URL</b>
+              <br />
+              <input
+                className="input mono"
+                style={{ marginTop: 8, maxWidth: 480 }}
+                placeholder="https://ricoh.sharepoint.com/sites/D365-Docs"
+                disabled
+              />
+            </div>
+            <div className="text-xs muted" style={{ marginTop: 10 }}>
+              OAuth via Entra ID · scoped read-only · Wave C+
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="card-footer">
+        <div className="text-xs muted mono">Step 1 of 3</div>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={!file || source !== 'upload'}
+          onClick={onNext}
+        >
+          Continue <ChevronRight size={13} />
+        </button>
+      </div>
+    </div>
   );
 }
 
-// --------------------------------------------------------------------------- //
-// Step 2 — Multimodal (read-only display per KB config + Tier 2 affordances)
-// --------------------------------------------------------------------------- //
-
-function Step2({
-  kbId,
+// ── Step 1 — Document processing ────────────────────────────────────────────
+function StepDocumentProcessing({
   kb,
-  isLoading,
-  isError,
   onBack,
-  onSubmit,
+  onNext,
+}: {
+  kb: KbStatus | undefined;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  // Per CLAUDE.md §13 backend-wins: chunker config is KB-locked (architecture.md
+  // §3.3 + §3.5);mockup allows per-batch override but real backend uses
+  // kb_config from KbConfig at ingest time. Surface as READ-ONLY display of
+  // current KB config with "Edit settings" link to /kb/[id]?tab=settings.
+  const strategy = kb?.config.chunk_strategy ?? 'auto';
+  const chunkSize = 800;
+  const overlap = 100;
+
+  const strategies: {
+    id: KbConfig['chunk_strategy'];
+    label: string;
+    hint: string;
+  }[] = [
+    {
+      id: 'heading_aware',
+      label: 'Heading-aware',
+      hint: 'Splits at H1/H2/H3 — for narrative docs',
+    },
+    {
+      id: 'layout_aware',
+      label: 'Layout-aware',
+      hint: 'Docling — preserves tables, lists, sections',
+    },
+    {
+      id: 'slide_based',
+      label: 'Slide-based',
+      hint: 'python-pptx — one chunk per slide',
+    },
+    {
+      id: 'auto',
+      label: 'Auto',
+      hint: 'Detect doc type, pick strategy',
+    },
+  ];
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Document processing</h3>
+        <span className="text-xs muted">KB-locked · per-KB config</span>
+      </div>
+      <div className="card-body">
+        <div className="field">
+          <label className="label">Chunk strategy</label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+            }}
+          >
+            {strategies.map((s) => {
+              const active = strategy === s.id;
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    border: `1px solid ${
+                      active
+                        ? 'oklch(var(--foreground))'
+                        : 'oklch(var(--border))'
+                    }`,
+                    background: active
+                      ? 'oklch(var(--muted) / 0.6)'
+                      : 'transparent',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'default',
+                    opacity: active ? 1 : 0.6,
+                  }}
+                >
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span style={{ fontWeight: 500, fontSize: 13.5 }}>
+                      {s.label}
+                    </span>
+                    {active && <Check size={12} />}
+                  </div>
+                  <div className="text-xs muted" style={{ marginTop: 2 }}>
+                    {s.hint}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+        >
+          <div className="field">
+            <label className="label">Chunk size (tokens)</label>
+            <input
+              className="input mono"
+              value={chunkSize}
+              readOnly
+              disabled
+            />
+            <div className="hint">
+              Effective max: 800 — fits within text-embedding-3-large 8k window
+            </div>
+          </div>
+          <div className="field">
+            <label className="label">Overlap (tokens)</label>
+            <input
+              className="input mono"
+              value={overlap}
+              readOnly
+              disabled
+            />
+            <div className="hint">Recommended: 100–150 for layout_aware</div>
+          </div>
+        </div>
+
+        <div className="field">
+          <label className="label">
+            Embedding model <span className="text-xs muted">— KB-locked</span>
+          </label>
+          <select className="select" disabled>
+            <option>
+              {kb?.config.embedding_model ?? 'text-embedding-3-large'} ·{' '}
+              {kb?.config.embedding_dimension ?? 1024}d MRL truncate
+            </option>
+          </select>
+        </div>
+
+        <div className="row" style={{ gap: 8, marginTop: 8 }}>
+          <span
+            className="switch"
+            data-on={kb?.config.extract_embedded_images ?? false}
+            role="switch"
+            aria-checked={kb?.config.extract_embedded_images ?? false}
+            aria-disabled="true"
+          />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              Extract embedded screenshots
+            </div>
+            <div className="text-xs muted">
+              Maps images via{' '}
+              <span className="mono">embedded_images[]</span> + screenshot
+              pipeline
+            </div>
+          </div>
+        </div>
+
+        <div className="banner banner-info" style={{ marginTop: 16 }}>
+          <div style={{ flex: 1 }} className="text-xs">
+            Per-batch override 唔 supported — config is KB-locked. To change
+            chunking + multimodal,{' '}
+            <Link
+              href={`/kb/${kb?.kb_id ?? ''}?tab=settings`}
+              style={{ color: 'oklch(var(--accent))' }}
+            >
+              edit KB Settings
+            </Link>
+            .
+          </div>
+        </div>
+      </div>
+      <div className="card-footer">
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onBack}
+        >
+          <ChevronLeft size={13} /> Back
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={onNext}
+        >
+          Continue <ChevronRight size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2 — Execute ────────────────────────────────────────────────────────
+function StepExecute({
+  kbId,
+  file,
+  kb,
+  isPending,
+  isSuccess,
+  error,
+  onBack,
+  onRun,
+  onDone,
 }: {
   kbId: string;
+  file: File | null;
   kb: KbStatus | undefined;
-  isLoading: boolean;
-  isError: boolean;
+  isPending: boolean;
+  isSuccess: boolean;
+  error: Error | null;
   onBack: () => void;
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onRun: () => void;
+  onDone: () => void;
 }) {
+  const status: 'idle' | 'running' | 'indexed' | 'failed' = isPending
+    ? 'running'
+    : isSuccess
+      ? 'indexed'
+      : error
+        ? 'failed'
+        : 'idle';
+
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div>
-        <h2 className="text-lg font-medium">Multimodal</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The document will be ingested with the KB&apos;s current multimodal
-          config. To change these settings,{' '}
-          <Link
-            href={`/kb/${kbId}?tab=settings`}
-            className="text-accent hover:underline"
-          >
-            edit the KB&apos;s Settings tab
-          </Link>
-          .
-        </p>
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Execute · indexing</h3>
+          <div className="card-desc">
+            {status === 'idle' && 'Ready to upload + ingest'}
+            {status === 'running' && 'Pipeline running…'}
+            {status === 'indexed' && 'Document indexed — KB ready'}
+            {status === 'failed' && 'Upload failed — see error below'}
+          </div>
+        </div>
+        {status === 'running' && (
+          <span className="badge badge-info">
+            <span className="badge-dot" /> RUNNING
+          </span>
+        )}
+        {status === 'indexed' && (
+          <span className="badge badge-success">
+            <span className="badge-dot" /> INDEXED
+          </span>
+        )}
+        {status === 'failed' && (
+          <span className="badge badge-error">
+            <span className="badge-dot" /> FAILED
+          </span>
+        )}
       </div>
-
-      {isLoading && (
-        <div className="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-          Loading KB config…
-        </div>
-      )}
-      {isError && (
-        <div className="rounded-md border border-destructive bg-destructive/10 p-4 text-sm">
-          Failed to load KB config. Refresh the page or check the KB exists.
-        </div>
-      )}
-
-      {kb && (
-        <>
-          {/* Tier 1 active toggles — read-only display */}
-          <fieldset className="space-y-3 rounded-md border border-border p-4">
-            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Tier 1 — active (read-only — per-KB config)
-            </legend>
-
-            <ReadOnlyToggleRow
-              label="Extract embedded images"
-              description="Pull figures from Word / PDF / PPT and persist them alongside chunks."
-              checked={kb.config.extract_embedded_images}
-            />
-            <ReadOnlyToggleRow
-              label="Slide screenshots"
-              description="For PPT: capture each slide as a screenshot so the chat can surface visual context."
-              checked={kb.config.slide_screenshots}
-            />
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="text-sm font-medium">Dedup strategy</div>
-                <p className="text-xs text-muted-foreground">
-                  Skip uploading duplicate images by SHA-256 — or store every copy.
-                </p>
+      <div className="card-body">
+        {status === 'running' && (
+          <div className="banner banner-info" style={{ marginBottom: 16 }}>
+            <span className="spinner" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>
+                Indexing {file?.name ?? 'document'} · in progress
               </div>
-              <span className="rounded-sm border border-border bg-muted/40 px-2 py-1 font-mono text-xs">
-                {kb.config.dedup_strategy}
+              <div className="text-xs muted mono">
+                Docling → {kb?.config.chunk_strategy ?? 'auto'} → embed-3-large →
+                ekp-kb-{kbId}-v1 upsert
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Single-file progress card per backend reality (mockup multi-doc UI is
+            aspirational; backend POST /kb/{id}/documents takes one file per
+            call) */}
+        <div className="col" style={{ gap: 6 }}>
+          {file && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 14px',
+                border: '1px solid oklch(var(--border))',
+                borderRadius: 'var(--radius-sm)',
+                background:
+                  status === 'failed'
+                    ? 'oklch(var(--destructive) / 0.04)'
+                    : 'oklch(var(--card))',
+              }}
+            >
+              <span
+                className={`status-dot ${
+                  status === 'indexed'
+                    ? 'ready'
+                    : status === 'running'
+                      ? 'indexing'
+                      : status === 'failed'
+                        ? 'failed'
+                        : ''
+                }`}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {file.name}
+                </div>
+                {status === 'running' && (
+                  <div className="text-xs muted mono" style={{ marginTop: 3 }}>
+                    Embedding chunks · streaming…
+                  </div>
+                )}
+                {status === 'failed' && error && (
+                  <div
+                    className="text-xs"
+                    style={{
+                      color: 'oklch(var(--destructive))',
+                      marginTop: 2,
+                    }}
+                  >
+                    {error.message}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs mono muted">
+                {(file.size / 1024).toFixed(1)} KB
+              </span>
+              <span
+                className={`badge ${
+                  status === 'indexed'
+                    ? 'badge-success'
+                    : status === 'running'
+                      ? 'badge-info'
+                      : status === 'failed'
+                        ? 'badge-error'
+                        : 'badge-muted'
+                }`}
+              >
+                <span className="badge-dot" /> {status.toUpperCase()}
               </span>
             </div>
-            <ReadOnlyToggleRow
-              label="Return images in chat"
-              description="When the assistant cites a chunk with images, surface them inline (and in the gallery)."
-              checked={kb.config.return_images_in_chat}
-            />
-          </fieldset>
+          )}
+        </div>
 
-          {/* Tier 2 disabled affordances */}
-          <fieldset className="space-y-3 rounded-md border border-dashed border-border p-4">
-            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Tier 2 — coming in a later tier
-            </legend>
-
-            <DisabledAffordance
-              variant="p3-preview"
-              reason="LLM-generated captions for figures — arrives in a later tier"
-              tier2Trigger="caption generation pipeline"
-              showBadge
-            >
-              <ReadOnlyToggleRow
-                label="Caption generation"
-                description="Auto-describe images with a vision-LLM for better retrieval."
-                checked={false}
-              />
-            </DisabledAffordance>
-
-            <DisabledAffordance
-              variant="p3-preview"
-              reason="Image clustering for similarity search — arrives in a later tier"
-              tier2Trigger="image clustering"
-              showBadge
-            >
-              <ReadOnlyToggleRow
-                label="Image clustering"
-                description="Group near-duplicate or visually similar images for review."
-                checked={false}
-              />
-            </DisabledAffordance>
-
-            <DisabledAffordance
-              variant="p3-preview"
-              reason="Chain-of-custody hash verification — arrives in a later tier"
-              tier2Trigger="provenance ledger"
-              showBadge
-            >
-              <ReadOnlyToggleRow
-                label="Provenance ledger"
-                description="Cryptographically anchor source hashes for audit trail."
-                checked={false}
-              />
-            </DisabledAffordance>
-          </fieldset>
-        </>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" onClick={onBack}>
-          ← Back
-        </Button>
-        <Button type="submit" disabled={isLoading || isError}>
-          Next →
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function ReadOnlyToggleRow({
-  label,
-  description,
-  checked,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex-1">
-        <div className="text-sm font-medium">{label}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Switch
-        checked={checked}
-        disabled
-        aria-label={label}
-        aria-readonly="true"
-        className="cursor-not-allowed"
-      />
-    </div>
-  );
-}
-
-// --------------------------------------------------------------------------- //
-// Step 3 — Review (summary + Stage progress)
-// --------------------------------------------------------------------------- //
-
-function Step3({
-  state,
-  kb,
-  fileError,
-  uploadPending,
-  uploadSuccess,
-  uploadError,
-  onBack,
-  onExecute,
-}: {
-  state: WizardState;
-  kb: KbStatus | undefined;
-  fileError: string;
-  uploadPending: boolean;
-  uploadSuccess: boolean;
-  uploadError: Error | null;
-  onBack: () => void;
-  onExecute: () => void;
-}) {
-  const inFlight = uploadPending;
-  const allDone = uploadSuccess;
-
-  return (
-    <div className="space-y-5">
-      <h2 className="text-lg font-medium">Review</h2>
-      <p className="text-sm text-muted-foreground">
-        Confirm the ingestion plan, then upload. The document is parsed,
-        chunked, embedded, and indexed via{' '}
-        <span className="font-mono">POST /kb/{'{id}'}/documents</span>.
-      </p>
-
-      <dl className="rounded-md border border-border bg-muted/40 p-4 text-sm">
-        <Summary label="KB id" value={kb?.kb_id ?? '—'} />
-        <Summary label="KB name" value={kb?.name ?? '—'} />
-        <Summary label="Document" value={state.file?.name ?? '—'} />
-        <Summary
-          label="Size"
-          value={
-            state.file
-              ? `${(state.file.size / 1024).toFixed(1)} KB`
-              : '—'
-          }
-        />
-        {kb && (
-          <>
-            <Summary
-              label="Extract images"
-              value={kb.config.extract_embedded_images ? 'yes' : 'no'}
-            />
-            <Summary
-              label="Slide screenshots"
-              value={kb.config.slide_screenshots ? 'yes' : 'no'}
-            />
-            <Summary label="Dedup" value={kb.config.dedup_strategy} />
-            <Summary
-              label="Images in chat"
-              value={kb.config.return_images_in_chat ? 'yes' : 'no'}
-            />
-          </>
+        {!file && (
+          <div className="empty">
+            <div className="empty-icon">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="empty-title">No file selected</div>
+            <div>Go back to Step 1 + pick a document.</div>
+          </div>
         )}
-      </dl>
-
-      <ol className="space-y-2 text-sm">
-        <Stage
-          label="Upload + Ingest (POST /kb/{id}/documents)"
-          pending={uploadPending}
-          success={uploadSuccess}
-          error={uploadError}
-        />
-      </ol>
-
-      <div className="flex justify-between pt-2">
-        <Button
+      </div>
+      <div className="card-footer">
+        <button
           type="button"
-          variant="outline"
+          className="btn btn-ghost btn-sm"
           onClick={onBack}
-          disabled={inFlight}
+          disabled={isPending}
         >
-          ← Back
-        </Button>
-        <Button
-          type="button"
-          onClick={onExecute}
-          disabled={inFlight || allDone || !!fileError}
-        >
-          {inFlight
-            ? 'Uploading…'
-            : allDone
-              ? 'Done — redirecting…'
-              : 'Upload + Ingest'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// --------------------------------------------------------------------------- //
-// Shared primitives
-// --------------------------------------------------------------------------- //
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <div className="mt-1">{children}</div>
-      {error && (
-        <span className="mt-1 block text-xs text-destructive">{error}</span>
-      )}
-    </label>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between border-b border-border py-1.5 last:border-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-mono">{value}</dd>
-    </div>
-  );
-}
-
-function Stage({
-  label,
-  pending,
-  success,
-  error,
-}: {
-  label: string;
-  pending: boolean;
-  success: boolean;
-  error: Error | null;
-}) {
-  let icon = '○';
-  let cls = 'text-muted-foreground';
-  if (pending) {
-    icon = '◐';
-    cls = 'text-accent animate-pulse';
-  } else if (error) {
-    icon = '✗';
-    cls = 'text-destructive';
-  } else if (success) {
-    icon = '✓';
-    cls = 'text-success';
-  }
-  return (
-    <li className="flex items-start gap-3">
-      <span className={`mt-0.5 font-mono ${cls}`}>{icon}</span>
-      <div className="flex-1">
-        <div>{label}</div>
-        {error && (
-          <div className="mt-0.5 text-xs text-destructive">{error.message}</div>
+          <ChevronLeft size={13} /> Back
+        </button>
+        {status === 'idle' && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={onRun}
+            disabled={!file}
+          >
+            <Upload size={13} /> Upload + Ingest
+          </button>
+        )}
+        {status === 'running' && (
+          <button type="button" className="btn btn-secondary btn-sm" disabled>
+            Uploading…
+          </button>
+        )}
+        {status === 'indexed' && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={onDone}
+          >
+            Continue to KB <ChevronRight size={13} />
+          </button>
+        )}
+        {status === 'failed' && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onRun}
+          >
+            Retry
+          </button>
         )}
       </div>
-    </li>
+    </div>
   );
 }

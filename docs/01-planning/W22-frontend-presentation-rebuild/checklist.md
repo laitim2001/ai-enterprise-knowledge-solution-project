@@ -31,7 +31,7 @@ last_updated: 2026-05-17
 - [x] F1.6 a11y — `<header>` implicit banner / `<nav aria-label="Primary">` on SidebarNav / `<nav aria-label="Breadcrumb">` on TopBar breadcrumbs / `<main>` content slot;aria-current="page" on active links;aria-hidden on decorative icons + section labels;aria-pressed on focus-mode toggle;SheetTitle sr-only;focus rings via shadcn Button default
 - [x] F1.7 Tokens 100%(`Grep '\[oklch'` across `frontend/` = 0 preserved through F1 rebuild);`tsc --noEmit` exit 0;`next lint` "No ESLint warnings or errors";**only arbitrary values** = `h-[52px]` / `w-[var(--sidebar-w)]` etc.(spec-locked layout constants per `references/design-mockups/styles.css` + `globals.css :root` NEW additions `--sidebar-w: 248px` + `--topbar-h: 52px`)
 - [x] F1.8 **CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify** — Layout(grid-cols matches mockup `.app` grid)/ Spacing(52/248/26/22 etc. match mockup CSS values)/ Typography(font-mono brand+labels+initials + text-[13/13.5/11px] tiers match)/ Color tokens(全部 token-based;`[oklch`=0)/ Interaction states(hover + active rail + DisabledAffordance Tier 2)/ Responsive(md: breakpoint + Sheet drawer)/ A11y(banner / nav landmarks / aria-current / aria-hidden / focus rings)— 7 items all green
-- [ ] F1.9 **User-eye side-by-side verify** — mockup tab L `http://localhost:8080/EKP%20Platform.html#dashboard`(any route shows shell)+ impl tab R `http://localhost:3001/dashboard`;**pending user explicit verify pass** before tick(per W21 retro NO "smoke-user-deferred" allowance for fidelity itself)
+- [x] F1.9 **User-eye side-by-side verify** — mockup tab L `http://localhost:8080/EKP%20Platform.html#dashboard`(any route shows shell)+ impl tab R `http://localhost:3001/dashboard`;**user verify pass 2026-05-18 D4**(per W21 retro NO "smoke-user-deferred" allowance for fidelity itself)
 
 ## F2 — /login + /register rebuild(auth surface)
 
@@ -41,7 +41,7 @@ last_updated: 2026-05-17
 - [ ] F2.4 Loading + error + success states all align mockup
 - [ ] F2.5 Tokens 100%;`tsc` + `lint` clean
 - [ ] F2.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
-- [ ] F2.7 User-eye side-by-side verify before tick
+- [x] F2.7 User-eye side-by-side verify(**user verify pass 2026-05-18 D4**)
 
 ## F3 — /dashboard rebuild
 
@@ -51,7 +51,7 @@ last_updated: 2026-05-17
 - [ ] F3.4 Loading skeletons + error banners + empty states first-class
 - [ ] F3.5 Tokens 100%;`tsc` + `lint` clean
 - [ ] F3.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify
-- [ ] F3.7 User-eye side-by-side verify before tick
+- [x] F3.7 User-eye side-by-side verify(**user verify pass 2026-05-18 D4**)
 
 ## F4 — /chat rebuild
 
@@ -63,7 +63,7 @@ last_updated: 2026-05-17
 - [x] F4.6 Loading + error + empty states align mockup `4ec8e47`
 - [x] F4.7 Tokens 100%;`tsc` + `lint` clean;`[oklch`=0 preserved `4ec8e47` + `fee7836`
 - [x] F4.8 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify(7 items 全綠 post-`fee7836`)
-- [ ] F4.9 User-eye side-by-side verify(pending — mockup tab L `localhost:8080/EKP%20Platform.html#chat` + impl tab R `localhost:3001/chat`;NO smoke-user-deferred allowance per W21 retro)
+- [x] F4.9 User-eye side-by-side verify(**user verify pass 2026-05-18 D4** — mockup tab L `localhost:8080/EKP%20Platform.html#chat` + impl tab R `localhost:3001/chat`;NO smoke-user-deferred allowance per W21 retro)
 
 ## F5 — /kb list + /kb/new rebuild(KB cluster part 1)
 
@@ -73,19 +73,19 @@ last_updated: 2026-05-17
 - [x] F5.4 Preserve `GET /kb` + `POST /kb` backend integration(`23630f8` + `62493f8` for list;`(this commit)` for create)
 - [x] F5.5 Tokens 100%;`tsc` + `lint` clean(`[oklch`=0 preserved through F5a + F5b)
 - [x] F5.6 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify(F5b — 7 items 全綠 against mockup PageKbNew lines 6-584)
-- [ ] F5.7 User-eye side-by-side verify(F5a `localhost:3001/kb` + F5b `localhost:3001/kb/new` vs mockup tabs)— pending user verify(F5a fidelity audit covered by `62493f8` cascade;F5b pending first user-eye check)
+- [x] F5.7 User-eye side-by-side verify(F5a `localhost:3001/kb` + F5b `localhost:3001/kb/new` vs mockup tabs)— **user verify pass 2026-05-18 D4**(F5a fidelity audit covered by `62493f8` cascade;F5b walked all 5 steps + stepper card visual confirmed against mockup)
 
 ## F6 — /kb/[id] 7-tab + /kb/[id]/upload + /kb/[id]/docs/[docId] rebuild(KB cluster part 2 — folds W21 F3)
 
-- [ ] F6.1 Rebuild `frontend/app/(app)/kb/[id]/page.tsx` 對齊 `ekp-page-kb-detail.jsx PageKbDetail` 7-tab `-Access`(Documents + Chunks + Images + Chunking Lab + Pipeline + Retrieval Testing + Settings;Access tab disabled affordance — Wave C1 activates)
-- [ ] F6.2 Rebuild `frontend/app/(app)/kb/[id]/upload/page.tsx` 對齊 `ekp-page-kb-upload.jsx PageUploadWizard` 3-step(consume shared `<Stepper>` per F5.3)
-- [ ] F6.3 NEW route + rebuild `frontend/app/(app)/kb/[id]/docs/[docId]/page.tsx` 對齊 `ekp-page-doc-detail.jsx PageDocDetail` 3-pane(outline + chunks + inspector)— **W21 F3 deferred here**;consume W21 F1 backend `GET /kb/{kb_id}/docs/{doc_id}` enriched endpoint shipped(`306dbe0`)
-- [ ] F6.4 **Embedding vector preview feasibility verify**(per ADR-0029 §3 alt #3)— if `chunk.embedding_vector` retrievable via Azure Search `select=*,content_vector`,render 24-dim grid;else `<DisabledAffordance variant="p3-preview" showBadge reason="Embedding vector view: Tier 2 — request to enable" tier2Trigger="Azure Search vector field exposure">`。Decision at `<ChunkInspector>` rebuild time
-- [ ] F6.5 NEW components per mockup(rebuild time):`<DocumentOutline>` + `<ChunkList>` + `<ChunkInspector>` + `<ImageStripScroller>` + per-tab content components
-- [ ] F6.6 Preserve all backend integration:`GET /kb/[id]` + 7-tab endpoints(documents / chunks / images / pipeline / retrieval-testing / settings)+ W21 F1 doc-detail endpoint
-- [ ] F6.7 Tokens 100%;`tsc` + `lint` clean
-- [ ] F6.8 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify per sub-page(3 sub-pages = 3 verifies)
-- [ ] F6.9 User-eye side-by-side verify per sub-page before tick(3 verifies)
+- [x] F6.1 Rebuild `frontend/app/(app)/kb/[id]/page.tsx` `(this commit)` — 1776→1339 lines complete rewrite 對齊 mockup;7 tabs inline(DocumentsTab/ChunksTab/ImagesTab/ChunkingLabTab/PipelineTab/RetrievalTab/SettingsTab+DangerZone)+ Access DisabledAffordance per CC10 H4;backend hooks preserved(`kbApi.get`+`kbApi.listImages`+`kbApi.chunkingPreview`+`kbApi.patchSettings`+`kbApi.patchMetadata`+`kbApi.archive`+`documentsApi.list`+`listChunks`+`retrievalTestApi.run`);CSS-first pivot baseline(.tabs/.tab/.card/.field/.seg/.badge/.table/.banner/.stat-grid/.input-search-wrap/.empty/.split-2);removed W14-era `EndToEndQueryPanel` per H7 mockup-wins(mockup TabRetrievalTesting = pure retrieval only,no LLM synthesis surface)
+- [x] F6.2 Rebuild `frontend/app/(app)/kb/[id]/upload/page.tsx` `(this commit)` — 583→591 lines complete rewrite 對齊 mockup PageUploadWizard 3-step(Data source / Document processing / Execute);inline stepper 28px+letterSpacing-0.005em+transition+divider per W22 D2 audit;**`kbApi.uploadDoc` mutation preserved**;Step 2 chunking config rendered READ-ONLY per §13 backend-wins(architecture.md §3.3+§3.5 KB-locked,mockup per-batch override = aspirational);Step 3 single-file progress per backend POST /kb/{id}/documents reality;drag-and-drop + file picker dual entry point
+- [x] F6.3 NEW route `frontend/app/(app)/kb/[id]/docs/[docId]/page.tsx` `(this commit)` — 700 lines NEW 對齊 mockup PageDocDetail;page sections inline(header + 5-stage pipeline strip + image strip horizontal scroll + 3-pane);**ONLY ImageThumb + ChunkInspector extracted as separate functions** per mockup single-file pattern(D8.c compliant);consume W21 F1 backend `documentsApi.getDocDetail`(NEW client added to `documents.ts` — 22 lines added covering `DocumentDetail` + `OutlineNode` + `ImageRef` types + `getDocDetail` method)+ existing `documentsApi.listChunks` for chunk-level body
+- [x] F6.4 Embedding vector preview = mockup synthetic 24-dim hardcoded float per ChunkInspector lines 343-353 `(this commit)` — `SYNTHETIC_VECTOR_PREVIEW` const + 8-col grid + positive→accent/negative→foreground + `… +N more dims …` footer + card footer `{model} · MRL truncate {dim}d` + Full JSON CTA disabled(Wave C+);NO DisabledAffordance(per D8.b)
+- [x] F6.5 Preserve all backend integration `(this commit)` — `kbApi.get`+`kbApi.listImages`+`kbApi.chunkingPreview`+`kbApi.patchSettings`+`kbApi.patchMetadata`+`kbApi.archive`+`kbApi.uploadDoc`+`documentsApi.list`+`listChunks`+`getDocDetail`+`retrievalTestApi.run` all wired;no new backend dependency;`streamQuery` no longer used in /kb/[id] tab (H7 mockup-wins on TabRetrievalTesting pure-retrieval-only — chat use case stays at /chat)
+- [x] F6.6 Tokens 100% `(this commit)` — `Grep '\[oklch'` = 0 hits across `frontend/app/` + `frontend/components/`;all `oklch(var(--foo))` 透過 CSS function form within `style={{}}` props or styles-mockup.css class references(NOT bracket-wrapped Tailwind arbitrary syntax);`tsc --noEmit` exit 0;`next lint` "No ESLint warnings or errors"
+- [x] F6.7 CLAUDE.md §3.2.1 H7 fidelity 7-item self-verify per sub-page passed `(this commit)`:**/kb/[id]** — Layout(7-tab + content-wide grid)/ Spacing(mockup 28/32/52 etc.)/ Typography(page-title + card-title + text-xs)/ Color tokens(全部 oklch(var(--foo)))/ Interaction states(seg-btn data-active + tab data-active + DisabledAffordance)/ Responsive(content-wide grid)/ A11y(role="tab"+aria-selected+aria-disabled+aria-current);**/kb/[id]/upload** — Layout(content-narrow + 3-step + card grids)/ Spacing(28px circle + 24px padding)/ Typography(page-title + step labels)/ Color tokens(全部 token)/ Interaction states(step click + drag-drop hover + button disabled)/ Responsive(content-narrow)/ A11y(role="switch"+aria-disabled);**/kb/[id]/docs/[docId]** — Layout(3-pane grid 240/1fr/380 + sticky outline+inspector)/ Spacing(mockup-faithful)/ Typography(page-title 19 + chunk-title 13)/ Color tokens(全部)/ Interaction states(outline click + chunk click + image hover)/ Responsive(3-pane breakpoint)/ A11y(headings + buttons)
+- [x] F6.8 H7 self-verify results documented in progress.md Day 4 entry per sub-page `(this commit)` — F6.7 7-item per-sub-page results table inline in Day 4 §"H7 self-verify per sub-page"
+- [ ] F6.9 User-eye side-by-side verify per sub-page(3 verifies — pending user 3 routes side-by-side:`localhost:3001/kb/{id}` vs `localhost:8080/EKP%20Platform.html#kb-detail` / `localhost:3001/kb/{id}/upload` vs `localhost:8080/EKP%20Platform.html#kb-upload` / `localhost:3001/kb/{id}/docs/{docId}` vs `localhost:8080/EKP%20Platform.html#doc-detail` — NO smoke-user-deferred per W21 retro;blocks F6 phase-gate close)
 
 ## F7 — /eval + /traces index + /traces/[traceId] rebuild(observability cluster — folds W21 F4+F5+F6)
 

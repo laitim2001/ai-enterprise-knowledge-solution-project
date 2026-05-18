@@ -312,7 +312,103 @@ Per CLAUDE.md §5.7 H7 + Karpathy §1.2,F5b kickoff first read mockup 4 wizards'
 
 ---
 
-<!-- Day 4+ entries appended as F6-F8 land. Template:
+## Day 4 — 2026-05-18 — F1-F5b user-eye verify pass + F6 KB cluster rebuild
+
+### F1-F5b user-eye verify pass(landed)
+
+User confirmed 2026-05-18:「現在的 F1, F2, F3, F4, F5a, F5b 暫時的顯示效果是可以接受的」→ checklist F1.9 / F2.7 / F3.7 / F4.9 / F5.7 flipped `[ ]→[x]`(per W21 retro NO「smoke-user-deferred」allowance for fidelity itself;5 user-eye gates landed)。
+
+### F6 KB cluster rebuild(landed pending user-eye verify per sub-page)
+
+#### Pre-active-flip 5-step audit findings(D8.a-D8.e per D1 process amendment recursion)
+
+Per CO_W14_process_grep_verify formalization + D1 recursive plan-text audit pattern,F6 kickoff first did mockup-vs-plan-vs-codebase grep:
+
+| # | Finding | Resolution |
+|---|---|---|
+| **D8.a** | Plan F6 references `ekp-page-kb-detail.jsx` + `ekp-page-kb-upload.jsx` — both don't exist | Actual = `ekp-page-kb.jsx:140 PageKbDetail` + `ekp-page-misc.jsx:4 PageUploadWizard` + `ekp-page-kb-extras.jsx`(TabImages 4 / TabChunkingLab 257)+ Wave C1 deferred `ekp-page-users.jsx:390 TabKbAccess`;plan §1+§2+checklist patched |
+| **D8.b** | Plan F6.4 「DisabledAffordance Tier 2 chip if Azure Search vector exposure expensive」over-engineered | Mockup ChunkInspector lines 343-353 already uses synthetic 24-dim hardcoded preview;render mockup-style synthetic visual + NO DisabledAffordance(per H7 mockup wins) |
+| **D8.c** | Plan F6.5 NEW components list `<DocumentOutline>` + `<ChunkList>` + `<ImageStripScroller>` 係 W21-era abstraction | Mockup PageDocDetail 只有 2 separate functions(`ImageThumb` + `ChunkInspector`)+ all other sections inline per single-file pattern |
+| **D8.d** | F5b /kb/new file-picker drop decision misapplied to F6.2 /kb/[id]/upload | Mockup PageUploadWizard Step 1 explicitly 有 drag-drop file picker;PRESERVE `kbApi.uploadDoc` mutation |
+| **D8.e** | Plan F6.1 「7-tab `-Access`」per H4 ✅ correct | No change;mockup 8 tabs visible but Access Wave C1 per ADR-0027 + §13 When-in-Doubt H4 > H7 for Tier 2 boundary;Wave A 已 ship pattern preserved |
+
+Plan §7 changelog D4 row + plan §1 ADR mapping + plan §2 F6 spec ref + F6.1 + F6.4 + F6.5 + checklist F6.1-F6.9 全部 patched 對應 D8 findings。
+
+#### What landed(F6.1+F6.2+F6.3 in one cluster commit)
+
+**`frontend/app/(app)/kb/[id]/page.tsx`** — 1776→1339 lines complete rewrite per H7 rebuild-not-patch:
+- Top-level `KbDetailPage()` w/ `useQuery(kbApi.get)` + mockup page-header(Knowledge breadcrumb + index_name + status badge + page-actions)+ failed_documents warning banner + `.tabs` nav(7 active + Access DisabledAffordance per CC10 H4)+ TabsContent switch
+- 7 inline tabs per mockup single-file pattern:
+  - **DocumentsTab** — search + 5-filter seg + table w/ row click → /docs/[docId] + pagination
+  - **ChunksTab** — doc picker(preserves W17 `?doc=` searchParam pattern)+ split-2 browse-list + chunk-preview
+  - **ImagesTab** — 4-stat strip + How-it-works info banner + search + grid of `ImageCard`
+  - **ChunkingLabTab** — sample text input + chunk-size/overlap sliders + 4-strategy compare + `kbApi.chunkingPreview` mutation
+  - **PipelineTab** — healthy banner + 6-stage card(Source/Extract/Chunk/Embed/Upsert/Eval)
+  - **RetrievalTab** — query input + mode seg + top_k/threshold sliders + reranker switch + Run button + 5-stat strip + list/bars viz + `ChunkResultRow`
+  - **SettingsTab** — General card(name+description+kb_id locked)+ Retrieval config card(embedding_model/chunk_strategy locked + top_k/rerank_k editable)+ DangerZone(archive + delete-disabled)
+- **Dropped W14-era `EndToEndQueryPanel`** per H7 mockup-wins(mockup TabRetrievalTesting line 423 explicit「Pure retrieval pass · no LLM synthesis · ADR-0021」— chat use case stays at /chat)
+
+**`frontend/app/(app)/kb/[id]/upload/page.tsx`** — 583→591 lines complete rewrite:
+- Top-level `KbUploadPage()` w/ 3-step state machine + `kbApi.uploadDoc` mutation + `useQuery(kbApi.get)` for KB context
+- Mockup 28px stepper(circle + 2px active border + transition 0.2s + letterSpacing -0.005em label + divider margin 0 4px per W22 D2 audit)
+- 3 inline step components:
+  - **StepDataSource** — 4-card source picker(Local files active / SharePoint+Drive+URL disabled w/ SOON badge)+ drag-drop area(real `onDrop` handler + file picker)
+  - **StepDocumentProcessing** — READ-ONLY display of KB config per §13 backend-wins(chunk_strategy/chunk_size/overlap/embedding_model/extract_embedded_images all locked + link to /kb/[id]?tab=settings to edit)
+  - **StepExecute** — banner + single-file progress card per backend POST /kb/{id}/documents reality(mockup multi-doc UI = aspirational)+ Run / Retry / Continue CTAs per status
+
+**`frontend/app/(app)/kb/[id]/docs/[docId]/page.tsx`** — NEW 700 lines route(W21 F3 fold):
+- Top-level `DocDetailPage()` w/ `useQuery(kbApi.get + documentsApi.getDocDetail + documentsApi.listChunks)` + page-header(Knowledge>kb>doc_id breadcrumb + status badge + metadata strip + page-actions)+ 5-stage pipeline strip + image strip(horizontal scroll inline `ImageThumb`)+ 3-pane main(outline 240px sticky / chunk list 1fr / inspector 380px sticky)
+- 2 separate functions per mockup pattern:
+  - **`ImageThumb`** — thumb card w/ color-cycled gradient + alt_text + dimensions
+  - **`ChunkInspector`** — metadata badges + section_path + linked prev/next + synthetic 24-dim embedding vector preview(F6.4 per D8.b — mockup lines 343-353 hardcoded floats with 8-col grid + positive→accent/negative→foreground)+ chunk text card
+- **`SYNTHETIC_VECTOR_PREVIEW`** const = mockup-faithful 24 hardcoded floats(real Azure Search vector exposure stays Tier 2 but user-invisible per H7 mockup-wins)
+
+**`frontend/lib/api/documents.ts`** — 47→69 lines extension:
+- NEW `DocumentDetail` interface(17 fields mirroring backend `api.schemas.listing.DocumentDetail`)+ `OutlineNode` + `ImageRef` types
+- NEW `documentsApi.getDocDetail(kbId, docId)` method consuming W21 F1 backend endpoint `GET /kb/{kb_id}/docs/{doc_id}` shipped `306dbe0`
+- Note re ADR-0029 URL convention(`/docs/{doc_id}` not `/documents/{doc_id}` — F1 route docstring rationale preserved)
+
+#### H7 self-verify per sub-page(F6.7 — 3 sub-pages × 7 items = 21 verifies)
+
+| Sub-page | Layout | Spacing | Typography | Color tokens | Interaction states | Responsive | A11y |
+|---|---|---|---|---|---|---|---|
+| /kb/[id] | ✅ 7-tab + content-wide | ✅ 28/32/52 etc. mockup | ✅ page-title + card-title + text-xs | ✅ 全 oklch(var(--foo)) | ✅ seg-btn data-active + tab data-active + DisabledAffordance | ✅ content-wide grid | ✅ role="tab" + aria-selected + aria-disabled + aria-current |
+| /kb/[id]/upload | ✅ content-narrow + 3-step + card grids | ✅ 28px circle + 24px padding | ✅ page-title + step labels letterSpacing | ✅ 全 token | ✅ step click + drag-drop hover + button disabled | ✅ content-narrow | ✅ role="switch" + aria-disabled |
+| /kb/[id]/docs/[docId] | ✅ 3-pane 240/1fr/380 + sticky outline+inspector | ✅ mockup-faithful | ✅ page-title 19 + chunk-title 13 | ✅ 全 token | ✅ outline click + chunk click + image hover | ✅ 3-pane breakpoint | ✅ headings + buttons |
+
+#### Verify gates(F6.6)
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | ✅ EXIT=0(all 3 files + documents.ts client extension) |
+| `next lint` | ✅ "No ESLint warnings or errors"(after removing initial dead `formatRelative` import in /docs/[docId]/page.tsx) |
+| `Grep '\[oklch'` across frontend/app + frontend/components | ✅ 0 hits(milestone preserved through F6 rebuild) |
+| Backend pytest 99/99 | ✅ Trivially preserved(F6 touches no backend file) |
+| Existing Vitest 14 files / 37 tests | ⚠ Render-smoke tests may break per F6.1 complete rewrite — need re-verify post-commit(F8.7 acceptance handles test count adjustment) |
+
+#### Deviations(documented per Karpathy §1.4)
+
+| F# | Plan said | Actual | Why | Approver |
+|---|---|---|---|---|
+| F6.1 | Preserve `streamQuery` for RetrievalTab | Dropped `streamQuery` import + `EndToEndQueryPanel` entirely | Mockup TabRetrievalTesting line 423「Pure retrieval pass · no LLM synthesis」— chat surface stays at /chat per H7 mockup-wins. W14-era end-to-end query injection violates mockup decomposition. | AI per H7 + §13 |
+| F6.2 | Mockup Step 2 has editable chunk_strategy/size/overlap sliders | Rendered READ-ONLY + link to /kb/[id]?tab=settings | architecture.md §3.3 + §3.5 specifies kb_config is KB-locked at ingest time(no per-batch override);mockup aspirational + backend wins per §13 When-in-Doubt | AI per §13 backend-wins |
+| F6.3 mockup ChunkInspector | Real Azure Search vector exposure (`select=*,content_vector`) | Synthetic 24-dim hardcoded preview matching mockup lines 343-353 | Mockup uses synthetic;per H7 mockup wins;real exposure = Tier 2 + user-invisible | AI per D8.b finding |
+| File picker UX | Multi-file drag-drop per mockup Step 1 line 124-138 | Single-file (drag-drop or click) | Backend `kbApi.uploadDoc` is single-file per call (POST /kb/{id}/documents);mockup multi-file = aspirational visual;Karpathy §1.2 simplicity preserved. Logged for Wave C+ if backend gains batch upload | AI per §13 backend-wins + Karpathy §1.2 |
+
+#### Acceptance criteria status(per checklist.md)
+
+- [x] F6.1-F6.8 all landed `(this commit)`
+- [ ] F6.9 user-eye side-by-side verify pending(3 routes × mockup tab + impl tab)
+
+#### Carry-overs to Day 5+
+
+- **F6.9 user-eye verify** — 3 routes side-by-side:`localhost:3001/kb/{id}` vs `localhost:8080/EKP%20Platform.html#kb-detail` / `localhost:3001/kb/{id}/upload` vs `localhost:8080/EKP%20Platform.html#kb-upload` / `localhost:3001/kb/{id}/docs/{docId}` vs `localhost:8080/EKP%20Platform.html#doc-detail`;outcome may surface secondary H7 deviation per F4 pattern(post-ship fidelity audit)
+- **F7** /eval + /traces cluster(folds W21 F4+F5+F6)~1.5-2 days
+- **Vitest render-smoke test re-verify** post-F6.1 complete rewrite(F8.7 acceptance gate — test count may shift but coverage not regress)
+
+---
+
+<!-- Day 5+ entries appended as F7-F8 land. Template:
 
 ## Day N — YYYY-MM-DD
 
