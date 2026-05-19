@@ -37,6 +37,13 @@ dependencies = [
     # no pool). Only used when DATABASE_URL is set; PostgresKBBackend is lazily
     # imported (kb_management/factory.py) so an unset DATABASE_URL never touches it.
     "psycopg[binary]>=3.2",
+    # W24-wave-c1 F1 — Key Vault provider production impl (ADR-0026 Option B).
+    # AzureKeyVaultProvider lazy-imported by storage/key_vault_factory.py so
+    # unset KEY_VAULT_URL never touches the SDK (local dev / CI / R8-blocked
+    # installs keep working via EnvVarProvider fallback). Install path per
+    # ADR-0017 Plan B (c) — mobile-hotspot first to sidestep corp-proxy R8 risk
+    # on the 600KB+ binary wheel (Langfuse SDK 2026-05-16 precedent, occurrence #8).
+    "azure-keyvault-secrets>=4.8.0",
 ]
 
 [project.optional-dependencies]

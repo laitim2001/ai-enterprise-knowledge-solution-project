@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     # auto-created via CREATE TABLE IF NOT EXISTS on connect.
     database_url: str = ""
 
+    # W24-wave-c1 F1 — Key Vault provider selection (ADR-0026 Option B).
+    # Empty → EnvVarProvider fallback (W1 `.env` workflow preserved, rotate
+    # raises NotImplementedError). Set → AzureKeyVaultProvider via
+    # `azure-keyvault-secrets` + DefaultAzureCredential (Managed Identity in
+    # Container Apps prod, `az login` in local dev). Lazy-imported by
+    # `storage/key_vault_factory.py` so unset never touches the SDK.
+    key_vault_url: str = ""
+
     # Azure OpenAI
     azure_openai_endpoint: str = "https://ekp-openai-poc.openai.azure.com"
     azure_openai_api_key: str = ""

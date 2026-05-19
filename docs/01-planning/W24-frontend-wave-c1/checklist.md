@@ -19,15 +19,16 @@ last_updated: 2026-05-19
 
 ## F1 — KeyVaultProvider abstraction + Azure SDK install(Plan B (c) mobile hotspot)
 
-- [ ] **F1.1** `backend/storage/key_vault.py` NEW — `KeyVaultProvider` Protocol(`get_secret` + `set_secret` + `delete_secret` + `list_secrets` + `rotate_secret`)
-- [ ] **F1.2** `EnvVarProvider` impl — fallback when `KEY_VAULT_URL` unset
-- [ ] **F1.3** `AzureKeyVaultProvider` impl — production path(依賴 azure-keyvault-secrets + azure-identity)
-- [ ] **F1.4** `make_key_vault_provider() -> KeyVaultProvider` factory — `KEY_VAULT_URL` env var presence decides Azure vs EnvVar(parallel pattern to `make_kb_backend` / `make_users_store`)
-- [ ] **F1.5** `requirements.txt` adds `azure-keyvault-secrets>=4.8.0 azure-identity>=1.18.0`
-- [ ] **F1.5a** Install via mobile hotspot per ADR-0017 (c)— switch to hotspot → `pip install azure-keyvault-secrets azure-identity` → switch back;若 fail → fallback PyPI (a) attempt → 若仍 fail → PARTIAL PASS F1.5b deferred Wave C1.5
-- [ ] **F1.6** Tests `backend/tests/storage/test_key_vault.py` NEW — EnvVarProvider round-trip + AzureKeyVaultProvider patched(real Azure call NOT in unit test)
-- [ ] **F1.7** `mypy --strict backend/storage/key_vault.py` clean
-- [ ] **F1.8** ADR-0017 amendment landed:occurrence #8 row(Key Vault SDK install via mobile hotspot Plan B (c)— 3rd realized after Langfuse 2026-05-16)
+- [x] **F1.1** `backend/storage/key_vault.py` NEW — `KeyVaultProvider` Protocol(`get_secret` + `set_secret` + `delete_secret` + `list_secrets` + `rotate_secret`)+ `SecretMetadata` Pydantic + `SecretNotFoundError` + `generate_secret_value` 32-byte urlsafe entropy helper
+- [x] **F1.2** `EnvVarProvider` impl in `key_vault.py` — `os.environ`-backed fallback when `KEY_VAULT_URL` unset;`rotate_secret` raises `NotImplementedError` with actionable error message
+- [x] **F1.3** `backend/storage/azure_key_vault.py` NEW — `AzureKeyVaultProvider` production path using `azure.keyvault.secrets.aio.SecretClient` + `azure.identity.aio.DefaultAzureCredential`(async-by-default per CLAUDE.md §3.1)+ `aclose()` lifecycle hook for FastAPI lifespan shutdown
+- [x] **F1.4** `backend/storage/key_vault_factory.py` NEW — `make_key_vault_provider(settings)` factory;lazy-imports `AzureKeyVaultProvider` only when `key_vault_url` set(parallel to `make_kb_backend` ADR-0023 pattern)
+- [x] **F1.5** `backend/pyproject.toml` updated — `azure-keyvault-secrets>=4.8.0` added to `[project.dependencies]`(existing `azure-identity>=1.20` already satisfies 1.25.3 install);`KEY_VAULT_URL` env var added to `backend/storage/settings.py`
+- [x] **F1.5a** Install via mobile hotspot per ADR-0017 (c)— Chris executed 2026-05-19;`pip install "azure-keyvault-secrets>=4.8.0" "azure-identity>=1.18.0"` resolved to `azure-keyvault-secrets 4.11.0` + `azure-identity 1.25.3` clean(zero R8;3rd realized Plan B (c) after Langfuse 2026-05-16)
+- [x] **F1.6** `backend/tests/test_key_vault.py` NEW — **15 tests pass in 8.36s**(EnvVarProvider round-trip 6 tests + `generate_secret_value` entropy 3 tests + factory branch selection 2 tests + AzureKeyVaultProvider SDK-mocked Protocol conformance 4 tests)
+- [x] **F1.7** `mypy --strict storage/key_vault.py storage/azure_key_vault.py storage/key_vault_factory.py` → **0 errors in 3 source files**(1 mid-implementation finding:aio SecretClient uses `delete_secret` not `begin_delete_secret`/poller — fixed)
+- [x] **F1.8** ADR-0017 amendment landed:occurrence #8 row + NEW "Plan B realised — Azure Key Vault SDK via mobile hotspot (2026-05-19, W24-wave-c1 F1)" section + Decision-rule #5 (c) 3rd realized confirmation
+- [x] **F1.9** Full backend pytest regression preserved:**720 passed + 11 skipped**(W23 baseline 705 → +15 IMPROVED via F1.6 tests;no regression introduced)
 
 ## F2 — `/admin/connections/*` endpoint group(× 9 providers)
 
