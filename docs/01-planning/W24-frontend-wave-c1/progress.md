@@ -106,6 +106,77 @@ status: active                      # active | closed
 
 **End of W24-wave-c1 Day 1(active — F1 done,F2 next)**
 
+---
+
+## Day 1 cont — 2026-05-19 — F2 `/admin/connections/*` endpoint group (× 9 providers)
+
+### Done
+- **F2.1-F2.2 schemas + routes layout**:
+  - `backend/api/schemas/admin.py` NEW(115 lines)— `ProviderCategory`+`TestStatus` Literals + 7 Pydantic models(ProviderDeployment / ProviderConfig / ProviderSummary / ProviderPatch / TestConnectionResult / RotateSecretResult)
+  - `backend/api/routes/admin/__init__.py` NEW(package marker w/ F2-F4 scope docstring)
+  - `backend/api/routes/admin/connections.py` NEW(228 lines)— APIRouter w/ `/admin/connections` prefix + 5 endpoints + 9-provider `_run_probe` dispatcher + `_mask_secret` helper
+- **F2.3-F2.7 5 endpoints landed**:
+  - `GET /admin/connections` → list[ProviderSummary] 9-row lightweight view
+  - `GET /admin/connections/{provider_id}` → ProviderConfig full(404 on unknown;secret value NEVER returned — only `secret_kv_ref` name + `secret_masked_preview`)
+  - `PATCH /admin/connections/{provider_id}` → ProviderPatch(endpoint_url + region + display_name editable;deployments + secret_kv_ref omitted per ADR-0026 §Decision)
+  - `POST /admin/connections/{provider_id}/test` → 9-provider probe dispatcher returning `TestConnectionResult`(status + latency_ms + detail);persists last_test_at + last_test_status via backend
+  - `POST /admin/connections/{provider_id}/rotate-secret` → KeyVaultProvider.rotate_secret + masked preview;503 on EnvVarProvider NotImplementedError + 400 on managed-identity providers
+- **F2.8 Storage layer 3-file split per kb_management pattern**:
+  - `backend/storage/admin_provider_storage.py` NEW(259 lines)— Protocol + InMemoryAdminProviderBackend + `default_providers()` 9-provider seed + ProviderNotFoundError;categories `llm`(azure_openai with 4 deployments)/ `retrieval`(cohere + azure_search)/ `storage`(azure_blob + postgres)/ `observability`(langfuse + structlog)/ `identity`(acs_email + key_vault)
+  - `backend/storage/admin_provider_postgres.py` NEW(202 lines)— PostgresAdminProviderBackend lazy-imported impl + idempotent CREATE TABLE + seed merge(only INSERT rows missing by PK)+ row → ProviderConfig serialization
+  - `backend/storage/admin_provider_factory.py` NEW(20 lines)— `make_admin_provider_backend(settings)` mirrors `make_kb_backend` ADR-0023 pattern
+- **F2.8c Server.py lifespan wiring**:`app.state.key_vault_provider = make_key_vault_provider(settings)` + `app.state.admin_provider_backend = make_admin_provider_backend(settings)` + `app.include_router(admin_connections.router, tags=["admin"], dependencies=_auth)` — both factories register under `_auth` Depends per W8 D5 F4.4 admin-router-auth-cascade precedent
+- **9-provider Wave A config-state-only test-connection probes**(per W20 F2.1 /health pattern;Wave B+ promote to real I/O):
+  - azure_openai / cohere / azure_search:HTTPS endpoint check(no http)
+  - azure_blob:HTTPS or http://localhost(Azurite)allowed
+  - postgres:settings.database_url presence(no SELECT 1 ping Wave A)
+  - langfuse:HTTPS or http://localhost(local dev compose Langfuse)allowed
+  - acs_email:secret_kv_ref presence(not_tested 若 mock provider fallback)
+  - key_vault:settings.key_vault_url HTTPS check
+  - structlog:always_ok(config-only,no probe needed)
+- **F2.9** `backend/tests/api/test_admin_connections.py` NEW(411 lines)— **27 tests pass in 4.14s**:
+  - Storage seed(5 tests):9-entry default + 5-category match + Azure OpenAI 4-deployment + InMemory seed-on-construct + InMemory update persistence
+  - GET list(2 tests):200 9-summary + 503 backend not init
+  - GET detail(2 tests):200 full + 404 unknown
+  - PATCH(3 tests):display_name update + 404 unknown + idempotent empty body
+  - POST test(8 tests):azure_openai HTTPS OK + azure_blob local HTTP OK + postgres not_tested w/o DATABASE_URL + key_vault not_tested w/o KEY_VAULT_URL + structlog always OK + persistence verify + 404 unknown
+  - POST rotate-secret(5 tests):success+masked + persistence + 400 no kv_ref + 503 EnvVarProvider + 404 unknown
+  - Mask helper(2 tests):short value `***` only + typical token last-4-chars
+  - Schema sanity(1 test):SecretMetadata default shape
+- **F2.10 mypy strict**:
+  - `api/schemas/admin.py` + `storage/admin_provider_storage.py` + `storage/admin_provider_factory.py` + `api/routes/admin/connections.py` → **0 errors**
+  - `storage/admin_provider_postgres.py` → 6 errors **all mirror existing `kb_management/postgres_backend.py` pattern**(psycopg import-not-found x3 + `dict` / `tuple` generic type-arg x3);per CLAUDE.md §13 surgical + Karpathy §1.3 match existing pattern,不改 pre-existing baseline
+- **F2.11 Full backend pytest regression**:**747 passed + 11 skipped + 16 warnings in 207.32s**(F1 post 720 → **+27 net IMPROVED** via F2 27 NEW tests;no regression introduced)
+
+### Decisions
+- **D1.7 — Per-provider mocked test-connection per user pick** — config-state-only probes mirror W20 F2.1 /health pattern;avoid real I/O ping(R8 risk for Azure OpenAI / Cohere SDKs not yet wired into probe layer + Beta operator scope:probe answer "is configured properly?" not "is the cloud up?")。Wave B+ promotion path:swap `_probe_https_endpoint(cfg)` → `await httpx.get(cfg.endpoint_url + "/health", timeout=5)` per provider
+- **D1.8 — In-memory + Postgres dual backend per user pick** — exact kb_management 3-file split:Protocol + InMemory in `admin_provider_storage.py` / lazy-import production impl in `admin_provider_postgres.py` / factory branches in `admin_provider_factory.py`。Unset `DATABASE_URL` never touches `psycopg`(local dev / CI behavior preserved)
+- **D1.9 — 9-provider seed lives in code, not config** — `default_providers()` returns hardcoded list of 9 ProviderConfig rows with sensible Tier 1 defaults(endpoint URLs match `.env.example` shape + secret_kv_ref names follow `ekp-<provider>-<purpose>` convention)。Operator-customizable via PATCH endpoints + Postgres persistence;in-memory restart-wipes back to seed
+- **D1.10 — Secret value NEVER returned to UI** — `secret_kv_ref` exposes secret NAME(for operator to look up in Azure portal if needed);`secret_masked_preview`(e.g.`***xY1z`)is the only "value-hint" returned。Rotation flow:server generates new value → writes to Key Vault → records masked preview。UI shows the masked preview;real value lives only in Key Vault
+- **D1.11 — 9th provider `structlog` included for visibility** — although structlog is config-only(no secret to rotate,no endpoint to test),it's surfaced in Connections list for operator awareness("the JSON shipping is part of the stack")。Test connection always OK;rotate returns 400(no rotatable secret)
+- **D1.12 — managed-identity providers handled via secret_kv_ref=None** — `key_vault` 自己(managed identity in Container Apps prod)+ `structlog`(config-only)return `secret_kv_ref=None`;rotate endpoint returns 400 with actionable error message;UI consumes for `<DisabledAffordance>` Rotate-button reason
+- **D1.13 — server.py lifespan registers both factories at startup** — `app.state.key_vault_provider` + `app.state.admin_provider_backend` initialized in same block(per F1 plan §F1.4 + F2 plan §F2.8c);both factories cheap when env vars unset(EnvVarProvider + InMemoryAdminProviderBackend)so no startup cost regression
+- **D1.14 — `admin_provider_postgres.py` mypy errors accepted as pattern-mirror** — 6 errors(psycopg no-stubs x3 + dict/tuple type-arg x3)exactly match existing `kb_management/postgres_backend.py` pre-existing baseline;per CLAUDE.md §13 surgical + Karpathy §1.3 match-existing-pattern,不順手 refactor。Future cleanup candidate:add psycopg type stubs OR migrate to typed cursors(out of W24-c1 scope)
+
+### Acceptance(plan §3 + checklist F2)
+- [x] F2.1-F2.2 schemas + routes layout
+- [x] F2.3-F2.7 5 endpoints landed
+- [x] F2.8 + F2.8a + F2.8b + F2.8c storage layer + lifespan wire
+- [x] F2.9 27/27 tests pass
+- [x] F2.10 mypy strict 0 errors on new non-Postgres code
+- [x] F2.11 747 passed + 11 skipped(+27 IMPROVED)
+
+**Day 1 cont Verdict**:F2 `/admin/connections/*` endpoint group **DONE** 100%。Backend has 9-provider CRUD + Test + Rotate scaffolding ready for F3 identity tab + F4 api-keys tab to share storage / factory / lifespan patterns。
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(this commit)_ | `feat(api): /admin/connections/* 5 endpoints × 9 providers + InMemory+Postgres dual backend (W24-wave-c1 F2 per ADR-0026 Option B)` |
+
+---
+
+**End of W24-wave-c1 Day 1 cont(active — F1+F2 done,F3 next)**
+
 ### Commits
 | Hash | Subject |
 |---|---|

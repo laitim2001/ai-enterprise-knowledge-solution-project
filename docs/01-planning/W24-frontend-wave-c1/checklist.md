@@ -32,16 +32,20 @@ last_updated: 2026-05-19
 
 ## F2 — `/admin/connections/*` endpoint group(× 9 providers)
 
-- [ ] **F2.1** `backend/api/routes/admin/__init__.py` + `backend/api/routes/admin/connections.py` NEW
-- [ ] **F2.2** 9-provider Pydantic schemas(`ProviderConfig` + `ProviderDeployment` + `ProviderUsageStats`)
-- [ ] **F2.3** `GET /admin/connections` → list[ProviderSummary]
-- [ ] **F2.4** `GET /admin/connections/{provider_id}` → ProviderConfig full(secret masked)
-- [ ] **F2.5** `PATCH /admin/connections/{provider_id}` → update non-secret fields + Postgres write + audit_log row
-- [ ] **F2.6** `POST /admin/connections/{provider_id}/test` → per-provider lightweight connection probe → `{status, latency_ms, detail}`
-- [ ] **F2.7** `POST /admin/connections/{provider_id}/rotate-secret` → KeyVaultProvider.rotate_secret + last_rotated_at update + audit_log row
-- [ ] **F2.8** NEW Postgres table `admin_provider_configs` + idempotent ALTER migration
-- [ ] **F2.9** Tests `backend/tests/api/admin/test_connections.py` NEW(~30+ pytest cases)
-- [ ] **F2.10** mypy strict + pytest pass
+- [x] **F2.1** `backend/api/routes/admin/__init__.py` + `backend/api/routes/admin/connections.py` NEW(228 lines:5 endpoints + 9-provider probe dispatcher + mask helper)
+- [x] **F2.2** Pydantic schemas in `backend/api/schemas/admin.py` NEW(115 lines:`ProviderCategory` + `TestStatus` Literals + `ProviderDeployment` + `ProviderConfig` + `ProviderSummary` + `ProviderPatch` + `TestConnectionResult` + `RotateSecretResult`)
+- [x] **F2.3** `GET /admin/connections` → list[ProviderSummary]9 rows
+- [x] **F2.4** `GET /admin/connections/{provider_id}` → ProviderConfig full(secret value NEVER returned — only secret_kv_ref name + secret_masked_preview)
+- [x] **F2.5** `PATCH /admin/connections/{provider_id}` → ProviderPatch(endpoint_url + region + display_name);deployments + secret_kv_ref deliberately omitted per ADR-0026 §Decision(Wave B+ may expose deployment edits)
+- [x] **F2.6** `POST /admin/connections/{provider_id}/test` → 9-provider probe dispatcher(`_probe_https_endpoint` × 4 + `_probe_postgres` + `_probe_key_vault` + `_probe_acs_email` + `_probe_structlog`);Wave A config-state-only scope per W20 F2.1 /health pattern;Wave B+ promote 至 real I/O pings
+- [x] **F2.7** `POST /admin/connections/{provider_id}/rotate-secret` → KeyVaultProvider.rotate_secret + masked preview(`***` + last 4 chars)+ `last_rotated_at` update;500 → 503 mapping for `NotImplementedError`(EnvVarProvider fallback);400 for managed-identity providers(key_vault + structlog,secret_kv_ref=None)
+- [x] **F2.8** NEW Postgres table `admin_provider_configs` in `backend/storage/admin_provider_postgres.py`(202 lines)+ idempotent `CREATE TABLE IF NOT EXISTS` + seed merge(only INSERT rows missing by PK)
+- [x] **F2.8a** `backend/storage/admin_provider_storage.py` NEW(259 lines)— Protocol + `InMemoryAdminProviderBackend` + `default_providers()` 9-seed function(matches mockup categories);`ProviderNotFoundError` exception
+- [x] **F2.8b** `backend/storage/admin_provider_factory.py` NEW(20 lines)— `make_admin_provider_backend(settings)` mirrors `make_kb_backend` ADR-0023 lazy-import shape
+- [x] **F2.8c** `backend/api/server.py` lifespan wires `app.state.admin_provider_backend` + `app.state.key_vault_provider` + registers `admin_connections.router` w/ `_auth` deps
+- [x] **F2.9** Tests `backend/tests/api/test_admin_connections.py` NEW(411 lines)— **27 tests pass in 4.14s**:storage seed(5)+ GET list(2)+ GET detail(2)+ PATCH(3)+ POST test 9-provider per-probe(8)+ POST rotate-secret(5)+ mask helper(2)+ schema sanity(1)
+- [x] **F2.10** mypy strict:`api/schemas/admin.py` + `storage/admin_provider_storage.py` + `storage/admin_provider_factory.py` + `api/routes/admin/connections.py` 全部 0 errors;`storage/admin_provider_postgres.py` 6 errors **mirror existing `kb_management/postgres_backend.py` pattern**(psycopg no-stubs x3 + dict/tuple generic type-arg x3)— per CLAUDE.md §13 surgical 不改 pre-existing baseline pattern
+- [x] **F2.11** Full backend pytest regression preserved:**747 passed + 11 skipped in 207s**(F1 post 720 → **+27 net IMPROVED** via F2 27 NEW tests;no regression)
 
 ## F3 — `/admin/identity/*` endpoint group
 

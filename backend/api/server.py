@@ -39,6 +39,7 @@ from api.routes import (
 from api.routes import (
     eval as eval_routes,
 )
+from api.routes.admin import connections as admin_connections
 from generation.crag import CragGrader, CragLoop
 from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
@@ -49,6 +50,8 @@ from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
 from retrieval.reranker.factory import make_reranker
 from retrieval.retrieval_engine import RetrievalEngine
+from storage.admin_provider_factory import make_admin_provider_backend
+from storage.key_vault_factory import make_key_vault_provider
 from storage.settings import get_settings
 
 
@@ -75,6 +78,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embedder = None
     app.state.index_populator = None
     app.state.ingestion_chunker = LayoutAwareChunker()
+
+    # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
+    # Both factories pick lazy-imported production impls only when their env
+    # vars are set (KEY_VAULT_URL / DATABASE_URL); unset → process-local fallbacks
+    # (EnvVarProvider + InMemoryAdminProviderBackend). Mirrors the ADR-0023
+    # make_kb_backend pattern; no startup cost when neither is configured.
+    app.state.key_vault_provider = make_key_vault_provider(settings)
+    app.state.admin_provider_backend = make_admin_provider_backend(settings)
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -256,3 +267,5 @@ app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)
 app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)
 app.include_router(observability.router, tags=["observability"], dependencies=_auth)
+# W24-wave-c1 F2 — /admin/connections/* per ADR-0026 Option B.
+app.include_router(admin_connections.router, tags=["admin"], dependencies=_auth)
