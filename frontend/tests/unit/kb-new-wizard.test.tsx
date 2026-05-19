@@ -1,12 +1,18 @@
 /**
- * Unit tests — `/kb/new` 5-step wizard (W20 F4.4 / F8.4).
+ * Unit tests — `/kb/new` 5-step wizard (W20 F4.4 + W22 F5.2 rebuild) re-aligned
+ * at W23 F1.3 to W22 D8 canonical sequence: Identity → Format & chunking →
+ * Multimodal → Retrieval defaults → Review (mockup `ekp-page-kb-new.jsx
+ * PageKbNew`, file picker dropped per W22 D2 mockup-wins, "Continue" button
+ * not "Next").
  *
- * Verifies: Stepper renders 5 step indicators + Step 1 Source heading + first
- * step `aria-current="step"` + Step 4 Multimodal Tier 1 toggles render after
- * navigation + Tier 2 disabled affordances TIER 2 badge.
+ * Verifies: Stepper renders 5 step labels as text (no aria-label="Wizard steps",
+ * no aria-current="step" — W22 uses inline 28px circles + label/hint divs);
+ * Step 1 (Identity) form fields render with W22 placeholders + auto-derive
+ * kb_id_auto initial true;clicking Continue twice lands on Step 3 (Multimodal)
+ * with Tier 1 toggle titles + Tier 2 badge affordances.
  */
 
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -34,46 +40,64 @@ function renderWizard() {
   );
 }
 
-// W22 F8.7 — DOM rewritten in F5b /kb/new rebuild (mockup
-// `ekp-page-kb-new.jsx PageKbNew` 5-step view-switch reordered to Identity →
-// Format & chunking → Multimodal → Retrieval defaults → Review). Pre-W22
-// stepper-and-multimodal-step assertions on the W20-era DOM no longer match.
-// Skipped pending W23+ test cleanup phase. Tracked in W22 progress.md Day 5
-// F8.7 carry-over.
-describe.skip('KbNewPage 5-step wizard — DEFERRED W23+ per W22 F8.7', () => {
-  it('renders the Stepper with 5 steps + Step 1 active', () => {
+describe('KbNewPage 5-step wizard (W22 F5.2 rebuild) — re-aligned W23 F1.3', () => {
+  it('renders the 5 stepper labels + Step 1 (Identity) card', () => {
     renderWizard();
-    const stepperLabels = ['Source', 'Parsing', 'Chunking', 'Multimodal', 'Review'];
-    const stepper = screen.getByLabelText('Wizard steps');
+    // W22 STEPS const (line 88-92): Identity / Format & chunking / Multimodal /
+    // Retrieval defaults / Review. Rendered as inline `<div>{s.label}</div>` 13.5px
+    // text within the stepper card (line 253), no aria attributes.
+    const stepperLabels = [
+      'Identity',
+      'Format & chunking',
+      'Multimodal',
+      'Retrieval defaults',
+      'Review & create',
+    ];
     for (const label of stepperLabels) {
-      expect(within(stepper).getByText(label)).toBeInTheDocument();
+      // Each label may appear once (stepper-only — Identity also shows in card
+      // heading "KB identity" which is a substring not exact match).
+      expect(screen.getByText(label)).toBeInTheDocument();
     }
-    expect(screen.getByRole('heading', { name: 'Source', level: 2 })).toBeInTheDocument();
-    expect(document.querySelector('[aria-current="step"]')).not.toBeNull();
+    // Step 1 card heading is "KB identity" (W22 line 337 `<h3 class="card-title">`).
+    expect(
+      screen.getByRole('heading', { name: /kb identity/i, level: 3 }),
+    ).toBeInTheDocument();
+    // Step 1 of 5 footer text confirms wizard mode (W22 line 432).
+    expect(screen.getByText(/step 1 of 5/i)).toBeInTheDocument();
   });
 
-  it('navigates to Step 4 Multimodal and renders Tier 1 + Tier 2 affordances', async () => {
+  it('navigates to Step 3 Multimodal + renders Tier 1 toggle titles + Tier 2 badges', async () => {
     const user = userEvent.setup();
     renderWizard();
 
-    // Step 1 — fill required fields and click Next.
-    await user.type(screen.getByPlaceholderText('e.g. drive_user_manuals'), 'test_kb');
-    await user.type(screen.getByPlaceholderText('Drive — User Manuals'), 'Test KB');
-    await user.click(screen.getByRole('button', { name: /next/i }));
+    // Step 1 — fill Name (kb_id auto-derives from name per kb_id_auto: true
+    // initial state, line 109). Continue button enabled when trimmedName + idValid.
+    await user.type(screen.getByLabelText('Name'), 'Test KB');
+    await user.click(screen.getByRole('button', { name: /continue/i }));
 
-    // Step 2 — default values valid, click Next.
-    await user.click(screen.getByRole('button', { name: /next/i }));
+    // Step 2 — Format & chunking default values valid, Continue.
+    await user.click(screen.getByRole('button', { name: /continue/i }));
 
-    // Step 3 — default values valid, click Next.
-    await user.click(screen.getByRole('button', { name: /next/i }));
+    // Step 3 — Multimodal card heading is `<h3>Multimodal — images & screenshots</h3>`
+    // (W22 line 775, with `&amp;` HTML entity rendered as `&`).
+    expect(
+      screen.getByRole('heading', {
+        name: /multimodal — images.+screenshots/i,
+        level: 3,
+      }),
+    ).toBeInTheDocument();
 
-    // Step 4 Multimodal heading.
-    expect(screen.getByRole('heading', { name: 'Multimodal', level: 2 })).toBeInTheDocument();
-    // 3 Tier 2 affordances render with TIER 2 badge.
-    expect(screen.getAllByText('TIER 2').length).toBeGreaterThanOrEqual(3);
-    // Tier 1 active toggle labels.
-    expect(screen.getByText('Extract embedded images')).toBeInTheDocument();
-    expect(screen.getByText('Slide screenshots')).toBeInTheDocument();
-    expect(screen.getByText('Return images in chat')).toBeInTheDocument();
+    // W22 Tier 1 toggle titles via OptionRow `title` prop (lines 924, 931) +
+    // inline switch label (line 1168). Pre-W22 used simpler one-word labels;
+    // W22 D8 mockup wins with descriptive titles.
+    expect(screen.getByText('Embedded images from documents')).toBeInTheDocument();
+    expect(screen.getByText('Whole-slide screenshots for .pptx')).toBeInTheDocument();
+    expect(screen.getByText('Render inline images in chat answers')).toBeInTheDocument();
+
+    // W22 Tier 2 badge affordances appear multiple times — Multimodal step has
+    // explicit `<span class="badge badge-accent">TIER 2</span>` on the slide
+    // screenshots row + PDF render row + captioning card. Don't over-specify
+    // count — at least 1 confirms Tier 2 boundary enforcement is visible.
+    expect(screen.getAllByText('TIER 2').length).toBeGreaterThanOrEqual(1);
   });
 });

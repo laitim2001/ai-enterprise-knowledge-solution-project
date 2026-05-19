@@ -1,11 +1,17 @@
 /**
- * Unit tests — Eval Console page (`/eval`) — CH-002 F3.
+ * Unit tests — Eval Console page (`/eval`) — CH-002 F3 + W22 F7.1 rebuild
+ * re-aligned at W23 F1.1.
  *
- * Covers: the page renders without the stale "W4 stub / pending implementation"
- * copy; clicking Run calls `evalApi.run` with a `max_main_queries` cap (spec
- * R2) and renders the 4 metric cards from the returned `EvalReport`; an
- * eval-run error surfaces a `toast.error`. The mutation goes through a real
- * `QueryClientProvider`; `evalApi` / `sonner` / `next/link` are mocked.
+ * Covers: the page renders the W22 mockup-faithful 6-section layout (page-title
+ * 「Eval Console」+ subtitle empty-state「No eval runs yet — click <b>Run eval suite</b>
+ * to start.」+ page-actions 3 buttons);clicking「Run eval suite」calls `evalApi.run`
+ * with eval_set_id + enable_crag + max_main_queries (W22 D7 hardcoded
+ * EVAL_SET_ID const) and renders the 4 MetricCard labels (Recall@5 / Faithfulness /
+ * Correctness / Image Association — W22 D9.d backend-wins labels, full text not
+ * short-codes) + Failed queries card with q.query row from `EvalReport.failed_queries`;
+ * an eval-run error surfaces toast.error('Eval run failed', { description }). The
+ * mutation goes through a real `QueryClientProvider`;`evalApi` / `sonner` /
+ * `next/link` / `lucide-react` icons are mocked.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -59,42 +65,46 @@ function renderEval() {
   );
 }
 
-// W22 F8.7 — DOM rewritten in F7.1 /eval rebuild (648→996 lines, mockup
-// `ekp-page-eval.jsx PageEval` 6-section layout). Pre-W22 assertions on the 2-col
-// Run-Config + 4-metric-card pattern no longer match. Skipped pending W23+ test
-// cleanup phase that rewrites assertions to the new mockup-faithful DOM
-// (4-metric stat strip + 2-col 1.6fr/1fr cards). Tracked in W22 progress.md Day 5
-// F8.7 carry-over.
-describe.skip('Eval Console page (CH-002 F3) — DEFERRED W23+ per W22 F8.7', () => {
+describe('Eval Console page (CH-002 F3 + W22 F7.1 rebuild) — re-aligned W23 F1.1', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders the console + empty state without the stale W4-stub copy', () => {
+  it('renders the W22 mockup-faithful header + empty subtitle without stale W4-stub copy', () => {
     renderEval();
+    // Page heading is "Eval Console" (W22 F7.1 mockup PageEval line ~131 page-title).
     expect(
-      screen.getByRole('heading', { name: /evaluation console/i, level: 1 }),
+      screen.getByRole('heading', { name: 'Eval Console', level: 1 }),
     ).toBeInTheDocument();
+    // Empty-state subtitle text "No eval runs yet" + click hint preserved.
     expect(screen.getByText(/no eval runs yet/i)).toBeInTheDocument();
+    // Stale pre-rebuild stub copy gone.
     expect(screen.queryByText(/W4 stub/i)).toBeNull();
     expect(screen.queryByText(/pending implementation/i)).toBeNull();
   });
 
-  it('running an eval renders the 4 metric cards from the report', async () => {
+  it('running an eval renders the 4 MetricCard labels + Failed queries card from the report', async () => {
     vi.mocked(evalApi.run).mockResolvedValue(FAKE_REPORT);
     renderEval();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Run' }));
+    // Run button label is "Run eval suite" (W22 F7.1 mockup PageEval line ~155).
+    await userEvent.click(screen.getByRole('button', { name: /run eval suite/i }));
 
-    // The four MetricCard short-codes are unique on the page (the full labels
-    // collide with the Reranker Shootout table headers).
-    for (const code of ['R@5', 'FFul', 'CRct', 'IAss']) {
-      expect(await screen.findByText(code)).toBeInTheDocument();
+    // MetricCard renders `labels.full` (Recall@5 / Faithfulness / Correctness /
+    // Image Association) per W22 F7.1 METRIC_LABELS. The eval-run scenario does
+    // NOT trigger the Shootout `<table>` (shootoutReport stays null → empty-state
+    // card with no `<th>` headers) — so no header collision on these label names.
+    for (const label of ['Recall@5', 'Faithfulness', 'Correctness', 'Image Association']) {
+      expect(await screen.findByText(label)).toBeInTheDocument();
     }
-    expect(screen.getByText('0.920')).toBeInTheDocument(); // recall_at_5
-    expect(screen.getByText(/failed queries \(1\)/i)).toBeInTheDocument();
+    // recall_at_5 = 0.92 → MetricCard `pct.toFixed(1)` = "92.0" (W22 line ~264).
+    expect(screen.getByText('92.0')).toBeInTheDocument();
+    // Failed queries card heading + the FAKE_REPORT q.query row text (W22 line ~745).
+    expect(screen.getByRole('heading', { name: /failed queries/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByText('how do refunds work')).toBeInTheDocument();
 
+    // evalApi.run called with the hardcoded EVAL_SET_ID + enable_crag + a numeric
+    // max_main_queries cap (W22 D7: hardcoded const, not reactive picker).
     expect(evalApi.run).toHaveBeenCalledWith(
       expect.objectContaining({
         eval_set_id: 'eval-set-v0',
@@ -108,8 +118,9 @@ describe.skip('Eval Console page (CH-002 F3) — DEFERRED W23+ per W22 F8.7', ()
     vi.mocked(evalApi.run).mockRejectedValue(new Error('eval orchestrator down'));
     renderEval();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Run' }));
+    await userEvent.click(screen.getByRole('button', { name: /run eval suite/i }));
 
+    // W22 F7.1 onError → toast.error('Eval run failed', { description: err.message }).
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 });

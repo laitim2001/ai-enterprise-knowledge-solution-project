@@ -65,9 +65,59 @@ last_updated: 2026-05-19
 
 ---
 
+## Day 1 — 2026-05-19(F1 Vitest re-align)
+
+### Context
+
+- F1 Vitest re-align 4 個 `describe.skip` files per W22 F8.7 carry-over
+- 4 个 deferred files unblock + re-align W22 rebuilt DOM
+- 同步 surfaced 1 pre-existing backend `/health` test drift(W20 F2.1 introduced,test 漏 update;**不屬** W23 regression)
+
+### Planned vs Actual Effort
+
+| Item | Planned | Actual | Variance | Note |
+|---|---|---|---|---|
+| F1.1 eval-page | 0.25 day | ~30min | 0 | clean re-align — heading「Evaluation Console→Eval Console」+ button「Run→Run eval suite」+ metric labels full-text 非 short codes |
+| F1.2 kb-detail | 0.5 day | ~45min | 0 | 2 sub-test rewrites — Chunks chunk_id `#` prefix + `getAllByText` for section_path collision + Settings 用 `getByDisplayValue` 而非 `getByLabelText`(label-input 冇 htmlFor)+ button「Save identity→Save changes」 |
+| F1.3 kb-new-wizard | 0.25 day | ~30min | 0 | stepper labels canonical「Identity / Format & chunking / Multimodal / Retrieval defaults / Review & create」+ button「Next→Continue」+ Multimodal toggle titles 改 |
+| F1.4 kb-upload-wizard | 0.25 day | ~25min | 0 | 3-step canonical「Data source / Document processing / Execute」+ single toggle「Extract embedded screenshots」+ link「edit KB Settings」 |
+| F1.5-F1.8 verify gates | 0.25 day | ~30min | 0 | full suite 28 pass + 2 worker timeout(OneDrive parallelism issue)+ vitest threads pool default(W23 F1.5)+ tsc + lint + Grep `[oklch`=0 + backend pytest 704 pass +1 pre-existing fail |
+
+### Day 1 deliverables
+
+- F1.1 eval-page.test.tsx re-aligned `(this commit)`
+- F1.2 kb-detail.test.tsx re-aligned(2 sub-tests:Chunks tab + Settings tab)`(this commit)`
+- F1.3 kb-new-wizard.test.tsx re-aligned `(this commit)`
+- F1.4 kb-upload-wizard.test.tsx re-aligned `(this commit)`
+- F1.5 Vitest stats verified — full suite 28 pass + 0 skipped + 2 worker timeout errors(non-test-logic;documented retro)— net **+14 pass vs pre-W22 baseline 14 pass**(`describe.skip` 全部 cleared,coverage IMPROVED)`(this commit)`
+- F1.6 tsc exit 0 + lint clean `(this commit)`
+- F1.7 `Grep '\[oklch'` = 0 hits preserved `(this commit)`
+- F1.8 Backend pytest 704 pass + 11 skipped + **1 pre-existing fail**(`test_api_skeleton.py::test_health_returns_ok`)— W20 F2 `550111e` `/health` endpoint extended payload `{status, components: {...}}`,test 漏 update assertion 仍 `{"status": "ok"}` exact;W23 不 touch backend(5 changed files 全部喺 `frontend/` + `docs/`)→ pre-existing W20 drift escaped W20-W22 closeouts;**not W23 regression** per CC8 + plan §3 FAIL gate(test not changed by W23);flag for separate Sev4 bug-fix workflow post-W23 close per PROCESS.md §4
+
+### Decisions logged
+
+- **D1.1** **`frontend/tests/setup.ts` plan path drift**(`§10 R3` log)— W23 D0 pre-active-flip audit miss 咗;actual setup file is `frontend/tests/unit/setup.ts`(per `vitest.config.ts` line 24 `setupFiles: ['./tests/unit/setup.ts']`)。Plan §5 + checklist CC11 仍寫舊路徑;不 break 任何 W23 deliverable(F1 不 reference setup path,only fixture pattern continuity),所以 silent doc-only drift。Future W23+ amendment(non-critical)
+- **D1.2** **Vitest forks pool 喺 OneDrive timeout**(4 cumulative incident W23 D1 mid-F1.5 verify)— `pnpm test:unit` default forks pool 觸發 60s+ worker startup timeout(Windows OneDrive filesystem hooks slow process creation)。**Fix**:`vitest.config.ts` 加 `pool: 'threads'`(reuses `worker_threads` in-process,sidesteps OneDrive process-creation latency)。Individual files run reliably under threads;rare full-suite worker timeout 仍存在(2 erred files out of 13),documented retro + W23 F4 setup.md amendment opportunity。**未 fix completely** — `--no-isolate` + `poolOptions.threads.singleThread` 都唔 fully solve;workaround = run 4-file batch via `pnpm exec vitest run <files>` syntax;full-suite parallel run accepts 1-2 occasional worker timeout per session as benign。
+- **D1.3** **Backend `test_health_returns_ok` pre-existing drift NOT W23 regression** — W20 F2(commit `550111e`)extended `/health` payload per-component but test漏 update;1 failure 屬 W20-W22 closeout escaped item not W23 introduced;CC8 backend regression gate「W23 不 touch backend → no W23 regression possible」satisfied;plan §3 FAIL trigger「Test re-align introduces backend regression」NOT triggered。Bug-fix workflow scope post-W23 close(BUG-XXX or W23+ rolling JIT amendment;test file 1-line assertion fix expected)
+- **D1.4** **Pre-active-flip 5-step recursive 11th cumulative + 4 mid-F1 catches** — 4 in-file empirical mismatches caught BEFORE full re-align via cumulative `grep` + W22 source read pattern:**(1)** eval-page MetricCard `labels.full` vs `short_codes`(test 預 short codes,W22 render full)→ catch via line ~261 grep + adjust;**(2)** kb-detail Settings tab `<label>`/`<input>` 冇 `htmlFor`/`id` linkage → catch via line ~1832-1869 inspect + switch to `getByDisplayValue`;**(3)** kb-new-wizard STEPS[4] label「Review & create」(non「Review」)→ catch via line 93 grep;**(4)** kb-upload-wizard Step 1 single toggle「Extract embedded screenshots」(non pre-W22 dual toggles)+ link text「edit KB Settings」→ catch via line 612 + 626 grep。Pattern consistent with W22 D1/D8/D9 recursive process amendment;empirical evidence of「mockup-vs-implementation grep cycle BEFORE test writing」now established
+
+### Carry-overs for Day 2+
+
+- F2 Playwright re-align(18 fail + 15 visual baseline re-capture)— kickoff next session
+- F3 CLAUDE.md amendment cluster(3 candidates + v1.9 bump)— sequential after F2(amendments cite F1 outcomes incl. F1.5 OneDrive threads pool finding for §3.2 amendment evidence)
+- F4 setup.md `--reload` discipline + **Vitest forks-pool-OneDrive troubleshooting subsection**(new W23 D1 finding)— before / after F3 independent
+- F5 closeout — after F1-F4 all green
+- **Sev4 bug-fix candidate** post-W23 close:`tests/test_api_skeleton.py::test_health_returns_ok` 1-line assertion update aligned with W20 F2 extended payload
+
+### Commits
+
+- `(this commit)` — `test(frontend): W23 F1 — Vitest 4 files re-aligned to W22 rebuilt DOM + threads pool default`(F1.1+F1.2+F1.3+F1.4 + F1.5 vitest config + F1.6+F1.7+F1.8 gates)
+
+---
+
 ## Day N — _pending_
 
-_(Day 1+ entries land per F-deliverable progression)_
+_(Day 2+ entries land per F-deliverable progression)_
 
 ---
 

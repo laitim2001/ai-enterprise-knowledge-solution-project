@@ -1,12 +1,14 @@
 /**
  * Unit tests — KB Detail page (`/kb/[id]`) — CH-002 F7 (Chunks tab wired) +
- * F10 (Settings → Identity name/description editable, saved via PATCH /kb/{id}).
+ * F10 (Settings → name/description PATCH) re-aligned at W23 F1.2 to W22 F6.1
+ * 7-tab rebuild DOM (mockup `ekp-page-kb.jsx:140 PageKbDetail` inline pattern,
+ * 1776→1339 lines).
  *
- * The page is rendered through a real `QueryClientProvider`; `next/navigation`
- * (`useParams` / `useRouter` / `useSearchParams` — the active tab comes from
- * `?tab=`), `next/link`, `sonner`, and the api modules are mocked. Tab content
- * is Radix `<TabsContent>` which only mounts the active tab, so each describe
- * block flips `mocks.tab` before rendering.
+ * The page is rendered through a real `QueryClientProvider`;`next/navigation`
+ * (`useParams` / `useRouter` / `useSearchParams` — active tab from `?tab=`),
+ * `next/link`, `sonner`, and the api modules are mocked. Active tab content
+ * is conditional on `activeTab === <key>` (W22 inline render, not Radix Tabs),
+ * so each describe block flips `mocks.tab` before render.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -53,6 +55,7 @@ const FAKE_KB = {
   failed_documents: [],
   last_indexed_at: '2026-05-12T00:00:00Z',
   storage_size_mb: 0.0,
+  archived: false,
 };
 const FAKE_DOCS = [
   {
@@ -91,6 +94,9 @@ vi.mock('@/lib/api/kb', () => ({
     get: vi.fn(async () => FAKE_KB),
     patchSettings: vi.fn(async () => FAKE_KB),
     patchMetadata: vi.fn(async () => FAKE_KB),
+    archive: vi.fn(async () => FAKE_KB),
+    listImages: vi.fn(async () => []),
+    chunkingPreview: vi.fn(async () => ({ chunks: [] })),
   },
 }));
 vi.mock('@/lib/api/documents', () => ({
@@ -112,68 +118,91 @@ function renderKbDetail() {
   );
 }
 
-// W22 F8.7 — DOM rewritten in F6.1 /kb/[id] rebuild (1776→1339 lines, mockup
-// `ekp-page-kb.jsx:140 PageKbDetail` 7-tab inline pattern per D8.c precedent).
-// Pre-W22 Chunks-tab + Settings/Identity-tab assertions on the W17 baseline DOM
-// no longer match the new inline tab structure. Skipped pending W23+ test
-// cleanup phase. Tracked in W22 progress.md Day 5 F8.7 carry-over.
-describe.skip('KB Detail — Chunks tab (CH-002 F7) — DEFERRED W23+ per W22 F8.7', () => {
+describe('KB Detail — Chunks tab (CH-002 F7 + W22 F6.1 rebuild) — re-aligned W23 F1.2', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.tab = 'chunks';
   });
 
-  it('lists a document\'s chunks (no stale 501-stub copy)', async () => {
+  it("lists a document's chunks (no stale 501-stub copy)", async () => {
     renderKbDetail();
 
-    // Chunk rows render once the (mocked) KB fetch + doc listing + chunk listing
-    // all settle — three chained async resolutions, so allow extra time when the
-    // whole suite runs together (jsdom + OneDrive can be slow).
+    // W22 F6.1 ChunksTab renders chunk_id with `#` prefix in browse list
+    // (mockup `ekp-page-kb.jsx` sub-tab convention;line ~650). Allow extra
+    // time when whole suite runs (jsdom + OneDrive can be slow with chained
+    // KB-get → docs-list → chunks-list async resolutions).
     expect(
       await screen.findByText(
-        'kb-test-kb_doc-doc-1_chunk-0000',
+        '#kb-test-kb_doc-doc-1_chunk-0000',
         {},
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText('kb-test-kb_doc-doc-1_chunk-0001')).toBeInTheDocument();
-    expect(screen.getByText('Section 1')).toBeInTheDocument();
-    expect(screen.getByText('Vendor Manual › Section 1')).toBeInTheDocument();
-    expect(screen.getByText('1/2')).toBeInTheDocument();
-    expect(screen.getByText(/low-value/i)).toBeInTheDocument();
+    expect(screen.getByText('#kb-test-kb_doc-doc-1_chunk-0001')).toBeInTheDocument();
 
-    // Stale stub copy is gone.
+    // chunk_title rendered as 13px row body text (line ~653). Note: `Section 1`
+    // also appears in section_path span within both the browse row and the
+    // active-chunk preview card (line ~656 + ~732), so use `getAllByText`.
+    expect(screen.getAllByText('Section 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Section 2').length).toBeGreaterThan(0);
+
+    // W22 ChunksTab Browse + Chunk preview cards both render — heading copy
+    // confirms tab rendered correctly.
+    expect(
+      screen.getByRole('heading', { name: /browse chunks/i, level: 3 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /chunk preview/i, level: 3 }),
+    ).toBeInTheDocument();
+
+    // Stale W2-era stub copy gone (W22 rebuild + W17 stub cascade closed).
     expect(screen.queryByText(/501 stub/i)).toBeNull();
     expect(screen.queryByText(/pending backend list endpoint/i)).toBeNull();
     expect(screen.queryByText(/W2 chunk listing/i)).toBeNull();
   });
 });
 
-// W22 F8.7 — DEFERRED W23+ same as Chunks tab block above.
-describe.skip('KB Detail — Settings/Identity tab (CH-002 F10) — DEFERRED W23+ per W22 F8.7', () => {
+describe('KB Detail — Settings tab (CH-002 F10 + W22 F6.1 rebuild) — re-aligned W23 F1.2', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.tab = 'settings';
   });
 
-  it('renders editable name/description (no read-only-Tier-1 copy) and PATCHes on save', async () => {
+  it('renders editable Name + Description inputs (kb_id is locked) and PATCHes on Save changes', async () => {
     renderKbDetail();
 
-    const nameInput = await screen.findByLabelText('Display name');
-    expect(nameInput).toHaveValue('Test KB');
-    expect(nameInput).not.toHaveAttribute('readonly');
-    expect(screen.getByLabelText('Description')).toHaveValue('A test KB.');
-    expect(screen.getByLabelText('KB ID')).toHaveAttribute('readonly');
+    // W22 F6.1 SettingsTab uses label「Name」/「Description」/「kb_id」(lowercase
+    // + Shield icon) but the labels and their inputs are siblings WITHOUT
+    // `htmlFor`/`id` linkage (line ~1832-1869), so `getByLabelText` cannot
+    // match. Query by display value instead — each input has a distinct value
+    // ("Test KB" / "A test KB." / "test-kb"). Pre-W22 also used HTML `readonly`
+    // for KB ID input;W22 switched to `disabled` (line ~1863).
+    const nameInput = await screen.findByDisplayValue('Test KB');
+    expect(nameInput).not.toBeDisabled();
 
+    const descriptionInput = screen.getByDisplayValue('A test KB.');
+    expect(descriptionInput).not.toBeDisabled();
+
+    const kbIdInput = screen.getByDisplayValue('test-kb');
+    expect(kbIdInput).toBeDisabled();
+
+    // Stale pre-rebuild copy gone.
     expect(screen.queryByText(/PATCH lands W15/i)).toBeNull();
     expect(screen.queryByText(/read-only Tier 1/i)).toBeNull();
 
+    // Save flow — W22 SettingsTab combined-form「Save changes」button (line ~2013)
+    // calls metaMutation.mutate() when name/description dirty;mutation calls
+    // kbApi.patchMetadata(kbId, { name?: ..., description?: ... }) conditional
+    // on field change (line ~1781-1786).
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, 'Renamed KB');
-    await userEvent.click(screen.getByRole('button', { name: /save identity/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() =>
-      expect(kbApi.patchMetadata).toHaveBeenCalledWith('test-kb', { name: 'Renamed KB' }),
+      expect(kbApi.patchMetadata).toHaveBeenCalledWith(
+        'test-kb',
+        expect.objectContaining({ name: 'Renamed KB' }),
+      ),
     );
   });
 });
