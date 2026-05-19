@@ -1,55 +1,75 @@
 'use client';
 
 /**
- * Settings (`/settings`) — small profile + preferences view per architecture.md
- * v6 §5 + `references/design-mockups/ekp-page-misc.jsx:308 PageSettings`.
+ * Settings (`/settings`) — 6-tab `PageSettingsRich` (W24-wave-c1 F5 per
+ * ADR-0026 Option B + mockup `references/design-mockups/ekp-page-settings-tabs.jsx:7-46`).
  *
- * W22 F8.1 (2026-05-18 D9) — complete rewrite for mockup fidelity per
- * CLAUDE.md §5.7 H7. Pre-W22 W18 F5 implementation (104 lines, shadcn
- * Card + ProfileRow + ThemeToggle dropdown) replaced with mockup
- * PageSettings decomposition: 3 cards (Profile + Appearance + Account) +
- * v1-scope dashed-border footer.
+ * **6 tabs** per ADR-0026 Accepted Option B fully editable Settings:
+ *   profile (W22 F8.1 thin Profile card preserved)
+ *   appearance (W22 F8.1 thin Appearance card preserved)
+ *   connections (F2 9-provider × 5-category service connections — NEW)
+ *   identity (F3 Entra + MSAL + role + policy — NEW)
+ *   api-keys (F4 4-stat + outgoing quotas + incoming Tier 2 disabled — NEW)
+ *   account (W22 F8.1 thin Account card + F5 audit log preview — NEW)
  *
- * Backend wins per CLAUDE.md §13 / W22 D10 (4th cumulative pre-active-flip
- * audit application):
- *   - D10.a pre-W22 docstring referenced `ekp-page-settings-tabs.jsx` (Wave C2
- *     6-tab file per ADR-0026) — wrong file for W18 thin scope; correct
- *     reference is `ekp-page-misc.jsx:308 PageSettings`
- *   - D10.b plan §2 F8.1 mentioned "Connections + API Keys + Audit log
- *     Tier 2 chips" but mockup PageSettings has only Profile / Appearance /
- *     Account (those sections belong to Wave C2 6-tab `ekp-page-settings-tabs.jsx`,
- *     NOT W22 scope) — drop per H7 mockup-wins
- *   - D10.c mockup theme seg = 2-button binary (Light / Dark); next-themes
- *     supports tri-state Light / Dark / System — per H7 drop System mode
- *     from UI (Wave C2 can re-introduce)
- *   - D10.d mockup "Rotate session" button has no backend hint → DisabledAffordance
- *     Wave C+ per minimal-scope choice (session rotation requires re-MSAL
- *     flow — Wave C scope)
- *   - D10.e mockup avatar = hardcoded "CL" initials → compute from
- *     `preferredUsername` (split @, then split . or -, take first letter of
- *     first 2 parts)
+ * **Deep link**: `?tab=<id>` query param resolves the initial tab; default
+ * = `profile`. Pattern mirrors W18 F3 chat `?q=` deep-link.
  *
- * Preserves: `useAuthStore.signOut` + `useCurrentUser` hook + auth state
- * shape (AuthenticatedUser w/ oid / tid / preferredUsername / isMock).
- * Dropped: ThemeToggle dropdown component (not used here), ProfileRow
- * helper (mockup uses different decomposition), shadcn Card / CardHeader /
- * CardContent (mockup uses .card CSS classes per CSS-first pivot baseline).
+ * **Pre-active-flip R6 audit** (per CLAUDE.md §10 R6):
+ *   - Plan §2 F5.1 "rewrite — replace thin v1 3-card structure" — confirmed
+ *     W22 F8.1 ProfileCard / AppearanceCard / AccountCard inline functions
+ *     are preserved as the Profile + Appearance + Account tab bodies.
+ *   - Plan §2 F5.2 `?tab=` deep link "default = profile" — implemented via
+ *     `useSearchParams` (App Router hook;Suspense-boundary required when
+ *     consumed in client component per Next 14 docs).
+ *   - Plan §2 F5.8 mentioned "Audit log preview surface" — F4 deferred read
+ *     endpoint to "F5/Wave C2"; F5 ships the read endpoint as F5 backend
+ *     hook + `<SettingsAuditLog>` sub-card inside Account tab.
+ *
+ * Preserved from W22 F8.1: `useAuthStore.signOut` + `useCurrentUser` hook +
+ * AuthenticatedUser shape + computeInitials helper. Per CLAUDE.md §1.3
+ * surgical — extends, does NOT rewrite the Profile / Appearance / Account
+ * logic.
  */
 
-import { LogOut, RefreshCw } from 'lucide-react';
+import {
+  Activity,
+  KeyRound,
+  LogOut,
+  PlugZap,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
+import { SettingsApiKeys } from '@/components/settings/settings-api-keys';
+import { SettingsAuditLog } from '@/components/settings/settings-audit-log';
+import { SettingsConnections } from '@/components/settings/settings-connections';
+import { SettingsIdentity } from '@/components/settings/settings-identity';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
-import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
 import type { AuthenticatedUser } from '@/lib/auth/types';
+import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
+
+const TABS = [
+  { id: 'profile', label: 'Profile', icon: Users },
+  { id: 'appearance', label: 'Appearance', icon: Sparkles },
+  { id: 'connections', label: 'Connections', icon: PlugZap },
+  { id: 'identity', label: 'Identity & Auth', icon: ShieldCheck },
+  { id: 'api-keys', label: 'API Keys & Quotas', icon: KeyRound },
+  { id: 'account', label: 'Account', icon: Activity },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
+const VALID_TABS = new Set<TabId>(TABS.map((t) => t.id));
 
 /**
  * Compute 2-char avatar initials from `preferredUsername`:
  *  "chris.lai@ricoh.com" → "CL"
- *  "dev-user@ekp.local"  → "DU"
- *  "alice"               → "AL" (first 2 chars when no separator)
- *  "" / null             → "??"
  */
 function computeInitials(username: string | null | undefined): string {
   if (!username) return '??';
@@ -62,68 +82,111 @@ function computeInitials(username: string | null | undefined): string {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="content">
+          <div className="content-narrow" style={{ maxWidth: 1080 }}>
+            <div className="page-header">
+              <h1 className="page-title">Settings</h1>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <SettingsPageInner />
+    </Suspense>
+  );
+}
+
+function SettingsPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = searchParams.get('tab') as TabId | null;
+  const [tab, setTab] = useState<TabId>(
+    initialTab && VALID_TABS.has(initialTab) ? initialTab : 'profile',
+  );
+
   const user = useCurrentUser();
   const signOut = useAuthStore((s) => s.signOut);
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // next-themes is client-only; avoid hydration mismatch by deferring
-  // theme-derived UI until after mount (per next-themes recommended pattern).
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const handleTabChange = useCallback(
+    (next: TabId) => {
+      setTab(next);
+      // Shallow URL update — preserves deep-link sharing without full navigation.
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', next);
+      router.replace(url.pathname + url.search, { scroll: false });
+    },
+    [router],
+  );
+
   return (
     <div className="content">
-      <div className="content-narrow" style={{ maxWidth: 720 }}>
+      <div className="content-narrow" style={{ maxWidth: 1080 }}>
         <div className="page-header">
           <div>
             <h1 className="page-title">Settings</h1>
             <p className="page-subtitle">
-              Profile, theme, and account. Workspace-level configuration lives
-              under each KB&apos;s Settings tab.
+              Profile · theme · all external service connections · Entra ID +
+              MSAL config · API quotas. <b>Zero hardcoded credentials</b> —
+              every endpoint, secret, and connection string is managed here
+              and persisted in Azure Key Vault.
             </p>
           </div>
         </div>
 
-        <ProfileCard user={user} />
-
-        <AppearanceCard
-          mounted={mounted}
-          resolvedTheme={resolvedTheme ?? null}
-          setTheme={setTheme}
-        />
-
-        <AccountCard onSignOut={() => void signOut()} />
-
-        <div
-          style={{
-            marginTop: 24,
-            padding: '12px 16px',
-            border: '1px dashed oklch(var(--border-strong))',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: 12,
-            color: 'oklch(var(--muted-foreground))',
-            lineHeight: 1.6,
-          }}
-        >
-          <b style={{ color: 'oklch(var(--foreground))' }}>v1 scope</b> ·
-          Settings is intentionally thin (W18 closeout). Wave C2 (per ADR-0026)
-          will add billing, API keys, team management, notification routing,
-          and audit log delegation.
+        {/* Tab navigation */}
+        <div className="tabs" role="tablist" aria-label="Settings sections">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className="tab"
+                data-active={active}
+                onClick={() => handleTabChange(t.id)}
+              >
+                <Icon size={14} aria-hidden="true" /> {t.label}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Tab body */}
+        {tab === 'profile' && <ProfileTab user={user} />}
+        {tab === 'appearance' && (
+          <AppearanceTab
+            mounted={mounted}
+            resolvedTheme={resolvedTheme ?? null}
+            setTheme={setTheme}
+          />
+        )}
+        {tab === 'connections' && <SettingsConnections />}
+        {tab === 'identity' && <SettingsIdentity />}
+        {tab === 'api-keys' && <SettingsApiKeys />}
+        {tab === 'account' && <AccountTab onSignOut={() => void signOut()} />}
       </div>
     </div>
   );
 }
 
 // ============================================================================
-// ProfileCard
+// ProfileTab — preserved from W22 F8.1 ProfileCard logic
 // ============================================================================
-function ProfileCard({ user }: { user: AuthenticatedUser | null }) {
+function ProfileTab({ user }: { user: AuthenticatedUser | null }) {
   const initials = computeInitials(user?.preferredUsername);
   const username = user?.preferredUsername ?? '—';
-  // Tier 1 has no role system (RBAC = Wave C1 per ADR-0027); display placeholder.
   const role = 'Workspace Admin';
   const sessionLine = user
     ? user.isMock
@@ -132,7 +195,7 @@ function ProfileCard({ user }: { user: AuthenticatedUser | null }) {
     : 'Signing in…';
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card">
       <div className="card-header">
         <h3 className="card-title">Profile</h3>
       </div>
@@ -157,7 +220,7 @@ function ProfileCard({ user }: { user: AuthenticatedUser | null }) {
         <DisabledAffordance
           variant="p1-strict"
           reason="Wave C2 — profile edit requires Entra Graph SDK + RBAC"
-          tier2Trigger="Tier 2 — post-W22 governance (ADR-0026)"
+          tier2Trigger="Tier 2 — post-W22 governance (ADR-0027)"
         >
           <button className="btn btn-secondary btn-sm" disabled>
             Edit profile
@@ -172,9 +235,9 @@ function ProfileCard({ user }: { user: AuthenticatedUser | null }) {
 }
 
 // ============================================================================
-// AppearanceCard — Theme seg + Language disabled
+// AppearanceTab — preserved from W22 F8.1 AppearanceCard logic
 // ============================================================================
-function AppearanceCard({
+function AppearanceTab({
   mounted,
   resolvedTheme,
   setTheme,
@@ -183,15 +246,11 @@ function AppearanceCard({
   resolvedTheme: string | null;
   setTheme: (theme: string) => void;
 }) {
-  // Per D10.c: mockup binary Light/Dark seg; next-themes tri-state System
-  // mode dropped from UI (Wave C2 can re-introduce). Use resolvedTheme so
-  // the active state is correct even if theme === 'system' on first load —
-  // first click then explicitly sets light/dark, leaving system tracking off.
   const isLight = mounted && resolvedTheme === 'light';
   const isDark = mounted && resolvedTheme === 'dark';
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card">
       <div className="card-header">
         <h3 className="card-title">Appearance</h3>
       </div>
@@ -200,8 +259,8 @@ function AppearanceCard({
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500, fontSize: 13.5 }}>Theme</div>
             <div className="text-xs muted">
-              Switches the entire app between Warm Charcoal (light) and Warm
-              Neutral Dark (dark) palette
+              Warm Charcoal (light) / Warm Neutral Dark (dark) · 100% oklch
+              tokens
             </div>
           </div>
           <div className="seg" role="tablist" aria-label="Theme preference">
@@ -230,9 +289,37 @@ function AppearanceCard({
         <div className="hr" />
         <div className="row" style={{ padding: '4px 0' }}>
           <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500, fontSize: 13.5 }}>Density</div>
+            <div className="text-xs muted">
+              Compact / Comfortable layout density — Wave C2 promote
+            </div>
+          </div>
+          <DisabledAffordance
+            variant="p1-strict"
+            reason="Wave C2 — density toggle requires layout token system"
+            tier2Trigger="Tier 2 — post-Beta"
+          >
+            <div className="seg" aria-label="Density (disabled)">
+              <button
+                type="button"
+                className="seg-btn"
+                disabled
+                data-active={true}
+              >
+                Comfortable
+              </button>
+              <button type="button" className="seg-btn" disabled>
+                Compact
+              </button>
+            </div>
+          </DisabledAffordance>
+        </div>
+        <div className="hr" />
+        <div className="row" style={{ padding: '4px 0' }}>
+          <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500, fontSize: 13.5 }}>Language</div>
             <div className="text-xs muted">
-              JP / ZH support is Tier 2 — disabled affordance per ADR-0024
+              JP / ZH support is Tier 2 — disabled per ADR-0024
             </div>
           </div>
           <DisabledAffordance
@@ -251,35 +338,66 @@ function AppearanceCard({
 }
 
 // ============================================================================
-// AccountCard — Rotate session (Wave C+) + Sign out (functional)
+// AccountTab — preserved Sign-out + Rotate session + Audit log surface (F5)
 // ============================================================================
-function AccountCard({ onSignOut }: { onSignOut: () => void }) {
+function AccountTab({ onSignOut }: { onSignOut: () => void }) {
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">Account</h3>
-      </div>
-      <div className="card-body" style={{ display: 'flex', gap: 8 }}>
-        <DisabledAffordance
-          variant="p1-strict"
-          reason="Wave C+ — session rotation requires re-MSAL flow + token refresh"
-          tier2Trigger="Tier 2 — post-W22 governance"
-        >
-          <button className="btn btn-secondary btn-sm" disabled>
-            <RefreshCw size={13} aria-hidden="true" /> Rotate session
-            <span className="badge badge-muted" style={{ marginLeft: 6 }}>
-              Tier 2
-            </span>
+    <div className="col" style={{ gap: 16 }}>
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Session</h3>
+        </div>
+        <div className="card-body" style={{ display: 'flex', gap: 8 }}>
+          <DisabledAffordance
+            variant="p1-strict"
+            reason="Wave C+ — session rotation requires re-MSAL flow + token refresh"
+            tier2Trigger="Tier 2 — post-W22 governance"
+          >
+            <button className="btn btn-secondary btn-sm" disabled>
+              <RefreshCw size={13} aria-hidden="true" /> Rotate session
+              <span className="badge badge-muted" style={{ marginLeft: 6 }}>
+                Tier 2
+              </span>
+            </button>
+          </DisabledAffordance>
+          <div className="spacer" />
+          <button
+            type="button"
+            className="btn btn-destructive btn-sm"
+            onClick={onSignOut}
+          >
+            <LogOut size={13} aria-hidden="true" /> Sign out
           </button>
-        </DisabledAffordance>
-        <div className="spacer" />
-        <button
-          type="button"
-          className="btn btn-destructive btn-sm"
-          onClick={onSignOut}
-        >
-          <LogOut size={13} aria-hidden="true" /> Sign out
-        </button>
+        </div>
+      </div>
+
+      {/* F5 audit log preview surface — promoted from F4 deferral. */}
+      <SettingsAuditLog />
+
+      {/* DangerZone — Tier 2 disabled affordance (mockup line 842-870). */}
+      <div className="card">
+        <div className="card-header">
+          <h3
+            className="card-title"
+            style={{ color: 'oklch(var(--destructive))' }}
+          >
+            Danger zone
+          </h3>
+        </div>
+        <div className="card-body">
+          <DisabledAffordance
+            variant="p1-strict"
+            reason="Wave D+ — account deletion is Tier 2 (requires RBAC + audit hooks)"
+            tier2Trigger="Tier 2 — post-Beta governance"
+          >
+            <button className="btn btn-destructive btn-sm" disabled>
+              Delete my account
+              <span className="badge badge-muted" style={{ marginLeft: 6 }}>
+                Tier 2
+              </span>
+            </button>
+          </DisabledAffordance>
+        </div>
       </div>
     </div>
   );

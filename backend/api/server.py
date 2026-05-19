@@ -40,6 +40,7 @@ from api.routes import (
     eval as eval_routes,
 )
 from api.routes.admin import api_keys as admin_api_keys
+from api.routes.admin import audit_log as admin_audit_log
 from api.routes.admin import connections as admin_connections
 from api.routes.admin import identity as admin_identity
 from api.routes.admin import usage_stats as admin_usage_stats
@@ -283,3 +284,5 @@ app.include_router(admin_identity.router, tags=["admin"], dependencies=_auth)
 # W24-wave-c1 F4 — /admin/usage-stats + /admin/api-keys/* per ADR-0026 Option B.
 app.include_router(admin_usage_stats.router, tags=["admin"], dependencies=_auth)
 app.include_router(admin_api_keys.router, tags=["admin"], dependencies=_auth)
+# W24-wave-c1 F5 backend hook — /admin/audit-log read endpoint promoted from Wave C2.
+app.include_router(admin_audit_log.router, tags=["admin"], dependencies=_auth)

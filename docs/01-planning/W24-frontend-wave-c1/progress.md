@@ -292,6 +292,71 @@ Per W22 D1+D8+D9 plan-text contamination evidence,plan §2.F3 文本 grep audit 
 
 **End of W24-wave-c1 Day 1 cont F4(active — F1+F2+F3+F4 backend done,F5 frontend next)**
 
+---
+
+## Day 1 cont F5 — Frontend `/settings` 6-tab `PageSettingsRich` rebuild(2026-05-19)
+
+### Pre-active-flip 5-step grep audit recursive(per CLAUDE.md §10 R6)
+
+1 plan-text deviation + 1 F4 promotion surfaced upfront:
+
+| Plan §2.F5 文本 | Audit 發現 | 處理 |
+|---|---|---|
+| **F5.8 audit log preview** = "reads `audit_log` last-10 rows via `GET /admin/audit-log?limit=10`" | F4 deferred read endpoint to "F5/Wave C2"(plan-text-internal cross-reference);F5 frontend needs the read endpoint to render the SettingsAccount card | **Promote**:Wave C1 ship the read endpoint as F5 backend hook `GET /admin/audit-log?limit=N`(`audit_log.py` route + 6 NEW pytest);UI consumes via `adminApi.listAuditLog(10)` |
+| **F5.1 rewrite "thin v1 3-card structure"** | W22 F8.1 page.tsx 已 mockup-faithful 對 `ekp-page-misc.jsx:308 PageSettings`(per W22 D10 docstring);F5 should EXTEND not REPLACE — preserve `useAuthStore.signOut` + `useCurrentUser` + computeInitials helper | **Adjust** to inline `ProfileTab` / `AppearanceTab` / `AccountTab` named functions(same logic as W22 F8.1 sub-components but wrapped in 6-tab `PageSettingsRich` shell)per CLAUDE.md §1.3 surgical extend-not-rewrite |
+
+### What worked(F5.1-F5.11)
+
+- **3 NEW primitives all CSS-first**:`<ApiKeyInput>` (reveal/hide/copy/rotate + accessibility labels) + `<ServiceCard>` (collapsible expand-on-click + TestStatus badge variants per backend Literal) + `<DeploymentsTable>` (tight TPM/RPM cap + alert % per row) — zero Tailwind arbitrary `[oklch(...)]` escapes,100% CSS-first per W23 v1.9 baseline
+- **4 NEW settings/* components all data-bound**:`<SettingsConnections>` (9 providers × 5 categories with lazy-fetch detail expand pattern) + `<SettingsIdentity>` (5-card structure mapping 1:1 onto F3 sub-resources) + `<SettingsApiKeys>` (4-stat strip + per-deployment quota rows with inline alert % editing) + `<SettingsAuditLog>` (Account tab sub-card consuming new F5 backend hook) — **every visible value reads from real backend response**, mockup hardcoded data values replaced
+- **`apiClient.admin.*`** wrapper landed(`frontend/lib/api/admin.ts` 235 lines)— F2 + F3 + F4 + F5 audit-log all wrapped with full Pydantic-mirror TypeScript types;F6 wiring deliverable already 80% done at F5 close(per Karpathy §1.3 surgical — tightly coupled,split is artificial)
+- **H7 mockup fidelity verified per-tab**:Profile (mockup line 50-65) + Appearance (67-93) + Connections (96-355) + Identity (528-723) + ApiKeys (744-823) + Account (842-870) — layout / spacing / typography / color tokens / interaction states / responsive / a11y all preserved through structural primitives + CSS-first classes per DESIGN_SYSTEM.md §0-§4
+- **`?tab=` deep link** via `useSearchParams` + `router.replace(scroll: false)` shallow URL update + `<Suspense>` boundary(Next 14 App Router requirement)— deep-link shareable URLs `/settings?tab=connections` work without full navigation reload
+
+### What didn't work / friction
+
+- **Suspense boundary for `useSearchParams`**:initial implementation hit Next 14 build error("`useSearchParams` should be wrapped in a suspense boundary") — fixed via outer `SettingsPage` Suspense wrapper around `SettingsPageInner` consuming the hook(W18 F3 `?q=` chat deep-link did the same pattern)
+- **Wave C1 ships read-mostly** for Identity tab:per ADR-0026 Option B fully editable scope,every input/select carries `readOnly` / `disabled` props;Wave C2 promotes inline editing。Profile + Appearance tabs same constraint pattern。**Why**:Wave C1 backend has all PATCH endpoints ready,but the inline edit flow requires form validation + optimistic UI + ErrorBoundary integration(F6 scope per plan)— ship sequenced
+
+### Surprises
+
+- **F6 80% absorbed into F5** naturally:`apiClient.admin.*` wrappers + per-row mutation hooks（`handleTest` + `handleRotate` + `handleSave` per `OutgoingQuotaRowItem`）are tightly coupled to the components consuming them;split is artificial — Karpathy §1.3 surgical "don't refactor what's not broken" applies。F6 remaining scope:Form validation per-provider schema (react-hook-form + zod) + ErrorBoundary integration per-tab — both Wave C2-friendly defers
+- **F4 alert_threshold_pct → ProviderDeployment additive field** carries through to F5 `<DeploymentsTable>` automatically(via existing F2 `ProviderConfig.deployments` round-trip)— no extra field plumbing needed
+- **`SettingsAuditLog`** is a Mockup-decomposed sub-card not in original `SettingsAccount` mockup but added as F5 promotion of F4 deferred read endpoint — mockup line 842-870 only shows session-rotation + sign-out + delete-account;the audit log preview is a F5-added structural element per ADR-0026 §Consequences forward-compat retention semantic。**Decision**:add as separate `<SettingsAuditLog>` sub-card placed between Session + Danger Zone for clear separation
+
+### Decisions(captured for retro at F8)
+
+- **D5.1** F5 backend hook(`GET /admin/audit-log`)promoted Wave C1 (vs Wave C2 defer per F4 plan) — F5 frontend Account tab needs it,trivial extension (1 route + 6 tests)
+- **D5.2** **Inline `ProfileTab` / `AppearanceTab` / `AccountTab`** named functions inside `page.tsx` (vs extracting to `frontend/components/settings/`) — preserves W22 F8.1 logic + co-locates the 3 tabs that wrap `<SettingsConnections>` / `<SettingsIdentity>` / `<SettingsApiKeys>` / `<SettingsAuditLog>` extracted components。**Why**:Profile + Appearance + Account 邏輯 already simple (preserved from W22 F8.1);extracting just for symmetry adds files without value per §1.2 simplicity-first
+- **D5.3** Identity tab Wave C1 = **read-mostly** (all inputs `readOnly` + selects `disabled`);Wave C2 promotes inline editing。**Why**:Inline edit needs F6 form validation + optimistic UI + ErrorBoundary scope;ship Wave C1 with structural primitives in place
+- **D5.4** `<SettingsConnections>` uses **lazy-fetch detail on expand** pattern (vs prefetch all 9 ProviderConfig on mount)— per Karpathy §1.2 simplicity-first;UI feels snappy on initial render,details load on user intent。**Why**:Avoid blocking the entire connections tab on 9 parallel HTTP fetches for what's mostly read-only display
+- **D5.5** `<SettingsApiKeys>` 4-stat colors:`spend_pct_used >= 80` → warning amber;`rate_limit_hits_24h > 0` → warning amber;mirrors mockup `pct > 0.8` quota bar threshold semantic — single source-of-truth via inline conditional style (no NEW color token)
+- **D5.6** `apiClient.admin.*` namespace pattern (vs `apiClient.connections` + `apiClient.identity` + `apiClient.apiKeys` separate modules)— per Karpathy §1.2 simplicity-first;single `admin.ts` file matches the 4-router backend admin/* scope
+- **D5.7** Per-tab H7 self-verify gate ALL passed — no「smoke-user-deferred」for fidelity itself per W21+W22+W23 retro。Each tab acceptance criteria explicitly cites mockup line-range cross-ref
+
+### Acceptance(plan §3 + checklist F5)
+- [x] F5.1-F5.2 page.tsx rewrite + 6-tab nav + ?tab= deep link
+- [x] F5.3-F5.4 Profile + Appearance tabs preserved from W22 F8.1
+- [x] F5.5 Connections tab + 3 NEW primitives + lazy-fetch + test/rotate mutations
+- [x] F5.6 Identity tab + 5 card structure (Tenant + App reg + MSAL + Roles + Policy)
+- [x] F5.7 ApiKeys tab + 4-stat + outgoing quotas + incoming Tier 2 disabled
+- [x] F5.8 Account tab + Audit log preview surface + DangerZone
+- [x] F5.8a NEW F5 backend hook `GET /admin/audit-log` + 6 pytest pass
+- [x] F5.9 H7 per-tab verification gate ALL passed
+- [x] F5.10 tsc 0 + lint clean + [oklch=0 preserved
+- [x] F5.11 Full backend pytest regression preserved:**805 passed + 11 skipped + 0 failed in 189s**(F4 baseline 799 → +6 net IMPROVED via 6 NEW F5 audit-log GET tests;no regression)
+
+**Day 1 cont F5 Verdict**:F5 Frontend `/settings` 6-tab `PageSettingsRich` rebuild **DONE** 100%。Backend now has 6 admin routers wired + Wave C1 frontend ship-ready;ready for **F6 apiClient.admin wiring**(80% absorbed into F5 — remaining scope = react-hook-form integration + per-tab ErrorBoundary,trivial Wave C2-friendly defer)。
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(this commit)_ | `feat(frontend,api): /settings 6-tab PageSettingsRich + admin client + audit-log read endpoint (W24-wave-c1 F5 per ADR-0026)` |
+
+---
+
+**End of W24-wave-c1 Day 1 cont F5(active — F1+F2+F3+F4 backend + F5 frontend done,F6+ next)**
+
 ### Commits
 | Hash | Subject |
 |---|---|
