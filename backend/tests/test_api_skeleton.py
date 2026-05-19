@@ -42,9 +42,22 @@ def client() -> TestClient:
 
 
 def test_health_returns_ok(client: TestClient) -> None:
+    # W20 F2.1 (550111e) extended /health from W1 `{status: "ok"}` to per-component
+    # HealthResponse{status, components} — 5 backends reported individually.
+    # TestClient(app) doesn't trigger the lifespan startup, so app.state.* singletons
+    # stay None and the roll-up here is always "degraded"; this is a shape contract
+    # check, not a strict-equality smoke against a populated app.
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    payload = response.json()
+    assert payload["status"] in {"ok", "degraded"}
+    assert set(payload["components"].keys()) == {
+        "azure_search",
+        "azure_openai",
+        "cohere",
+        "langfuse",
+        "postgres",
+    }
 
 
 def test_query_route_returns_502_when_retrieval_fails_due_to_network(
