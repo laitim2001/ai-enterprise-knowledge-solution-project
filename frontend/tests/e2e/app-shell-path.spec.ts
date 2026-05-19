@@ -205,6 +205,35 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow (W23 F
     ).toBeVisible();
   });
 
+  test('/settings 6-tab PageSettingsRich renders + tab labels visible (W24 F5)', async ({
+    page,
+  }) => {
+    await page.goto('/settings');
+    // W24 F5 page-title preserved through 6-tab rebuild.
+    await expect(
+      page.getByRole('heading', { name: /^settings$/i, level: 1 }),
+    ).toBeVisible();
+    // 6 tab labels per mockup ekp-page-settings-tabs.jsx:9-16.
+    await expect(page.getByRole('tab', { name: /^profile$/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^appearance$/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^connections$/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /identity & auth/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /api keys & quotas/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^account$/i })).toBeVisible();
+  });
+
+  test('/settings?tab=identity deep link selects Identity tab', async ({ page }) => {
+    await page.goto('/settings?tab=identity');
+    const identityTab = page.getByRole('tab', { name: /identity & auth/i });
+    await expect(identityTab).toHaveAttribute('aria-selected', 'true');
+    // Identity body content — the 5 sub-resource cards header (render-smoke;
+    // backend data may still be loading on dev cold-start so check the
+    // banner OR the resolved tenant card).
+    const banner = page.getByText(/loading identity configuration/i);
+    const tenantCard = page.getByText(/entra id tenant/i);
+    await expect(banner.or(tenantCard).first()).toBeVisible({ timeout: 10000 });
+  });
+
   test('/kb/[id] page renders gracefully — tablist OR error banner (render-smoke; full 8-tab E2E deferred W24+ per BUG-004)', async ({
     page,
   }) => {

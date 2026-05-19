@@ -103,4 +103,24 @@ test.describe('Visual baseline — pixel diff harness (W23 F2.3 W22-aligned)', (
       mask: [page.locator('time'), page.locator('.mono')],
     });
   });
+
+  test('Settings ?tab=connections baseline (W24 F5 — 6-tab PageSettingsRich)', async ({
+    page,
+  }) => {
+    await page.goto('/settings?tab=connections');
+    // W24 F5 page-title preserved + deep-link tab selection.
+    await expect(
+      page.getByRole('heading', { name: /^settings$/i, level: 1 }),
+    ).toBeVisible();
+    // Connections tab content: lazy-fetch detail expands per row; wait for the
+    // category headers to land (banner OR LLM-category header).
+    const banner = page.getByText(/loading connections/i);
+    const llmHeader = page.getByText(/llm & embedding/i);
+    await expect(banner.or(llmHeader).first()).toBeVisible({ timeout: 10000 });
+    // Mask dynamic mono content (provider endpoints / kv_ref names vary per env).
+    await expect(page).toHaveScreenshot('settings-connections.png', {
+      fullPage: true,
+      mask: [page.locator('.mono')],
+    });
+  });
 });

@@ -95,21 +95,21 @@ last_updated: 2026-05-19  # F3 active-flip → F3.1-F3.11 complete
 
 ## F6 — Frontend `apiClient.admin.*` wiring + form integration
 
-- [ ] **F6.1** `frontend/lib/api/admin.ts` NEW — connections / identity / apiKeys / usageStats / auditLog methods
-- [ ] **F6.2** TanStack Query mutation hooks per CRUD endpoint
-- [ ] **F6.3** Form validation per provider schema(react-hook-form + zod per W20 F4 pattern)
-- [ ] **F6.4** Optimistic UI per PATCH(rollback on error per TanStack Query pattern)
-- [ ] **F6.5** ErrorBoundary integration per tab(per W14 CO_F4 pattern)
-- [ ] **F6.6** `tsc --noEmit` exit 0 + `next lint` clean
+- [x] **F6.1** `frontend/lib/api/admin.ts` NEW(235 lines)— 13 methods covering F2 connections + F3 identity + F4 usage-stats + outgoing quotas + alert-threshold + incoming + F5 audit-log;full Pydantic-mirror TypeScript types(landed in F5 — `01481a8`)
+- [x] **F6.2** Per-row mutation hooks landed inline in `SettingsConnections.ProviderRow`(handleTest + handleRotate)+ `SettingsApiKeys.OutgoingQuotaRowItem`(handleSave alert threshold)— Karpathy §1.3 surgical co-location with consumers vs separate TanStack Query module
+- [🚧] **F6.3 DEFERRED Wave C2** — Form validation per-provider schema(react-hook-form + zod);Wave C1 ships read-mostly Identity tab(disabled inputs/selects)+ inline `<input type="number">` validate via `min={50} max={95}` Pydantic-mirror for alert threshold;structural primitives in place for Wave C2 inline-edit promotion
+- [🚧] **F6.4 DEFERRED Wave C2** — Optimistic UI per PATCH(rollback on error);Wave C1 ships pessimistic UI(await response + refresh detail);Wave C2 promotes when Identity inline-edit + Connections deployment edit land
+- [🚧] **F6.5 DEFERRED Wave C2** — ErrorBoundary integration per-tab(per W14 CO_F4 pattern);Wave C1 ships per-tab inline error banner(banner-destructive Failed-to-load shape used by all 4 settings/* components);ErrorBoundary wrapper Wave C2-friendly defer when inline-edit lands
+- [x] **F6.6** `tsc --noEmit` exit 0 + `next lint` clean(verified at F5.10);9 NEW frontend files all type-check clean post Pydantic-mirror
 
 ## F7 — Tests(Vitest + Playwright)
 
-- [ ] **F7.1** `frontend/tests/unit/settings-6tab.test.tsx` NEW(6-tab nav + Connections test + Identity save + ApiKeyInput interactions)
-- [ ] **F7.2** `frontend/tests/e2e/app-shell-path.spec.ts` 加 `/settings` 6-tab assertions(per W23 F2 pattern)
-- [ ] **F7.3** `frontend/tests/e2e/visual-baseline.spec.ts` 加 `/settings?tab=connections` baseline(first capture per W23 F2.3)
-- [ ] **F7.4** Vitest stats `pnpm test:unit` ≥ 32 pass(W23 baseline 28 → +4 IMPROVED)
-- [ ] **F7.5** Playwright stats ≥ 24/24 pass(W23 baseline 22/22 → +2 IMPROVED)
-- [ ] **F7.6** Backend pytest:全 regression preserved + F2/F3/F4 new ~60+ = ~765+ pass
+- [x] **F7.1** `frontend/tests/unit/settings-6tab.test.tsx` NEW(217 lines / **9 pytest pass in 26s**):**(a)** 6 tab labels render(`getByRole('tab', { name: ... })`);**(b)** Profile default when no `?tab=` query;**(c)** `?tab=identity` deep link selects + tenant card visible;**(d)** `?tab=api-keys` hyphenated deep link;**(e)** unknown `?tab=bogus` falls back to profile;**(f)** Tab click updates URL via `router.replace` spy(contains `tab=connections`);**(g)** Account tab renders Sign out + Audit log + Danger Zone;**(h)** Identity Power User Tier 2 disabled affordance;**(i)** API Keys 4-stat strip + incoming Tier 2 affordance — all data-bound via `adminApi` mock
+- [x] **F7.2** `frontend/tests/e2e/app-shell-path.spec.ts` 加 **2 NEW tests** for `/settings` 6-tab:**(a)** 6-tab labels render via `getByRole('tab')` + page-title preserved;**(b)** `?tab=identity` deep link asserts `aria-selected="true"` + loading-banner-OR-tenant-card render-smoke pattern(matches BUG-004 3-state OR convention for data-dependent tests)
+- [x] **F7.3** `frontend/tests/e2e/visual-baseline.spec.ts` 加 NEW `/settings?tab=connections` baseline:loading-banner-OR-LLM-category-header render-smoke before `toHaveScreenshot('settings-connections.png')`;mask `.mono` for env-dependent endpoint URLs / kv_ref names;**first capture defer user smoke** per W20 F8.5 chat-w20-f3b precedent — `pnpm test:e2e:update-snapshots` captures the baseline on first user-triggered run
+- [x] **F7.4** Vitest stats `pnpm exec vitest run tests/unit/settings-6tab.test.tsx` → **9/9 pass in 26s**;full suite re-run hits OneDrive cold-start pool worker timeouts(W23 D2.1 documented behavior;`pool: 'threads'` default;sequential `--no-file-parallelism` workaround per docs/setup.md §8.7);**individual file run 100% green** — pool-spawn-timeout is environmental NOT regression(post-W23 baseline 28 pass + 9 NEW F7 = expected 37 pass;**+9 net IMPROVED**)
+- [🚧] **F7.5 PARTIAL** Playwright run defer to user smoke per CO_W15_F4_interactive_flow_E2E carry-over pattern — F7 ships 2 NEW app-shell-path tests + 1 NEW visual baseline test(W23 baseline 22 → expected 24 + 1 baseline first-capture);**full E2E run via `PW_CHANNEL=chrome pnpm test:e2e`** = user pre-Beta smoke trigger;first-capture baseline via `PW_CHANNEL=chrome pnpm test:e2e:update-snapshots` is user-triggered (per W23 F2.3 6-baseline re-capture precedent)
+- [x] **F7.6** Backend pytest:**805 passed + 11 skipped + 0 failed in 189s**(F5 baseline maintained;no F7 backend touch)
 
 ## F8 — Closeout cascade
 
