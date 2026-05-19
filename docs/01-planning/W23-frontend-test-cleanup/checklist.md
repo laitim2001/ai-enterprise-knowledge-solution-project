@@ -50,10 +50,10 @@ last_updated: 2026-05-19
 
 ## F4 — setup.md `--reload` discipline amendment
 
-- [ ] F4.1 `docs/setup.md` §8(or relevant section per existing structure)加 / 改:standardize `uvicorn backend.api.server:app --reload --reload-dir backend/`(or equivalent invocation per existing setup.md pattern)作為 dev default;production invocation preserve 唔加 `--reload`
-- [ ] F4.2 加 troubleshooting subsection「Stale uvicorn PID」:Windows `tasklist /fi "imagename eq python.exe"` / Unix `ps aux | grep uvicorn` detect;Windows `Stop-Process -Id <PID>` / Unix `kill <PID>` safe kill;warn against `--no-verify` git skip(cite CLAUDE.md §4.4 hard rule)
-- [ ] F4.3 Cross-ref W22 D8 progress.md retro entry(authority + Langfuse SDK clamp 500→100 evidence + W21 F2 `55f876b` original commit reference)
-- [ ] F4.4 Grep `docs/setup.md` 揾 existing backend dev workflow / Azurite / Postgres section — preserve existing structure;amendment 限定 NEW troubleshooting subsection 或者 existing section augment
+- [x] F4.1 `docs/setup.md` §4.3 backend dev workflow `--reload` invocation 已 documented `(this commit)` — `uv run uvicorn api.server:app --reload --port 8000`(line 351)已 preserve from prior W17/W11 era;§8.6 Backend troubleshooting table 加 NEW row 強調 **dev default 必須加 `--reload --reload-dir backend/`**(per F4 amendment scope);production / debug timing-sensitive 場景才 opt-out
+- [x] F4.2 §8.6 Backend NEW row「Stale uvicorn PID 殘留」landed `(this commit)` — detect via `tasklist /fi "imagename eq python.exe"`(Windows)/ `ps aux \| grep uvicorn`(Unix);kill safely via `Stop-Process -Id <PID>`(Windows)/ `kill <PID>`(Unix);warn against `--no-verify` git skip workflow(cite CLAUDE.md §4.4 hard rule);concrete W22 D8 example(W21 F2 commit `55f876b` Langfuse cap clamp survived stale PID 37036 through entire W22 phase until user-eye `/traces/[traceId]` verify caught it at D8)
+- [x] F4.3 Cross-ref W22 D8 progress.md retro entry `(this commit)` — authority + Langfuse SDK clamp 500→100 evidence + W21 F2 `55f876b` original commit reference all inline in §8.6 NEW row
+- [x] F4.4 Grep `docs/setup.md` 揾 existing structure `(this commit)` — preserve §4.3 backend section + §8.1-§8.6 existing troubleshooting subsections;amendment **限定**:**(a)** §8.6 NEW row about stale PID + dev default + bug-fix workflow warning;**(b)** NEW **§8.7 Test infrastructure** subsection(W23 F4 NEW)cover 4 W23 D1+D2 OneDrive findings — Vitest forks pool timeout → threads pool default(W23 F1.5)+ Playwright timeout 30→60s(W23 F2)+ PW_CHANNEL=chrome ADR-0017 Plan B (a) + visual baseline pixel diff jitter
 
 ## F5 — Closeout cascade
 

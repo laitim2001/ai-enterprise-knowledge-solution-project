@@ -211,9 +211,53 @@ last_updated: 2026-05-19
 
 ---
 
+## Day 4 — 2026-05-19(F4 setup.md `--reload` discipline + Test infrastructure)
+
+### Context
+
+- F4 setup.md amendment per plan §2 + W22 D8 + W23 D1+D2 cumulative findings
+- 1 amended row + 1 NEW subsection
+- §8.6 Backend table 加 row about stale uvicorn PID;NEW §8.7 Test infrastructure subsection cover W23 OneDrive workarounds
+
+### Planned vs Actual Effort
+
+| Item | Planned | Actual | Variance | Note |
+|---|---|---|---|---|
+| F4.1 backend `--reload` doc | 0.25 day | ~5min | -0.25 | §4.3 已 documented;§8.6 NEW row 加強 |
+| F4.2 §8.6 stale PID row | 0.25 day | ~10min | -0.2 | inline例子 W22 D8 + W21 F2 reference |
+| F4.3 cross-ref retro | (in F4.2) | (in F4.2) | 0 | inline cross-ref complete |
+| F4.4 §8.7 NEW Test infra | 0.5 day | ~20min | -0.3 | 4 rows: Vitest threads / Playwright timeout / PW_CHANNEL / pixel diff |
+
+### Day 4 deliverables
+
+- F4.1 §4.3 backend dev workflow `--reload` invocation preserved + §8.6 NEW row 強調 dev default(per W22 D8 surfaced)
+- F4.2 §8.6 NEW row about「Stale uvicorn PID 殘留」detect/kill workflow + CLAUDE.md §4.4 cite + W22 D8 + W21 F2 concrete example
+- F4.3 Cross-ref W22 D8 retro inline
+- F4.4 NEW §8.7「Test infrastructure(W23 F4 NEW)」section covers 4 W23 D1+D2 findings:
+  - Vitest forks pool OneDrive timeout → threads pool default(W23 F1.5)
+  - Playwright `Test timeout 30s exceeded` → 60s timeout(W23 F2)
+  - `PW_CHANNEL=chrome` system Chrome workaround per ADR-0017 Plan B (a)
+  - Visual baseline pixel diff jitter容差 tuning
+
+### Decisions logged
+
+- **D4.1** **§4.3 + §8.6 split rationale** — `--reload` flag itself 已 documented at §4.3 line 351(no need to add new flag);§8.6 NEW row 加強「dev default 必須 `--reload`」+ stale PID detect/kill workflow,係 stale-PID-survival pattern 嘅 systemic fix(不只 documenting flag invocation)
+- **D4.2** **§8.7 NEW Test infrastructure subsection separation** — W22 D8 stale PID 屬 backend regression survival pattern(§8.6 row 適合);W23 D1+D2 forks/timeout 屬 OneDrive test infra inherent issue。Separate subsection clarifies:Backend dev workflow 同 Test infra workarounds 雖然都觸發 OneDrive,但 mitigation 不同(backend = process discipline,test = config tuning)
+- **D4.3** **CI/Beta hardening explicit guidance** — §8.7 note「CI / Beta hardening invocation 必須用 production build(`pnpm build && pnpm start`)而非 dev mode」— dev-mode E2E 係 W23 PARTIAL gate 引起 6 個 timeout 嘅 ranging factor;Beta hardening pass 應該 enforce production build serving 確保 first-route compile delay 不再 mask 真正 selector mismatches
+
+### Carry-overs for Day 5+
+
+- F5 closeout — Gate verdict + 7-section retro + session-start sync + W23b+ candidates noted
+
+### Commits
+
+- `(this commit)` — `docs(setup): W23 F4 — §8.6 stale uvicorn PID row + NEW §8.7 Test infrastructure(Vitest threads / Playwright timeout / PW_CHANNEL / pixel diff)`
+
+---
+
 ## Day N — _pending_
 
-_(Day 4+ entries land per F-deliverable progression)_
+_(Day 5+ entries land per F-deliverable progression)_
 
 ---
 
