@@ -164,9 +164,56 @@ last_updated: 2026-05-19
 
 ---
 
+## Day 3 — 2026-05-19(F3 CLAUDE.md v1.9 amendments)
+
+### Context
+
+- F3 CLAUDE.md amendment cluster per plan §2 + W22 retro 3 surfaced candidates
+- 3 amendments based on W22 D1+D6+D7+D8+D9 5-pattern empirical catalog(memory `feedback_design_fidelity.md`)
+- F3.2 deviation:per actual R5 content「ADR-before-implement」改 add as NEW **R6** rule(see D3.1 below)
+
+### Planned vs Actual Effort
+
+| Item | Planned | Actual | Variance | Note |
+|---|---|---|---|---|
+| F3.1 §3.2 CSS-first bullet | 0.25 day | ~10min | -0.2 | clean addition + lint pass |
+| F3.2 §10 R5/R6 amendment | 0.25 day | ~15min | -0.2 | deviation: NEW R6 not R5 modify |
+| F3.3 §13 backend-wins scoping | 0.25 day | ~10min | -0.2 | NEW row clarifying scope |
+| F3.4 version bump + footer | 0.1 day | ~5min | 0 | mirror v1.7/v1.8 footer pattern |
+| F3.5 memory cross-ref | 0.1 day | (in F3.2+F3.3) | 0 | inline cross-ref complete |
+| F3.6 grep contradiction check | 0.15 day | ~5min | -0.1 | no contradiction surfaced |
+| F3.7 commit + push | 0.05 day | _pending_ | 0 | next step |
+
+### Day 3 deliverables
+
+- F3.1 §3.2 CSS-first pivot baseline bullet added(NEW bullet before existing「Design tokens via tokens.ts」)
+- F3.2 §10 NEW R6 rule added(Pre-active-flip 5-step recursive scope)
+- F3.3 §13 NEW row clarifying「data contract conflicts」vs「visual element vs backend mode mismatch」scope split
+- F3.4 Version v1.8 → v1.9 + footer entry describing 3 amendments
+- F3.5 Memory `feedback_design_fidelity.md` cross-references inline in R6 + §13 + footer
+- F3.6 Internal contradiction grep — no conflict with §1-§13(§3.2.1 + §5.7 H7 + §5.2 H2 all consistent)
+- F3.7 Commit `(this commit)`
+
+### Decisions logged
+
+- **D3.1** **F3.2 deviation:「§10 R5 amendment」→「§10 NEW R6 rule」**(per §10 R3 changelog literal) — plan §2 F3 spec'd「update R5 wording」but actual R5 content is「Phase closeout 之前任何 architectural-adjacent decision(per §5.1 H1)必須寫 ADR」(ADR-before-implement scope)。Pre-active-flip grep verification recursive scope是 separate process discipline,not R5 modification。Added as **NEW R6** rule preserving R1-R5 unchanged + clarifying separation:R5 = ADR-when-architectural / R6 = grep-verify-pre-active-flip-recursive。Plan §F3.2 acceptance criteria 仍 satisfied via R6 placement
+- **D3.2** **F3.3 §13 row split rationale** — original §13 row「Mockup vs backend contract 衝突 → backend wins + visual polish-only migrate」was being over-extended to「mockup has visual button N, backend filter mode 唔 cover → drop button」per W22 D6 over-extending precedent。Amendment refines「Mockup vs backend contract 衝突」row scope = **data contract conflicts only**(field shape / schema / endpoint signature)+ adds NEW row「Mockup visual element vs backend mode mismatch」= **visual fidelity wins**(client-side post-filter / synthesize / fallback;drop visual element only as H7 deviation + STOP+ask)。Cite memory `feedback_design_fidelity.md` D6 pattern
+- **D3.3** **CSS-first pivot baseline framing language** — original §3.2 「shadcn/ui only」+「Tailwind only」early phrasing under-represented W22 implementation reality(mockup `styles-mockup.css` 1073→1048 lines verbatim adoption drives visual layer;shadcn primitives consumed only where Radix a11y benefits)。Amendment NEW bullet 加入 §3.2 head explicit framing the three-tier approach(CSS-first baseline / shadcn-primitive-where-a11y / Tailwind-one-off)。Cite W22 D1 process meta + memory 5-pattern catalog
+
+### Carry-overs for Day 4+
+
+- F4 setup.md `--reload` + Vitest forks-pool-OneDrive troubleshooting(W23 D1 + D2 findings)— kickoff next
+- F5 closeout — after F4 green
+
+### Commits
+
+- `(this commit)` — `docs(claude-md): v1.9 — W22 anti-pattern catalog → §3.2 CSS-first + §10 R6 recursive + §13 backend-wins scoping (W23 F3)`
+
+---
+
 ## Day N — _pending_
 
-_(Day 3+ entries land per F-deliverable progression)_
+_(Day 4+ entries land per F-deliverable progression)_
 
 ---
 

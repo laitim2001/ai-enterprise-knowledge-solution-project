@@ -150,8 +150,7 @@ Multi-step task 要先講 plan:
 - **TypeScript strict mode**(no `any`,no `@ts-ignore` 除非有 comment 解釋)
 - **App Router only**,no Pages Router
 - **Server Components by default**;Client Components 必須有 `"use client"` directive + 解釋 comment
-- **shadcn/ui** components only — no Material UI、Ant Design、Chakra
-- **Tailwind utility classes**;custom CSS 限 `frontend/styles/` 全局
+- **CSS-first pivot baseline**(W22 F1 mid-session pivot landed `styles-mockup.css` 1073→1048 lines verbatim adoption from `references/design-mockups/styles.css`):mockup CSS classes drive visual layer baseline(`.btn .card .field .input .label .hint .seg .badge .switch .tabs .table .banner .progress .status-dot .avatar` etc.);**shadcn/ui primitives** consumed only where Radix a11y benefits(Dialog / DropdownMenu / Sheet / Toast / Tabs etc.);**Tailwind utility classes** 限 one-off layout adjustments + responsive breakpoints。「shadcn/ui only」+「Tailwind only」early framing under-represented actual approach;the CSS-first baseline 係 W22 implementation reality(per W22 D1 process meta evidence + `feedback_design_fidelity.md` 5-pattern catalog)
 - **Design tokens via `frontend/lib/theming/tokens.ts`** — 絕對唔可以 hardcode 顏色 / spacing
 - **修 design tokens / mockup CSS / dark mode 一定要跟 4-layer sync protocol** — `styles.css(canonical)→ styles-mockup.css(verbatim copy)→ globals.css(Tailwind bridge)→ tokens.ts(TS mirror)`;procedure 見 [`references/design-mockups/DESIGN_SYSTEM.md` §7](./references/design-mockups/DESIGN_SYSTEM.md);silent drift 已發生過(W22 F1 `--popover` dark 0.20 vs 0.22 incident),所以呢條 mandatory
 - **State management**:React state for local;Zustand for cross-component;**no Redux**
@@ -520,6 +519,7 @@ references/DIFY_PINNED_COMMIT.txt
 - **R3**:Plan deviation(scope change / new deliverable / 取消 deliverable)必須 log 入 `plan.md` changelog,**唔可以 silent drift**
 - **R4**:OQ resolved → 同步更新 `decision-form.md` AND `progress.md` Day-N entry mention
 - **R5**:Phase closeout 之前任何 architectural-adjacent decision(per §5.1 H1)必須寫 ADR
+- **R6**:Pre-active-flip 5-step grep verification **recursive scope** — apply 唔單只 to code-at-active-flip-time,**也** to **plan-text itself** at plan kickoff(W23 F3 amendment per W22 D1/D8/D9 3 次 cumulative recursive catch evidence;memory `feedback_design_fidelity.md` 5-pattern catalog)。5 步:**(1)** read plan literal acceptance criteria;**(2)** grep code base / mockup source for referenced files / functions / patterns;**(3)** surface mismatches via Karpathy §1.1 think-before-coding upfront;**(4)** document deviations in plan §7 changelog at plan kickoff(or active-flip);**(5)** adjust acceptance criteria per actual reality。Recursive trigger:plan text 引用 pre-W{N-1} surface / naming / wording(common contamination source per W20→W22 inheritance);catch it 喺 implementation 之前,而非 post-implementation user-eye audit。
 
 ### 10.3 AI Session Start Protocol
 
@@ -595,7 +595,8 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 | Stakeholder feedback 同 spec 衝突 | STOP — surface the conflict,等 resolution |
 | **Mockup vs implementation 唔對齊**(任何一項 — layout / spacing / typography / color / interaction / responsive / a11y) | **STOP per §5.7 H7** — surface deviation + open mockup + propose 處理方案(加 primitive / 寫 vanilla / 改 mockup / `🚧 deferred`)— **絕對唔可以 approximate** |
 | **Mockup detail 不清晰** / **shadcn 冇 primitive 重現** | **STOP per §5.7 H7** — surface gap + ask user(加 primitive / 寫 vanilla / 改 mockup) |
-| **Mockup vs backend contract 衝突**(e.g. mockup 2-step verify vs backend 3-step 6-digit code) | **STOP per §4 authority ordering** — architecture.md > design-mockups;backend wins + 記 plan §7 changelog + visual polish-only migrate(per W20 F7.2 precedent) |
+| **Mockup vs backend contract 衝突**(e.g. mockup 2-step verify vs backend 3-step 6-digit code — **data contract conflict only**)| **STOP per §4 authority ordering** — architecture.md > design-mockups;backend wins on **field shape / schema / endpoint signature** + 記 plan §7 changelog + visual polish-only migrate(per W20 F7.2 precedent) |
+| **Mockup visual element vs backend mode mismatch**(e.g. mockup 4-button seg vs backend `?filter=` supports 3 values)| ⚠️ **§13 backend-wins NOT applicable to visual element removal** — §13 covers data contract conflicts(field shape),NOT visual surface design decisions。Default = **mockup visual fidelity wins**(client-side post-filter / synthesize / fallback);drop visual element only as H7 deviation + STOP+ask per §5.7(per W23 F3 amendment + W22 D6 over-extending precedent;memory `feedback_design_fidelity.md` D6 pattern) |
 | Tier 1 / Tier 2 邊界模糊 | Default to Tier 2(out of scope),ask if uncertain |
 | Performance vs simplicity trade-off | Tier 1 階段:simplicity wins(2K chunks 無 perf 壓力) |
 | Quality vs delivery time trade-off | 4 metric target 唔可以 compromise;UI polish 可以後補 |
@@ -640,6 +641,11 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 1.9 — 2026-05-19 W22 anti-pattern catalog amendments**(W23 F3 — 3 amendments based on W22 D1+D6+D7+D8+D9 5 個 anti-pattern empirical-finding cumulative cataloged 喺 memory `feedback_design_fidelity.md`)。具體變動:
+- §3.2 Frontend conventions 加 NEW bullet **CSS-first pivot baseline** — mockup `styles-mockup.css` 1073→1048 lines verbatim adoption(per W22 F1 mid-session pivot)係 visual layer baseline;shadcn/ui primitives 限 Radix a11y benefits(Dialog / DropdownMenu / Sheet / Toast / Tabs);Tailwind utility 限 one-off layout。原本「shadcn/ui only」+「Tailwind only」early framing under-represented actual approach;CSS-first baseline 係 W22 implementation reality
+- §10 加 NEW **R6** Pre-active-flip 5-step grep verification recursive scope — apply 唔單只 to code-at-active-flip-time,**也** to **plan-text itself** at plan kickoff;cite W22 D1(F4 ChatHeader)/ D8(F6 KB cluster)/ D9(F7 observability cluster)3 次 cumulative recursive catch evidence;recursive trigger:plan text 引用 pre-W{N-1} surface / naming / wording(common contamination source per W20→W22 inheritance)
+- §13 加 NEW row 區分 **「Mockup vs backend contract 衝突 = data contract conflicts only」**(backend-wins on field shape / schema / endpoint signature)vs **「Mockup visual element vs backend mode mismatch = visual fidelity wins」**(mockup 4-button seg vs backend 3-mode `?filter=` → client-side post-filter / synthesize / fallback;**drop visual element only as H7 deviation + STOP+ask**)— §13 backend-wins authority scope clarified 限 data contract,NOT visual element removal(per W22 D6 over-extending precedent + memory `feedback_design_fidelity.md` D6 pattern)
+- memory `feedback_design_fidelity.md` 嘅 5 個 anti-pattern(D1 inherited-W20-surface-not-in-mockup / D6 over-extending-§13-backend-wins-to-drop-visual-element / D7 preserve-pre-W22-UI-not-in-mockup / D8 assumed-permissive-vendor-SDK-cap / D9 plan-text-contamination)係呢 3 條 amendments 嘅 empirical evidence base
 **Version 1.8 — 2026-05-18 DESIGN_SYSTEM.md routing landed**(W22 F5b session post-NotificationsMenu portal pattern fix `c3ca1a3` + DESIGN_SYSTEM.md initial draft `c225b95`)。具體變動:
 - §2 Document Routing 表加 2 條 NEW row:**「揾 class catalog / layout pattern / composite pattern recipe(primitive-level)」**→ DESIGN_SYSTEM.md §0-§6;**「修 design tokens / mockup CSS class / dark mode override」**→ DESIGN_SYSTEM.md §7 4-layer sync protocol。原「寫 / 改 frontend feature」row scoped 為 page-level(架構決定 vs primitive 用法分流)。
 - §3.2 Frontend conventions 加一 bullet 明文 4-layer sync protocol mandatory(reason cite W22 F1 `--popover` dark drift incident)
