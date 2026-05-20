@@ -12,7 +12,7 @@
  * real backend in unit context.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // next/navigation mock — exposes searchParams + a controllable router.replace spy.
