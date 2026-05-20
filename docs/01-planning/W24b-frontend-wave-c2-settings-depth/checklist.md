@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F6 active-flip → F6.1-F6.7 complete (audit log filter + cursor pagination)
+last_updated: 2026-05-20  # F7 active-flip → F7.1-F7.7 complete (Vitest + Playwright tests)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -81,13 +81,15 @@ last_updated: 2026-05-20  # F6 active-flip → F6.1-F6.7 complete (audit log fil
 
 ## F7 — Tests(Vitest + Playwright)
 
-- [ ] **F7.1** `frontend/tests/unit/settings-identity-form.test.tsx` NEW — react-hook-form + zod tenant validation(3+ cases)
-- [ ] **F7.2** `frontend/tests/unit/settings-audit-log-filter.test.tsx` NEW or extend — action_type filter + cursor pagination(3+ cases)
-- [ ] **F7.3** `frontend/tests/e2e/app-shell-path.spec.ts` `/settings?tab=identity` dirty-state Save button visible-after-edit render-smoke
-- [ ] **F7.4** `frontend/tests/e2e/visual-baseline.spec.ts` `/settings?tab=identity` baseline re-capture post-inline-edit
-- [ ] **F7.5** Vitest stats `pnpm exec vitest run tests/unit/` ≥ ~15 settings-area pass(W24-c1 baseline 9 + F7.1+F7.2 NEW ~6)
-- [ ] **F7.6** Playwright stats `PW_CHANNEL=chrome pnpm exec playwright test` ≥ 24/24 pass
-- [ ] **F7.7** Backend pytest ≥ ~811 pass(W24-c1 baseline 805 + F6 ~6 NEW)
+> R6 finding(plan §7 Day 1 cont F7):**(a)** F7.2 content(action_type filter + cursor pagination)已由 F6.6 `settings-audit-log.test.tsx` 3 cases 交付 → F7.2 = extend 嗰個 file(非 `-filter` 新檔);**(b)** F7.3 `/settings?tab=identity` test 既有 → extend;**(c)** F7.4 無 identity baseline(只 connections)→ first-capture 非 re-capture;**(d)** Playwright run + PNG capture = user pre-Beta smoke per W24-c1 precedent;**(e)** F7 無 backend change → pytest 816 from F6 preserved。
+
+- [x] **F7.1** `frontend/tests/unit/settings-identity-form.test.tsx` NEW(4 cases)— `<SettingsIdentity>` TenantCard RHF + zod:malformed tenant_id → "Must be a valid GUID" on submit + `patchTenant` not called / valid value clears error / malformed tenant_domain → domain regex error / valid edit → `patchTenant` called with `authority_url:null`
+- [x] **F7.2** `frontend/tests/unit/settings-audit-log.test.tsx`(F6.6-created)**extended** +2 NEW — since date filter re-fetch(`listAuditLog` called with `since`)+ filtered empty-state message(F6 baseline 3 → **5 cases**)
+- [x] **F7.3** `frontend/tests/e2e/app-shell-path.spec.ts` 既有 `/settings?tab=identity` test **extended** — dirty-state `<CardSaveRow>` Save button render-smoke(`saveButton.or(banner).or(errorBanner)` 3-state per BUG-004;strict type→enable interactive = user pre-Beta smoke)
+- [x] **F7.4** `frontend/tests/e2e/visual-baseline.spec.ts` 加 `Settings ?tab=identity` 新 test spec(mask `.mono`);PNG first-capture user-deferred per W24-c1/W20 F8.5/W23 F2.3 precedent
+- [x] **F7.5** Vitest — settings-area 6-file deterministic batch **41/41 pass**(settings-6tab 9 + settings-audit-log 5 + settings-identity-form 4 + zod-toolchain 4 + admin-schemas 16 + error-boundary 3);full-suite run 15 files green 但命中 OneDrive worker-pool start-timeout(W23-documented infra flakiness per setup.md §8.7 — 非 regression;smaller-batch 係 workaround)
+- [🚧] **F7.6 spec landed,execution user-deferred** — `app-shell-path.spec.ts` + `visual-baseline.spec.ts` spec 改動已 land + `tsc`/`lint` clean;`PW_CHANNEL=chrome pnpm exec playwright test` execution + `settings-identity.png` PNG first-capture = **user pre-Beta smoke**(needs dev server + backend + system Chrome 同時起,per W24-c1「Playwright +2 user-deferred」+ W20 F8.5 + W23 F2.3 precedent)
+- [x] **F7.7** Backend pytest — F7 全 frontend test 改動,**無 backend change** → **816 passed preserved from F6**(per Karpathy §1.2 唔重跑 zero-delta 4.5-min suite);`tsc --noEmit` exit 0 + `next lint` ✔ clean
 
 ## F8 — Closeout cascade
 

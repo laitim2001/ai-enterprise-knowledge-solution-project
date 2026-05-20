@@ -123,4 +123,26 @@ test.describe('Visual baseline — pixel diff harness (W23 F2.3 W22-aligned)', (
       mask: [page.locator('.mono')],
     });
   });
+
+  test('Settings ?tab=identity baseline (W24b F7.4 — Identity inline-edit forms)', async ({
+    page,
+  }) => {
+    await page.goto('/settings?tab=identity');
+    // W24 F5 page-title preserved + deep-link tab selection.
+    await expect(
+      page.getByRole('heading', { name: /^settings$/i, level: 1 }),
+    ).toBeVisible();
+    // Identity tab: 4 editable cards (Tenant / App registration / MSAL /
+    // Sign-in policy) load async — wait for the loading banner OR the resolved
+    // tenant card before the pixel capture.
+    const banner = page.getByText(/loading identity configuration/i);
+    const tenantCard = page.getByText(/entra id tenant/i);
+    await expect(banner.or(tenantCard).first()).toBeVisible({ timeout: 10000 });
+    // Mask dynamic mono content (tenant / client GUIDs + kv_ref names + the
+    // derived authority URL vary per env).
+    await expect(page).toHaveScreenshot('settings-identity.png', {
+      fullPage: true,
+      mask: [page.locator('.mono')],
+    });
+  });
 });

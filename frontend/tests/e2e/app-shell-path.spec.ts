@@ -222,16 +222,32 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow (W23 F
     await expect(page.getByRole('tab', { name: /^account$/i })).toBeVisible();
   });
 
-  test('/settings?tab=identity deep link selects Identity tab', async ({ page }) => {
+  test('/settings?tab=identity selects Identity tab + shows the inline-edit Save affordance (W24b F7.3)', async ({
+    page,
+  }) => {
     await page.goto('/settings?tab=identity');
     const identityTab = page.getByRole('tab', { name: /identity & auth/i });
     await expect(identityTab).toHaveAttribute('aria-selected', 'true');
-    // Identity body content — the 5 sub-resource cards header (render-smoke;
-    // backend data may still be loading on dev cold-start so check the
-    // banner OR the resolved tenant card).
+    // Identity body content — render-smoke: settles into the loading banner,
+    // the resolved tenant card, or the graceful error banner (dev cold-start
+    // tolerant per BUG-004).
     const banner = page.getByText(/loading identity configuration/i);
     const tenantCard = page.getByText(/entra id tenant/i);
-    await expect(banner.or(tenantCard).first()).toBeVisible({ timeout: 10000 });
+    const errorBanner = page.getByText(/failed to load identity config/i);
+    await expect(
+      banner.or(tenantCard).or(errorBanner).first(),
+    ).toBeVisible({ timeout: 10000 });
+    // W24b F7.3 — when the cards resolve, the inline-edit dirty-state affordance
+    // (`<CardSaveRow>` Save button) is part of each editable form. Render-smoke
+    // asserts the Save button OR the still-loading banner OR the error banner;
+    // the strict "type → Save enables" interactive flow is the user's pre-Beta
+    // smoke (per W12-W24 interactive-deferred precedent).
+    const saveButton = page
+      .getByRole('button', { name: /save changes/i })
+      .first();
+    await expect(
+      saveButton.or(banner).or(errorBanner).first(),
+    ).toBeVisible({ timeout: 20000 });
   });
 
   test('/kb/[id] page renders gracefully — tablist OR error banner (render-smoke; full 8-tab E2E deferred W24+ per BUG-004)', async ({

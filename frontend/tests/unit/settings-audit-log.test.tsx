@@ -1,8 +1,11 @@
 /**
- * Unit tests — `<SettingsAuditLog>` filter + cursor pagination (W24b-wave-c2 F6).
+ * Unit tests — `<SettingsAuditLog>` filter + cursor pagination (W24b-wave-c2
+ * F6 + F7.2).
  *
- * Verifies the action_type filter select re-fetches, and the cursor-based
- * "Load more" button appends an older page rather than replacing it.
+ * F6: action_type filter re-fetches; the cursor-based "Load more" button
+ * appends an older page rather than replacing it.
+ * F7.2: the since date filter re-fetches; a filter matching nothing shows the
+ * filtered empty-state message.
  *
  * Mocks `adminApi` so the component's `listAuditLog` fetch is controllable.
  */
@@ -96,5 +99,36 @@ describe('SettingsAuditLog filter + pagination (W24b F6)', () => {
       since: undefined,
       cursor: 20,
     });
+  });
+
+  it('re-fetches with the since param when the date filter changes', async () => {
+    listAuditLog.mockResolvedValue({ entries: [], next_cursor: null });
+    render(<SettingsAuditLog />);
+    await waitFor(() => expect(listAuditLog).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText('Since'), {
+      target: { value: '2026-05-01' },
+    });
+    await waitFor(() => {
+      expect(listAuditLog).toHaveBeenCalledWith({
+        limit: 10,
+        action_type: undefined,
+        since: '2026-05-01',
+      });
+    });
+  });
+
+  it('shows the filtered empty-state message when a filter matches nothing', async () => {
+    listAuditLog.mockResolvedValue({ entries: [], next_cursor: null });
+    render(<SettingsAuditLog />);
+    // Unfiltered empty state first.
+    expect(
+      await screen.findByText(/no audit entries yet/i),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Action'), {
+      target: { value: 'identity_patch' },
+    });
+    expect(
+      await screen.findByText(/no audit entries match the current filter/i),
+    ).toBeInTheDocument();
   });
 });

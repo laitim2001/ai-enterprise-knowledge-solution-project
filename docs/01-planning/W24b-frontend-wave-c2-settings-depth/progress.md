@@ -310,4 +310,44 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F7 entries land at F7 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F7 Tests(Vitest + Playwright)
+
+### Done
+
+- **F7 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `settings-identity.tsx` + `identity.ts` schema + `app-shell-path.spec.ts` + `visual-baseline.spec.ts` + F6-created `settings-audit-log.test.tsx`:
+  - **(2) grep** — F7.2 內容(action_type filter + cursor pagination)已由 F6.6 `settings-audit-log.test.tsx` 3 cases 交付;`app-shell-path.spec.ts` 已有 `/settings?tab=identity` test(line 225-235);`visual-baseline.spec.ts` 只有 `settings-connections.png` baseline,**無 identity baseline**
+  - **(3) surface** — 3 plan-text deviations + 2 precedent-bound defers(plan §7 Day 1 cont F7 row)
+  - **(4) document** — plan §7 changelog F7 row landed
+  - **(5) adjust** — F7.2 = extend F6 file;F7.3 = extend 既有 test;F7.4 = first-capture(非 re-capture);Playwright run + capture user-deferred
+- **F7.1** `frontend/tests/unit/settings-identity-form.test.tsx` NEW(4 cases)— render `<SettingsIdentity>`(mocked `adminApi`,`QueryClientProvider`),TenantCard RHF + `zodResolver(entraTenantConfigSchema)`:malformed `not-a-guid` submit → `findByText('Must be a valid GUID')` + `patchTenant` not called / 改 valid GUID → reValidateMode onChange → error 清 / malformed `tenant_domain`(`'bad domain!'`)submit → domain regex error / valid edit submit → `patchTenant` called with `authority_url:null`(v4-shaped GUID 兩個避開 zod `.uuid()` strict regex)
+- **F7.2** `settings-audit-log.test.tsx` extend +2 NEW(F6 baseline 3 → **5 cases**)— since date input `fireEvent.change` → `listAuditLog` called with `since:'2026-05-01'` / action filter change at empty result → `findByText(/no audit entries match the current filter/i)`
+- **F7.3** `app-shell-path.spec.ts` 既有 `/settings?tab=identity` test extend — `<CardSaveRow>` Save button render-smoke(`saveButton.or(banner).or(errorBanner)` 3-state OR per BUG-004 dev-cold-start tolerance);test 改名反映 F7.3 scope
+- **F7.4** `visual-baseline.spec.ts` 加 `Settings ?tab=identity baseline` 新 test spec(`toHaveScreenshot('settings-identity.png')` + mask `.mono`);PNG first-capture user-deferred
+- **F7.5** Vitest — settings-area 6-file deterministic batch **41/41 pass**(settings-6tab 9 + settings-audit-log 5 + settings-identity-form 4 + zod-toolchain 4 + admin-schemas 16 + error-boundary 3);`error-boundary.test.tsx` 嘅「transient boom」stack trace 係故意 throw 嘅 expected console noise(ErrorBoundary catch test)
+- **F7.6** `app-shell-path.spec.ts` + `visual-baseline.spec.ts` spec 改動已 land + tsc/lint clean;**🚧 `PW_CHANNEL=chrome` execution + `settings-identity.png` PNG first-capture = user pre-Beta smoke**
+- **F7.7** F7 無 backend change → backend pytest **816 preserved from F6**(唔重跑);`pnpm exec tsc --noEmit` **REAL exit 0** + `next lint` **✔ clean**
+
+### Decisions
+
+- **D7.1 — F7.2 = extend F6 file,非 duplicate `-filter` 新檔** — plan-text F7.2 描述「`settings-audit-log-filter.test.tsx` NEW or extend — action_type filter + cursor pagination,3+ cases」;但 F6.6 已交付 `settings-audit-log.test.tsx` 3 cases(mount / filter re-fetch / Load more)= F7.2 描述內容。開 `settings-audit-log-filter.test.tsx` 新檔 = near-duplicate filename + 分散同一 component 嘅 test。R6 adjust:extend F6 嗰個 file 加 since-filter + filtered-empty-state 2 cases(F6 唔 cover 嗰兩個 surface),總 5 cases。
+- **D7.2 — F7.3 = extend 既有 test,Save button render-smoke OR-tolerant** — `app-shell-path.spec.ts` 已有 `/settings?tab=identity deep link selects Identity tab`(W23 F2 landed)。F7.3 唔加 duplicate test,extend 既有嗰個。Save button(`<CardSaveRow>`)render-smoke 用 `saveButton.or(banner).or(errorBanner)` 3-state OR — dev cold-start 時 backend 可能未 resolve,per BUG-004 render-smoke philosophy(loading / happy / graceful-error 任一)。strict「type input → Save button enables」interactive 流程屬 user pre-Beta smoke(同 BUG-004 `/traces/[traceId]` + `/kb/[id]` deep-interactive defer 一致)。
+- **D7.3 — F7.4 = first-capture 非 re-capture** — plan-text 寫「baseline re-capture」,但 `visual-baseline.spec.ts` 只有 `settings-connections.png`,**冇 `settings-identity` baseline**(W24-c1 settings tab 係 read-only,冇 identity-specific baseline)。所以 F7.4 係 first-capture。加 `Settings ?tab=identity` 新 test spec;PNG 實際 capture user-deferred(per W24-c1「visual baseline first-capture user-deferred」+ W20 F8.5 + W23 F2.3 precedent)。
+- **D7.4 — F7.6 Playwright execution user-deferred** — `PW_CHANNEL=chrome pnpm exec playwright test` 需要 frontend dev server + backend server + system Chrome 同時起(multi-process)。W24-wave-c1 closeout precedent 明確 defer Playwright run(「Playwright +2 NEW... user-deferred」)+ visual baseline first-capture。F7 ship spec **file** 改動(可 tsc/lint verify),execution 留 user pre-Beta smoke。F7.6「24/24 pass」唔自我宣稱 — 冇跑就唔 claim。標 🚧 + reason per CLAUDE.md sacred rule。
+- **D7.5 — F7.7 唔重跑 backend pytest** — F7 全部 frontend test 檔改動(`settings-identity-form.test.tsx` / `settings-audit-log.test.tsx` / 2 e2e spec),**零 backend source 改動**。F6 已 verify backend pytest 816 passed。重跑 4.5-min suite 攞同一個 816 = busywork per Karpathy §1.2。F7.7 = 816 preserved from F6。
+- **D7.6 — Vitest full-suite worker-pool timeout = OneDrive infra,非 regression** — `pnpm exec vitest run tests/unit/` 全 15 檔一齊跑會命中 `Failed to start threads worker` / `Timeout waiting for worker to respond`(OneDrive I/O contention,W23 D2 已 documented + setup.md §8.7 記錄)。可靠量度法 = 跑細 batch(settings-area 6 檔 → 41/41 deterministic pass)。full-suite 綠燈係 CI 嘅 concern(W23 retro:CI 應用 production build + 適當 pool config),非 W24b code regression。
+
+### Acceptance(plan §3 + checklist F7)
+
+- [x] F7.1 settings-identity-form.test.tsx NEW 4 cases
+- [x] F7.2 settings-audit-log.test.tsx extend +2(3 → 5 cases)
+- [x] F7.3 app-shell-path.spec.ts /settings?tab=identity test extend(Save button render-smoke)
+- [x] F7.4 visual-baseline.spec.ts Settings ?tab=identity test spec NEW
+- [x] F7.5 Vitest settings-area 41/41 deterministic batch
+- [🚧] F7.6 spec landed;Playwright execution + PNG capture user-deferred per W24-c1 precedent
+- [x] F7.7 backend pytest 816 preserved + tsc exit 0 + lint clean
+
+**Day 1 cont F7 Verdict**:F7 complete — `settings-identity-form.test.tsx` NEW 4-case RHF+zod validation suite + `settings-audit-log.test.tsx` extend(3→5)+ 2 e2e spec 改動(`app-shell-path` identity test extend + `visual-baseline` identity test NEW)。Vitest settings-area 41/41 deterministic。Playwright execution + visual PNG capture 標 🚧 user pre-Beta smoke per W24-c1 precedent。F8 closeout cascade next。Real-calendar:F7 ~0.4 day vs 0.75 plan estimate。
+
+---
+
+<!-- Day 1+ F8 entries land at F8 active flip per CLAUDE.md §10 R2 -->
