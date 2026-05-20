@@ -73,7 +73,8 @@ status: active                      # active | closed
 | F0 | 0.25 | 0.25 | 0 | Single-commit kickoff per W19-W24 F0 precedent |
 | F1 | 0.5 | ~0.15 | -0.35 | Plan B (a) clean install no R8 friction;F1.4 folder defer F2.1 |
 | F2 | 1.0 | ~0.4 | -0.6 | 3 schemas + ApiKeys upgrade + 16-test suite;F2.4→F5 + F2.6→F3 deferred |
-| F3-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
+| F3 | 1.0 | ~0.4 | -0.6 | Connections inline edit + 3 useMutation;1 tsc type-fix(ConnectionEdit) |
+| F4-F8 | _TBD per active flip_ | _TBD_ | _TBD_ | Rolling JIT per CLAUDE.md §10 R1 |
 
 ---
 
@@ -155,4 +156,39 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F3 entries land at F3 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F3 Connections inline edit + optimistic mutation
+
+### Done
+
+- **F3 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6):
+  - **(2) grep** — `QueryClientProvider` confirmed mounted via `(app)/layout.tsx` → `<QueryProvider>`(`lib/providers/query-provider.tsx`,staleTime 30s / retry 1);settings 喺其下,`useMutation` 可用。`service-card.tsx` API confirmed(`endpoint?` prop optional → 唔傳就唔 render endpoint strip)。mockup `ekp-page-settings-tabs.jsx:383-457 ServiceCard` 確認 expanded body 用 editable `.input mono` grid
+  - **(3) surface** — optimistic UI fork(useQuery cache 轉換 vs local-state);ProviderRow `detail` 係 component-local state → local-state optimistic,無需 useQuery 轉換
+  - **(5) adjust** — F3 acceptance feature-slice 重寫(原 aspect-slice);plan §7 Day 1 cont F3 row landed
+- **F3.1** `settings-connections.tsx` ProviderRow inline edit form — `useForm<ProviderPatchInput>` + `zodResolver(providerPatchSchema)` + `values` prop(sync to `detail`,handle async-load + optimistic);3-field `.field` 2-col grid(display_name / region / endpoint_url full-width mono)+ Save changes button + inline zod errors
+- **F3.2** `patchMutation` `useMutation` local-state optimistic — `onMutate` snapshot `detail` + `setDetail({...detail,...patch})`;`onError` rollback;`onSuccess` `setDetail(updated)` server-truth。narrower `ConnectionEdit` type(`endpoint_url: string|null` + `region: string|null` + `display_name: string`)— form 永遠送 concrete display_name,令 `{...detail,...patch}` type-check against `ProviderConfig`
+- **F3.3** `testMutation` + `rotateMutation` — `handleTest`/`handleRotate` async fns → `useMutation`;`isPending` 取代 `testing`/`rotating` useState(刪 2 個 useState);`onSuccess` setDetail from result(test → `last_test_status`/`last_test_detail`;rotate → `last_rotated_at`/`secret_masked_preview`)— 取消原 in-onSuccess `getConnection` refetch(result payload 已含 fresh fields)
+- **F3.4** Error surfacing — `patchMutation.isError` → inline `oklch(var(--destructive))` text(`patchMutation.error?.message ?? 'Update failed'`);per-field zod errors `errors.display_name`/`errors.endpoint_url` 紅字 hint
+- **F3.5** Verify gates — `tsc --noEmit` **REAL exit 0**、`next lint` **✔ No ESLint warnings or errors**、`Grep '\[oklch'` across `app`+`components`+`lib` = **0**、`settings-6tab.test.tsx` **9/9 pass**(regression-clean)
+- **ServiceCard `endpoint` prop dropped** — F3 唔再傳 `endpoint` 俾 ServiceCard(原本顯示 read-only endpoint strip);endpoint 而家由 edit form 擁有(editable)— 避免 endpoint 顯示兩次 redundancy,更貼 mockup「endpoint 喺 expanded body editable」
+
+### Decisions
+
+- **D3.1 — Optimistic UI fork = local-state(非 useQuery cache 轉換)** — `ProviderRow.detail` 係 component-local `useState`(一張展開卡嘅 lazy-fetched config),唔係 cross-component shared data。`useMutation` 嘅 `onMutate`/`onError`/`onSuccess` callback 直接操作 local `setDetail` 就可以做 optimistic + rollback;`queryClient.setQueryData` 只喺 data 住喺 query cache(`useQuery`)時先需要。轉 useQuery 要連帶重寫 ProviderRow 嘅 lazy「Load configuration」button interaction = scope creep per Karpathy §1.3 surgical。plan §3 Gate criterion 4「useMutation + onMutate/onError rollback」— local-state 完全 satisfy(criterion 冇 mandate query cache)。F5 Identity 亦會跟同一 local-state pattern(`config` useState)— Wave C2 settings cluster 內部一致。
+- **D3.2 — `ConnectionEdit` narrower type** — `ProviderPatch.display_name` 係 `string|null`(backend PATCH 容許 omit),但 `ProviderConfig.display_name` 係 `string`(stored config 必有)。`{...detail,...patch}` optimistic merge 用 `ProviderPatch` 會 widen display_name 至 `string|null` → tsc reject。Fix:`ConnectionEdit = {endpoint_url: string|null; region: string|null; display_name: string}` — form 永遠送 concrete display_name(`.min(1)` zod 已 enforce non-empty),narrower type assignable to `ProviderPatch` for `updateConnection` call。
+- **D3.3 — test/rotate `onSuccess` 唔再 refetch** — 原 Wave C1 `handleTest`/`handleRotate` 喺 await 後再 `getConnection` refetch「so the badge updates」。`testConnection` 返 `{status,latency_ms,detail}`、`rotateSecret` 返 `{last_rotated_at,secret_masked_preview}` — 兩個 result payload 已含需要更新嘅 fields,`onSuccess` 直接 `setDetail` partial merge 即可,慳一個 round-trip。
+- **D3.4 — 預判 test breakage 證實多餘** — F3 加 `useMutation` 入 ProviderRow,本以為會 break `settings-6tab.test.tsx`(該 test 冇 QueryClientProvider wrapper)。但實測 9/9 pass:test mock `listConnections` 返 `[]` → `grouped` 空 → **ProviderRow 完全唔 mount** → `useMutation` 永遠唔 reach。**唔加 wrapper**(Karpathy §1.2 — 唔加唔需要嘅嘢)。F7 若加實 data render test 先需要 wrapper。
+- **D3.5 — ServiceCard `endpoint` prop 唔再傳** — 避免 endpoint read-only strip + edit form 兩處顯示;endpoint 由 edit form 擁有。region 仍傳 ServiceCard(collapsed header summary)+ edit form 亦有(editable)— 同 mockup「header desc summary + body editable input」一致。
+
+### Acceptance(plan §3 + checklist F3)
+
+- [x] F3.1 ProviderRow inline edit form(useForm + zodResolver + values sync)
+- [x] F3.2 patchMutation local-state optimistic(onMutate/onError/onSuccess)
+- [x] F3.3 testMutation + rotateMutation retrofit(isPending,刪 2 useState)
+- [x] F3.4 error surfacing(isError text + per-field zod errors)
+- [x] F3.5 tsc REAL exit 0 + lint clean + [oklch=0 + settings-6tab 9/9
+
+**Day 1 cont F3 Verdict**:F3 complete — Connections inline edit 完整 unit(form + zod + 3 optimistic useMutation),absorbs F2.6 deferred wire。Optimistic UI fork resolved = local-state per D3.1。F4 ErrorBoundary per tab next。Real-calendar:F3 ~0.4 day vs 1.0 plan estimate。
+
+---
+
+<!-- Day 1+ F4 entries land at F4 active flip per CLAUDE.md §10 R2 -->

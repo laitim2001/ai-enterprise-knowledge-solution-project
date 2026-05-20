@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-20  # F2 active-flip → F2.1-F2.8 complete (F2.4→F5, F2.6→F3 deferred)
+last_updated: 2026-05-20  # F3 active-flip → F3.1-F3.5 complete (Connections inline edit)
 ---
 
 # W24b-wave-c2 — Checklist
@@ -36,13 +36,15 @@ last_updated: 2026-05-20  # F2 active-flip → F2.1-F2.8 complete (F2.4→F5, F2
 - [x] **F2.7** `tsc --noEmit` **REAL exit 0**(用 `> file 2>&1; echo $?` 量度,非 broken `tsc | tail` pipe)+ `next lint` **✔ No ESLint warnings or errors** + `Grep '\[oklch'` across `app`+`components`+`lib` = **0 preserved**;9 NEW/edited 行全部 CSS-first
 - [x] **F2.8** NEW(per plan §7 Day 1 F2 changelog)`frontend/tests/unit/admin-schemas.test.ts`(150 lines)— **16/16 pass**:entraTenant(valid + non-GUID + bad enum)+ alertThreshold(in-band + <50 + >95 + non-int)+ signInPolicy(valid domains + missing-@ + tier2-true-reject)+ msal(duration-shape + free-text-reject)+ providerPatch(valid URL + empty + malformed + empty display_name)
 
-## F3 — Optimistic UI per PATCH(TanStack useMutation retrofit)
+## F3 — Connections inline edit + optimistic mutation
 
-- [ ] **F3.1** 4 settings/* components retrofit:replace `useState + try/await/catch` pessimistic with `useMutation({ onMutate, onError, onSuccess })`
-- [ ] **F3.2** `onMutate` optimistic cache update via `queryClient.setQueryData`
-- [ ] **F3.3** `onError` rollback via cached snapshot + inline banner-destructive error display(無 toast — 保留 Wave C1 inline pattern)
-- [ ] **F3.4** `onSuccess` invalidate cache via `queryClient.invalidateQueries`
-- [ ] **F3.5** `tsc --noEmit` exit 0 + `next lint` clean
+> Scope per F2 R6 reshape(aspect-slice → feature-slice,plan §7 Day 1 cont F2)— F3 = Connections inline edit complete unit(form + zod + optimistic mutation),absorbs deferred F2.6。原 aspect-sliced F3.1-F3.5 acceptance(「4 components retrofit」/「queryClient.setQueryData」/「invalidateQueries」)→ feature-slice 重寫,per plan §7 Day 1 cont F3 row。
+
+- [x] **F3.1** `settings-connections.tsx` ProviderRow inline edit form — `useForm<ProviderPatchInput>` + `zodResolver(providerPatchSchema)` + `values` synced to `detail`(handles async-load + optimistic mutation);3 fields(display_name / region / endpoint_url)`.field` 2-col grid + Save changes button(`!isDirty || patchMutation.isPending` disabled)+ inline zod field errors
+- [x] **F3.2** `patchMutation` `useMutation` **local-state optimistic**(fork decision D3.1)— `onMutate` snapshot `detail` + `setDetail({...detail,...patch})`;`onError` rollback to snapshot;`onSuccess` server-truth `setDetail(updated)`。`ProviderRow.detail` 係 component-local state → `queryClient.setQueryData` 唔需要;轉 useQuery = scope creep(要重寫 lazy-fetch interaction)per Karpathy §1.3 surgical。narrower `ConnectionEdit` type(display_name 永遠 concrete)令 `{...detail,...patch}` type-check against `ProviderConfig`
+- [x] **F3.3** `testMutation` + `rotateMutation` retrofit — `handleTest`/`handleRotate` async fns → `useMutation`;`isPending` 取代 `testing`/`rotating` useState;`onSuccess` setDetail from result(`last_test_status` / `last_test_detail` / `last_rotated_at` / `secret_masked_preview`)— 唔再 in-onSuccess refetch(result 已含 fresh fields)
+- [x] **F3.4** Error surfacing — `patchMutation.isError` inline destructive text(`patchMutation.error?.message`)+ per-field zod `errors.{display_name,endpoint_url}.message` 紅字
+- [x] **F3.5** Verify gates — `tsc --noEmit` **REAL exit 0**(ConnectionEdit type fix 後)+ `next lint` **✔ clean** + `Grep '\[oklch'`=0 + `settings-6tab.test.tsx` **9/9 regression-clean**(empty `listConnections` mock → 冇 ProviderRow mount → `useMutation` 唔 reach → F3 唔 break test,**唔需加 QueryClientProvider wrapper** — 預判 breakage 證實多餘)
 
 ## F4 — ErrorBoundary per tab
 

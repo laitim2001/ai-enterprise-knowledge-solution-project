@@ -17,10 +17,17 @@
  *
  * **Data-bound**: real `apiClient.admin.listConnections` + `getConnection`
  * round-trip on mount. No mock data.
+ *
+ * W24b-wave-c2 F3: each expanded ProviderRow gains an inline edit form
+ * (endpoint / region / display name — react-hook-form + zod) with an
+ * optimistic PATCH; Test connection + Rotate secret moved to `useMutation`.
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2, Loader2, PlugZap } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { ApiKeyInput } from '@/components/ui/api-key-input';
 import { DeploymentsTable } from '@/components/ui/deployments-table';
@@ -32,6 +39,10 @@ import {
   type ProviderSummary,
   type TestStatus,
 } from '@/lib/api/admin';
+import {
+  providerPatchSchema,
+  type ProviderPatchInput,
+} from '@/lib/schemas/admin/connections';
 
 const CATEGORY_ORDER: ProviderCategory[] = [
   'llm',
@@ -137,56 +148,112 @@ export function SettingsConnections() {
 // ProviderRow — collapsible card with on-demand detail fetch
 // ============================================================================
 
+/**
+ * What the inline edit form submits — narrower than `ProviderPatch`: the form
+ * always sends a concrete `display_name`, so `{ ...detail, ...patch }` in the
+ * optimistic merge type-checks against `ProviderConfig` (whose `display_name`
+ * is non-null).
+ */
+type ConnectionEdit = {
+  endpoint_url: string | null;
+  region: string | null;
+  display_name: string;
+};
+
 function ProviderRow({ summary }: { summary: ProviderSummary }) {
   const [detail, setDetail] = useState<ProviderConfig | null>(null);
   const [loading, setLoading] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [rotating, setRotating] = useState(false);
   const [lastTestDetail, setLastTestDetail] = useState<string | null>(null);
 
-  const ensureDetail = useCallback(async (): Promise<ProviderConfig | null> => {
-    if (detail) return detail;
+  const ensureDetail = useCallback(async (): Promise<void> => {
+    if (detail) return;
     setLoading(true);
     try {
-      const fresh = await adminApi.getConnection(summary.provider_id);
-      setDetail(fresh);
-      return fresh;
+      setDetail(await adminApi.getConnection(summary.provider_id));
     } finally {
       setLoading(false);
     }
   }, [detail, summary.provider_id]);
 
-  const handleTest = async () => {
-    setTesting(true);
-    try {
-      const result = await adminApi.testConnection(summary.provider_id);
-      setLastTestDetail(result.detail);
-      // Refresh detail so the badge updates.
-      const refreshed = await adminApi.getConnection(summary.provider_id);
-      setDetail(refreshed);
-    } finally {
-      setTesting(false);
-    }
-  };
+  // Edit form — the 3 ProviderPatch fields. `values` keeps the form synced
+  // with `detail`, which loads after mount and is mutated optimistically.
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+  } = useForm<ProviderPatchInput>({
+    resolver: zodResolver(providerPatchSchema),
+    values: {
+      endpoint_url: detail?.endpoint_url ?? '',
+      region: detail?.region ?? '',
+      display_name: detail?.display_name ?? '',
+    },
+  });
 
-  const handleRotate = async () => {
-    setRotating(true);
-    try {
-      await adminApi.rotateSecret(summary.provider_id);
-      const refreshed = await adminApi.getConnection(summary.provider_id);
-      setDetail(refreshed);
-    } finally {
-      setRotating(false);
-    }
-  };
+  // Optimistic PATCH — snapshot `detail`, apply the patch locally, roll back
+  // on error, replace with the server truth on success.
+  const patchMutation = useMutation({
+    mutationFn: (patch: ConnectionEdit) =>
+      adminApi.updateConnection(summary.provider_id, patch),
+    onMutate: (patch) => {
+      const snapshot = detail;
+      if (detail) setDetail({ ...detail, ...patch });
+      return { snapshot };
+    },
+    onError: (_error, _patch, context) => {
+      if (context) setDetail(context.snapshot);
+    },
+    onSuccess: (updated) => setDetail(updated),
+  });
+
+  const testMutation = useMutation({
+    mutationFn: () => adminApi.testConnection(summary.provider_id),
+    onSuccess: (result) => {
+      setLastTestDetail(result.detail);
+      setDetail((d) =>
+        d
+          ? {
+              ...d,
+              last_test_status: result.status,
+              last_test_detail: result.detail,
+            }
+          : d,
+      );
+    },
+  });
+
+  const rotateMutation = useMutation({
+    mutationFn: () => adminApi.rotateSecret(summary.provider_id),
+    onSuccess: (result) => {
+      setDetail((d) =>
+        d
+          ? {
+              ...d,
+              last_rotated_at: result.last_rotated_at,
+              secret_masked_preview: result.secret_masked_preview,
+            }
+          : d,
+      );
+    },
+  });
+
+  const onSubmit = handleSubmit((data) => {
+    patchMutation.mutate({
+      // Empty endpoint / region collapse to null — backend models them as
+      // `str | None`, so a cleared field means "unset" not "stored ''".
+      endpoint_url: data.endpoint_url ? data.endpoint_url : null,
+      region: data.region ? data.region : null,
+      display_name: data.display_name ?? '',
+    });
+  });
 
   // The card's status badge reads from the detail (if loaded) or the summary.
   const status: TestStatus = detail?.last_test_status ?? summary.last_test_status;
+  const idBase = summary.provider_id;
 
   return (
     <ServiceCard
       displayName={summary.display_name}
-      endpoint={detail?.endpoint_url ?? null}
       region={detail?.region ?? null}
       status={status}
     >
@@ -213,6 +280,91 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
         </div>
       ) : (
         <>
+          {/* Inline edit form — endpoint / region / display name. */}
+          <form onSubmit={onSubmit} style={{ marginBottom: 14 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                marginBottom: 10,
+              }}
+            >
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="label" htmlFor={`dn-${idBase}`}>
+                  Display name
+                </label>
+                <input
+                  id={`dn-${idBase}`}
+                  className="input"
+                  aria-invalid={errors.display_name ? 'true' : undefined}
+                  {...register('display_name')}
+                />
+                {errors.display_name ? (
+                  <div
+                    className="hint"
+                    style={{ color: 'oklch(var(--destructive))' }}
+                  >
+                    {errors.display_name.message}
+                  </div>
+                ) : null}
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label className="label" htmlFor={`rg-${idBase}`}>
+                  Region
+                </label>
+                <input
+                  id={`rg-${idBase}`}
+                  className="input"
+                  {...register('region')}
+                />
+              </div>
+              <div
+                className="field"
+                style={{ gridColumn: '1 / -1', marginBottom: 0 }}
+              >
+                <label className="label" htmlFor={`ep-${idBase}`}>
+                  Endpoint URL
+                </label>
+                <input
+                  id={`ep-${idBase}`}
+                  className="input mono"
+                  aria-invalid={errors.endpoint_url ? 'true' : undefined}
+                  {...register('endpoint_url')}
+                  style={{ fontSize: 12 }}
+                />
+                {errors.endpoint_url ? (
+                  <div
+                    className="hint"
+                    style={{ color: 'oklch(var(--destructive))' }}
+                  >
+                    {errors.endpoint_url.message}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                type="submit"
+                className="btn btn-secondary btn-sm"
+                disabled={!isDirty || patchMutation.isPending}
+              >
+                {patchMutation.isPending ? (
+                  <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                ) : null}{' '}
+                Save changes
+              </button>
+              {patchMutation.isError ? (
+                <span
+                  className="text-xs"
+                  style={{ color: 'oklch(var(--destructive))' }}
+                >
+                  {patchMutation.error?.message ?? 'Update failed'}
+                </span>
+              ) : null}
+            </div>
+          </form>
+
           {/* Secret row (only when secret_kv_ref present). */}
           {detail.secret_kv_ref ? (
             <div className="field" style={{ marginBottom: 12 }}>
@@ -221,8 +373,8 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
               </label>
               <ApiKeyInput
                 value={detail.secret_masked_preview}
-                onRotate={handleRotate}
-                rotateDisabled={rotating}
+                onRotate={() => rotateMutation.mutate()}
+                rotateDisabled={rotateMutation.isPending}
                 ariaLabel={`Secret for ${detail.display_name}`}
               />
               {detail.last_rotated_at ? (
@@ -258,10 +410,10 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
             <button
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={() => void handleTest()}
-              disabled={testing}
+              onClick={() => testMutation.mutate()}
+              disabled={testMutation.isPending}
             >
-              {testing ? (
+              {testMutation.isPending ? (
                 <Loader2 size={12} className="animate-spin" aria-hidden="true" />
               ) : (
                 <CheckCircle2 size={12} aria-hidden="true" />
