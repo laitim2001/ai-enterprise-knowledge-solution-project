@@ -2,7 +2,7 @@
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active                      # active | closed
+status: closed                      # active | closed — closed 2026-05-20 Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT
 ---
 
 # W24b-wave-c2 — Progress
@@ -350,4 +350,110 @@ status: active                      # active | closed
 
 ---
 
-<!-- Day 1+ F8 entries land at F8 active flip per CLAUDE.md §10 R2 -->
+## Day 1 cont — 2026-05-20 — F8 Closeout cascade
+
+### Done
+
+- **F8 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `ADR-0026` + `COMPONENT_CATALOG.md` C08/C09/C11 + `PAGE_INVENTORY.md` table + `session-start.md` §3/§10/§11/§12:
+  - **(3) surface** — 1 R6 finding:`PAGE_INVENTORY.md` **row 6 `/doc-detail` 亦 stale**(W22 F6 `093ff89` 已 land `/kb/[id]/docs/[docId]`,row 仍標「⏳ Wave B candidate (W21+)」)— 但 plan F8.9 + Chris kickoff 明確 scope「row 8/9/10」→ **唔擅自擴 scope**,row 6 surface 入下方 Carry-overs 留下一個 doc-sync 處理(per Karpathy §1.3 — 見到無關 stale → mention 唔 fix)
+  - **(5) adjust** — F8.9 = rows 8/9/10 only(per stated scope);row 6 carry-over noted
+- **F8.1** Phase Gate verdict **PASS WITH SMOKE-USER-DEFERRED CAVEAT**(下方 Retrospective)
+- **F8.2** 7-section retro landed(下方)
+- **F8.3** plan + checklist + progress frontmatter `active → closed`
+- **F8.4** W24c+ candidates 入 Retrospective Carry-overs,**NOT pre-created** per CLAUDE.md §10 R1
+- **F8.5** `session-start.md` 6 處 sync(§3 C08+C09+C11 W24b notes + §10 W24b row + §11 NEW W24b CLOSED block + §12 milestones row + 累計 23→24 + Update history)
+- **F8.6** `COMPONENT_CATALOG.md` C08 + C09 + C11 W24b status amendments
+- **F8.7** `PAGE_INVENTORY.md` row 11 `/settings` Wave C1+C2 amendment
+- **F8.8** `ADR-0026` Status line + NEW Wave C2 Implementation Status section
+- **F8.9** `PAGE_INVENTORY.md` rows 8/9/10 staleness fix(observability cluster W22 F7 rebuilt — Wave B candidate → Implemented W22 F7)
+
+### Decisions
+
+- **D8.1 — Phase Gate = PASS WITH SMOKE-USER-DEFERRED CAVEAT** — plan §3 全 10 criteria 滿足:3 NEW deps landed(F1)/ form validation(F2+F5)/ optimistic UI(F3 Connections local-state + F5 Identity form-based per D5.2 reconcile)/ ErrorBoundary(F4)/ Identity inline edit(F5)/ audit log filter+pagination(F6)/ H7 preserved / backend pytest 816 no regression / verify gates green。唯一 caveat:F7.6 Playwright `PW_CHANNEL=chrome` execution + `settings-identity.png` PNG first-capture = user pre-Beta smoke(spec file 改動已 land + tsc/lint verified)— 同 W18/W20/W24-c1 smoke-user-deferred pattern 一致。
+- **D8.2 — plan §3 Gate criterion 4 reconcile(per D5.2 carry-over)** — criterion 4 寫「4 settings/* components 用 useMutation + onMutate/onError rollback」。實際:**Connections(F3)** = local-state optimistic(`onMutate` setDetail + `onError` rollback,fork D3.1);**Identity 4 cards(F5)** = form-based(`onSuccess reset(saved)` re-baseline + `onError` keep-edits,D5.2 — onMutate-rollback 對全卡表單會棄用戶輸入,壞 UX)。兩種都 satisfy「optimistic / snappy edit」intent;criterion 4 字面「rollback」對 form-based card 讀作「onError 保留 edits + 顯示 error」。reconciled,Gate criterion 4 PASS。
+- **D8.3 — F8.9 scope = rows 8/9/10 only,row 6 surface 唔 fix** — R6 audit 發現 `PAGE_INVENTORY` row 6 `/doc-detail` 亦 W22-stale。plan F8.9 + Chris kickoff 明確 scope「8/9/10」。Karpathy §1.3 surgical + §13 when-in-doubt-stick-to-stated-scope → row 6 唔擅自 fix,入 Carry-overs flag 下一 doc-sync。
+
+### Acceptance(plan §3 + checklist F8)
+
+- [x] F8.1 Phase Gate verdict published
+- [x] F8.2 7-section retro
+- [x] F8.3 frontmatter active → closed
+- [x] F8.4 W24c+ candidates NOT pre-created
+- [x] F8.5 session-start.md 6 places synced
+- [x] F8.6 COMPONENT_CATALOG.md C08+C09+C11
+- [x] F8.7 PAGE_INVENTORY.md /settings row
+- [x] F8.8 ADR-0026 Implementation Status Wave C1+C2
+- [x] F8.9 PAGE_INVENTORY.md rows 8/9/10 staleness fix
+
+**Day 1 cont F8 Verdict**:F8 complete — closeout cascade landed across `session-start.md` / `COMPONENT_CATALOG.md` / `PAGE_INVENTORY.md` / `ADR-0026` / 3 phase docs frontmatter。W24b-wave-c2 phase **CLOSED**。
+
+---
+
+## Retrospective — W24b-frontend-wave-c2-settings-depth
+
+**Phase Gate verdict**:✅ **PASS WITH SMOKE-USER-DEFERRED CAVEAT**
+
+Wave C2 promotes the Settings 6-tab Hub from W24-c1 read-mostly 到 inline-editable depth:form validation(react-hook-form + zod)+ optimistic UI + ErrorBoundary per tab + Identity 4-card inline edit + audit log filter/pagination。F0-F8 全部交付,F7.6 Playwright execution + visual PNG first-capture = user pre-Beta smoke(spec file 改動 + tsc/lint verified)。
+
+### 1. What worked
+
+- **Feature-slice 重組(D2.1)** — F2/F3/F5 原 plan 嘅 aspect-slice 切法(F2 wire structural / F5 activate)會令 component 經歷 inert 中間態。R6 audit 上 surface,改 feature-slice(F2=schemas,F3=Connections-edit-complete,F5=Identity-edit-complete),每個 component 一個 coherent pass — codebase 全程 shippable。
+- **Pre-active-flip 5-step R6 audit 每 F-deliverable 都 catch 到嘢** — F1(2 plan-text deviation)/ F2(3 boundary + 1 pre-existing defect)/ F3(fork resolved)/ F4(F0-audit 誤判 class-vs-presentational)/ F5(role-card 4-vs-5)/ F6(test path + breaking shape)/ F7(F7.2 already-done + F7.3/F7.4 既有)/ F8(row 6 stale)。R6 recursive(plan-text + code)持續產出 value。
+- **Karpathy §1.2 avoid-busywork 多次生效** — F1.4 空 folder 唔整 throwaway file;F7.7 唔重跑 zero-delta backend suite;F8.9 唔擴 scope 去 row 6。
+- **Local-state optimistic pattern 內部一致** — F3 Connections + F5 Identity + F6 audit log 全部 local-state(`useState` + `useMutation`/`useEffect` callbacks),Wave C2 settings cluster 無引入 useQuery cache 轉換 — surgical。
+
+### 2. Friction
+
+- **Broken `tsc | tail` pipe exit-code(D2.6)** — `npx tsc | tail; echo $?` 攞 `tail` 嘅 exit 唔係 `tsc` 嘅;W24-c1 + F1/F2 第一次量度都中招。正解 `tsc > file 2>&1; echo $?`,F3-F8 沿用。
+- **`npx tsc` decoy package(D4.5)** — `npx tsc` cache miss fetch npm decoy `tsc@2.0.4`;改 `pnpm exec tsc` local binary。
+- **Vitest full-suite OneDrive worker-pool timeout(D7.6)** — 15 檔一齊跑命中 `Failed to start threads worker`;細 batch(settings-area 6 檔)係可靠 workaround,W23 setup.md §8.7 已 documented。
+- **Bash cwd 飄移(D4.6)** — Bash tool cwd call 之間唔穩定;一律 absolute path `cd`。
+
+### 3. Surprises
+
+- **F2.4/F2.6 wire defer 而非 F2 做** — plan 原意 F2 wire useForm structural;實際 component 全 readOnly(Identity)/ 冇 form(Connections)→ wire 入去 = inert code。feature-slice 重組後 wire 各歸 F5/F3。
+- **`error-boundary.tsx` 只 export presentational `ErrorBoundaryView`** — F0 audit 誤寫「85-line class component」;F4 active-flip 實讀發現冇 React error-boundary class → F4 創建真 class(first-party,無 H2)。
+- **F6 `next_cursor` = breaking response shape** — bare-list → `AuditLogPage` wrapper;3 existing endpoint test + 6tab mock + consumer 全部要 update(R6 上 surface)。
+- **F7.2 內容已由 F6.6 交付** — F6.6 `settings-audit-log.test.tsx` 3 cases = F7.2 描述;F7.2 改為 extend(+2)而非開 `-filter` duplicate 檔。
+- **mockup `SettingsAccount` 完全無 audit log surface** — `<SettingsAuditLog>` 本身係 W24-c1 functional promote;F6 filter UI 係 net-new functional(非 H7 violation — 無 mockup element 可偏離)。
+
+### 4. Decisions(完整清單見各 Day entry)
+
+D2.1-D2.6(feature-slice / ApiKeys-keep / zod-strict / valueAsNumber / trivial-fix-commit / tsc-pipe)· D3.1-D3.5(local-state optimistic / ConnectionEdit type / no-refetch / test-breakage / ServiceCard endpoint)· D4.1-D4.6(ErrorBoundary class / render-prop / TabBoundary / auto-test / npx-decoy / cwd)· D5.1-D5.6(4-cards / onSuccess-rebaseline / watch-setValue / payload-construct / CardSaveRow / QueryClientProvider)· D6.1-D6.6(test path / breaking shape / since-tz / next_cursor / filter-no-mockup / local-state)· D7.1-D7.6(extend-F6-file / extend-existing-test / first-capture / Playwright-defer / no-backend-rerun / vitest-infra)· D8.1-D8.3(Gate verdict / criterion-4 reconcile / F8.9 scope)。
+
+### 5. Carry-overs(→ W24c+,NOT pre-created per R1)
+
+- **F7.6 Playwright execution + `settings-identity.png` PNG first-capture** — `PW_CHANNEL=chrome pnpm exec playwright test` 需 dev server + backend + system Chrome;= user pre-Beta smoke(同 W12-W24 smoke-deferred backlog roll forward)
+- **PAGE_INVENTORY row 6 `/doc-detail` staleness**(NEW R6 finding,F8.9 stated scope 外)— W22 F6 `093ff89` 已 land `/kb/[id]/docs/[docId]`,row 仍標「⏳ Wave B candidate」→ 下一 doc-sync 修
+- **ADR-0027 Option A `/users` Tier 1.5 RBAC**(~20 backend days + 6 NEW Postgres tables + Entra Graph SDK + ACL middleware)— W24c+ wave candidate
+- **ADR-0025 `/kb/[id]` Access tab activation** — 依賴 ADR-0027 RBAC backend
+- **Connections deployment cap edit**(TPM/RPM)— Wave B+ Azure portal authoritative
+- **Real-MSAL feature flag verification + Track A IT cred consumption** — W16 parallel track,Q11 operational early June 2026
+- **Connections / Identity secret rotation full wire** — F5 AppRegistration client_secret `ApiKeyInput` rotateDisabled「Wave C2 — rotation requires Entra Graph SDK」;真 rotation = Entra Graph SDK wave
+- **CO17 R8 umbrella** — F1.5b psycopg + F3.5b RAGAs live-verify 仍 external-blocked
+
+### 6. Time tracking
+
+| F | Plan estimate | Real-calendar | Note |
+|---|---|---|---|
+| F0 | 0.25 day | ~0.2 day | kickoff cascade |
+| F1 | 0.5 day | ~0.3 day | 3 deps clean install zero R8 |
+| F2 | 1 day | ~0.4 day | feature-slice 重組,pure validation layer |
+| F3 | 1 day | ~0.4 day | Connections inline edit + optimistic |
+| F4 | 0.5 day | ~0.3 day | ErrorBoundary class |
+| F5 | 1 day | ~0.6 day | 最大 deliverable — Identity 4-card rewrite |
+| F6 | 1 day | ~0.5 day | audit log filter + cursor pagination |
+| F7 | 0.75 day | ~0.4 day | tests |
+| F8 | 0.5 day | ~0.4 day | closeout cascade |
+| **總計** | **~6.5 plan-day** | **~3.5 real-calendar day** | ~1.9× collapse(W19 ~1.8× pattern;single-session 多-commit run)|
+
+### 7. Spec-ref alignment
+
+- **ADR-0026** Status `Accepted + Wave C1 implemented` → `Accepted + Wave C1+C2 implemented`(F8.8);Wave C2 promote items(form validation / optimistic UI / ErrorBoundary / Identity inline edit / audit log filter)全部 landed
+- **CLAUDE.md §5.2 H2** — react-hook-form + zod + @hookform/resolvers 3 NEW deps:F1 Plan B (a) `pnpm add` clean,zero R8,**no ADR-0017 amendment needed**(npm-registry non-binary per W17 F6 precedent)
+- **CLAUDE.md §5.7 H7** — F5 Identity 4-card 對齊 mockup line 542-721;F6 filter UI 無 mockup(net-new functional,非 H7 trigger per D6.5);無 fidelity drift
+- **CLAUDE.md §10 R6** — pre-active-flip 5-step recursive audit 每 F-deliverable 執行,8 個 F 共 surface 14+ deviation/fork,全 log 入 plan §7 changelog
+- **architecture.md v6** — 無 amendment(Wave C2 = depth promotion within ADR-0026 既存 6-tab spec,no Cn structural change — per F0.3)
+- **CLAUDE.md §13** — Connections F3 `useMutation` mockup-vs-backend 無 contract 衝突;F6 audit log 無 OQ deps
+
+**累計 phase**:**24 closed**(W01-W24-wave-c1 23 + W24b-wave-c2 1)。

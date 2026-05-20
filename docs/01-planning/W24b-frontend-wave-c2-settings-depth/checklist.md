@@ -1,8 +1,8 @@
 ---
 phase: W24b-frontend-wave-c2-settings-depth
 plan_ref: ./plan.md
-status: active
-last_updated: 2026-05-20  # F7 active-flip → F7.1-F7.7 complete (Vitest + Playwright tests)
+status: closed
+last_updated: 2026-05-20  # F8 closeout — phase CLOSED, Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT
 ---
 
 # W24b-wave-c2 — Checklist
@@ -93,15 +93,15 @@ last_updated: 2026-05-20  # F7 active-flip → F7.1-F7.7 complete (Vitest + Play
 
 ## F8 — Closeout cascade
 
-- [ ] **F8.1** Phase Gate verdict published per `progress.md` retro
-- [ ] **F8.2** 7-section retro per F-deliverable
-- [ ] **F8.3** plan/checklist/progress frontmatter `active → closed`
-- [ ] **F8.4** W24c+ candidates noted in retro **NOT pre-created** per CLAUDE.md §10 R1 rolling JIT
-- [ ] **F8.5** `session-start.md` 6 places synced
-- [ ] **F8.6** `COMPONENT_CATALOG.md` C08 + C09 + C11 W24b status amendments
-- [ ] **F8.7** `PAGE_INVENTORY.md` `/settings` row Wave C1+C2 hybrid amendment
-- [ ] **F8.8** ADR-0026 Implementation Status section amendment(Wave C1 → Wave C1+C2 implemented)
-- [ ] **F8.9** `PAGE_INVENTORY.md` row 8/9/10 staleness drift fix(observability cluster W22 F7 already-rebuilt update)
+- [x] **F8.1** Phase Gate verdict **PASS WITH SMOKE-USER-DEFERRED CAVEAT** published per `progress.md` retro
+- [x] **F8.2** 7-section retro(What worked / Friction / Surprises / Decisions / Carry-overs / Time tracking / Spec-ref alignment)
+- [x] **F8.3** plan + checklist + progress frontmatter `active → closed`
+- [x] **F8.4** W24c+ candidates noted in retro Carry-overs **NOT pre-created** per CLAUDE.md §10 R1
+- [x] **F8.5** `session-start.md` 6 places synced(§3 header + C08/C09/C11 + §10 W24b row + W24c+ + §11 NEW W24b CLOSED block + §12 milestone row + 累計 24 + Last Updated)
+- [x] **F8.6** `COMPONENT_CATALOG.md` C08 + C09 + C11 W24b status amendments
+- [x] **F8.7** `PAGE_INVENTORY.md` row 11 `/settings` Wave C1+C2 amendment
+- [x] **F8.8** ADR-0026 Status line `Wave C1` → `Wave C1+C2 implemented` + NEW Wave C2 Implementation Status section
+- [x] **F8.9** `PAGE_INVENTORY.md` rows 8/9/10 staleness fix(`/eval`+`/traces`+`/traces/[traceId]` Wave B candidate → Implemented W22 F7;row 6 `/doc-detail` 亦 stale 但 out of stated scope → carry-over per R6 D8.3)
 
 ---
 

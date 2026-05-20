@@ -4,7 +4,7 @@ name: "Settings depth — form validation + optimistic UI + ErrorBoundary + Iden
 sprint_week: W24b
 start_date: 2026-05-20              # real-calendar — Chris directive 2026-05-20 「kickoff(plan + checklist + progress + commit F0 cascade)」
 end_date: 2026-05-24                # ~3-5 plan day window;real-calendar collapse ~0.5-1 days per W22-W24 pattern(C09 frontend mid scope + 1 NEW dep)
-status: active
+status: closed                      # closed 2026-05-20 — Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT (F0-F8 all landed)
 spec_refs:
   - CLAUDE.md §10 R1-R6             # rolling JIT + plan-before-code + R6 pre-active-flip recursive (plan-text grep audit)
   - CLAUDE.md §5.2 H2               # react-hook-form + zod NEW deps (npm registry, low R8 risk per ADR-0017)

@@ -1,7 +1,7 @@
 # ADR-0026: Settings v1 thin → 6-tab hub + Connections backend(**option set — Chris pick at W19 F6**)
 
 **Date**: 2026-05-16
-**Status**: **Accepted + Wave C1 implemented** — W19 F6 Chris pick 2026-05-16 + W24-wave-c1 phase closed 2026-05-19。Chris selected Option B over Option C hybrid(W19 F2 §6 recommendation)和 Option A read-only。**Implications**:~22 NEW backend endpoints + Key Vault SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation pattern noted)+ Wave C combined with ADR-0027 Option A = ~42 backend days **MUST split Wave C into C1+C2 sub-phases** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。**Wave C1 implementation** — see Implementation Status section below。
+**Status**: **Accepted + Wave C1+C2 implemented** — W19 F6 Chris pick 2026-05-16 + W24-wave-c1 closed 2026-05-19 + W24b-wave-c2 closed 2026-05-20。Chris selected Option B over Option C hybrid(W19 F2 §6 recommendation)和 Option A read-only。**Implications**:~22 NEW backend endpoints + Key Vault SDK new dependency(H2 trigger;R8 corp-proxy risk per ADR-0017 mitigation pattern noted)+ Wave C combined with ADR-0027 Option A = ~42 backend days **MUST split Wave C into C1+C2 sub-phases** per F4 §3.6 trigger + CLAUDE.md §10 rolling JIT。**Wave C1 + C2 implementation** — see the two Implementation Status sections below(C1 ships fully-editable backend + read-mostly frontend;C2 promotes the frontend to inline-editable depth)。
 **Approver**: Chris(Tech Lead + stakeholder)
 
 ## Context
@@ -118,6 +118,24 @@ Adopt the **6-tab Settings hub** layout per the prototype。Amend `architecture.
 - `<SettingsConnections>` deployment cap edit(TPM/RPM)— Wave B+ scope per F4 plan(Azure portal authoritative for caps);alert_threshold % is the Wave C1 editable knob
 - Audit log filter + pagination — Wave C2 promotes when SettingsAccount audit log surface lands properly
 - Real-MSAL feature flag concurrent ship — Wave C2 per user 岔口 2(Wave C1 仍 mock-auth default per W18+ pattern)
+
+## Implementation Status — W24b-wave-c2 closeout(2026-05-20)
+
+**Implemented by `W24b-frontend-wave-c2-settings-depth` phase**(closed 2026-05-20,Gate **PASS WITH SMOKE-USER-DEFERRED CAVEAT**)— Wave C2 promotes the 6-tab Settings hub from Wave C1 read-mostly 到 **inline-editable depth**。The 6 "Wave C2 promote items" listed above are now landed(Connections deployment cap edit + real-MSAL feature flag remain out of scope per the lean-scope R6 decision — see below):
+
+- [x] **F1** react-hook-form + zod + @hookform/resolvers — 3 NEW frontend deps via Plan B (a) `pnpm add` clean install,zero R8(npm-registry metadata non-binary per W17 F6 Vitest precedent;**no ADR-0017 amendment needed** — Plan B fallback never triggered)
+- [x] **F2** Form validation — 3 zod schema files(`frontend/lib/schemas/admin/{identity,api_keys,connections}.ts`)mirror backend Pydantic models(GUID / duration / domain regex intentionally stricter than backend `str` — form-layer意義,wire contract unchanged);ApiKeys alert-threshold `OutgoingQuotaRowItem` upgraded to react-hook-form + `zodResolver`
+- [x] **F3** Optimistic UI — `<SettingsConnections>` ProviderRow inline edit form + `useMutation` local-state optimistic(`onMutate` snapshot `detail` + `onError` rollback + `onSuccess` server-truth);test / rotate-secret retrofitted from `useState` to `useMutation`
+- [x] **F4** ErrorBoundary per tab — NEW `ErrorBoundary` class component(`frontend/components/error/error-boundary.tsx`,first-party — no `react-error-boundary` dep)+ `<TabErrorState>` fallback;`settings/page.tsx` wraps all 6 tab bodies via a `TabBoundary` helper
+- [x] **F5** Identity inline edit — `<SettingsIdentity>` rewritten from read-only display to **4 editable form cards**(Tenant / App registration / MSAL / Sign-in policy)each react-hook-form + `zodResolver` + per-card `useMutation` PATCH + `onSuccess reset(saved)` re-baseline + `onError` keep-edits;Role mapping card stays read-only display(individual mapping CRUD = mockup「⋯」menu /「Add mapping」deferred Wave C+);3 Tier 2 boundary guards preserved(`multi_disabled` / `distributed_disabled` disabled `<option>` + Power User row)
+- [x] **F6** Audit log filter + pagination — `GET /admin/audit-log` gains additive `action_type` + `since` + `cursor` query params + NEW `AuditLogPage` wrapper response `{entries, next_cursor}`(over-fetch `limit+1` to derive `next_cursor`);`AuditLogBackend.list_recent` Protocol + InMemory + Postgres impls gain keyword-only filter params;`<SettingsAuditLog>` gains action filter `.select` + since date picker + cursor「Load more」button
+- [x] **F7** Tests — `settings-identity-form.test.tsx` NEW(4 RHF+zod TenantCard cases)+ `settings-audit-log.test.tsx`(5 cases:F6 3 + F7.2 +2)+ Playwright `app-shell-path` / `visual-baseline` spec changes;Vitest settings-area 41/41 deterministic batch;backend pytest **816 passed**(W24-c1 805 → +11)
+
+**Verify gates**:`tsc --noEmit` exit 0 + `next lint` clean + `Grep '[oklch'` across `frontend/` = **0 preserved** + mypy strict on the audit_log route/schema/storage clean。**No `architecture.md v6` amendment** — Wave C2 is depth promotion within the existing ADR-0026 6-tab spec(no Cn structural change)。
+
+**Out of Wave C2 scope**(→ W24c+,per R6 lean-scope decision at kickoff):Connections deployment cap edit(Wave B+ — Azure portal authoritative for TPM/RPM caps)· real-MSAL feature flag verification(W16 Track A IT cred parallel track,Q11 operational early June 2026)· `client_secret` rotation full wire(needs Entra Graph SDK)· ADR-0027 Option A `/users` Tier 1.5 RBAC + ADR-0025 `/kb/[id]` Access tab activation。
+
+**Caveat**:F7.6 Playwright `PW_CHANNEL=chrome` execution + `settings-identity.png` visual baseline first-capture = user pre-Beta smoke(spec file changes landed + tsc/lint verified)— same smoke-user-deferred pattern as W18 / W20 / W24-wave-c1。
 
 ## References
 
