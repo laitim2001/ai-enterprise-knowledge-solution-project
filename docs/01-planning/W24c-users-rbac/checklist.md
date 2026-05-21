@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F2 active-flip → F2.1-F2.4 complete (RBAC schema layer: 4 NEW files + users.role column + 12 tests; backend pytest 828)
+last_updated: 2026-05-21  # F3 active-flip → F3.0-F3.4 complete (role vocab unified + acl.py require_role + AuthenticatedUser.role; backend pytest 839)
 ---
 
 # W24c-users-rbac — Checklist
@@ -39,10 +39,13 @@ last_updated: 2026-05-21  # F2 active-flip → F2.1-F2.4 complete (RBAC schema l
 
 ## F3 — ACL middleware + auth-time role claim
 
-- [ ] **F3.1** `backend/api/middleware/acl.py` NEW — `@requires_role` / `@requires_kb_acl` decorators
-- [ ] **F3.2** auth-time role claim — role carried in session/cookie
-- [ ] **F3.3** mock-auth provider returns `role:'admin'`;real-MSAL Entra group → role session callback
-- [ ] **F3.4** every protected endpoint role-checked;403 on unauthorized
+> R6 Day 3 finding(plan §7,5 findings):**(1)** `AuthenticatedUser` 無 `role` field → server-side resolve 非 cookie-carried;**(2)** `@requires_*`「decorator」→ FastAPI `Depends()` factory;**(3)** `require_kb_acl` defer F8(連 `kb_acl` storage method);**(4)** F3.4「every endpoint」→ F3 = mechanism + 403 test,per-endpoint apply F4-F10;**(5)** role key vocabulary 衝突 → Chris pick「統一 short」→ NEW F3.0。
+
+- [x] **F3.0** role key vocabulary 統一(R6 #5 — Chris AskUserQuestion 2026-05-21「short form」)— W24-c1 `admin_identity` long-form → RBAC-core short,9 files(backend `admin_identity.py` import `rbac.RoleKey` / `identity.py` / `admin_identity_storage.py` seed / `test_admin_identity.py`;frontend `admin.ts` `EkpRoleKey` + NEW `EKP_ROLE_LABELS` / `identity.ts` `ekpRoleKeySchema` / `settings-identity.tsx` 顯示改 label map 修 H7 drift / `settings-6tab.test` + `settings-identity-form.test` mock 改 `importOriginal`)
+- [x] **F3.1** `backend/api/middleware/acl.py` NEW — `require_role(*roles)` FastAPI dependency factory(R6 #2 — `Depends()` 非 Python decorator);**`@requires_kb_acl` 🚧 deferred F8** — 連 `kb_acl` storage method 一齊(R6 #3 — Karpathy §1.2 no stub-only)
+- [x] **F3.2** auth-time role claim — `AuthenticatedUser.role` field + 三路徑 server-side resolve(R6 #1 — self-register `UserRecord.role` / mock `Settings.auth_mock_role` / MSAL app-role claim;role 非真存 session/cookie)
+- [x] **F3.3** mock-auth `Settings.auth_mock_role` default `admin`;real-MSAL `_role_from_claims`(Entra app-role claim,Tier-1-grantable `{admin,editor,user}`,`power` downgrade per H4)
+- [x] **F3.4** `require_role` 403-on-unauthorized contract test-verified(`test_acl_middleware.py` 11 cases);**per-endpoint apply 🚧 F4-F10 inline** — R6 #4 + plan §4 R-W24c-3「opt-in per endpoint」,F3 交付 mechanism
 
 ## F4 — `/users` Members tab backend
 

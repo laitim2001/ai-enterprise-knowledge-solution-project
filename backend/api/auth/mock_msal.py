@@ -48,5 +48,6 @@ def authenticate_mock(
         oid=settings.auth_mock_oid,
         tid=settings.auth_mock_tid,
         preferred_username=settings.auth_mock_preferred_username,
+        role=settings.auth_mock_role,
         is_mock=True,
     )

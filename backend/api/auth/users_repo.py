@@ -159,6 +159,7 @@ def resolve_session(token: str) -> AuthenticatedUser | None:
         oid=user.oid,
         tid=SELF_REGISTER_TID,
         preferred_username=user.email,
+        role=user.role,
         is_mock=False,
     )
 

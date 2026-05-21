@@ -108,6 +108,28 @@ def _select_signing_key(jwks: dict[str, Any], kid: str | None) -> dict[str, Any]
     )
 
 
+# W24c F3 — RBAC roles a real Entra token may grant. Power User is Tier 2
+# (CLAUDE.md H4), so a `power` claim is downgraded to least-privilege 'user'.
+_TIER1_GRANTABLE_ROLES = frozenset({"admin", "editor", "user"})
+
+
+def _role_from_claims(claims: dict[str, Any]) -> str:
+    """Pick the EKP RBAC role from the Entra app-role claim.
+
+    Entra app registration assigns security groups / users to app roles; the
+    JWT carries them in the `roles` claim. The first recognised Tier 1 role
+    wins; anything unrecognised — incl. a Tier 2 `power` claim — falls back to
+    'user' (least privilege). Group-GUID-based resolution stays a
+    config-of-record in `admin_identity.RoleMappingConfig` (per W24c progress D3).
+    """
+    raw_roles = claims.get("roles", [])
+    if isinstance(raw_roles, list):
+        for raw in raw_roles:
+            if isinstance(raw, str) and raw in _TIER1_GRANTABLE_ROLES:
+                return raw
+    return "user"
+
+
 def authenticate_msal(
     credentials: HTTPAuthorizationCredentials | None,
     settings: Settings,
@@ -198,5 +220,6 @@ def authenticate_msal(
         oid=oid,
         tid=tid,
         preferred_username=preferred_username,
+        role=_role_from_claims(claims),
         is_mock=False,
     )

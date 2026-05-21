@@ -111,4 +111,46 @@ status: active                      # active | closed
 
 **Day 2 F2 Verdict**:F2 complete — RBAC schema layer landed(4 NEW files:`api/schemas/rbac.py` + `storage/rbac_storage.py` + `storage/rbac_postgres.py` + `storage/rbac_factory.py`;2 EDIT:`users_store.py` + `postgres_users_store.py`;1 NEW test:`tests/storage/test_rbac_storage.py`)。5 NEW Postgres tables idempotent + `users.role` column additive + `RbacBackend` async Protocol/InMemory/Postgres/factory + seed 4 roles + 92 role_permissions。3 R6 findings resolved(24→23 permissions / `users.role` 4-處同步補完 / F2 Protocol scope = roles+permissions)。backend pytest 828 + 0 fail。F3 ACL middleware + auth-time role claim next。
 
-<!-- Day 3+ F3 entries land at F3 active flip per CLAUDE.md §10 R2 -->
+## Day 3 — 2026-05-21 — F3 ACL middleware + auth-time role claim
+
+### Done
+
+- **F3 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `api/auth/{dependency,models,mock_msal,msal_provider}.py` + `api/middleware/rate_limit.py` + `api/schemas/admin_identity.py` + `storage/admin_identity_storage.py` + `api/routes/admin/identity.py` + frontend `admin.ts`/`identity.ts`/`settings-identity.tsx`:
+  - **(3) surface** — 5 findings(plan §7 Day 3 row):#1 `AuthenticatedUser` 無 `role` field / #2 `@requires_*`「decorator」→ FastAPI `Depends()` / #3 `@requires_kb_acl` backing 在 F8 / #4 「every endpoint」F3 時點不可能 / #5 role key vocabulary 衝突
+  - **(4) document** — plan §7 Day 3 row + §2 F3 acceptance refined + checklist F3 R6 blockquote
+  - **(5) adjust** — F3.2 = `AuthenticatedUser.role` + 三路徑;F3.1 = `require_role` factory(`require_kb_acl` → F8);F3.4 = mechanism + 403 test(per-endpoint → F4-F10);NEW F3.0 vocabulary 統一
+- **F3.0** role key vocabulary 統一(9 files)— backend:`admin_identity.py` 刪 `EkpRoleKey` long-form literal → import `rbac.RoleKey`;`admin_identity_storage.py` seed 4 values long→short;`identity.py` Tier 2 guard `"power_user"`→`"power"`;`test_admin_identity.py` 5 處。frontend:`admin.ts` `EkpRoleKey` union short + NEW `EKP_ROLE_LABELS` const;`identity.ts` `ekpRoleKeySchema` z.enum short;`settings-identity.tsx` role 顯示 `.replace('_',' ')` → `EKP_ROLE_LABELS[m.ekp_role]`(修 H7 drift)+ badge condition;`settings-6tab.test`/`settings-identity-form.test` mock 改 `importOriginal` partial-mock
+- **F3.1** NEW `backend/api/middleware/acl.py` — `require_role(*allowed)` FastAPI dependency factory:chains `Depends(get_current_user)`,403 when role ∉ allowed,returns `AuthenticatedUser` on success。`require_kb_acl` 🚧 F8
+- **F3.2** `AuthenticatedUser` 加 `role: str = "user"` field;三路徑 server-side resolve — `resolve_session`→`UserRecord.role`(F2 column)/ `authenticate_mock`→`Settings.auth_mock_role` / `authenticate_msal`→`_role_from_claims`
+- **F3.3** `Settings.auth_mock_role` NEW field default `"admin"`;`msal_provider._role_from_claims` — Entra app-role claim(`roles`)→ Tier-1-grantable `{admin,editor,user}`,`power`/unknown → `"user"` fallback(least privilege)
+- **F3 tests** NEW `tests/api/test_acl_middleware.py` 11 cases(`require_role` admit/reject/multi + 403/401 contract in real request flow + `AuthenticatedUser.role` default + `authenticate_mock` role + `_role_from_claims` × 3)
+- **F3 committed** 2 commits — C1 F3.0 vocabulary `(commit)` + C2 F3.1-F3.5 ACL `(commit)`
+
+### Decisions
+
+- **D3.1 — role key vocabulary 統一 = short form**(R6 #5;Chris AskUserQuestion 2026-05-21)— W24-c1 `admin_identity.EkpRoleKey` long-form(`workspace_admin`/`knowledge_editor`/`end_user`/`power_user`,comment 自標「ADR-0027 **Option B** fallback」= 寫於 full RBAC 之前)vs F2 RBAC-core + mockup `ekp-page-users.jsx` short-form。Chris pick「統一 short form(改 admin_identity)」— mockup 係 H7 canonical 用 short,RBAC core(C16,W24c 主體)已 short,Option B-era long-form 係過時 artifact。`admin_identity` 改用 `rbac.RoleKey`(single source of truth)。兩套並存(boundary mapper)被 reject — permanent tech debt。
+- **D3.2 — `acl.py` = FastAPI dependency factory 非 Python decorator**(R6 #2)— plan/checklist 字面「`@requires_role` decorator」係 plan-text contamination;FastAPI 無 endpoint-decorator-for-auth 慣例,既有 `get_current_user` 全用 `Annotated[..., Depends(...)]`。`require_role(*roles)` 返回一個 dependency callable,per-endpoint `Depends(require_role("admin"))` 或 router-level `dependencies=[...]`。
+- **D3.3 — `require_kb_acl` defer F8**(R6 #3)— `@requires_kb_acl` 要 consult `kb_acl` table,但 `kb_acl` 的 storage method F2 D2.2 已 defer F8。F3 寫一個 backing 未存在的 guard = stub(Karpathy §1.2)。F3 只交付 `require_role`;`require_kb_acl` 連 `kb_acl` storage method F8 一齊做。
+- **D3.4 — real-MSAL role 從 Entra app-role claim(`roles`)抽,非 group-GUID claim(`groups`)** — ADR-0027 §Consequences 寫「extracts role from group membership」係 conceptual。`groups` claim 帶 raw group GUID,要 `{guid:role}` config map + `authenticate_msal` consult identity backend(signature 只有 `(credentials, settings)` → ripple)。`roles` app-role claim 直接帶語義 role string(Entra app registration 把 security group / user assign 到 app role)→ Tier 1 簡單 + 零 ripple + Entra app role 係標準做法。`admin_identity.RoleMappingConfig`(group→role config)維持為 admin-facing **config-of-record**。real-MSAL runtime verify defer(mock-auth default,Q11 operational early June — per plan §3 PARTIAL PASS allowance)。
+- **D3.5 — `auth_mock_role` NEW settings field** — mock identity 的 role 屬性,跟既有 `auth_mock_oid`/`tid`/`preferred_username` 同組;default `"admin"` 讓 dev 走過每個 guard,test 可 override drive 403 path。非 speculative config(mock identity attribute）。
+- **D3.6 — `settings-identity.tsx` role 顯示修 H7 drift** — F3.0 前 `settings-identity.tsx:642` 用 `{m.ekp_role.replace('_',' ')}` 顯示「workspace admin」(lowercase);mockup `ekp-page-settings-tabs.jsx` line 664 係「Workspace Admin」(title-case)— **既有 H7 drift**。F3.0 改 short key 同時改用 `EKP_ROLE_LABELS` map → 顯示「Workspace Admin」對齊 mockup。屬 H7「修正 visual drift bug(把 implementation 更貼 mockup)」reverse direction → 不 trigger H7 STOP。
+- **D3.7 — F3 拆 2 commits** — C1 F3.0 vocabulary 統一 / C2 F3.1-F3.5 ACL middleware;兩個 cohesive 主題,per CLAUDE.md §4.3 One feature per commit。
+
+### Acceptance(plan §3 + checklist F3)
+
+- [x] F3.0 role key vocabulary 統一(9 files long→short;`settings-identity.tsx` H7 drift 修正)
+- [x] F3.1 `acl.py` NEW `require_role(*roles)` FastAPI dependency factory(`require_kb_acl` 🚧 F8)
+- [x] F3.2 `AuthenticatedUser.role` field + 三路徑 server-side resolve
+- [x] F3.3 mock `auth_mock_role` default `admin` + real-MSAL `_role_from_claims` app-role claim
+- [x] F3.4 `require_role` 403 contract test-verified(per-endpoint apply 🚧 F4-F10 inline)
+
+### Verify
+
+- **backend pytest 839 passed**(F2 baseline 828 → +11 `test_acl_middleware.py`)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `acl.py` / `admin_identity.py` / `models.py` / `mock_msal.py` / `users_repo.py` / `settings.py` 0 error;`msal_provider.py` reported errors(jose import-untyped + 既有 no-any-return)全部 pre-existing,`_role_from_claims` clean
+- **ruff** — F3-introduced files all clean;`storage/admin_identity_storage.py:39` UP017(`timezone.utc` vs `datetime.UTC` — repo-wide pattern)+ `tests/api/test_admin_identity.py:8` I001(import order)= **pre-existing W24-c1 lint**,F3.0 只改 role values 未碰嗰 2 行,per Karpathy §1.3 surgical 未順手修
+- **frontend** — `tsc --noEmit` exit 0;`next lint` no warnings/errors;Vitest 29 passed(`settings-6tab` + `settings-identity-form` + `admin-schemas`,`importOriginal` partial-mock fix);`[oklch`=0 preserved
+
+**Day 3 F3 Verdict**:F3 complete — ACL middleware `require_role` + auth-time role claim landed。NEW `api/middleware/acl.py`(`require_role` dependency factory)+ `AuthenticatedUser.role` 三路徑 populate + `test_acl_middleware.py` 11 cases。F3.0 role key vocabulary 統一(R6 #5 — Chris pick short form;9 files long→short;`settings-identity.tsx` H7 drift 修正)。5 R6 findings resolved。backend pytest 839 + 0 fail。F4 `/users` Members tab backend next。
+
+<!-- Day 4+ F4 entries land at F4 active flip per CLAUDE.md §10 R2 -->

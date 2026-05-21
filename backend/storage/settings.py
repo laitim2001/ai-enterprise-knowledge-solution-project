@@ -151,6 +151,10 @@ class Settings(BaseSettings):
     auth_mock_tid: str = "00000000-0000-0000-0000-0000000000ff"
     auth_mock_preferred_username: str = "dev-user@ekp.local"
     auth_mock_bearer_token: str = "dev-token"
+    # W24c F3 (per ADR-0027) — RBAC role for the mock dev identity. Default
+    # 'admin' so dev exercises every `require_role` guard; a test can override
+    # this to drive the 403 path.
+    auth_mock_role: str = "admin"
 
     # W7 F2 rate limiter (per architecture.md §8.1 R5 spec: 50 req/min per user
     # + 5 concurrent active queries per user). Conservative W7 thresholds;
