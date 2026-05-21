@@ -54,6 +54,42 @@ def test_refresh_503_when_mock_disabled_skeleton_not_wired() -> None:
     assert response.status_code == 503
 
 
+def test_me_returns_user_with_role_when_authenticated() -> None:
+    settings = Settings(feature_auth_mock=True, auth_mock_role="editor")
+    client = TestClient(_build_app(settings))
+
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {settings.auth_mock_bearer_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["oid"] == settings.auth_mock_oid
+    assert body["role"] == "editor"
+    assert body["is_mock"] is True
+
+
+def test_me_rejects_unauthenticated() -> None:
+    settings = Settings(feature_auth_mock=True)
+    client = TestClient(_build_app(settings))
+
+    response = client.get("/auth/me")
+    assert response.status_code == 401
+
+
+def test_me_defaults_role_to_admin_in_mock_mode() -> None:
+    # mock auth_mock_role defaults to 'admin' (W24c F3.3) — dev walks every gate.
+    settings = Settings(feature_auth_mock=True)
+    client = TestClient(_build_app(settings))
+
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {settings.auth_mock_bearer_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"
+
+
 def test_logout_returns_ok_when_authenticated() -> None:
     settings = Settings(feature_auth_mock=True)
     client = TestClient(_build_app(settings))

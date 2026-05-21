@@ -152,6 +152,19 @@ async def refresh_token(
     )
 
 
+@router.get("/me", response_model=AuthenticatedUser)
+async def get_me(user: CurrentUserDep) -> AuthenticatedUser:
+    """Return the authenticated caller's identity + RBAC role.
+
+    Every authenticated user may read their own role — this is NOT admin-gated
+    (unlike the `/users/*` management endpoints). The frontend `useRole()` hook
+    consumes it to drive role-gated view rendering (W24c F9 per ADR-0027). The
+    `role` field is resolved server-side by `get_current_user` (W24c F3 — three
+    paths: self-register / mock / real-MSAL app-role claim).
+    """
+    return user
+
+
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
     request: Request,

@@ -338,4 +338,37 @@ status: active                      # active | closed
 
 **Day 8 F8 Verdict**:F8 complete — per-KB ACL(`kb_acl`)landed。NEW `api/routes/kb_acl.py`(4 CRUD endpoints router-level `require_kb_acl("manage")`)+ `acl.py` `require_kb_acl` dependency factory + `RbacBackend` +5 `kb_acl` Protocol methods(InMemory + Postgres)+ `kb_acl.granted_by` additive ALTER + F7-deferred `kb.access.granted` audit write 兌現。8 R6 findings resolved + 2 implementation-time findings(D8.6 cross-KB scope / D8.8 `no-any-return` 避免)。KB Visibility + group-inherited access + 其他 KB endpoint `require_kb_acl` retrofit 🚧 defer。backend pytest 905 + 0 fail。F9 frontend `/users` 4-tab page next。
 
-<!-- Day 9+ F9 entries land at F9 active flip per CLAUDE.md §10 R2 -->
+## Day 9 — 2026-05-21 — F9.1 frontend foundation(`GET /auth/me` + users API client + `useRole()`)
+
+### Done
+
+- **F9 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— Explore agent 調研 frontend structure + 讀 `PAGE_INVENTORY.md` + `frontend/lib/providers/auth-provider.tsx` + `backend/api/routes/auth.py` → 6 findings(plan §7 Day 9 row)+ F9 sub-split F9.1-F9.4
+- **F9.1 backend `GET /auth/me`** — NEW `auth.py` endpoint(`response_model=AuthenticatedUser`,`Depends(get_current_user)` non-admin — 任何 authenticated user 讀自己 role)+ test EDIT `tests/test_auth_endpoints.py` +3 cases(authenticated returns user+role / 401 unauthenticated / mock default role admin);endpoint count 57 → **58**
+- **F9.1 frontend NEW `lib/api/users.ts`** — `usersApi` client + TS types mirror backend Pydantic(snake_case):F4 `UserSummary`/`UserListResponse`/`InviteRequest`/`UserDisplayStatus` + F5 `Role`/`RolePermission`/`RoleListResponse`/`PermissionMatrixResponse` + F6 `Group`/`GroupListResponse`/`GroupSyncResult` + F9.1 `MeResponse`;9 methods(`getMe`/`listUsers`/`inviteUser`/`suspendUser`/`changeUserRole`/`listRoles`/`listPermissions`/`listGroups`/`syncGroupsFromEntra`);`EkpRoleKey` import-reuse from `lib/api/admin.ts`
+- **F9.1 frontend NEW `lib/hooks/use-role.ts`** — `useRole()` hook(`'use client'`,TanStack `useQuery(['auth','me'])` → `EkpRoleKey | null`,5min staleTime)
+- **F9.1 committed** `(this commit)`
+
+### Decisions
+
+- **D9.1 — F9 sub-split F9.1-F9.4**(R6 #1)— F9 NET NEW `/users` 4-tab route + `useRole()` + role-gating + H7 全程約束 = ~3 plan days,per plan §2 + §7 R3 sub-split:F9.1 foundation / F9.2 route shell + Members tab / F9.3 Roles + Groups tabs / F9.4 Audit tab + role-gating + H7 verify + tests。原 checklist F9.1/F9.2/F9.3(route / useRole / H7-verify)scope 全數吸收。
+- **D9.2 — backend NEW `GET /auth/me` 作 `useRole()` data source**(R6 #2)— frontend `AuthenticatedUser`(`lib/auth/types.ts`)只有 `oid`/`tid`/`preferredUsername`/`isMock`,**無 `role`**;`auth.py` 無 current-user endpoint。F3 D3.2 加 `role` 落 backend `AuthenticatedUser`(3-path server-resolved)但 frontend 睇唔到。F9.1 加 `GET /auth/me` 返回 current user + `role`。NOT H1(read endpoint,W24c C16/C11 scope,同 F4-F8 13 NEW endpoints 同類非架構)— R6 auto-adjust。`response_model=AuthenticatedUser`(既有 Pydantic model,無需 NEW schema per Karpathy §1.2)。
+- **D9.3 — `GET /auth/me` 放 `auth.py` 非 `users.py`**(R6 #6)— `routes/users.py` router-level `require_role("admin")`;`/auth/me` 不可 admin-gate(任何 user 讀自己 role)→ 放 `auth.py`(C11,in-route `Depends(get_current_user)`,無 admin gate)。
+- **D9.4 — NEW `lib/api/users.ts` 非 extend `admin.ts`**(R6 #3)— `/users`+`/roles`+`/groups` 係 top-level path(非 `/admin/*`),`adminApi` 限 `/admin/*` surface → 獨立 `lib/api/users.ts`。TS types snake_case mirror backend Pydantic(對齊 `admin.ts` 既有 convention)。`EkpRoleKey`+`EKP_ROLE_LABELS` F3.0 已 land 喺 `admin.ts` → import-reuse,不重定義(R6 #4)。
+- **D9.5 — `useRole()` = TanStack `useQuery` fetch `/auth/me`** — auth store(`useAuthStore` Zustand)俾 identity,`useRole()` 獨立 fetch `/auth/me` 攞 authoritative role(backend-resolved per F3)。`useQuery(['auth','me'])` 5min staleTime cache。放 NEW `lib/hooks/use-role.ts`(`'use client'`)— hook 唔可以塞入 `users.ts` API client module(mixing concerns)。
+
+### Acceptance(plan §2 F9 sub-split F9.1)
+
+- [x] F9.1 backend `GET /auth/me`(current user + role,non-admin)+ `MeResponse`(= `AuthenticatedUser` reuse)+ test
+- [x] F9.1 frontend `lib/api/users.ts`(`/users`+`/roles`+`/groups` client + TS types)+ `useRole()` hook
+
+### Verify
+
+- **backend pytest 908 passed**(F8 baseline 905 → +3 `test_auth_endpoints.py` `/auth/me`)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `api/routes/auth.py` 0 error
+- **ruff** — `auth.py` + `test_auth_endpoints.py` all clean
+- **frontend** — `tsc --noEmit`(type-check)exit 0;`next lint` no warnings/errors;F9.1 純 TS plumbing(`users.ts` + `use-role.ts`)無 `.tsx`/`.css` → `[oklch` N/A
+- **endpoint count** 57 → 58(+1 `GET /auth/me`)
+
+**Day 9 F9.1 Verdict**:F9.1 complete — frontend foundation landed。backend `GET /auth/me`(`useRole()` data source — R6 #2 gap closed)+ frontend `lib/api/users.ts`(`/users`+`/roles`+`/groups` client mirror F4-F6 schemas)+ `useRole()` hook。6 R6 findings resolved + F9 sub-split F9.1-F9.4。backend pytest 908 + 0 fail。F9.2 `/users` route shell + Members tab next。
+
+<!-- Day 9+ F9.2-F9.4 entries land at each sub-split active flip per CLAUDE.md §10 R2 -->
