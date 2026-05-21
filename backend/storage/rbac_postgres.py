@@ -7,8 +7,8 @@ for all 5 RBAC tables on every connect.
 
 F2.1 declares all 5 tables ahead of need: `roles` + `role_permissions` are
 read + seeded now; `groups` + `group_members` + `kb_acl` exist so F6 (Groups
-tab) / F8 (per-KB ACL) add Protocol methods only — plus, at F6, one additive
-`synced_at` column ALTER on `groups` (no breaking migration).
+tab) / F8 (per-KB ACL) add Protocol methods — plus two additive column ALTERs
+(F6 `groups.synced_at`, F8 `kb_acl.granted_by`); no breaking migration.
 
 Schema (in the `ekp` database per ADR-0023):
 
@@ -20,7 +20,8 @@ Schema (in the `ekp` database per ADR-0023):
            synced_at / created_at)
     group_members(group_key / user_oid, PK (group_key, user_oid) / added_at)
     kb_acl(id SERIAL PK / kb_id / principal_type / principal_id /
-           access_role / created_at, UNIQUE (kb_id, principal_type, principal_id))
+           access_role / granted_by / created_at,
+           UNIQUE (kb_id, principal_type, principal_id))
 
 `sort_order` carries the seed iteration index so `list_*` can `ORDER BY` a
 single column and reproduce the mockup's matrix order.
@@ -33,7 +34,16 @@ from typing import Any, cast
 import psycopg
 from psycopg.rows import dict_row
 
-from api.schemas.rbac import Group, GroupSource, Role, RoleKey, RolePermission
+from api.schemas.rbac import (
+    Group,
+    GroupSource,
+    KbAclEntry,
+    KbAclRole,
+    KbPrincipalType,
+    Role,
+    RoleKey,
+    RolePermission,
+)
 from storage.rbac_storage import default_roles, permission_matrix_rows
 
 _CREATE_TABLES = """
@@ -89,6 +99,13 @@ _PERM_COLS = "role_key, permission_key, area, label, granted"
 # `users` ALTERs in `postgres_users_store.py`.
 _ALTER_GROUPS = "ALTER TABLE groups ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ"
 
+# F8 — additive: `kb_acl` predates `granted_by`. Same idempotent pattern.
+_ALTER_KB_ACL = "ALTER TABLE kb_acl ADD COLUMN IF NOT EXISTS granted_by TEXT"
+
+_KB_ACL_COLS = (
+    "id, kb_id, principal_type, principal_id, access_role, granted_by, created_at"
+)
+
 
 def _row_to_role(row: dict[str, Any]) -> Role:
     return Role(
@@ -122,6 +139,18 @@ def _row_to_group(row: dict[str, Any]) -> Group:
     )
 
 
+def _row_to_kb_acl(row: dict[str, Any]) -> KbAclEntry:
+    return KbAclEntry(
+        id=row["id"],
+        kb_id=row["kb_id"],
+        principal_type=cast(KbPrincipalType, row["principal_type"]),
+        principal_id=row["principal_id"],
+        access_role=cast(KbAclRole, row["access_role"]),
+        granted_by=row["granted_by"],
+        created_at=row["created_at"],
+    )
+
+
 class PostgresRbacBackend:
     """RBAC store backed by Postgres — satisfies the `RbacBackend` Protocol."""
 
@@ -132,6 +161,7 @@ class PostgresRbacBackend:
         async with conn.cursor() as cur:
             await cur.execute(_CREATE_TABLES)
             await cur.execute(_ALTER_GROUPS)
+            await cur.execute(_ALTER_KB_ACL)
 
     async def reset(self) -> None:
         async with await psycopg.AsyncConnection.connect(
@@ -261,3 +291,88 @@ class PostgresRbacBackend:
                     "synced_at = EXCLUDED.synced_at",
                     (object_id, name, description, object_id),
                 )
+
+    async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    f"SELECT {_KB_ACL_COLS} FROM kb_acl "
+                    "WHERE kb_id = %s ORDER BY id",
+                    (kb_id,),
+                )
+                rows = await cur.fetchall()
+                return [_row_to_kb_acl(r) for r in rows]
+
+    async def add_kb_acl(
+        self,
+        *,
+        kb_id: str,
+        principal_type: KbPrincipalType,
+        principal_id: str,
+        access_role: KbAclRole,
+        granted_by: str | None,
+    ) -> KbAclEntry:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "INSERT INTO kb_acl "
+                    "(kb_id, principal_type, principal_id, access_role, granted_by) "
+                    "VALUES (%s, %s, %s, %s, %s) "
+                    "ON CONFLICT (kb_id, principal_type, principal_id) DO UPDATE SET "
+                    "access_role = EXCLUDED.access_role, "
+                    "granted_by = EXCLUDED.granted_by "
+                    f"RETURNING {_KB_ACL_COLS}",
+                    (kb_id, principal_type, principal_id, access_role, granted_by),
+                )
+                row = await cur.fetchone()
+                assert row is not None
+                return _row_to_kb_acl(row)
+
+    async def set_kb_acl_role(
+        self, kb_id: str, entry_id: int, access_role: KbAclRole
+    ) -> KbAclEntry | None:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "UPDATE kb_acl SET access_role = %s "
+                    "WHERE id = %s AND kb_id = %s "
+                    f"RETURNING {_KB_ACL_COLS}",
+                    (access_role, entry_id, kb_id),
+                )
+                row = await cur.fetchone()
+                return _row_to_kb_acl(row) if row else None
+
+    async def remove_kb_acl(self, kb_id: str, entry_id: int) -> bool:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM kb_acl WHERE id = %s AND kb_id = %s RETURNING id",
+                    (entry_id, kb_id),
+                )
+                return await cur.fetchone() is not None
+
+    async def get_kb_access(self, kb_id: str, user_oid: str) -> KbAclRole | None:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT access_role FROM kb_acl WHERE kb_id = %s "
+                    "AND principal_type = 'user' AND principal_id = %s",
+                    (kb_id, user_oid),
+                )
+                row = await cur.fetchone()
+                return cast(KbAclRole, row["access_role"]) if row else None

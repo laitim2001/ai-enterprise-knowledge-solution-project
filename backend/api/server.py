@@ -32,6 +32,7 @@ from api.routes import (
     groups,
     health,
     kb,
+    kb_acl,
     observability,
     query,
     retrieval_test,
@@ -308,3 +309,6 @@ app.include_router(users.router)
 app.include_router(roles.router)
 # W24c F6 — /groups Groups tab per ADR-0027 Option A. Same self-gated pattern.
 app.include_router(groups.router)
+# W24c F8 — /kb/{id}/acl per-KB ACL per ADR-0027. Router self-gated by
+# require_kb_acl("manage") — no _auth (the guard chains get_current_user).
+app.include_router(kb_acl.router)

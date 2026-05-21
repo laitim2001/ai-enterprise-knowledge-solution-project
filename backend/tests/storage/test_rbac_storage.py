@@ -152,3 +152,84 @@ def test_user_record_carries_role_column() -> None:
         oid="o2", email="b@ricoh.com", display_name="B", password_hash="h", role="admin"
     )
     assert elevated.role == "admin"
+
+
+# ---- W24c F8 — kb_acl per-KB ACL -------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_add_and_list_kb_acl() -> None:
+    backend = InMemoryRbacBackend()
+    await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="edit", granted_by="admin@ricoh.com",
+    )
+    entries = await backend.list_kb_acl("kb-1")
+    assert len(entries) == 1
+    assert entries[0].access_role == "edit"
+    assert entries[0].granted_by == "admin@ricoh.com"
+    # Scoped per KB — another KB sees nothing.
+    assert await backend.list_kb_acl("kb-other") == []
+
+
+@pytest.mark.asyncio
+async def test_add_kb_acl_upserts_on_same_principal() -> None:
+    backend = InMemoryRbacBackend()
+    first = await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="query", granted_by="a",
+    )
+    second = await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="manage", granted_by="b",
+    )
+    assert first.id == second.id  # same row updated, not duplicated
+    entries = await backend.list_kb_acl("kb-1")
+    assert len(entries) == 1
+    assert entries[0].access_role == "manage"
+
+
+@pytest.mark.asyncio
+async def test_get_kb_access_direct_user_grant_only() -> None:
+    backend = InMemoryRbacBackend()
+    await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="edit", granted_by="a",
+    )
+    assert await backend.get_kb_access("kb-1", "u-1") == "edit"
+    assert await backend.get_kb_access("kb-1", "u-other") is None
+    # A group grant is NOT a user's direct access (group-inherited resolution
+    # lands with F6 member sync — W24c F8 R6 finding #5).
+    await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="group", principal_id="g-1",
+        access_role="manage", granted_by="a",
+    )
+    assert await backend.get_kb_access("kb-1", "g-1") is None
+
+
+@pytest.mark.asyncio
+async def test_set_kb_acl_role_scoped_by_kb() -> None:
+    backend = InMemoryRbacBackend()
+    entry = await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="query", granted_by="a",
+    )
+    updated = await backend.set_kb_acl_role("kb-1", entry.id, "manage")
+    assert updated is not None
+    assert updated.access_role == "manage"
+    # Wrong kb_id → no match, even with a valid entry id.
+    assert await backend.set_kb_acl_role("kb-other", entry.id, "edit") is None
+
+
+@pytest.mark.asyncio
+async def test_remove_kb_acl_scoped_by_kb() -> None:
+    backend = InMemoryRbacBackend()
+    entry = await backend.add_kb_acl(
+        kb_id="kb-1", principal_type="user", principal_id="u-1",
+        access_role="edit", granted_by="a",
+    )
+    # Wrong kb_id → not removed.
+    assert await backend.remove_kb_acl("kb-other", entry.id) is False
+    assert await backend.remove_kb_acl("kb-1", entry.id) is True
+    assert await backend.list_kb_acl("kb-1") == []
+    assert await backend.remove_kb_acl("kb-1", entry.id) is False  # already gone

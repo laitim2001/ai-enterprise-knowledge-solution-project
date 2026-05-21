@@ -299,4 +299,43 @@ status: active                      # active | closed
 
 **Day 7 F7 Verdict**:F7 complete — Audit log expansion landed。`AuditAction` Literal +2(`kb.access.granted` + `kb.config.changed`)+ `kb.config.changed` audit write wired on `update_kb_settings` + `AuditLogBackend.prune_expired` 90d retention(InMemory + Postgres)+ `server.py` lifespan startup prune。6 R6 findings resolved(全 F4-sequenced / Karpathy §1.3 surgical avoid-regression / §1.2 no-over-extend+no-speculative-config,auto-adjust)。`kb.access.granted` write 🚧 defer F8。backend pytest 881 + 0 fail。F8 per-KB ACL(`kb_acl`)next。
 
-<!-- Day 8+ F8 entries land at F8 active flip per CLAUDE.md §10 R2 -->
+## Day 8 — 2026-05-21 — F8 per-KB ACL(`kb_acl`)
+
+### Done
+
+- **F8 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 389-519(`TabKbAccess`)+ `api/middleware/acl.py`(F3 `require_role`)+ `storage/rbac_storage.py`/`rbac_postgres.py`(`kb_acl` F2-declared schema)+ `api/auth/models.py`(`AuthenticatedUser.oid`)→ 8 findings(plan §7 Day 8 row)
+- **F8.1 NEW `api/routes/kb_acl.py`** — 4 CRUD endpoints router-level `require_kb_acl("manage")`:`GET /kb/{kb_id}/acl`(`KbAclListResponse`)+ `POST`(`KbAclEntry` 201,upsert + `kb.access.granted` audit write,`granted_by` = actor)+ `PATCH /{entry_id}`(role override,404)+ `DELETE /{entry_id}`(204,404);`_get_rbac_backend` 503-on-unwired + `_audit` best-effort helper
+- **F8.1 EDIT `api/schemas/rbac.py`** — `KbAclRole` Literal(`manage`/`edit`/`query`)+ `KbPrincipalType` Literal(`user`/`group`)+ `KbAclEntry` + `KbAclListResponse` + `KbAclGrantRequest` + `KbAclRoleChangeRequest`
+- **F8.1 EDIT `storage/rbac_storage.py`** — `RbacBackend` Protocol +5(`list_kb_acl`/`add_kb_acl`/`set_kb_acl_role`/`remove_kb_acl`/`get_kb_access`)+ `InMemoryRbacBackend` impl(`_kb_acl` list;`add_kb_acl` upsert on (kb_id,principal_type,principal_id);`set`/`remove` scoped by `kb_id`)
+- **F8.1 EDIT `storage/rbac_postgres.py`** — `kb_acl` 加 `granted_by` column(`_ALTER_KB_ACL` additive ALTER)+ 5 method Postgres impl(`add_kb_acl` `ON CONFLICT DO UPDATE`;`remove_kb_acl` `DELETE … RETURNING id`)+ `_row_to_kb_acl` + `_KB_ACL_COLS` + docstring 更新
+- **F8.2 EDIT `api/middleware/acl.py`** — `require_kb_acl(min_role)` async dependency factory(workspace `admin` always-pass;else direct user `kb_acl` grant ≥ `min_role`,`_KB_ACL_RANK` manage>edit>query;503 when `rbac_backend` unwired)+ docstring 更新「lands with F8」stale claim
+- **F8 EDIT `api/server.py`** — import `kb_acl` route + `app.include_router(kb_acl.router)`;endpoint count 53 → **57**
+- **F8 tests** — NEW `tests/api/test_kb_acl_route.py` 14 cases;`tests/storage/test_rbac_storage.py` +5 `kb_acl` cases;`tests/api/test_acl_middleware.py` +5 `require_kb_acl` cases
+- **F8 committed** `(this commit)`
+
+### Decisions
+
+- **D8.1 — `kb_acl` 加 `granted_by` column(additive ALTER)**(R6 #2)— mockup `TabKbAccess` table 有「Granted by」column,F2 `kb_acl` schema 無。F8 加 `granted_by TEXT` — `_ALTER_KB_ACL` idempotent `ALTER TABLE kb_acl ADD COLUMN IF NOT EXISTS`(對齊 F6 `synced_at` ALTER precedent;W24c/ADR-0027 RBAC schema scope 內)。`POST` 寫 `granted_by` = actor `preferred_username`。`rbac_postgres.py` docstring「兩個 additive ALTER」一併更新。
+- **D8.2 — `GET /kb/{kb_id}/acl` 返回 explicit `kb_acl` grants only**(R6 #3)— mockup `TabKbAccess` table 嘅 row 唔全部係真 `kb_acl` row:`system`/auto-locked row(workspace admin)+ `inherited` row(`granted_by:"(group)"`,group membership 衍生)係 synthetic/derived,加 `Workspace role` column 係 join。`GET` 返回 `kb_acl` table explicit grants;synthetic rows + workspace-role join F10 frontend 渲染。§13 backend-subset;mirrors F4 D4.1 / F6 D6.2。
+- **D8.3 — KB Visibility 🚧 defer**(R6 #4)— mockup `TabKbAccess` 有 Visibility card(private/workspace/public-Tier2),係 KB-level setting(邊個睇得到 KB),**唔係 `kb_acl`**(per-principal grant)。plan F8 scope = `kb_acl` CRUD(ADR-0027 §Decision `kb_acl` table)。KB Visibility(需 `KbStatus`/`KbConfig` enum field + endpoint,屬 C02 KB Manager metadata)defer — F10 frontend Access tab 渲染 Visibility card 時 surface,或 W24d+。per Karpathy §1.2 no over-extend。
+- **D8.4 — `require_kb_acl` admin always-pass + direct user grant;group-inherited 🚧 defer**(R6 #5)— `acl.py` 加 `require_kb_acl(min_role)` async dependency factory:workspace `admin` always-pass(ADR-0027「Workspace Admins always have full access」);else `get_kb_access(kb_id, user.oid)` direct user `kb_acl` grant,role-rank `manage>edit>query`。group-based per-KB access(user 透過 group membership 得 access)需要 `group_members` membership data,但 F6 D6.5 已 defer group member sync → F8 `get_kb_access` 只 check direct `principal_type='user'` grant;group-inherited access resolution defer(連 F6 member sync)。mock-auth dev 全 admin → `require_kb_acl` always-pass,不阻礙。
+- **D8.5 — NEW `routes/kb_acl.py` 獨立 module;actor 可寫真值**(R6 #6)— `/kb/{kb_id}/acl` 係 KB sub-resource,但 `kb.py`(C02)已大 + `kb_acl` 係 C16 per-KB ACL concern → 獨立 `routes/kb_acl.py`。NEW route 可加 `Depends(get_current_user)`(無 pre-existing test regression — 對比 F7 D7.3 `update_kb_settings` 係 pre-existing endpoint 不能加 auth dep → `actor=None`;F8 `kb_acl` route NEW)→ `kb.access.granted` audit 寫真 actor `current_user.preferred_username`。
+- **D8.6 — `set_kb_acl_role`/`remove_kb_acl` scoped by `kb_id`** — implementation-time finding:`kb_acl.id` 係 global SERIAL。若 `set`/`remove` 只用 `entry_id`,某 KB-A 嘅 manager 可以 `PATCH /kb/KB-A/acl/{id}` 用一個屬 KB-B 嘅 entry_id 改到 KB-B 嘅 grant(`require_kb_acl("manage")` 只 authorize path 嘅 KB-A)。→ `set_kb_acl_role(kb_id, entry_id, ...)`/`remove_kb_acl(kb_id, entry_id)` 兩個都 scope by `kb_id`(InMemory match `id AND kb_id`;Postgres `WHERE id = %s AND kb_id = %s`)。per Karpathy §1.4 goal-driven — 正確 per-KB ACL 唔可以有 cross-KB entry-id leak。
+- **D8.7 — `kb.access.granted` 只喺 `POST` 寫,`PATCH`/`DELETE` 不寫 audit**(R6 #7)— `kb.access.granted` `AuditAction` literal F7.1 已加。`POST`(add grant)寫 `kb.access.granted`。`PATCH`(role override)/`DELETE`(revoke)無對應 mockup `AuditTab` action / 無 `AuditAction` literal → 不寫(per Karpathy §1.2 — 唔加 mockup/plan 都冇嘅 `AuditAction`)。
+- **D8.8 — `remove_kb_acl` Postgres 用 `DELETE … RETURNING id` + `fetchone() is not None`** — implementation-time finding:`return cur.rowcount > 0` 喺 psycopg-uninstalled(CO17 R8 dev env)`cur` 係 `Any` → `cur.rowcount` `Any` → `Any > 0` `Any` → mypy `no-any-return`(returning Any as bool)。`# type: ignore` 唔啱(psycopg 裝咗時 `cur.rowcount` 係 `int` → ignore 變 unused → `--strict --warn-unused-ignores` 報錯)。改用 `DELETE … RETURNING id` + `await cur.fetchone() is not None` — `is not None` 永遠產生 `bool`(無論 operand 係 `Any` 定 typed),兩種環境都 mypy-clean。
+
+### Acceptance(plan §3 + checklist F8)
+
+- [x] F8.1 `kb_acl` CRUD — NEW `routes/kb_acl.py` 4 endpoints + `granted_by` ALTER + `RbacBackend` Protocol +5 methods + InMemory + Postgres impl
+- [x] F8.2 `acl.py` 加 `require_kb_acl(min_role)`(admin always-pass + direct user grant,role-rank)+ apply 到 `kb_acl` CRUD router;group-inherited + 其他 KB endpoint retrofit 🚧 deferred
+
+### Verify
+
+- **backend pytest 905 passed**(F7 baseline 881 → +24:`test_kb_acl_route.py` 14 + `test_rbac_storage.py` +5 + `test_acl_middleware.py` +5)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `api/routes/kb_acl.py` / `api/middleware/acl.py` / `api/schemas/rbac.py` / `storage/rbac_storage.py` 0 error;`storage/rbac_postgres.py` 只剩 psycopg import-not-found = CO17 R8 既有豁免（F8 `remove_kb_acl` 改 `RETURNING id`+`fetchone() is not None` 避免 `cur.rowcount` `no-any-return` per D8.8）
+- **ruff** — F8 NEW/EDIT files all clean;`server.py` E402 35→35 不變(`kb_acl` 加入既有 multi-line import block)
+- **endpoint count** 53 → 57(+4 `/kb/{kb_id}/acl` CRUD)
+
+**Day 8 F8 Verdict**:F8 complete — per-KB ACL(`kb_acl`)landed。NEW `api/routes/kb_acl.py`(4 CRUD endpoints router-level `require_kb_acl("manage")`)+ `acl.py` `require_kb_acl` dependency factory + `RbacBackend` +5 `kb_acl` Protocol methods(InMemory + Postgres)+ `kb_acl.granted_by` additive ALTER + F7-deferred `kb.access.granted` audit write 兌現。8 R6 findings resolved + 2 implementation-time findings(D8.6 cross-KB scope / D8.8 `no-any-return` 避免)。KB Visibility + group-inherited access + 其他 KB endpoint `require_kb_acl` retrofit 🚧 defer。backend pytest 905 + 0 fail。F9 frontend `/users` 4-tab page next。
+
+<!-- Day 9+ F9 entries land at F9 active flip per CLAUDE.md §10 R2 -->

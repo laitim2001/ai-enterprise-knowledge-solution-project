@@ -124,3 +124,51 @@ class GroupSyncResult(BaseModel):
     status: Literal["synced", "skipped"]
     synced_count: int = 0
     detail: str
+
+
+# --- F8 per-KB ACL schema (W24c F8 per ADR-0027 §Decision kb_acl) -----------
+
+# Per-KB access role — ranked manage > edit > query (see acl.require_kb_acl).
+KbAclRole = Literal["manage", "edit", "query"]
+# An ACL grant targets either a single user or a whole group.
+KbPrincipalType = Literal["user", "group"]
+
+
+class KbAclEntry(BaseModel):
+    """One explicit per-KB access grant. Mirrors a `kb_acl` table row.
+
+    A user or group given a `manage`/`edit`/`query` role on one KB. Synthetic
+    rows the mockup shows — workspace-admin auto-access, group-inherited
+    access — are NOT stored here; the frontend derives them (CLAUDE.md §13).
+    """
+
+    id: int
+    kb_id: str
+    principal_type: KbPrincipalType
+    principal_id: str = Field(..., description="User oid or group key.")
+    access_role: KbAclRole
+    granted_by: str | None = Field(
+        default=None, description="Actor who created the grant; None for legacy rows."
+    )
+    created_at: datetime
+
+
+class KbAclListResponse(BaseModel):
+    """`GET /kb/{kb_id}/acl` payload — the KB's explicit ACL grants."""
+
+    entries: list[KbAclEntry]
+    total: int
+
+
+class KbAclGrantRequest(BaseModel):
+    """`POST /kb/{kb_id}/acl` body — grant a principal access to the KB."""
+
+    principal_type: KbPrincipalType
+    principal_id: str
+    access_role: KbAclRole
+
+
+class KbAclRoleChangeRequest(BaseModel):
+    """`PATCH /kb/{kb_id}/acl/{entry_id}` body — change a grant's role."""
+
+    access_role: KbAclRole

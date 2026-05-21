@@ -22,7 +22,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
-from api.schemas.rbac import Group, Role, RoleKey, RolePermission
+from api.schemas.rbac import (
+    Group,
+    KbAclEntry,
+    KbAclRole,
+    KbPrincipalType,
+    Role,
+    RoleKey,
+    RolePermission,
+)
 
 # --- Seed data --------------------------------------------------------------
 
@@ -195,6 +203,40 @@ class RbacBackend(Protocol):
         stamps `source='entra'` + `synced_at=now`. F6 (sync-from-entra)."""
         ...
 
+    async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
+        """Explicit per-KB ACL grants for one KB. F8 (per-KB ACL)."""
+        ...
+
+    async def add_kb_acl(
+        self,
+        *,
+        kb_id: str,
+        principal_type: KbPrincipalType,
+        principal_id: str,
+        access_role: KbAclRole,
+        granted_by: str | None,
+    ) -> KbAclEntry:
+        """Grant a principal access to a KB — upserts on
+        (kb_id, principal_type, principal_id). F8."""
+        ...
+
+    async def set_kb_acl_role(
+        self, kb_id: str, entry_id: int, access_role: KbAclRole
+    ) -> KbAclEntry | None:
+        """Change a grant's role; None when (kb_id, entry_id) is unknown. The
+        `kb_id` scope stops a manager of one KB editing another KB's ACL. F8."""
+        ...
+
+    async def remove_kb_acl(self, kb_id: str, entry_id: int) -> bool:
+        """Revoke a grant; False when (kb_id, entry_id) is unknown. F8."""
+        ...
+
+    async def get_kb_access(self, kb_id: str, user_oid: str) -> KbAclRole | None:
+        """The user's direct ACL role on a KB, or None. Powers
+        `acl.require_kb_acl`; group-inherited access resolves once F6 member
+        sync lands. F8."""
+        ...
+
 
 # --- In-memory impl ---------------------------------------------------------
 
@@ -211,11 +253,15 @@ class InMemoryRbacBackend:
         self._roles: dict[str, Role] = {}
         self._role_permissions: list[RolePermission] = []
         self._groups: dict[str, Group] = {}
+        self._kb_acl: list[KbAclEntry] = []
+        self._next_acl_id: int = 1
 
     async def reset(self) -> None:
         self._roles.clear()
         self._role_permissions.clear()
         self._groups.clear()
+        self._kb_acl.clear()
+        self._next_acl_id = 1
 
     async def seed_defaults(self) -> None:
         if self._roles:
@@ -252,3 +298,66 @@ class InMemoryRbacBackend:
             synced_at=datetime.now(UTC),
             member_count=0,
         )
+
+    async def list_kb_acl(self, kb_id: str) -> list[KbAclEntry]:
+        return [e for e in self._kb_acl if e.kb_id == kb_id]
+
+    async def add_kb_acl(
+        self,
+        *,
+        kb_id: str,
+        principal_type: KbPrincipalType,
+        principal_id: str,
+        access_role: KbAclRole,
+        granted_by: str | None,
+    ) -> KbAclEntry:
+        for i, existing in enumerate(self._kb_acl):
+            if (
+                existing.kb_id == kb_id
+                and existing.principal_type == principal_type
+                and existing.principal_id == principal_id
+            ):
+                updated = existing.model_copy(
+                    update={"access_role": access_role, "granted_by": granted_by}
+                )
+                self._kb_acl[i] = updated
+                return updated
+        entry = KbAclEntry(
+            id=self._next_acl_id,
+            kb_id=kb_id,
+            principal_type=principal_type,
+            principal_id=principal_id,
+            access_role=access_role,
+            granted_by=granted_by,
+            created_at=datetime.now(UTC),
+        )
+        self._kb_acl.append(entry)
+        self._next_acl_id += 1
+        return entry
+
+    async def set_kb_acl_role(
+        self, kb_id: str, entry_id: int, access_role: KbAclRole
+    ) -> KbAclEntry | None:
+        for i, existing in enumerate(self._kb_acl):
+            if existing.id == entry_id and existing.kb_id == kb_id:
+                updated = existing.model_copy(update={"access_role": access_role})
+                self._kb_acl[i] = updated
+                return updated
+        return None
+
+    async def remove_kb_acl(self, kb_id: str, entry_id: int) -> bool:
+        for i, existing in enumerate(self._kb_acl):
+            if existing.id == entry_id and existing.kb_id == kb_id:
+                del self._kb_acl[i]
+                return True
+        return False
+
+    async def get_kb_access(self, kb_id: str, user_oid: str) -> KbAclRole | None:
+        for entry in self._kb_acl:
+            if (
+                entry.kb_id == kb_id
+                and entry.principal_type == "user"
+                and entry.principal_id == user_oid
+            ):
+                return entry.access_role
+        return None

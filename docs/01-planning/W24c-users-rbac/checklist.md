@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F7 active-flip → F7.1-F7.3 complete (Audit log expansion: AuditAction +2 kb.* + kb.config.changed write on update_kb_settings + AuditLogBackend.prune_expired 90d retention; backend pytest 881)
+last_updated: 2026-05-21  # F8 active-flip → F8.1-F8.2 complete (per-KB ACL: routes/kb_acl.py 4 CRUD endpoints + require_kb_acl guard + RbacBackend +5 kb_acl methods + kb_acl.granted_by ALTER; backend pytest 905)
 ---
 
 # W24c-users-rbac — Checklist
@@ -79,8 +79,10 @@ last_updated: 2026-05-21  # F7 active-flip → F7.1-F7.3 complete (Audit log exp
 
 ## F8 — per-KB ACL(`kb_acl`)
 
-- [ ] **F8.1** `kb_acl` CRUD endpoints(Manage/Edit/Query role override + add member + add Entra group)
-- [ ] **F8.2** ACL middleware consults `kb_acl` for per-KB authorization
+> R6 Day 8 finding(plan §7,8 findings):**(1)** `kb_acl` Protocol + `KbAclEntry` schema NEW(F2-predicted);**(2)** `kb_acl` 漏 `granted_by` → additive ALTER;**(3)** `GET` 返回 explicit grants only(synthetic system/inherited rows = F10);**(4)** Visibility card 🚧 defer(KB-level setting 非 `kb_acl`);**(5)** `require_kb_acl` admin always-pass + direct user grant,group-inherited 🚧 defer;**(6)** NEW `routes/kb_acl.py`(獨立 module);**(7)** `POST` 寫 `kb.access.granted` audit;**(8)** `KbAclRole` Literal + role-rank。
+
+- [x] **F8.1** `kb_acl` CRUD — NEW `routes/kb_acl.py` 4 endpoints `GET`/`POST`/`PATCH`/`DELETE` `/kb/{kb_id}/acl`（`POST` add member/group grant upsert + `kb.access.granted` audit;`PATCH /{entry_id}` role override;`DELETE /{entry_id}` revoke;`GET` explicit grants only）+ `kb_acl` `granted_by` column ALTER + `RbacBackend` Protocol +5 methods（`list_kb_acl`/`add_kb_acl`/`set_kb_acl_role`/`remove_kb_acl`/`get_kb_access`）+ InMemory + Postgres impl
+- [x] **F8.2** `acl.py` 加 `require_kb_acl(min_role)` dependency factory（admin always-pass + direct user `kb_acl` grant,role-rank `manage>edit>query`）+ apply 到 `kb_acl` CRUD router（`require_kb_acl("manage")`）;group-inherited access resolution + 其他 KB endpoint retrofit 🚧 deferred
 
 ## F9 — frontend `/users` 4-tab page + `useRole()` hook
 
