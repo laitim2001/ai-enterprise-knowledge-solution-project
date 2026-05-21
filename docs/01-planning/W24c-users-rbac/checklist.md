@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F10 complete — /kb/[id] Access tab activated (8th tab) + NEW TabKbAccess + kbApi.listAcl; kb-detail Vitest 3/3; tsc/lint/[oklch=0 green
+last_updated: 2026-05-21  # F11 complete — RBAC pytest 111-case subset green + full 908; NEW use-role.test.tsx; Playwright stale-comment fix; Vitest 21 files/88 tests; coverage-% R8-deferred CO17
 ---
 
 # W24c-users-rbac — Checklist
@@ -100,10 +100,12 @@ last_updated: 2026-05-21  # F10 complete — /kb/[id] Access tab activated (8th 
 
 ## F11 — Tests
 
-- [ ] **F11.1** backend pytest — RBAC storage + ACL middleware(≥80% per H6)+ endpoints
-- [ ] **F11.2** Vitest — `/users` tabs + `useRole()` hook
-- [ ] **F11.3** Playwright — `/users` render-smoke + Access tab
-- [ ] **F11.4** verify gates — `tsc` exit 0 + `next lint` clean + `[oklch`=0 + `mypy --strict` RBAC modules
+> R6 Day 14 finding(plan §7,6 findings):F11 plan-text 讀落似要由零寫 backend test,實際 F2-F8 已 per Karpathy §1.4 tests-alongside-code + H6 寫齊 RBAC subset **111 cases** → F11.1 = verify 非 write-from-scratch;**(2)** `pytest-cov` install R8-blocked(`coverage` binary wheel `IncompleteRead`,ADR-0017 #9)→ measured coverage-% 🚧 defer CO17(H6 via test-inventory adequacy + subset green);**(3)** F11.2 `/users` tabs `users-page.test.tsx` 9 cases 已存在(F9.4)→ gap = NEW `use-role.test.tsx`;**(6)** F11.3 render-smoke 已存在(F9.4)→ gap = F10-stale Playwright comment 修正。
+
+- [x] **F11.1** backend RBAC pytest verify(R6 Day 14)— RBAC subset **111 cases / 111 passed** across 8 files(`test_rbac_storage` 17 + `test_audit_log` 13 + `test_acl_middleware` 16 + `test_users_route` 15 + `test_roles_route` 14 + `test_groups_route` 9 + `test_kb_acl_route` 14 + `test_admin_audit_log` 13)+ full suite **908 passed + 11 skipped + 0 failed**(F8 baseline 不變 — F11 無 backend code change)。**🚧 measured coverage-% defer CO17 R8 umbrella** — `pytest-cov` install 2 × `IncompleteRead`(`coverage` binary wheel ~223KB,ADR-0017 R8 occurrence #9);H6 verified via test-inventory adequacy(111 cases mapped to RBAC module public surface)+ subset green;pytest-cov 不入 `pyproject.toml`(uninstallable dep)
+- [x] **F11.2** Vitest `/users` tabs + `useRole()` hook — `users-page.test.tsx` 9 cases(F9.4,DONE)+ NEW `tests/unit/use-role.test.tsx` 3-case hook contract test(`renderHook` + QueryClientProvider:null-while-loading / role-on-resolve / null-on-error;`vi.hoisted` 解決 `vi.mock` factory-hoist)
+- [x] **F11.3** Playwright `/users` + `/kb/[id]` render-smoke — spec 已存在(`app-shell-path.spec.ts:253` `/users` F9.4 + `:272` `/kb/[id]`)+ 2 處 F10-stale comment 修正(`:23` header「7-tab + Access disabled affordance」+ `:288` Access `aria-disabled='true'` assertion → 8-tab-active per F10);runtime execution = smoke-user-deferred per plan §3
+- [x] **F11.4** verify gates — `tsc --noEmit` exit 0 + `next lint` clean + `[oklch`=0 + `mypy --strict` RBAC 10 target modules clean(import-chain errors 全喺 pre-existing 非-RBAC 模組 `rate_limit`/`audit_log`/`postgres_users_store`/`email_provider`/`rbac_postgres` psycopg = CO17 豁免)+ Vitest **21 files / 88 tests / 0 fail**(deterministic 3-batch `--no-file-parallelism` per W23 §8.7 OneDrive worker-timeout flake)
 
 ## F12 — Closeout cascade
 

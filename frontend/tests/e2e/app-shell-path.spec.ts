@@ -20,7 +20,8 @@
  * - AppShell sidebar nav navigates between modules (`aria-label="Primary"` preserved)
  * - AppShell chrome present on app routes / absent on auth pages (W18 F8.5 preserved)
  * - AppShell topbar shows NotificationsMenu + workspace switcher disabled affordance
- * - /kb/[id] 7-tab + Access disabled affordance (W20 F5 + W22 F6.1 preserved)
+ * - /kb/[id] renders gracefully — 8-tab tablist (Access activated W24c F10) OR
+ *   error banner (W20 F5 + W22 F6.1 + W24c F10)
  *
  * Tests assume NEXT_PUBLIC_AUTH_MOCK=true bypasses login + uses the default mock user.
  * Run via `PW_CHANNEL=chrome pnpm test:e2e` per W17 ADR-0017 Plan B (a) — corp-managed
@@ -285,9 +286,9 @@ test.describe('App-shell path E2E — dashboard + KB + eval + traces flow (W23 F
     const tablist = page.getByRole('tablist');
     const errorBanner = page.getByText(/failed to load|not found/i);
     await expect(tablist.or(errorBanner).first()).toBeVisible();
-    // Full 8-tab strict count + Access tab `aria-disabled="true"` assertion deferred
-    // W24+ — needs a seeded `drive_user_manuals` KB via Track A IT cred + Postgres
-    // path runtime smoke (CO17). When seeded, the Access tab will be the 8th tab
-    // per ADR-0025 + ADR-0027 Option A future scope.
+    // Full 8-tab strict count assertion deferred W24+ — needs a seeded
+    // `drive_user_manuals` KB via Track A IT cred + Postgres-path runtime smoke
+    // (CO17). When seeded, the Access tab is the 8th *active* tab (W24c F10
+    // activated it per ADR-0025 — no longer a disabled affordance).
   });
 });

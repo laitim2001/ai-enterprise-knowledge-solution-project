@@ -527,4 +527,42 @@ status: active                      # active | closed
 
 **Day 13 F10 Verdict**:F10 complete — `/kb/[id]` Access tab activated。8th tab `'access'` 入 `VALID_TABS` + NEW `<TabKbAccess>`(banner + stat-grid + Visibility card + Members table per-KB ACL)+ `kbApi.listAcl` client。10 R6 findings resolved + H7 self-verify PASS。disabled affordance 移除,orphan import 清理,2 個 kb-detail Vitest 更新並通過。tsc/lint/`[oklch`=0 全綠。F11 Tests + F12 Closeout next。
 
-<!-- Day 13+ F11-F12 entries land at active flip per CLAUDE.md §10 R2 -->
+## Day 14 — 2026-05-21 — F11 Tests
+
+### Done
+
+- **F11 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 `backend/tests/{storage,api}/` RBAC test inventory + `api/middleware/acl.py` + `storage/rbac_*.py` + `frontend/tests/unit/users-page.test.tsx` + `lib/hooks/use-role.ts` + `tests/e2e/app-shell-path.spec.ts` → **6 findings**(plan §7 Day 14 row)
+- **F11.1 backend RBAC pytest verify** — RBAC subset green:`test_rbac_storage`(17)+ `test_audit_log`(13)+ `test_acl_middleware`(16)+ `test_users_route`(15)+ `test_roles_route`(14)+ `test_groups_route`(9)+ `test_kb_acl_route`(14)+ `test_admin_audit_log`(13)= **111 cases / 111 passed**;full suite **908 passed + 11 skipped + 0 failed**(W24c F8 baseline 不變 — F11 無 backend code change)。RBAC test 已 F2-F8 per Karpathy §1.4 tests-alongside-code + H6 incremental 寫齊 — F11.1 = verify 而非 write-from-scratch
+- **F11.1 coverage tool R8-blocked** — `pytest-cov` install 2 × `IncompleteRead`(`coverage` binary wheel ~223KB,ADR-0017 R8 occurrence #9,deterministic per-blob within R8 window)→ measured coverage-% 🚧 defer CO17 R8 umbrella;H6 verified via **test-inventory adequacy**(111 cases mapped to RBAC module public surface)+ subset green(本 project F2-F8 H6 de-facto verification 方式一致 — 從未用工具量度 coverage)
+- **F11.2 NEW `frontend/tests/unit/use-role.test.tsx`** — `useRole()` hook 3-state contract test(`renderHook` + `QueryClientProvider` wrapper:`null` while `/auth/me` in flight / resolved `EkpRoleKey` on land / `null` on fetch fail);`vi.hoisted` 解決 `vi.mock` factory 提升於 `const` 之前嘅 ReferenceError(per `kb-detail.test.tsx` 模式)。`users-page.test.tsx`(F9.4,9 cases)= F11.2 `/users` tabs 部分,已存在
+- **F11.3 `frontend/tests/e2e/app-shell-path.spec.ts` EDIT** — 2 處 F10-stale comment 修正:`:23` spec-header「/kb/[id] 7-tab + Access disabled affordance」→「8-tab tablist(Access activated W24c F10)OR error banner」;`:288-291` test 內 comment「Access tab `aria-disabled='true'` assertion deferred」→「Access 係 8th *active* tab(W24c F10 activated,no longer disabled affordance)」。`/users` render-smoke(`:253`,F9.4)+ `/kb/[id]` render-smoke(`:272`)spec 已存在 — F11.3 spec coverage DONE
+- **F11 committed** `(this commit)`
+
+### Decisions
+
+- **D14.1 — F11.1 = verify 非 write-from-scratch**(R6 #1)— plan §2 F11 literal「backend pytest(RBAC storage + ACL middleware + endpoints)」讀落似 F11 由零寫 backend test。實際 F2-F8 每個 deliverable 已 per Karpathy §1.4 goal-driven(tests-alongside-code)+ H6 同步寫 test — RBAC subset = 111 cases across 8 files。F11.1 actual = run subset green + full-suite no-regression + H6 inventory-adequacy 確認。plan §2 F11 acceptance refine sketch → actual(plan §7 Day 14)。
+- **D14.2 — measured coverage-% R8-deferred,`pytest-cov` 不入 `pyproject.toml`**(R6 #2)— `pytest-cov`(連 `coverage` binary wheel)install 兩次 `IncompleteRead`(R8 corp proxy,ADR-0017 occurrence #9)。本 project 從未用工具量度 coverage(`pyproject.toml` dev-deps 無 pytest-cov,無 progress entry 報過 %)— F2-F8 H6 de-facto 滿足 = test-inventory adequacy + subset-green。→ measured-% 🚧 defer CO17 R8 umbrella(同 F1.5b psycopg / F2 D2 `rbac_postgres.py` mypy 豁免同類 phase-internal precedent)。`pytest-cov` **不加入 `pyproject.toml`** — 一個 uninstallable dep 入 pyproject 會 break `pip install -e .[dev]`(Karpathy §1.2)。R6 auto-adjust 非 STOP+ask:R8 deferral 係 established W24c precedent。
+- **D14.3 — NEW `use-role.test.tsx` dedicated hook test**(R6 #4)— `useRole()` hook 之前只經 `users-page.test.tsx` role-gating 間接 exercise。plan F11.2 literal 列「`useRole()` hook」為獨立 item → gap-fill 一個 isolated 3-case contract test。Hook gate 嘅 critical contract = `null`-while-loading(防 access-denied flash)→ 值得 isolate。非 over-testing — F11.2 plan 明確要求,且 isolated-unit test 係 H6 spirit。
+- **D14.4 — F11.3 = stale comment 修正,非新 assertion**(R6 #6)— `/users` + `/kb/[id]` render-smoke spec F9.4 已 land。F10 activate Access tab(8-tab active,移除 disabled affordance)後,`app-shell-path.spec.ts` 2 處 comment 引用 pre-F10「Access disabled affordance」/「`aria-disabled='true'`」= stale → 修正對齊 F10 reality(Karpathy §1.4 code/comment consistency)。render-smoke test logic「tablist OR error」不變(仍正確)。seeded-KB 8-tab strict-count assertion 仍 defer per BUG-004(需 Track A IT cred,CO17)。
+
+### Acceptance(plan §2 F11)
+
+- [x] F11.1 backend RBAC pytest — RBAC subset 111 cases / 111 passed across 8 files + full suite 908 passed + 11 skipped + 0 failed;measured coverage-% 🚧 defer CO17 R8 umbrella(`pytest-cov` R8-blocked),H6 via test-inventory adequacy + subset green
+- [x] F11.2 Vitest `/users` tabs(`users-page.test.tsx` 9 cases F9.4 — DONE)+ NEW `use-role.test.tsx`(3-case hook contract)
+- [x] F11.3 Playwright `/users` + `/kb/[id]` render-smoke spec well-formed(F9.4 landed)+ 2 處 F10-stale comment 修正;runtime execution = smoke-user-deferred per plan §3
+- [x] F11.4 verify gates — `tsc` exit 0 + `next lint` clean + `[oklch`=0 + `mypy --strict` RBAC 10 target modules clean + Vitest 21 files / 88 tests / 0 fail
+- **🚧 deferred(F11)**:measured coverage-%（`pytest-cov` R8-blocked → CO17 R8 umbrella）;Playwright runtime execution（`PW_CHANNEL=chrome` — smoke-user-deferred per plan §3）;`/kb/[id]` seeded-KB 8-tab strict-count E2E assertion（needs Track A IT cred per BUG-004 / CO17）
+
+### Verify
+
+- **backend `pytest tests/`** — **908 passed + 11 skipped + 0 failed**(4m32s;F8 baseline 不變 — F11 無 backend code change)。RBAC subset(8 files)獨立 run = **111 passed / 0 failed**
+- **backend `mypy --strict`** — RBAC 10 target modules(`acl.py` / `routes/{users,roles,groups,kb_acl}.py` / `schemas/rbac.py` / `storage/{rbac_storage,rbac_factory,audit_log_storage}.py` / `auth/entra_graph.py`)全部 target file clean;import-chain errors 全喺 pre-existing 非-RBAC 模組(`middleware/rate_limit.py`+`audit_log.py` / `auth/postgres_users_store.py`+`email_provider.py` / `storage/rbac_postgres.py` psycopg-import)= F2/F3/F8 既有 jose/psycopg/azure-stub CO17 豁免,非 F11 regression
+- **frontend `tsc --noEmit`** — exit 0(type-check clean)
+- **frontend `next lint`** — `✔ No ESLint warnings or errors`(`tests/` dir)
+- **`[oklch` arbitrary-class grep** = **0**(F11 changed files 純 test 檔,無 styling)
+- **frontend Vitest** — **21 files / 88 tests passed / 0 failed**(deterministic 3-batch `--no-file-parallelism` per W23 setup.md §8.7 — 全-suite-at-once 喺 OneDrive 撞 `vitest-pool-runner` worker-start timeout flake;sequential file 執行消除 contention)。含 NEW `use-role.test.tsx` 3/3 + `users-page.test.tsx` 9/9 + `kb-detail*` regression 0
+- **endpoint count** — 不變 58(F11 無新 endpoint;F11 = test verify)
+
+**Day 14 F11 Verdict**:F11 complete — RBAC test suite verified。RBAC pytest subset 111 cases 全綠 + full suite 908 regression 0;NEW `use-role.test.tsx` 補 hook contract gap;Playwright `/users`+`/kb/[id]` render-smoke spec 已 F9.4 land,2 處 F10-stale comment 修正。6 R6 findings resolved + verify gates 全綠(tsc / lint / `[oklch`=0 / mypy RBAC 10 modules / Vitest 21 files 88 tests)。**🚧 measured coverage-% R8-deferred CO17**(`pytest-cov` install blocked — H6 via test-inventory adequacy + subset green,project F2-F8 一貫做法)。F12 Closeout cascade next。
+
+<!-- Day 14+ F12 entry lands at active flip per CLAUDE.md §10 R2 -->
