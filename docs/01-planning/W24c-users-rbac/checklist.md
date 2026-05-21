@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F9.1 active-flip → F9 sub-split F9.1-F9.4; F9.1 foundation complete (GET /auth/me + lib/api/users.ts client + useRole() hook); backend pytest 908
+last_updated: 2026-05-21  # F9.2 complete — /users route shell + Members tab (NEW RoleBadge + app/(app)/users/page.tsx 4-tab ?tab= deep-link + data-bound Members tab); tsc/lint/[oklch=0 green
 ---
 
 # W24c-users-rbac — Checklist
@@ -89,7 +89,7 @@ last_updated: 2026-05-21  # F9.1 active-flip → F9 sub-split F9.1-F9.4; F9.1 fo
 > R6 Day 9 finding(plan §7,6 findings):F9 ~3 plan days → **sub-split** F9.1-F9.4(plan §2 + §7 R3);**(2)** `useRole()` data source gap — frontend `AuthenticatedUser` 無 `role`,backend 無 current-user endpoint → F9.1 加 `GET /auth/me`;**(3)** `adminApi` 無 users/roles/groups → NEW `lib/api/users.ts`;**(4)** `EkpRoleKey`/`EKP_ROLE_LABELS` 重用;**(5)** `?tab=` deep-link per settings precedent(非 H7 deviation);**(6)** `GET /auth/me` 放 `auth.py`(非 admin-gated)。原 F9.1/F9.2/F9.3(route / useRole / H7-verify)scope 全數吸收入下列 sub-split。
 
 - [x] **F9.1** Foundation — backend NEW `GET /auth/me`(current user + `role`,`auth.py`,non-admin)+ `MeResponse` schema + test;frontend NEW `lib/api/users.ts`(`/users`+`/roles`+`/groups` client methods + TS types mirror F4-F6 schemas)+ `useRole()` hook(fetch `/auth/me`,returns `EkpRoleKey`)
-- [ ] **F9.2** `/users` route shell + Members tab — `app/(app)/users/page.tsx` NET NEW(`'use client'` + `<Suspense>` + 4-tab nav `.tabs`/`.tab` + `?tab=` deep-link + `<TabBoundary>`)+ Members tab(stat-grid + filter seg + 10-col table + invite/suspend/role-change per mockup lines 62-191)
+- [x] **F9.2** `/users` route shell + Members tab(R6 Day 10,10 findings)— 2 NEW:**(a)** `components/users/role-badge.tsx` shared `RoleBadge`(3-tab consumer,oklch token colors per mockup lines 193-207);**(b)** `app/(app)/users/page.tsx` NET NEW(`'use client'` + `<Suspense>` + page-header + stat-grid 4-card + 4-tab nav `<button role="tab">` + `?tab=` deep-link per settings precedent + local `<TabBoundary>` + inline `UsersTab` Members tab + `StatCard`/`TabPlaceholder` helpers)。Members tab — client-side search(name+email)+ seg filter(All/Admin/Editor/User/Pending)+ 10-col table per mockup lines 62-191;5 backend-subset column(`source`/`group`/`queries_7d`/`kbs_owned`/`last_login`)+ 2 stat card(`Active sessions`/`Avg queries`)= `—` placeholder per W22 B-i(全 column/card keep,§13 visual-fidelity);invite/suspend/role-change affordance render **inert** per mockup(functional UI 唔喺 mockup → 不 build per Karpathy §1.2);roles/groups/audit tab = transient `<TabPlaceholder>`(F9.3/F9.4 replace)
 - [ ] **F9.3** Roles tab + Groups tab — `RolesTab`(banner + 4 role cards + permissions matrix per mockup lines 209-286)+ `GroupsTab`(Entra ID groups table + sync button per mockup lines 288-322)
 - [ ] **F9.4** Audit tab + role-gating + verify — `AuditTab`(workspace audit feed,重用 `adminApi.listAuditLog()` per mockup lines 324-377)+ `useRole()` role-gated rendering wired + H7 per-tab 7-item self-verify(4 tabs)+ Vitest + Playwright(runtime browser smoke = smoke-user-deferred per plan §3)
 

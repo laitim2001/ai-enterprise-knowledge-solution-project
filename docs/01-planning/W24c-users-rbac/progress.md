@@ -371,4 +371,41 @@ status: active                      # active | closed
 
 **Day 9 F9.1 Verdict**:F9.1 complete — frontend foundation landed。backend `GET /auth/me`(`useRole()` data source — R6 #2 gap closed)+ frontend `lib/api/users.ts`(`/users`+`/roles`+`/groups` client mirror F4-F6 schemas)+ `useRole()` hook。6 R6 findings resolved + F9 sub-split F9.1-F9.4。backend pytest 908 + 0 fail。F9.2 `/users` route shell + Members tab next。
 
-<!-- Day 9+ F9.2-F9.4 entries land at each sub-split active flip per CLAUDE.md §10 R2 -->
+---
+
+## Day 10 — 2026-05-21 — F9.2 `/users` route shell + Members tab
+
+### Done
+
+- **F9.2 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 62-207(`PageUsers`+`UsersTab`+`RoleBadge`)+ `settings/page.tsx` tab pattern + `kb/page.tsx` data-fetch/placeholder pattern + `components/settings/tab-error-state.tsx` + `lib/api/admin.ts`(`EkpRoleKey`/`EKP_ROLE_LABELS`)+ `styles-mockup.css` class confirm → **10 findings**(plan §7 Day 10 row)
+- **F9.2 NEW `components/users/role-badge.tsx`** — shared `RoleBadge`(Members F9.2 + Roles + Groups F9.3 三-tab consumer);per mockup `ekp-page-users.jsx` lines 193-207 + `ROLES` lines 19-24;4 role oklch token color(`admin`=`--accent`、`editor`/`user`/`power`=literal oklch);label 重用 `EKP_ROLE_LABELS`(F3.0 已 land);mockup runtime `.replace(")", " / 0.12)")` → precomputed literal token strings(identical output)
+- **F9.2 NEW `app/(app)/users/page.tsx`** — `/users` route NET NEW。route shell:`<Suspense>` + page-header(title「Users & access」+ subtitle + Export CSV / Invite member 兩 inert button)+ stat-grid 4-card + 4-tab nav(`<button role="tab">` + `?tab=` deep-link per settings precedent + Members tab `.count` badge)+ local `<TabBoundary>`(reuse `ErrorBoundary` + `TabErrorState`)。Members tab(inline `UsersTab`)— client-side search(name+email)+ seg filter(All/Admin/Editor/User/Pending,counts)+ 10-col table(`useQuery(['users','list'])` → `usersApi.listUsers`;loading / error banner / empty / data 四態);`StatCard`/`TabPlaceholder` helper inline;roles/groups/audit tab = transient `<TabPlaceholder>`(F9.3/F9.4 replace)
+- **F9.2 committed** `(this commit)`
+
+### Decisions
+
+- **D10.1 — `GET /users` backend-subset 10-col table 全 column keep + `—` placeholder**(R6 #2)— F4 D4.1 已定 `UserSummary` = `oid/email/display_name/role/status/created_at`;mockup table 有 `source`/`group`/`queries_7d`/`kbs_owned`/`last_login` 5 個無 backend field 嘅 column。per CLAUDE.md §13 v1.9 — keep 全 10 column(visual fidelity,column structure 100% 保留,**NOT** visual element removal),5 個 missing-data cell `—` placeholder per W22 B-i policy(`kb/page.tsx` `R@5 —%`/`Owner —` precedent);非 H7 deviation,R6 auto-adjust。stat-grid 同理 — 「Total members」+「Pending invites」real,「Active sessions」+「Avg queries / user」value+sub `—`。
+- **D10.2 — mockup invite/suspend/role-change render inert**(R6 #4)— mockup `UsersTab`+`PageUsers` lines 62-191「Export CSV」/「Invite member」/ per-row「More」button 無 onClick / modal / menu(click-through prototype affordance)。plan §2 F9.2 text「invite/suspend/role-change」= 呢啲 mockup affordance → F9.2 reproduces them inert per mockup(對齊 `kb/page.tsx` inert More-button)。functional invite-modal / role-dropdown UI **唔喺 mockup** → 不 build(Karpathy §1.2 no speculative + W22 D6 over-extending anti-pattern);`usersApi.inviteUser/suspendUser/changeUserRole` 保持 F9.1-shipped client surface。mockup 清晰,非 STOP+ask。
+- **D10.3 — search input wire client-side**(R6 #5)— mockup line 121 search `<input>` 無 value/onChange(prototype inert),seg filter 有 wire。F9.2 wire search client-side(name+email filter)consistent with seg filter(both client-side)+ `kb/page.tsx` search precedent — 令既有 rendered control functional ≠ 加 visual element;placeholder text「Search by name, email, group…」verbatim 重現 per H7(group 非 backend-searchable,但 H7 = verbatim mockup text)。
+- **D10.4 — roles/groups/audit tab transient `<TabPlaceholder>`**(R6 #8)— sub-split:F9.3 build Roles+Groups,F9.4 build Audit。F9.2 render 4-tab nav(shell fidelity,mockup 4 tab)+ neutral `<TabPlaceholder>`(同 sprint F9.3/F9.4 replace)。F9.2 H7 self-verify scoped 至 shell + Members tab。
+- **D10.5 — tab nav `<button role="tab">` + `?tab=` deep-link**(R6 #6/#7)— mockup 用 `<div className="tab" onClick>` + plain `useState`;`settings/page.tsx` 已 establish `<button role="tab" aria-selected>` a11y + `?tab=` `useSearchParams`+`<Suspense>` deep-link(已 H7-passed)→ F9.2 跟 settings convention;`?tab=` 係 invisible deep-link enhancement,mockup plain `useState` 係 prototype URL-state 簡化 → 非 H7 deviation(D9.5 已預定)。
+- **D10.6 — `RoleBadge` 獨立 shared component**(R6 #1)— mockup inline 定義 + `window.RoleBadge` export,Members/Roles/Groups 三 tab consumer → NEW `components/users/role-badge.tsx`(genuine 3-consumer primitive);避免 F9.3 refactor。`TabBoundary` 反之 = local helper(settings 亦 local 定義,extract 去 shared 要改 settings,非 surgical per Karpathy §1.3)。
+
+### Acceptance(plan §2 F9 sub-split F9.2)
+
+- [x] F9.2(a)`components/users/role-badge.tsx` shared `RoleBadge`(3-tab consumer,oklch token colors per mockup lines 193-207)
+- [x] F9.2(b)`app/(app)/users/page.tsx` NET NEW route shell + Members tab — `<Suspense>` + page-header + stat-grid 4-card + 4-tab nav `<button role="tab">` + `?tab=` deep-link + local `<TabBoundary>` + inline `UsersTab` + client-side search/seg filter + 10-col table + loading/error/empty/data 四態
+- [x] H7 7-item self-verify(layout/spacing/typography/color tokens/interaction states/responsive/a11y)PASS for shell + Members tab — layout/spacing/typography/color 100% mockup-faithful;5 backend-subset column + 2 stat card `—` placeholder per W22 B-i(structure 保留,§13 visual-fidelity);loading/error/empty state 為 real-fetch 必需(mockup static prototype 無);a11y upgrade per settings precedent
+
+### Verify
+
+- **frontend `tsc --noEmit`** — exit 0(type-check clean)
+- **frontend `next lint`** — `✔ No ESLint warnings or errors`(`app/(app)/users` + `components/users`)
+- **`[oklch` arbitrary-class grep** = **0**(`app/(app)/users` + `components/users` — RoleBadge inline `oklch(...)` style strings 無 `[` prefix,不觸 milestone)
+- **backend** — F9.2 純 frontend,無 backend change → backend pytest 不變 908
+- **route** — `/users` NET NEW(`app/(app)/users/page.tsx`);endpoint count 不變 58(F9.2 無新 endpoint)
+- **runtime browser smoke** — F9.4 Vitest/Playwright + interactive walkthrough = smoke-user-deferred per plan §3
+
+**Day 10 F9.2 Verdict**:F9.2 complete — `/users` route shell + Members tab landed。NEW shared `RoleBadge` + NEW `/users` page(4-tab nav `?tab=` deep-link + stat-grid + Members tab data-bound to `GET /users`)。10 R6 findings resolved + H7 self-verify PASS(shell + Members tab)。tsc/lint/`[oklch`=0 全綠。F9.3 Roles tab + Groups tab next。
+
+<!-- Day 10+ F9.3-F9.4 entries land at each sub-split active flip per CLAUDE.md §10 R2 -->
