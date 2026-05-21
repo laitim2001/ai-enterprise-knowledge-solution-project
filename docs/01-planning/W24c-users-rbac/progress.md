@@ -487,4 +487,44 @@ status: active                      # active | closed
 
 **Day 12 F9.4 Verdict**:F9.4 complete — Audit tab + role-gating + verify landed。`AuditTab`(workspace audit feed)+ `useRole()` whole-page role-gating + `admin.ts` `AuditAction` extend + Vitest 9/9 + Playwright `/users` smoke。10 R6 findings resolved + H7 self-verify PASS 全 4 tab。**F9 sub-split(F9.1-F9.4)全部完成** — `/users` 4-tab page(Members/Roles/Groups/Audit)+ `useRole()` hook + role-gating。tsc/lint/`[oklch`=0 + Vitest 全綠。F10 frontend `/kb/[id]` Access tab activation next。
 
-<!-- Day 12+ F10+ entries land at active flip per CLAUDE.md §10 R2 -->
+---
+
+## Day 13 — 2026-05-21 — F10 `/kb/[id]` Access tab activation
+
+### Done
+
+- **F10 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 390-519(`TabKbAccess`)+ `backend/api/routes/kb_acl.py`(F8 4 endpoints)+ `backend/api/schemas/rbac.py`(`KbAcl*` schemas)+ `frontend/app/(app)/kb/[id]/page.tsx`(VALID_TABS / TAB_DEFS / Access disabled affordance / tab body switch)+ `lib/api/kb.ts` + `tests/unit/kb-detail-tabs.test.tsx` + `kb-detail.test.tsx` → **10 findings**(plan §7 Day 13 row)
+- **F10 `lib/api/kb.ts` EDIT** — 加 `KbAclRole`/`KbPrincipalType`/`KbAclEntry`/`KbAclListResponse` types(mirror backend `rbac.py`)+ `kbApi.listAcl(kbId)`。**read-only** — mockup `TabKbAccess` CRUD affordance 全 presentational,write client(POST/PATCH/DELETE)不建 per Karpathy §1.2
+- **F10 NEW `components/kb/tab-kb-access.tsx`** — `<TabKbAccess kbId>` per mockup `TabKbAccess` lines 390-519:banner-info「Per-KB access control」+ stat-grid 4(「Members with access」real `entries.length` + by-role sub,「Visibility」/「Pending invites」/「Default new member access」= `—` placeholder)+ Visibility card(3 radio row read-only,F8 D8.4 Visibility deferred)+ Members table(`kbApi.listAcl` explicit grants + `usersApi.listUsers`/`listGroups` best-effort join + 1 synthetic「Workspace Admins (auto)」system row per F8 D8.3)+ CRUD affordance inert + footer「Manage all → /users」wired `router.push`
+- **F10 `app/(app)/kb/[id]/page.tsx` EDIT** — `'access'` 加入 `VALID_TABS` + `TAB_DEFS`(icon `Shield`,8th tab per ADR-0025)+ 移除 `<DisabledAffordance>` Access block + 移除 orphan `Lock`/`DisabledAffordance` import + `{activeTab === 'access' && <TabKbAccess kbId={kb.kb_id} />}` tab body + docstring 2 處更新
+- **F10 `tests/unit/kb-detail-tabs.test.tsx` EDIT** — 「7 active + Access disabled」test → 「8 active tab triggers incl. Access」(移除 `aria-disabled='true'` 斷言,改 `not.toHaveAttribute`/`not.toBeDisabled`)+ docstring 更新
+- **F10 `tests/unit/kb-detail.test.tsx` EDIT** — 加 `vi.mock('@/components/kb/tab-kb-access', ...)` stub(F10 `TabKbAccess` import 鏈帶入 `users.ts`/`admin.ts` `new ApiClient()`,撞穿該 test 既有 incomplete `@/lib/api-client` mock;該 test 唔測 Access tab → stub `TabKbAccess` cut import chain,Karpathy §1.3 清自己 mess)
+- **F10 committed** `(this commit)`
+
+### Decisions
+
+- **D13.1 — `kbApi.listAcl` read-only,write client 不建**(R6 #3)— `/kb/{id}/acl` 係 `/kb/*` path → `kbApi.listAcl` 加入 `kb.ts`(URL-prefix convention)。mockup `TabKbAccess` CRUD affordance(Add member / Add Entra group button、per-row KB-role `<select>` `defaultValue` 無 onChange、per-row More)全 presentational → write client(POST/PATCH/DELETE)無 caller → 不建(Karpathy §1.2 no speculative;kb_acl mutation UI 建嗰陣先加)。
+- **D13.2 — `<TabKbAccess>` separate file `components/kb/`**(R6 #4)— `/kb/[id]/page.tsx` ~2000 行;`TabKbAccess` mockup home 係 `ekp-page-users.jsx`(非 KB-detail mockup decomposition)→ separate file,隔離 component + kb_acl concern;import `RoleBadge` from `components/users/`。page docstring 更新明 Access tab = `<TabKbAccess>` separate component。
+- **D13.3 — Visibility card read-only**(R6 #6)— F8 D8.4 deferred KB Visibility(KB-level setting 非 `kb_acl`)。D8.4 明示「mockup Visibility card 喺 F10 frontend 渲染時 surface」→ F10 render card per mockup,3 radio **全 `disabled`**(Tier 1 無 Visibility setting,「Workspace」係 de-facto state)。§13 keep visual element + W22 B-i placeholder。stat-grid「Visibility」/「Pending invites」/「Default new member access」同理 `—`。
+- **D13.4 — 1 synthetic system row + skip inherited**(R6 #7)— `GET /kb/{id}/acl` = explicit grant only(F8 D8.3 — synthetic rows F10 frontend 渲染)→ F10 prepend 1 synthetic「Workspace Admins (auto)」system row(truthful — 反映 `require_kb_acl` admin-always-pass rule;locked → AUTO badge + disabled select)。**inherited row 🚧 skip** — 需 group-member data(F6 D6.5 group member sync deferred)。
+- **D13.5 — Members table join graceful**(R6 #8)— `principal_id`(user oid / group key)→ display name via `usersApi.listUsers()`/`listGroups()` join(只 block on `kb_acl` query,users/groups best-effort — fail/load 則 fallback raw `principal_id`)。「Workspace role」column:user row 經 `/users` join `RoleBadge`,group row `—`(group→workspace-role mapping 需 `/admin/identity` join — defer per §13 fallback)。
+- **D13.6 — CRUD affordance inert**(R6 #9)— Add member / Add Entra group / per-row `<select>` / per-row More 全 render inert per mockup(F9.2 D10.2 / F9.3 D11.4 precedent)。footer「Manage all → /users」有 mockup `onClick={onNavigate}` → wired `router.push('/users')`(mockup 唯一 functional element)。
+
+### Acceptance(plan §2 F10)
+
+- [x] F10.1 `/kb/[id]` 8th tab Access activated — `'access'` ∈ `VALID_TABS` + `TAB_DEFS`;disabled affordance 移除;orphan `Lock`/`DisabledAffordance` import 移除;`<TabKbAccess>` tab body render;`kb.ts` `KbAcl*` types + `kbApi.listAcl`
+- [x] F10.2 NEW `components/kb/tab-kb-access.tsx` per mockup `TabKbAccess` lines 390-519 — banner + 4 stat + Visibility card(read-only)+ Members table(synthetic system row + explicit grants + join)+ CRUD inert + footer wired;`kb-detail-tabs.test.tsx` 更新 8-tab + `kb-detail.test.tsx` `TabKbAccess` stub
+- [x] H7 7-item self-verify PASS — `TabKbAccess` layout/spacing/typography/color 100% mockup-faithful;`—` stat placeholder + read-only Visibility + skip-inherited 為 §13 visual-fidelity fallback(backend-unavailable data,F8 D8.3/D8.4 + F6 D6.5 deferred-dependency)
+- **🚧 deferred(F10 H7 fidelity 標記)**:YOU badge(需 viewer oid — cosmetic,defer)/ inherited row(F6 D6.5 group member sync)/ KB Visibility 真設定(F8 D8.4)/ kb_acl CRUD 真 wiring(mockup presentational — write client + mutation UI defer)
+
+### Verify
+
+- **frontend `tsc --noEmit`** — exit 0(type-check clean)
+- **frontend `next lint`** — `✔ No ESLint warnings or errors`(`app/(app)/kb` + `components/kb` + `lib/api`)
+- **`[oklch` arbitrary-class grep** = **0**(`components/kb/tab-kb-access.tsx` + `app/(app)/kb/[id]/page.tsx` — inline `oklch(...)` style strings 無 `[` prefix)
+- **Vitest** — `kb-detail-tabs.test.tsx` + `kb-detail.test.tsx` **3 passed / 3**(8-tab activation + Chunks tab + Settings tab — regression 0)
+- **backend** — F10 純 frontend,consume F8 既有 endpoint → backend pytest 不變 908;endpoint count 不變 58
+
+**Day 13 F10 Verdict**:F10 complete — `/kb/[id]` Access tab activated。8th tab `'access'` 入 `VALID_TABS` + NEW `<TabKbAccess>`(banner + stat-grid + Visibility card + Members table per-KB ACL)+ `kbApi.listAcl` client。10 R6 findings resolved + H7 self-verify PASS。disabled affordance 移除,orphan import 清理,2 個 kb-detail Vitest 更新並通過。tsc/lint/`[oklch`=0 全綠。F11 Tests + F12 Closeout next。
+
+<!-- Day 13+ F11-F12 entries land at active flip per CLAUDE.md §10 R2 -->

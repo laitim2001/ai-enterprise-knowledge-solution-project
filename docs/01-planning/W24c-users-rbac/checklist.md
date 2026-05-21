@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F9.4 complete — Audit tab + useRole() whole-page role-gating + admin.ts AuditAction extend + Vitest users-page 9/9 + Playwright /users smoke; F9 (all 4 sub-units) DONE; tsc/lint/[oklch=0 green
+last_updated: 2026-05-21  # F10 complete — /kb/[id] Access tab activated (8th tab) + NEW TabKbAccess + kbApi.listAcl; kb-detail Vitest 3/3; tsc/lint/[oklch=0 green
 ---
 
 # W24c-users-rbac — Checklist
@@ -95,8 +95,8 @@ last_updated: 2026-05-21  # F9.4 complete — Audit tab + useRole() whole-page r
 
 ## F10 — frontend `/kb/[id]` Access tab activation
 
-- [ ] **F10.1** `/kb/[id]` 8th tab Access activated(disabled affordance removed per ADR-0025)
-- [ ] **F10.2** `<TabKbAccess>` per-KB ACL UI per mockup lines 390-519 + H7 fidelity verify
+- [x] **F10.1** `/kb/[id]` 8th tab Access activated(R6 Day 13,10 findings)— `page.tsx` `'access'` 加入 `VALID_TABS` + `TAB_DEFS`(icon `Shield`)+ 移除 `<DisabledAffordance>` Access block + 移除 orphan `Lock`/`DisabledAffordance` import + render `<TabKbAccess>` body + docstring update;EDIT `lib/api/kb.ts`(+`KbAcl*` types + `kbApi.listAcl` read-only — mockup CRUD presentational,write client 不建 per Karpathy §1.2)
+- [x] **F10.2** NEW `components/kb/tab-kb-access.tsx` per mockup `TabKbAccess` lines 390-519 — banner-info + stat-grid 4(「Members with access」real,其餘 3 `—` placeholder)+ Visibility card(3 radio read-only,F8 D8.4 Visibility deferred)+ Members table(`kbApi.listAcl` explicit grants + `usersApi` users/groups join + 1 synthetic「Workspace Admins (auto)」system row per F8 D8.3;inherited row 🚧 skip per F6 D6.5)+ CRUD affordance inert + footer「Manage all → /users」wired nav。EDIT `tests/unit/kb-detail-tabs.test.tsx`(7+disabled → 8 active tabs)。H7 fidelity verify;tsc/lint/`[oklch`=0 + Vitest green
 
 ## F11 — Tests
 

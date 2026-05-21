@@ -10,7 +10,8 @@
  * Mockup decomposition adopted (single-file pattern):
  *   - DocumentsTab / ChunksTab / ImagesTab / ChunkingLabTab / PipelineTab /
  *     RetrievalTab / SettingsTab — all inline within page.tsx (mockup-faithful)
- *   - Access tab — DisabledAffordance per CC10 H4 + ADR-0027 Wave C1
+ *   - Access tab — <TabKbAccess> (components/kb/) per ADR-0025 + ADR-0027,
+ *     activated W24c F10 once the F8 kb_acl backend landed
  *
  * Backend integration preserved (per F6.5):
  *   kbApi.get / kbApi.listImages / kbApi.chunkingPreview / kbApi.patchSettings /
@@ -19,8 +20,7 @@
  *
  * CSS-first pivot baseline (per W22 F1 D2): visual layer via mockup CSS classes
  * (.tabs, .tab, .card, .field, .seg, .badge, .table, .banner, .stat-grid)
- * with inline style only for one-off mockup specifics. shadcn primitives ONLY
- * where Radix a11y benefits (DisabledAffordance wrap).
+ * with inline style only for one-off mockup specifics.
  */
 
 import {
@@ -41,7 +41,6 @@ import {
   FileText,
   Image as ImageIcon,
   Layers,
-  Lock,
   MoreHorizontal,
   RefreshCw,
   Search,
@@ -57,7 +56,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-import { DisabledAffordance } from '@/components/ui/disabled-affordance';
+import { TabKbAccess } from '@/components/kb/tab-kb-access';
 import {
   documentsApi,
   type ChunkSummary,
@@ -76,8 +75,8 @@ import {
   type RetrievalTestResult,
 } from '@/lib/api/retrieval-test';
 
-// Active tabs (mockup-faithful;Access tab rendered separately as a
-// DisabledAffordance per CC10 H4 + ADR-0027 Wave C1).
+// Active tabs (mockup-faithful). The Access tab is the 8th per ADR-0025 —
+// activated W24c F10 now the F8 kb_acl backend has landed.
 const VALID_TABS = [
   'documents',
   'chunks',
@@ -86,6 +85,7 @@ const VALID_TABS = [
   'pipeline',
   'retrieval',
   'settings',
+  'access',
 ] as const;
 type TabKey = (typeof VALID_TABS)[number];
 
@@ -97,6 +97,7 @@ const TAB_DEFS: { id: TabKey; label: string; icon: LucideIcon }[] = [
   { id: 'pipeline', label: 'Pipeline', icon: Zap },
   { id: 'retrieval', label: 'Retrieval Testing', icon: Search },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
+  { id: 'access', label: 'Access', icon: Shield },
 ];
 
 function formatRelative(iso: string | null | undefined): string {
@@ -268,25 +269,6 @@ export default function KbDetailPage() {
               </button>
             );
           })}
-          {/* Access tab — DisabledAffordance per ADR-0027 Wave C1 + CC10 H4 */}
-          <DisabledAffordance
-            variant="p1-strict"
-            reason="RBAC pending Wave C1 per ADR-0027 Option A backend"
-            tier2Trigger="RBAC + audit log + group membership"
-            className="inline-flex"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected="false"
-              aria-disabled="true"
-              className="tab"
-              data-active={false}
-              disabled
-            >
-              <Lock size={14} /> Access
-            </button>
-          </DisabledAffordance>
         </div>
 
         {activeTab === 'documents' && <DocumentsTab kb={kb} />}
@@ -296,6 +278,7 @@ export default function KbDetailPage() {
         {activeTab === 'pipeline' && <PipelineTab kb={kb} />}
         {activeTab === 'retrieval' && <RetrievalTab kb={kb} />}
         {activeTab === 'settings' && <SettingsTab kb={kb} />}
+        {activeTab === 'access' && <TabKbAccess kbId={kb.kb_id} />}
       </div>
     </div>
   );

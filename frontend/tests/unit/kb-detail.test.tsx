@@ -37,6 +37,9 @@ vi.mock('sonner', () => ({
 vi.mock('@/lib/api-client', () => ({ ApiError: class ApiError extends Error {} }));
 vi.mock('@/lib/api/query', () => ({ streamQuery: vi.fn() }));
 vi.mock('@/lib/api/retrieval-test', () => ({ retrievalTestApi: {} }));
+// W24c F10 — the Access tab (`<TabKbAccess>`) is not under test here; stub it
+// so its `usersApi` / `adminApi` import chain doesn't hit the api-client mock.
+vi.mock('@/components/kb/tab-kb-access', () => ({ TabKbAccess: () => null }));
 
 const FAKE_KB = {
   kb_id: 'test-kb',

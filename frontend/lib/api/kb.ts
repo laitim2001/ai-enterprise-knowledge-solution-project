@@ -110,6 +110,28 @@ export interface ChunkingPreviewResponse {
   note: string | null;
 }
 
+// W24c F10 — per-KB ACL (mirrors backend `routes/kb_acl.py` + `rbac.py`
+// KbAcl* schemas per ADR-0027). Read-only here: the mockup `TabKbAccess` CRUD
+// affordances are presentational, so the POST/PATCH/DELETE client lands when
+// the kb_acl mutation UI is built.
+export type KbAclRole = 'manage' | 'edit' | 'query';
+export type KbPrincipalType = 'user' | 'group';
+
+export interface KbAclEntry {
+  id: number;
+  kb_id: string;
+  principal_type: KbPrincipalType;
+  principal_id: string;
+  access_role: KbAclRole;
+  granted_by: string | null;
+  created_at: string;
+}
+
+export interface KbAclListResponse {
+  entries: KbAclEntry[];
+  total: number;
+}
+
 export const kbApi = {
   list: (): Promise<KbStatus[]> => client.get<KbStatus[]>('/kb'),
 
@@ -142,6 +164,10 @@ export const kbApi = {
   // W20 F5.3 — chunking preview (Tab 4 Chunking Lab).
   chunkingPreview: (body: ChunkingPreviewRequest): Promise<ChunkingPreviewResponse> =>
     client.post<ChunkingPreviewResponse>('/chunking-preview', body),
+
+  // W24c F10 — per-KB ACL grants (KB Detail Access tab; backend F8 kb_acl).
+  listAcl: (kbId: string): Promise<KbAclListResponse> =>
+    client.get<KbAclListResponse>(`/kb/${kbId}/acl`),
 
   uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
     const form = new FormData();

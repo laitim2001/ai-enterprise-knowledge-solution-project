@@ -1,9 +1,9 @@
 /**
- * Unit tests — `/kb/[id]` 7-tab `-Access` detail (W20 F5 / F8.4).
+ * Unit tests — `/kb/[id]` 8-tab detail (W20 F5 / F8.4; W24c F10 — Access tab
+ * activated once the F8 kb_acl backend landed).
  *
- * Verifies: 7 active tab triggers render + Access tab rendered with disabled
- * affordance (aria-disabled="true") OUTSIDE VALID_TABS array + URL ?tab= drives
- * the active panel.
+ * Verifies: 8 active tab triggers render — the Access tab is a normal tab in
+ * VALID_TABS (no longer a disabled affordance per ADR-0027 Wave C1).
  */
 
 import { render, screen } from '@testing-library/react';
@@ -61,8 +61,8 @@ vi.mock('@/lib/api/documents', () => ({
 
 import KbDetailPage from '../../app/(app)/kb/[id]/page';
 
-describe('KbDetailPage 7-tab `-Access`', () => {
-  it('renders 7 active tab triggers + Access tab as disabled', async () => {
+describe('KbDetailPage 8-tab detail (W24c F10 — Access activated)', () => {
+  it('renders 8 active tab triggers including a normal Access tab', async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -71,12 +71,15 @@ describe('KbDetailPage 7-tab `-Access`', () => {
     );
     // Wait for the KB query to land so the tabs render.
     await screen.findByRole('heading', { level: 1 });
-    // 8 tab triggers total (7 active + 1 Access disabled).
+    // 8 tab triggers total — all active (W24c F10 activated the Access tab).
     const tabTriggers = screen.getAllByRole('tab');
     expect(tabTriggers.length).toBe(8);
-    // Access tab is the disabled one.
-    const accessTab = tabTriggers.find((t) => t.textContent?.toLowerCase().includes('access'));
+    // Access is now a normal tab, not a disabled affordance.
+    const accessTab = tabTriggers.find((t) =>
+      t.textContent?.toLowerCase().includes('access'),
+    );
     expect(accessTab).toBeDefined();
-    expect(accessTab).toHaveAttribute('aria-disabled', 'true');
+    expect(accessTab).not.toHaveAttribute('aria-disabled', 'true');
+    expect(accessTab).not.toBeDisabled();
   });
 });
