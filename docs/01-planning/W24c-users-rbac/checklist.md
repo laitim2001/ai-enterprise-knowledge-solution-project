@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F9.2 complete — /users route shell + Members tab (NEW RoleBadge + app/(app)/users/page.tsx 4-tab ?tab= deep-link + data-bound Members tab); tsc/lint/[oklch=0 green
+last_updated: 2026-05-21  # F9.3 complete — Roles tab (role cards + pivoted permissions matrix) + Groups tab (Entra groups + role-mapping join) inline in users/page.tsx; tsc/lint/[oklch=0 green
 ---
 
 # W24c-users-rbac — Checklist
@@ -90,7 +90,7 @@ last_updated: 2026-05-21  # F9.2 complete — /users route shell + Members tab (
 
 - [x] **F9.1** Foundation — backend NEW `GET /auth/me`(current user + `role`,`auth.py`,non-admin)+ `MeResponse` schema + test;frontend NEW `lib/api/users.ts`(`/users`+`/roles`+`/groups` client methods + TS types mirror F4-F6 schemas)+ `useRole()` hook(fetch `/auth/me`,returns `EkpRoleKey`)
 - [x] **F9.2** `/users` route shell + Members tab(R6 Day 10,10 findings)— 2 NEW:**(a)** `components/users/role-badge.tsx` shared `RoleBadge`(3-tab consumer,oklch token colors per mockup lines 193-207);**(b)** `app/(app)/users/page.tsx` NET NEW(`'use client'` + `<Suspense>` + page-header + stat-grid 4-card + 4-tab nav `<button role="tab">` + `?tab=` deep-link per settings precedent + local `<TabBoundary>` + inline `UsersTab` Members tab + `StatCard`/`TabPlaceholder` helpers)。Members tab — client-side search(name+email)+ seg filter(All/Admin/Editor/User/Pending)+ 10-col table per mockup lines 62-191;5 backend-subset column(`source`/`group`/`queries_7d`/`kbs_owned`/`last_login`)+ 2 stat card(`Active sessions`/`Avg queries`)= `—` placeholder per W22 B-i(全 column/card keep,§13 visual-fidelity);invite/suspend/role-change affordance render **inert** per mockup(functional UI 唔喺 mockup → 不 build per Karpathy §1.2);roles/groups/audit tab = transient `<TabPlaceholder>`(F9.3/F9.4 replace)
-- [ ] **F9.3** Roles tab + Groups tab — `RolesTab`(banner + 4 role cards + permissions matrix per mockup lines 209-286)+ `GroupsTab`(Entra ID groups table + sync button per mockup lines 288-322)
+- [x] **F9.3** Roles tab + Groups tab(R6 Day 11,10 findings)— `page.tsx` 加 inline `RolesTab` + `GroupsTab`(swap F9.2 `<TabPlaceholder>`)。**RolesTab**:banner-info + 4 role cards(`GET /roles`,member count client-side per F5 D5.3,`isTier2=tier>=2` → TIER 2 badge)+ permissions matrix(`pivotMatrix()` flat `GET /roles/permissions` 92-row → area-grouped per-perm 4-grant,backend order verbatim-mirror mockup per F5 D5.4)。**GroupsTab**:Entra groups table(`GET /groups`)+ `EKP role` client-side join from `adminApi.getIdentity()` `RoleMapping` per F6 D6.3 + `truncateOid`/`formatRelative` helpers + empty state;`Sync from Entra`/`Export` button render inert per mockup(D10.2 — result-feedback surface 唔喺 mockup → 不 build)。loading/error per-tab early-return。tsc/lint/`[oklch`=0 green;H7 7-item self-verify PASS(RolesTab + GroupsTab)
 - [ ] **F9.4** Audit tab + role-gating + verify — `AuditTab`(workspace audit feed,重用 `adminApi.listAuditLog()` per mockup lines 324-377)+ `useRole()` role-gated rendering wired + H7 per-tab 7-item self-verify(4 tabs)+ Vitest + Playwright(runtime browser smoke = smoke-user-deferred per plan §3)
 
 ## F10 — frontend `/kb/[id]` Access tab activation

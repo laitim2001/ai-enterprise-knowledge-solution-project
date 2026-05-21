@@ -408,4 +408,41 @@ status: active                      # active | closed
 
 **Day 10 F9.2 Verdict**:F9.2 complete — `/users` route shell + Members tab landed。NEW shared `RoleBadge` + NEW `/users` page(4-tab nav `?tab=` deep-link + stat-grid + Members tab data-bound to `GET /users`)。10 R6 findings resolved + H7 self-verify PASS(shell + Members tab)。tsc/lint/`[oklch`=0 全綠。F9.3 Roles tab + Groups tab next。
 
-<!-- Day 10+ F9.3-F9.4 entries land at each sub-split active flip per CLAUDE.md §10 R2 -->
+---
+
+## Day 11 — 2026-05-21 — F9.3 Roles tab + Groups tab
+
+### Done
+
+- **F9.3 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 209-322(`RolesTab`+`GroupsTab`)+ `backend/storage/rbac_storage.py`(`_PERMISSION_MATRIX`/`_DEFAULT_ROLES` seed + `permission_matrix_rows()` order)+ `lib/api/admin.ts`(`adminApi.getIdentity`/`IdentityConfig`/`RoleMapping`)+ `styles-mockup.css`(`card-body-tight`/`banner-info`/`.col` confirm)→ **10 findings**(plan §7 Day 11 row)
+- **F9.3 `app/(app)/users/page.tsx` EDIT** — imports(+`Check`/`RefreshCw` lucide + `Fragment` react + `adminApi`/`EkpRoleKey`/`IdentityConfig` from admin.ts + `Group*`/`Role*`/`RolePermission` types from users.ts)+ 2 tab body swap(`roles`/`groups` `<TabPlaceholder>` → `<RolesTab/>`/`<GroupsTab/>`)
+- **NEW inline `RolesTab`** — `banner-info` RBAC banner + 4 role cards(`useQuery(['roles','list'])`;member count client-side from `useQuery(['users','list'])` shared cache per F5 D5.3;`isTier2 = role.tier >= 2` → power card TIER 2 badge + opacity 0.6)+ permissions matrix(`useQuery(['roles','permissions'])` → `pivotMatrix()` flat 92-row `RolePermission[]` → area-grouped per-perm 4-grant;`<Fragment>` per area;`Check`/`—` per cell;Power column opacity 0.6)
+- **NEW inline `GroupsTab`** — Entra groups table(`useQuery(['groups','list'])`)+ `EKP role` client-side join(`useQuery(['admin','identity'])` → `roleByGroupId` Map from `RoleMapping.entra_group_id` per F6 D6.3)+ `truncateOid`(first4…last4)+ `formatRelative`(`synced_at`)helpers + empty state(mock-auth dev 常 0 group)
+- **NEW helpers** — `pivotMatrix()`/`MatrixArea`/`MATRIX_ROLES`(roles tab)+ `formatRelative`/`truncateOid`(groups tab)
+- **F9.3 committed** `(this commit)`
+
+### Decisions
+
+- **D11.1 — permissions matrix client-side pivot**(R6 #2)— F5 D5.4:`GET /roles/permissions` 返回 flat `list[RolePermission]`(92 row,per-cell)。backend `permission_matrix_rows()` order = area → permission → role(`_ROLE_ORDER`),且 `_PERMISSION_MATRIX` seed grep 確認 **verbatim-mirror** mockup `PERMISSIONS_MATRIX` lines 26-60 → frontend `pivotMatrix()` first-seen accumulation(Map by area + `area::permission_key`)即得 mockup area+perm order,**無需** explicit order constant。Karpathy §1.2 — backend canonical per-cell shape lock(F2),frontend pivot 係 presentation concern。
+- **D11.2 — RolesTab role metadata 全部 backend-sourced**(R6 #1)— grep `backend/storage/rbac_storage.py` `_DEFAULT_ROLES` 確認 `description` 4 條 verbatim-match mockup `ROLES[].desc`、`label` match `EKP_ROLE_LABELS` → render `role.description` + `<RoleBadge role={role.role_key}>`,**無** hardcoded role metadata constant(避免 mockup `ROLES` const 重複)。`isTier2 = role.tier >= 2`(backend `Role.tier` field,power=2)。
+- **D11.3 — GroupsTab `EKP role` client-side join**(R6 #4)— F6 D6.3:`GET /groups` 返回 pure `Group`(無 role mapping)。GroupsTab fetch `adminApi.getIdentity()` → `IdentityConfig.roles.mappings`(`RoleMapping[]`)build `roleByGroupId` Map(key=`entra_group_id`)→ per-group `g.entra_object_id` lookup → `RoleBadge` 或「Not mapped」。`getIdentity()` 係 `require_role("admin")`-gated — fine(`/users` page admin-scoped;F9.4 加 `useRole()` gating)。`tenant_domain` card-desc 亦用 real `identity.tenant.tenant_domain`(非 mockup hardcoded literal)。
+- **D11.4 — `Sync from Entra` / `Export` button render inert**(R6 #7)— mockup button presentational(無 onClick)。`POST /groups/sync-from-entra` 返回 `GroupSyncResult{status,detail}`,`status='skipped'` 係 mock-auth dev default(無 Entra tenant)→ 一個 wired button 需 `synced/skipped/502` result-feedback surface 而 mockup 冇 → render inert per mockup + per F9.2 D10.2 precedent(mockup presentational action button → inert;needs surface not in mockup → 不 build per W22 D6 over-extending anti-pattern)。`usersApi.syncGroupsFromEntra()` 保持 F9.1-shipped client surface。
+- **D11.5 — RolesTab/GroupsTab inline + self-fetch**(R6 #8)— inline 喺 `page.tsx`(consistent F9.2 `UsersTab` inline + `kb/[id]/page.tsx` 8-tab-inline precedent);各自 `useQuery` self-fetch domain endpoint;RolesTab re-subscribe `['users','list']`(TanStack 同-key dedupe,零額外 request);shell 不 pass 額外 prop。
+
+### Acceptance(plan §2 F9 sub-split F9.3)
+
+- [x] F9.3 `RolesTab` — banner-info + 4 role cards(`GET /roles`,member count client-side,isTier2 TIER 2 badge)+ permissions matrix(`pivotMatrix` flat `GET /roles/permissions` 92-row → area-grouped per-perm 4-grant,backend order = mockup order)per mockup lines 209-286
+- [x] F9.3 `GroupsTab` — Entra groups table(`GET /groups`)+ `EKP role` client-side join from `adminApi.getIdentity()` per F6 D6.3 + `truncateOid`/`formatRelative` + empty state per mockup lines 288-322;`Sync from Entra` inert per mockup
+- [x] H7 7-item self-verify(layout/spacing/typography/color tokens/interaction states/responsive/a11y)PASS — RolesTab + GroupsTab layout/spacing/typography/color 100% mockup-faithful;loading/error/empty 為 real-fetch 必需;Check icon `aria-label` a11y upgrade
+
+### Verify
+
+- **frontend `tsc --noEmit`** — exit 0(type-check clean)
+- **frontend `next lint`** — `✔ No ESLint warnings or errors`(`app/(app)/users` + `components/users`)
+- **`[oklch` arbitrary-class grep** = **0**(`app/(app)/users/page.tsx` — matrix area-header / Check / Shield inline `oklch(...)` style strings 無 `[` prefix,不觸 milestone)
+- **backend** — F9.3 純 frontend,無 backend change → backend pytest 不變 908;endpoint count 不變 58
+- **runtime browser smoke** — F9.4 Vitest/Playwright + interactive walkthrough = smoke-user-deferred per plan §3
+
+**Day 11 F9.3 Verdict**:F9.3 complete — Roles tab + Groups tab landed。`RolesTab`(banner + 4 role cards + pivoted 92-cell permissions matrix)+ `GroupsTab`(Entra groups table + client-side role-mapping join)inline 入 `page.tsx`。10 R6 findings resolved + H7 self-verify PASS(RolesTab + GroupsTab)。tsc/lint/`[oklch`=0 全綠。F9.4 Audit tab + `useRole()` role-gating + H7 全-tab verify + Vitest/Playwright next。
+
+<!-- Day 11+ F9.4 entry lands at sub-split active flip per CLAUDE.md §10 R2 -->

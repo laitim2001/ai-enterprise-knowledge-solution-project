@@ -28,23 +28,45 @@
 import {
   Activity,
   AlertTriangle,
+  Check,
   Download,
   Filter,
   Layers,
   MoreHorizontal,
   Plus,
+  RefreshCw,
   Search,
   Shield,
   Users,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useMemo, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  Suspense,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { ErrorBoundary } from '@/components/error/error-boundary';
 import { TabErrorState } from '@/components/settings/tab-error-state';
 import { RoleBadge } from '@/components/users/role-badge';
-import { usersApi, type UserListResponse, type UserSummary } from '@/lib/api/users';
+import {
+  adminApi,
+  type EkpRoleKey,
+  type IdentityConfig,
+} from '@/lib/api/admin';
+import {
+  usersApi,
+  type GroupListResponse,
+  type PermissionMatrixResponse,
+  type RoleListResponse,
+  type RolePermission,
+  type UserListResponse,
+  type UserSummary,
+} from '@/lib/api/users';
 
 const TABS = [
   { id: 'members', label: 'Members', icon: Users },
@@ -242,12 +264,12 @@ function UsersPageInner() {
         )}
         {tab === 'roles' && (
           <TabBoundary tabName="Roles & permissions">
-            <TabPlaceholder label="Roles & permissions" />
+            <RolesTab />
           </TabBoundary>
         )}
         {tab === 'groups' && (
           <TabBoundary tabName="Groups">
-            <TabPlaceholder label="Groups" />
+            <GroupsTab />
           </TabBoundary>
         )}
         {tab === 'audit' && (
@@ -479,6 +501,412 @@ function UsersTab({
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Roles & permissions tab — mockup `RolesTab` lines 209-286
+// ============================================================================
+
+/** Role-column order — matches the backend `_ROLE_ORDER` + the mockup matrix. */
+const MATRIX_ROLES: EkpRoleKey[] = ['admin', 'editor', 'user', 'power'];
+
+/** One area of the pivoted permissions matrix. */
+interface MatrixArea {
+  area: string;
+  perms: {
+    permissionKey: string;
+    label: string;
+    grants: Record<EkpRoleKey, boolean>;
+  }[];
+}
+
+/**
+ * Pivot the flat `RolePermission[]` (`GET /roles/permissions` — 92 rows ordered
+ * area → permission → role per the backend `permission_matrix_rows()`) into the
+ * area-grouped per-permission matrix the mockup renders. First-seen order is
+ * kept — the backend already returns rows in the mockup's `PERMISSIONS_MATRIX`
+ * order (F5 D5.4), so no explicit ordering constant is needed.
+ */
+function pivotMatrix(rows: RolePermission[]): MatrixArea[] {
+  const areas: MatrixArea[] = [];
+  const areaByName = new Map<string, MatrixArea>();
+  const permById = new Map<string, MatrixArea['perms'][number]>();
+  for (const row of rows) {
+    let area = areaByName.get(row.area);
+    if (!area) {
+      area = { area: row.area, perms: [] };
+      areaByName.set(row.area, area);
+      areas.push(area);
+    }
+    const permId = `${row.area}::${row.permission_key}`;
+    let perm = permById.get(permId);
+    if (!perm) {
+      perm = {
+        permissionKey: row.permission_key,
+        label: row.label,
+        grants: { admin: false, editor: false, user: false, power: false },
+      };
+      permById.set(permId, perm);
+      area.perms.push(perm);
+    }
+    perm.grants[row.role_key] = row.granted;
+  }
+  return areas;
+}
+
+function RolesTab() {
+  const rolesQ = useQuery<RoleListResponse>({
+    queryKey: ['roles', 'list'],
+    queryFn: usersApi.listRoles,
+  });
+  const permsQ = useQuery<PermissionMatrixResponse>({
+    queryKey: ['roles', 'permissions'],
+    queryFn: usersApi.listPermissions,
+  });
+  // Shares the `['users', 'list']` cache entry with the page shell — TanStack
+  // dedupes to a single request. Role-card member counts are client-side
+  // (F5 D5.3 — `Role` carries no `member_count`).
+  const usersQ = useQuery<UserListResponse>({
+    queryKey: ['users', 'list'],
+    queryFn: usersApi.listUsers,
+  });
+
+  const matrix = useMemo(
+    () => pivotMatrix(permsQ.data?.permissions ?? []),
+    [permsQ.data],
+  );
+
+  if (rolesQ.isLoading || permsQ.isLoading || usersQ.isLoading) {
+    return (
+      <div
+        className="text-xs muted"
+        style={{ padding: '48px 18px', textAlign: 'center' }}
+      >
+        Loading roles &amp; permissions…
+      </div>
+    );
+  }
+  if (rolesQ.isError || permsQ.isError || usersQ.isError) {
+    return (
+      <div
+        className="banner banner-destructive"
+        role="alert"
+        style={{ alignItems: 'center' }}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        <div style={{ flex: 1, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            Couldn&apos;t load roles
+          </div>
+          <div className="text-xs">
+            A roles / permissions request failed. Reload the page to retry.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const roles = rolesQ.data?.roles ?? [];
+  const users = usersQ.data?.users ?? [];
+
+  return (
+    <div className="col" style={{ gap: 16 }}>
+      {/* RBAC banner — mockup lines 212-220 */}
+      <div className="banner banner-info">
+        <Shield
+          size={14}
+          aria-hidden="true"
+          style={{ color: 'oklch(var(--info))' }}
+        />
+        <div style={{ flex: 1, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            Role-based access control (RBAC)
+          </div>
+          <div className="text-xs muted">
+            Tier 1: Admin / Editor / End User — view-gating enforced
+            server-side per audit log. Tier 2: Power User adds advanced
+            retrieval tuning. Permissions are not editable per ADR-0024
+            (predefined roles); custom roles are Tier 2.
+          </div>
+        </div>
+      </div>
+
+      {/* Role cards — mockup lines 223-241 */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 12,
+        }}
+      >
+        {roles.map((role) => {
+          const count = users.filter((u) => u.role === role.role_key).length;
+          const isTier2 = role.tier >= 2;
+          return (
+            <div
+              key={role.role_key}
+              className="card"
+              style={{ opacity: isTier2 ? 0.6 : 1 }}
+            >
+              <div className="card-body">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <RoleBadge role={role.role_key} />
+                  {isTier2 && (
+                    <span className="badge badge-muted">TIER 2</span>
+                  )}
+                  <div className="spacer" />
+                  <span className="mono text-xs muted">
+                    {count} member{count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="text-sm" style={{ lineHeight: 1.55 }}>
+                  {role.description}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Permissions matrix — mockup lines 244-283 */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Permissions matrix</h3>
+            <div className="card-desc">
+              What each role can do · ✓ = allowed · — = denied
+            </div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm">
+            <Download size={13} aria-hidden="true" /> Export
+          </button>
+        </div>
+        <div className="card-body card-body-tight">
+          <table className="table" style={{ tableLayout: 'fixed' }}>
+            <thead>
+              <tr>
+                <th style={{ width: '44%' }}>Permission</th>
+                <th style={{ textAlign: 'center' }}>Admin</th>
+                <th style={{ textAlign: 'center' }}>Editor</th>
+                <th style={{ textAlign: 'center' }}>User</th>
+                <th style={{ textAlign: 'center', opacity: 0.6 }}>
+                  Power{' '}
+                  <span className="badge badge-muted" style={{ fontSize: 9 }}>
+                    T2
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {matrix.map((area) => (
+                <Fragment key={area.area}>
+                  <tr style={{ background: 'oklch(var(--muted) / 0.3)' }}>
+                    <td
+                      colSpan={5}
+                      className="text-xs muted mono"
+                      style={{
+                        padding: '8px 16px',
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {area.area}
+                    </td>
+                  </tr>
+                  {area.perms.map((perm) => (
+                    <tr key={perm.permissionKey}>
+                      <td>{perm.label}</td>
+                      {MATRIX_ROLES.map((rk) => (
+                        <td
+                          key={rk}
+                          style={{
+                            textAlign: 'center',
+                            ...(rk === 'power' ? { opacity: 0.6 } : {}),
+                          }}
+                        >
+                          {perm.grants[rk] ? (
+                            <Check
+                              size={13}
+                              aria-label="Allowed"
+                              style={{ color: 'oklch(var(--success))' }}
+                            />
+                          ) : (
+                            <span className="muted" aria-label="Denied">
+                              —
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Groups tab — mockup `GroupsTab` lines 288-322
+// ============================================================================
+
+/** Relative-time format for the group `synced_at` column. */
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return '—';
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 60 / 24)}d ago`;
+}
+
+/** Compact a long Entra object id (GUID) to `first4…last4` per the mockup. */
+function truncateOid(oid: string | null): string {
+  if (!oid) return '—';
+  return oid.length > 12 ? `${oid.slice(0, 4)}…${oid.slice(-4)}` : oid;
+}
+
+function GroupsTab() {
+  const groupsQ = useQuery<GroupListResponse>({
+    queryKey: ['groups', 'list'],
+    queryFn: usersApi.listGroups,
+  });
+  // `GET /groups` carries no role mapping (F6 D6.3) — the group → EKP role
+  // join is client-side off the Settings → Identity & Auth role mappings.
+  const identityQ = useQuery<IdentityConfig>({
+    queryKey: ['admin', 'identity'],
+    queryFn: adminApi.getIdentity,
+  });
+
+  const roleByGroupId = useMemo(() => {
+    const map = new Map<string, EkpRoleKey>();
+    for (const m of identityQ.data?.roles.mappings ?? []) {
+      map.set(m.entra_group_id, m.ekp_role);
+    }
+    return map;
+  }, [identityQ.data]);
+
+  if (groupsQ.isLoading || identityQ.isLoading) {
+    return (
+      <div
+        className="text-xs muted"
+        style={{ padding: '48px 18px', textAlign: 'center' }}
+      >
+        Loading groups…
+      </div>
+    );
+  }
+  if (groupsQ.isError || identityQ.isError) {
+    return (
+      <div
+        className="banner banner-destructive"
+        role="alert"
+        style={{ alignItems: 'center' }}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        <div style={{ flex: 1, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>
+            Couldn&apos;t load groups
+          </div>
+          <div className="text-xs">
+            The <span className="mono">/groups</span> request failed. Reload
+            the page to retry.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const groups = groupsQ.data?.groups ?? [];
+  const tenantDomain = identityQ.data?.tenant.tenant_domain ?? '—';
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Entra ID groups</h3>
+          <div className="card-desc">
+            Synced from <span className="mono">{tenantDomain}</span> tenant ·
+            group → role mapping in Settings → Identity &amp; Auth
+          </div>
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm">
+          <RefreshCw size={13} aria-hidden="true" /> Sync from Entra
+        </button>
+      </div>
+      <div className="card-body card-body-tight">
+        {groups.length === 0 ? (
+          <div
+            className="text-xs muted"
+            style={{ padding: '48px 18px', textAlign: 'center' }}
+          >
+            No Entra ID groups synced yet.
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Group name</th>
+                <th>Object ID</th>
+                <th>EKP role</th>
+                <th className="col-num">Members</th>
+                <th className="col-num">Synced</th>
+                <th className="col-shrink" aria-label="Row actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map((g) => {
+                const mappedRole = g.entra_object_id
+                  ? roleByGroupId.get(g.entra_object_id)
+                  : undefined;
+                return (
+                  <tr key={g.group_key}>
+                    <td className="col-mono">{g.name}</td>
+                    <td className="col-mono text-xs">
+                      {truncateOid(g.entra_object_id)}
+                    </td>
+                    <td>
+                      {mappedRole ? (
+                        <RoleBadge role={mappedRole} />
+                      ) : (
+                        <span className="text-xs muted">Not mapped</span>
+                      )}
+                    </td>
+                    <td className="col-num">{g.member_count}</td>
+                    <td className="col-num text-xs">
+                      {formatRelative(g.synced_at)}
+                    </td>
+                    <td className="col-shrink">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-icon btn-xs"
+                        aria-label="Row actions"
+                      >
+                        <MoreHorizontal size={13} aria-hidden="true" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
