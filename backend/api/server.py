@@ -29,6 +29,7 @@ from api.routes import (
     debug,
     documents,
     feedback,
+    groups,
     health,
     kb,
     observability,
@@ -301,3 +302,5 @@ app.include_router(users.router)
 # W24c F5 — /roles Roles tab per ADR-0027 Option A. Same self-gated pattern as
 # /users — the router carries `require_role("admin")`.
 app.include_router(roles.router)
+# W24c F6 — /groups Groups tab per ADR-0027 Option A. Same self-gated pattern.
+app.include_router(groups.router)

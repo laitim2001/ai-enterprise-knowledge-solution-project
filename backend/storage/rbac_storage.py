@@ -6,11 +6,11 @@ C16 Users Service (Tier 1.5). 3-file split mirrors `audit_log` / `admin_provider
   - `PostgresRbacBackend` in `rbac_postgres.py` (lazy-imported by the factory)
   - `make_rbac_backend` in `rbac_factory.py`
 
-F2 scope = `roles` + `role_permissions` read + idempotent seed. The
-`groups` / `group_members` / `kb_acl` tables get their `CREATE TABLE` at F2.1
-(see `rbac_postgres.py`) so F6 / F8 add only Protocol methods, not migrations —
-but their read/write surface is deliberately absent here (W24c plan §2 rolling
-JIT + Karpathy §1.2 no speculative surface).
+F2 scope = `roles` + `role_permissions` read + idempotent seed. W24c F6 adds
+the `groups` read/sync surface (`list_groups` / `upsert_entra_group`) + an
+additive `synced_at` column ALTER (see `rbac_postgres.py`). `group_members`
+write + `kb_acl` surface stay absent until F8 (W24c plan §2 rolling JIT +
+Karpathy §1.2 no speculative surface).
 
 Async, not sync: the RBAC backend is consumed by the async `/users/*` route
 bodies + the ACL middleware (F3+), with no sync-dependency tie like
@@ -19,9 +19,10 @@ bodies + the ACL middleware (F3+), with no sync-dependency tie like
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
-from api.schemas.rbac import Role, RoleKey, RolePermission
+from api.schemas.rbac import Group, Role, RoleKey, RolePermission
 
 # --- Seed data --------------------------------------------------------------
 
@@ -183,6 +184,17 @@ class RbacBackend(Protocol):
         `role_key` is given. Ordered area → permission → role."""
         ...
 
+    async def list_groups(self) -> list[Group]:
+        """Every workspace group, ordered by name, with member counts. F6."""
+        ...
+
+    async def upsert_entra_group(
+        self, *, object_id: str, name: str, description: str | None
+    ) -> None:
+        """Insert-or-update an Entra-synced group keyed by its Graph object id;
+        stamps `source='entra'` + `synced_at=now`. F6 (sync-from-entra)."""
+        ...
+
 
 # --- In-memory impl ---------------------------------------------------------
 
@@ -198,10 +210,12 @@ class InMemoryRbacBackend:
     def __init__(self) -> None:
         self._roles: dict[str, Role] = {}
         self._role_permissions: list[RolePermission] = []
+        self._groups: dict[str, Group] = {}
 
     async def reset(self) -> None:
         self._roles.clear()
         self._role_permissions.clear()
+        self._groups.clear()
 
     async def seed_defaults(self) -> None:
         if self._roles:
@@ -222,3 +236,19 @@ class InMemoryRbacBackend:
         if role_key is None:
             return list(self._role_permissions)
         return [rp for rp in self._role_permissions if rp.role_key == role_key]
+
+    async def list_groups(self) -> list[Group]:
+        return sorted(self._groups.values(), key=lambda g: g.name)
+
+    async def upsert_entra_group(
+        self, *, object_id: str, name: str, description: str | None
+    ) -> None:
+        self._groups[object_id] = Group(
+            group_key=object_id,
+            name=name,
+            description=description,
+            source="entra",
+            entra_object_id=object_id,
+            synced_at=datetime.now(UTC),
+            member_count=0,
+        )

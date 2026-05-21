@@ -7,7 +7,8 @@ for all 5 RBAC tables on every connect.
 
 F2.1 declares all 5 tables ahead of need: `roles` + `role_permissions` are
 read + seeded now; `groups` + `group_members` + `kb_acl` exist so F6 (Groups
-tab) / F8 (per-KB ACL) add only Protocol methods, never a migration.
+tab) / F8 (per-KB ACL) add Protocol methods only — plus, at F6, one additive
+`synced_at` column ALTER on `groups` (no breaking migration).
 
 Schema (in the `ekp` database per ADR-0023):
 
@@ -16,7 +17,7 @@ Schema (in the `ekp` database per ADR-0023):
     role_permissions(role_key / permission_key / area / label / granted /
                      sort_order, PK (role_key, permission_key))
     groups(group_key PK / name / description / source / entra_object_id /
-           created_at)
+           synced_at / created_at)
     group_members(group_key / user_oid, PK (group_key, user_oid) / added_at)
     kb_acl(id SERIAL PK / kb_id / principal_type / principal_id /
            access_role / created_at, UNIQUE (kb_id, principal_type, principal_id))
@@ -32,7 +33,7 @@ from typing import Any, cast
 import psycopg
 from psycopg.rows import dict_row
 
-from api.schemas.rbac import Role, RoleKey, RolePermission
+from api.schemas.rbac import Group, GroupSource, Role, RoleKey, RolePermission
 from storage.rbac_storage import default_roles, permission_matrix_rows
 
 _CREATE_TABLES = """
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS groups (
     description     TEXT,
     source          TEXT NOT NULL DEFAULT 'local',
     entra_object_id TEXT,
+    synced_at       TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS group_members (
@@ -82,6 +84,11 @@ CREATE TABLE IF NOT EXISTS kb_acl (
 _ROLE_COLS = "role_key, label, description, tier, active"
 _PERM_COLS = "role_key, permission_key, area, label, granted"
 
+# F6 — additive: `groups` predates `synced_at` (F2 created the table without
+# it). IF NOT EXISTS keeps this idempotent on every connect, mirroring the F4
+# `users` ALTERs in `postgres_users_store.py`.
+_ALTER_GROUPS = "ALTER TABLE groups ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ"
+
 
 def _row_to_role(row: dict[str, Any]) -> Role:
     return Role(
@@ -103,6 +110,18 @@ def _row_to_role_permission(row: dict[str, Any]) -> RolePermission:
     )
 
 
+def _row_to_group(row: dict[str, Any]) -> Group:
+    return Group(
+        group_key=row["group_key"],
+        name=row["name"],
+        description=row["description"],
+        source=cast(GroupSource, row["source"]),
+        entra_object_id=row["entra_object_id"],
+        synced_at=row["synced_at"],
+        member_count=row["member_count"],
+    )
+
+
 class PostgresRbacBackend:
     """RBAC store backed by Postgres — satisfies the `RbacBackend` Protocol."""
 
@@ -112,6 +131,7 @@ class PostgresRbacBackend:
     async def _ensure_schema(self, conn: psycopg.AsyncConnection) -> None:
         async with conn.cursor() as cur:
             await cur.execute(_CREATE_TABLES)
+            await cur.execute(_ALTER_GROUPS)
 
     async def reset(self) -> None:
         async with await psycopg.AsyncConnection.connect(
@@ -201,3 +221,43 @@ class PostgresRbacBackend:
                 )
                 rows = await cur.fetchall()
                 return [_row_to_role_permission(r) for r in rows]
+
+    async def list_groups(self) -> list[Group]:
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT g.group_key, g.name, g.description, g.source, "
+                    "g.entra_object_id, g.synced_at, "
+                    "COUNT(gm.user_oid) AS member_count "
+                    "FROM groups g "
+                    "LEFT JOIN group_members gm ON gm.group_key = g.group_key "
+                    "GROUP BY g.group_key, g.name, g.description, g.source, "
+                    "g.entra_object_id, g.synced_at "
+                    "ORDER BY g.name"
+                )
+                rows = await cur.fetchall()
+                return [_row_to_group(r) for r in rows]
+
+    async def upsert_entra_group(
+        self, *, object_id: str, name: str, description: str | None
+    ) -> None:
+        # group_key = the Entra object id — a stable upsert key (displayName
+        # may change). source/synced_at are owned here, not caller-supplied.
+        async with await psycopg.AsyncConnection.connect(
+            self._dsn, row_factory=dict_row
+        ) as conn:
+            await self._ensure_schema(conn)
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "INSERT INTO groups "
+                    "(group_key, name, description, source, entra_object_id, synced_at) "
+                    "VALUES (%s, %s, %s, 'entra', %s, NOW()) "
+                    "ON CONFLICT (group_key) DO UPDATE SET "
+                    "name = EXCLUDED.name, "
+                    "description = EXCLUDED.description, "
+                    "synced_at = EXCLUDED.synced_at",
+                    (object_id, name, description, object_id),
+                )

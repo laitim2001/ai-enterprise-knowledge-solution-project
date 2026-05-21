@@ -224,4 +224,42 @@ status: active                      # active | closed
 
 **Day 5 F5 Verdict**:F5 complete — `/roles` Roles tab backend landed。NEW `api/routes/roles.py`(2 read-only endpoints,router-level `require_role("admin")`)+ `api/schemas/rbac.py` +2 response wrappers + `server.py` lifespan `app.state.rbac_backend` wire+seed(F2 factory 首次有 caller)。6 R6 findings resolved(全 §13 backend-wins / plan-text contamination / Karpathy §1.2 no-speculative,auto-adjust)。backend pytest 868 + 0 fail。F6 `/users` Groups tab backend + `sync-from-entra` next。
 
-<!-- Day 6+ F6 entries land at F6 active flip per CLAUDE.md §10 R2 -->
+## Day 6 — 2026-05-21 — F6 /groups Groups tab backend + sync-from-entra
+
+### Done
+
+- **F6 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 288-322(`GroupsTab`)+ `storage/rbac_postgres.py` `groups`/`group_members` schema + `storage/rbac_storage.py` Protocol + `api/schemas/admin_identity.py` `RoleMappingConfig` + `storage/settings.py` Entra config + `storage/azure_key_vault.py` `DefaultAzureCredential` pattern + `pyproject.toml` deps → 7 findings(plan §7 Day 6 row)
+- **F6 NEW `api/auth/entra_graph.py`** — managed-REST Microsoft Graph client:`EntraGroup` frozen dataclass + `fetch_entra_groups()`(`azure-identity` `DefaultAzureCredential` lazy-import acquire app token for `graph.microsoft.com/.default` + `httpx` `GET /v1.0/groups`,`@odata.nextLink` pagination);零新 dependency(per F1 D1)
+- **F6 NEW `api/routes/groups.py`** — 2 endpoints router-level `require_role("admin")`:`GET /groups`(`GroupListResponse`)+ `POST /groups/sync-from-entra`(`GroupSyncResult`;`azure_tenant_id` unset → graceful `status="skipped"`、Graph failure → 502);`_get_rbac_backend` 503-on-unwired helper(對齊 F5)
+- **F6 EDIT `api/schemas/rbac.py`** — 加 `GroupSource` Literal + `Group{group_key,name,description,source,entra_object_id,synced_at,member_count}` + `GroupListResponse{groups,total}` + `GroupSyncResult{status,synced_count,detail}`
+- **F6 EDIT `storage/rbac_storage.py`** — `RbacBackend` Protocol +2(`list_groups`/`upsert_entra_group`)+ `InMemoryRbacBackend` impl(`_groups` dict;`list_groups` sorted by name;`upsert_entra_group` stamps `source='entra'`+`synced_at`)
+- **F6 EDIT `storage/rbac_postgres.py`** — `groups` table 加 `synced_at TIMESTAMPTZ`(`_CREATE_TABLES` + idempotent `_ALTER_GROUPS` ALTER ADD COLUMN IF NOT EXISTS)+ `list_groups`(`LEFT JOIN group_members … GROUP BY` member count)+ `upsert_entra_group`(`ON CONFLICT (group_key) DO UPDATE`)+ `_row_to_group` helper + docstring 更新
+- **F6 EDIT `api/server.py`** — import `groups` route + `app.include_router(groups.router)`;endpoint count 51 → **53**
+- **F6 tests** NEW `tests/api/test_groups_route.py` 9 cases(GET /groups:empty/admin-gate-403/401/503-unwired;sync:skipped-when-Entra-unconfigured/synced+count/synced-groups-listed-with-shape/admin-gate-403/502-on-Graph-failure;mock `entra_graph.fetch_entra_groups`)
+- **F6 committed** `(this commit)`
+
+### Decisions
+
+- **D6.1 — `groups` table 加 `synced_at` column(additive ALTER)**(R6 #2)— mockup `GroupsTab` 有 `Synced` column(per-group last-sync time),F2 `_CREATE_TABLES` `groups` schema 無 `synced_at`。F6 加 `synced_at TIMESTAMPTZ` — `_CREATE_TABLES` 補 column(fresh DB)+ idempotent `ALTER TABLE groups ADD COLUMN IF NOT EXISTS synced_at`(F2 已建嘅 table)。對齊 F4 `users.role`/`users.status` ALTER precedent。W24c/ADR-0027 RBAC schema scope 內、additive 非 breaking → R3-changelog deviation 非 H1。F2 `rbac_storage.py`/`rbac_postgres.py` docstring「F6 add only Protocol methods, never a migration」stale claim 一併更新(per Karpathy §1.3 surgical — F6 令佢 inaccurate)。
+- **D6.2 — `GET /groups` 返回純 group;`EKP role` column F9 client-side join**(R6 #3)— mockup `GroupsTab` `EKP role` column = group→role mapping,佢喺 `admin_identity.RoleMappingConfig`(`RoleMapping{ekp_role,entra_group_name,entra_group_id}`,W24-c1 F3 已有 `GET /admin/identity` endpoint),`groups` table 無 `mapped_role`。mockup card-desc 明示「group → role mapping in Settings → Identity & Auth」= separate concern。`GET /groups` 返回純 group,F9 frontend client-side join from `GET /admin/identity`。§13 backend-subset;mirrors F4 D4.1 / F5 D5.3。
+- **D6.3 — group `member_count` backend-computed**(R6 #4)— `group_members` 係 `groups` 嘅直屬 child table(`PK (group_key, user_oid)`),count-by-group 係 group 自己 aggregate。對比 F5 D5.3 role member count 要 cross-domain join `users` table(→ client-side),group member count 喺直屬 child table → backend-computed 合理(Postgres `LEFT JOIN group_members … GROUP BY` / InMemory dict)。F6 值 = 0(member sync defer per D6.5);`Group.member_count` 欄位忠實 ship — `group_members` 係 real declared table、LEFT JOIN 係 real query,非 speculative(對比 F4 D4.1 dropped column 係完全無 backing 嘅 analytics)。
+- **D6.4 — `sync-from-entra` = managed-REST via `azure-identity` `DefaultAzureCredential`**(R6 #5)— backend 係 resource-server-only(`settings.py` 只有 `azure_tenant_id`+`azure_client_id`,**無 `client_secret`**)。F1 D1 managed-REST decision 落實:NEW `api/auth/entra_graph.py` 用 `azure-identity` `DefaultAzureCredential`(mirror `storage/azure_key_vault.py` lazy-import — `pyproject.toml` 確認 `azure-identity>=1.20`+`httpx>=0.27` 已裝,零新 dep)acquire app token + `httpx` Graph REST call。`entra_graph.py` co-located 喺 `api/auth/`(Entra = identity infra,同 `msal_provider`/`email_provider` 一組),component-tag C16。`azure_tenant_id` unset(mock-auth dev)→ route short-circuit graceful `status="skipped"`(non-500,從不 import `azure-identity`);config-set live path = deferred pre-Beta smoke(R-W24c-6 / CO17 umbrella;route test mock `fetch_entra_groups`)。
+- **D6.5 — group member sync 🚧 defer W24d+/F8**(R6 #6)— Graph `/groups/{id}/members` per-group enumeration + Entra-oid↔EKP-user(`users.oid`)matching 係 separate larger concern。F6 sync group **list** only(`upsert_entra_group`)。`group_members` table populate(member sync)+ `add_group_member` Protocol 留 W24d+ 或 F8 per-KB ACL principal wiring。per Karpathy §1.2 no speculative。
+- **D6.6 — `sync-from-entra` 不加 `AuditAction`、不寫 audit row**(R6 #7)— mockup `AuditTab`(lines 324-377)action 列表(`role.changed`/`user.invited`/`user.suspended`/`kb.access.granted`/`provider.key.rotated`/`kb.config.changed`)無 group sync event;plan F7 audit action 列表亦無 group action。F6 `sync-from-entra` 純 upsert + 返回 result,無 audit。per Karpathy §1.2 — 唔加 mockup/plan 都冇嘅 `AuditAction`。
+- **D6.7 — plan-text「Entra Graph SDK」+ Component C12 = pre-F1 contamination**(R6 #7)— plan §2 F6 字面「Entra Graph SDK」+「C12(Entra Graph SDK)」係 pre-F1 sketch(W22 D9 plan-text-contamination class)。F1 D1 已 decide managed-REST(零新 dep、零 C12 install)。F6 refine plan §2 用 managed-REST 字眼,Component = C16+C08。R6 auto-adjust。
+
+### Acceptance(plan §3 + checklist F6)
+
+- [x] F6.1 `GET /groups` 返回 `GroupListResponse{groups,total}`(`Group` 含 `member_count` backend-computed;`EKP role` F9 client-side join)— NEW `routes/groups.py` + `RbacBackend` `list_groups` + InMemory + Postgres LEFT JOIN
+- [x] F6.2 `POST /groups/sync-from-entra` 返回 `GroupSyncResult` — NEW `api/auth/entra_graph.py` managed-REST(`azure-identity`+`httpx`,零新 dep)+ `RbacBackend` `upsert_entra_group` + `groups` `synced_at` ALTER;Entra unset → graceful `skipped`、Graph failure → 502;router-level `require_role("admin")`
+
+### Verify
+
+- **backend pytest 877 passed**(F5 baseline 868 → +9 `test_groups_route.py`)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `api/auth/entra_graph.py` / `api/routes/groups.py` / `api/schemas/rbac.py` / `storage/rbac_storage.py` 0 error;`storage/rbac_postgres.py` reported errors(psycopg import-not-found)= F2 CO17 R8 既有豁免(psycopg 未裝,F6 未引入新 psycopg import);jose/azure import-untyped + no-any-return + type-arg + no-untyped-def pre-existing 豁免
+- **ruff** — F6 NEW/EDIT files all clean(F6-introduced `datetime.now(timezone.utc)` UP017 → 改現代 `datetime.now(UTC)` alias,per Karpathy §1.3 清自己嘅 mess;`server.py` E402 35→35 不變 — `groups` 加入既有 `from api.routes import (…)` multi-line block,非新 import statement)
+- **endpoint count** 51 → 53(+2 `/groups` + `/groups/sync-from-entra`)
+
+**Day 6 F6 Verdict**:F6 complete — `/groups` Groups tab backend + `sync-from-entra` landed。NEW `api/auth/entra_graph.py`(managed-REST Graph client,零新 dep per F1 D1)+ `api/routes/groups.py`(2 endpoints)+ `rbac.py` +3 group schemas + `RbacBackend` +2 Protocol methods(InMemory + Postgres)+ `groups.synced_at` additive ALTER。7 R6 findings resolved(全 F2-predicted surface / additive-ALTER-F4-precedent / §13 backend-subset / Karpathy §1.2 no-speculative / plan-text-contamination,auto-adjust)。group member sync 🚧 defer W24d+/F8。backend pytest 877 + 0 fail。F7 Audit log expansion next。
+
+<!-- Day 7+ F7 entries land at F7 active flip per CLAUDE.md §10 R2 -->

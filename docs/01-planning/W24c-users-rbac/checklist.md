@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F5 active-flip → F5.1-F5.2 complete (/roles Roles tab: routes/roles.py 2 endpoints + rbac.py +2 response wrappers + lifespan rbac_backend wire; backend pytest 868)
+last_updated: 2026-05-21  # F6 active-flip → F6.1-F6.2 complete (/groups Groups tab: routes/groups.py 2 endpoints + entra_graph.py managed-REST + rbac.py +3 group schemas + groups.synced_at ALTER; backend pytest 877)
 ---
 
 # W24c-users-rbac — Checklist
@@ -64,8 +64,10 @@ last_updated: 2026-05-21  # F5 active-flip → F5.1-F5.2 complete (/roles Roles 
 
 ## F6 — `/users` Groups tab backend + sync-from-entra
 
-- [ ] **F6.1** `GET /groups` + `group_members`
-- [ ] **F6.2** `POST /groups/sync-from-entra`(Entra Graph SDK call;graceful fallback when Entra config unset)
+> R6 Day 6 finding(plan §7,7 findings):**(1)** `Group` schema + group Protocol method NEW(F2-predicted);**(2)** `groups` 漏 `synced_at` → additive ALTER(F4 precedent);**(3)** `EKP role` = F9 client-side join from `RoleMappingConfig`(§13);**(4)** `member_count` backend-computed(直屬 child table,F6 值 0);**(5)** managed-REST `entra_graph.py` 用 `azure-identity`+`httpx`(F1 D1,零新 dep),Entra unset → graceful `skipped`;**(6)** group member sync 🚧 defer W24d+/F8;**(7)** plan「Entra Graph SDK」= contamination,改 managed-REST,無 `AuditAction`。
+
+- [x] **F6.1** `GET /groups` 返回 `GroupListResponse{groups,total}`（`Group{group_key,name,description,source,entra_object_id,synced_at,member_count}`,ordered by name）— NEW `routes/groups.py` + `RbacBackend` Protocol +`list_groups` + InMemory + Postgres LEFT JOIN;`member_count` backend-computed（F6 值 0 — member sync defer per R6 #6）;`EKP role` = F9 client-side join from `RoleMappingConfig`（R6 #3）
+- [x] **F6.2** `POST /groups/sync-from-entra` 返回 `GroupSyncResult{status,synced_count,detail}` — NEW `api/auth/entra_graph.py` managed-REST（`azure-identity` `DefaultAzureCredential` + `httpx` Graph `GET /v1.0/groups`,`@odata.nextLink` pagination;零新 dep per F1 D1）+ `RbacBackend` +`upsert_entra_group` + `groups` `synced_at` ALTER;`azure_tenant_id` unset → graceful `status="skipped"`（non-500）,Graph failure → 502;router-level `require_role("admin")`
 
 ## F7 — Audit log expansion
 

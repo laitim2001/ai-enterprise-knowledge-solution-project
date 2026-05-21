@@ -13,6 +13,7 @@ any Tier 2 capability.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -73,3 +74,53 @@ class PermissionMatrixResponse(BaseModel):
 
     permissions: list[RolePermission]
     total: int
+
+
+# --- F6 /groups schema (W24c F6 per ADR-0027 §Context Groups tab) -----------
+
+# Group provenance — `local` (created in EKP) or `entra` (synced from Graph).
+GroupSource = Literal["local", "entra"]
+
+
+class Group(BaseModel):
+    """One workspace group. Mirrors a `groups` table row + computed member count.
+
+    Entra-synced groups carry `source='entra'`; `group_key` equals the Graph
+    object id (a stable upsert key). The group → EKP role mapping is a separate
+    concern (`admin_identity.RoleMappingConfig`) — not carried here; the
+    frontend joins it client-side (CLAUDE.md §13, F6 R6 finding #3).
+    """
+
+    group_key: str = Field(..., description="Stable PK — the Entra object id for synced groups.")
+    name: str = Field(..., description="Display name, e.g. 'grp-ekp-admins'.")
+    description: str | None = None
+    source: GroupSource = "local"
+    entra_object_id: str | None = Field(
+        default=None, description="Entra security group GUID; None for local groups."
+    )
+    synced_at: datetime | None = Field(
+        default=None, description="Last Entra sync time; None until first synced."
+    )
+    member_count: int = Field(
+        default=0,
+        description="Members in `group_members`; 0 until member sync lands (F6 syncs the group list only).",
+    )
+
+
+class GroupListResponse(BaseModel):
+    """`GET /groups` payload — every workspace group, with member counts."""
+
+    groups: list[Group]
+    total: int
+
+
+class GroupSyncResult(BaseModel):
+    """`POST /groups/sync-from-entra` payload.
+
+    `skipped` when Entra ID is not configured (mock-auth dev) — a graceful
+    degrade, not an error (F6 R6 finding #5).
+    """
+
+    status: Literal["synced", "skipped"]
+    synced_count: int = 0
+    detail: str
