@@ -44,7 +44,8 @@ vi.mock('@/lib/providers/auth-provider', () => ({
 
 // adminApi mock — settings/* components data-fetch on mount, return minimal
 // shape that matches each component's render path.
-vi.mock('@/lib/api/admin', () => ({
+vi.mock('@/lib/api/admin', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/admin')>()),
   adminApi: {
     listConnections: vi.fn(async () => []),
     getConnection: vi.fn(),
@@ -78,7 +79,7 @@ vi.mock('@/lib/api/admin', () => ({
       roles: {
         mappings: [
           {
-            ekp_role: 'workspace_admin',
+            ekp_role: 'admin',
             entra_group_name: 'grp-ekp-admins',
             entra_group_id: 'gid-1',
             member_count: null,
@@ -86,7 +87,7 @@ vi.mock('@/lib/api/admin', () => ({
             tier2_reason: null,
           },
           {
-            ekp_role: 'power_user',
+            ekp_role: 'power',
             entra_group_name: '',
             entra_group_id: '',
             member_count: null,

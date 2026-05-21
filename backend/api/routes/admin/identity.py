@@ -19,7 +19,7 @@ read-mostly with 3 active + 1 Tier 2 disabled affordance (Power User).
 - `tenant.cloud_instance` — Literal validates against 3 enums (no Tier 2 expand)
 - `app_registration.sign_in_audience` — `"multi_disabled"` rejected via 422
 - `msal.token_cache_strategy` — `"distributed_disabled"` rejected via 422
-- `roles.mappings[*].ekp_role == "power_user"` — rejected unless `is_tier2_disabled=True`
+- `roles.mappings[*].ekp_role == "power"` — rejected unless `is_tier2_disabled=True`
 - `policy.require_mfa_all_roles_tier2` — Literal[False] permanent
 
 **Authority URL** is derived server-side from `tenant_id + cloud_instance`;
@@ -95,12 +95,12 @@ def _reject_tier2_msal(value: MsalConfig) -> None:
 
 def _reject_tier2_roles(value: RoleMappingConfig) -> None:
     for row in value.mappings:
-        if row.ekp_role == "power_user" and not row.is_tier2_disabled:
+        if row.ekp_role == "power" and not row.is_tier2_disabled:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "power_user role must have is_tier2_disabled=True "
-                    "(per ADR-0027 Option B fallback)"
+                    "power role must have is_tier2_disabled=True "
+                    "(Power User is Tier 2 per CLAUDE.md H4)"
                 ),
             )
 

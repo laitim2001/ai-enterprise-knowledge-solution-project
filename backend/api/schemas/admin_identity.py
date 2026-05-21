@@ -32,8 +32,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-# 4 EKP role keys — 3 active Tier 1 + 1 Tier 2 disabled (ADR-0027 Option B fallback).
-EkpRoleKey = Literal["workspace_admin", "knowledge_editor", "end_user", "power_user"]
+from api.schemas.rbac import RoleKey
 
 # Cloud instance enum (matches mockup line 562-564 select options).
 CloudInstance = Literal["azure_public", "azure_government", "azure_china_21vianet"]
@@ -100,9 +99,13 @@ class MsalConfig(BaseModel):
 
 
 class RoleMapping(BaseModel):
-    """Single Entra group → EKP role mapping row."""
+    """Single Entra group → EKP role mapping row.
 
-    ekp_role: EkpRoleKey
+    `ekp_role` uses the RBAC core `RoleKey` vocabulary (W24c F3 — unified from
+    the pre-RBAC long-form `EkpRoleKey`; mockup `ekp-page-users.jsx` is canonical).
+    """
+
+    ekp_role: RoleKey
     entra_group_name: str = Field(..., description="E.g. 'grp-ekp-admins'.")
     entra_group_id: str = Field(..., description="Entra security group GUID.")
     member_count: int | None = Field(
@@ -110,7 +113,7 @@ class RoleMapping(BaseModel):
         description="Snapshot count; refreshed via Graph API in Wave C2 (None at Wave C1).",
     )
     is_tier2_disabled: bool = Field(
-        default=False, description="True for power_user (mockup line 684-687 disabled affordance)."
+        default=False, description="True for the power role (mockup line 684-687 disabled affordance)."
     )
     tier2_reason: str | None = Field(
         default=None,

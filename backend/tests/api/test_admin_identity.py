@@ -65,7 +65,7 @@ def test_default_roles_has_three_active_plus_power_user_disabled() -> None:
     disabled = [r for r in roles if r.is_tier2_disabled]
     assert len(active) == 3
     assert len(disabled) == 1
-    assert disabled[0].ekp_role == "power_user"
+    assert disabled[0].ekp_role == "power"
     assert disabled[0].tier2_reason is not None
 
 
@@ -301,7 +301,7 @@ def test_patch_roles_replaces_mappings_list() -> None:
             json={
                 "mappings": [
                     {
-                        "ekp_role": "workspace_admin",
+                        "ekp_role": "admin",
                         "entra_group_name": "new-admin-group",
                         "entra_group_id": "new-admin-gid",
                     },
@@ -321,7 +321,7 @@ def test_patch_roles_rejects_active_power_user() -> None:
             json={
                 "mappings": [
                     {
-                        "ekp_role": "power_user",
+                        "ekp_role": "power",
                         "entra_group_name": "grp-power",
                         "entra_group_id": "power-gid",
                         # is_tier2_disabled deliberately False (default).
@@ -330,7 +330,7 @@ def test_patch_roles_rejects_active_power_user() -> None:
             },
         )
         assert r.status_code == 422
-        assert "power_user" in r.json()["detail"]
+        assert "power" in r.json()["detail"]
 
 
 def test_patch_roles_accepts_power_user_when_explicitly_disabled() -> None:
@@ -341,7 +341,7 @@ def test_patch_roles_accepts_power_user_when_explicitly_disabled() -> None:
             json={
                 "mappings": [
                     {
-                        "ekp_role": "power_user",
+                        "ekp_role": "power",
                         "entra_group_name": "",
                         "entra_group_id": "",
                         "is_tier2_disabled": True,

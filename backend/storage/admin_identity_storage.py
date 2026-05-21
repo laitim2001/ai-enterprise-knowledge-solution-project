@@ -71,22 +71,22 @@ def default_roles() -> RoleMappingConfig:
     return RoleMappingConfig(
         mappings=[
             RoleMapping(
-                ekp_role="workspace_admin",
+                ekp_role="admin",
                 entra_group_name="grp-ekp-admins",
                 entra_group_id="00000000-0000-0000-0000-000000000001",
             ),
             RoleMapping(
-                ekp_role="knowledge_editor",
+                ekp_role="editor",
                 entra_group_name="grp-ekp-editors",
                 entra_group_id="00000000-0000-0000-0000-000000000002",
             ),
             RoleMapping(
-                ekp_role="end_user",
+                ekp_role="user",
                 entra_group_name="grp-ekp-users",
                 entra_group_id="00000000-0000-0000-0000-000000000003",
             ),
             RoleMapping(
-                ekp_role="power_user",
+                ekp_role="power",
                 entra_group_name="",
                 entra_group_id="",
                 is_tier2_disabled=True,

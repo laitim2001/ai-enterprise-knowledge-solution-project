@@ -82,11 +82,19 @@ export interface RotateSecretResult {
 
 // ---------- F3 — /admin/identity/* shared types ------------------------------
 
-export type EkpRoleKey =
-  | 'workspace_admin'
-  | 'knowledge_editor'
-  | 'end_user'
-  | 'power_user';
+export type EkpRoleKey = 'admin' | 'editor' | 'user' | 'power';
+
+/**
+ * Display labels for the RBAC roles — mockup `ekp-page-users.jsx` ROLES +
+ * `ekp-page-settings-tabs.jsx` lines 664-685 (W24c F3 vocabulary unification:
+ * long-form `workspace_admin` etc. retired in favour of the RBAC-core short keys).
+ */
+export const EKP_ROLE_LABELS: Record<EkpRoleKey, string> = {
+  admin: 'Workspace Admin',
+  editor: 'Knowledge Editor',
+  user: 'End User',
+  power: 'Power User',
+};
 
 export type CloudInstance =
   | 'azure_public'

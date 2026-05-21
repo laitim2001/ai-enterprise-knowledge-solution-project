@@ -34,6 +34,7 @@ import { ApiKeyInput } from '@/components/ui/api-key-input';
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   adminApi,
+  EKP_ROLE_LABELS,
   type AppRegistrationConfig,
   type EntraTenantConfig,
   type IdentityConfig,
@@ -632,14 +633,14 @@ function RoleMappingCard({ mappings }: { mappings: RoleMapping[] }) {
                     className={
                       m.is_tier2_disabled
                         ? 'badge badge-muted'
-                        : m.ekp_role === 'workspace_admin'
+                        : m.ekp_role === 'admin'
                           ? 'badge badge-accent'
-                          : m.ekp_role === 'knowledge_editor'
+                          : m.ekp_role === 'editor'
                             ? 'badge badge-info'
                             : 'badge badge-muted'
                     }
                   >
-                    {m.ekp_role.replace('_', ' ')}
+                    {EKP_ROLE_LABELS[m.ekp_role]}
                   </span>
                   {m.is_tier2_disabled ? (
                     <span

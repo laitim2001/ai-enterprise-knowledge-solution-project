@@ -13,7 +13,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-vi.mock('@/lib/api/admin', () => ({
+// Partial mock — keep real `EKP_ROLE_LABELS` (consumed by RoleMappingCard),
+// override only `adminApi` so the card's data-fetch + PATCH are controllable.
+vi.mock('@/lib/api/admin', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/admin')>()),
   adminApi: {
     getIdentity: vi.fn(),
     patchTenant: vi.fn(),
@@ -61,7 +64,7 @@ function identityConfig() {
     roles: {
       mappings: [
         {
-          ekp_role: 'workspace_admin' as const,
+          ekp_role: 'admin' as const,
           entra_group_name: 'grp-ekp-admins',
           entra_group_id: 'gid-1',
           member_count: null,

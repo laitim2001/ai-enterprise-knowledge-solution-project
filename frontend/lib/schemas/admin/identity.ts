@@ -37,12 +37,7 @@ export const tokenCacheStrategySchema = z.enum([
   'distributed_disabled',
 ]);
 
-export const ekpRoleKeySchema = z.enum([
-  'workspace_admin',
-  'knowledge_editor',
-  'end_user',
-  'power_user',
-]);
+export const ekpRoleKeySchema = z.enum(['admin', 'editor', 'user', 'power']);
 
 export const entraTenantConfigSchema = z.object({
   tenant_id: guidSchema,
