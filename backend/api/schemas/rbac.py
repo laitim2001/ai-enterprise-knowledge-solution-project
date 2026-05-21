@@ -47,3 +47,29 @@ class RolePermission(BaseModel):
     area: str = Field(..., description="Matrix section header, e.g. 'Knowledge bases'.")
     label: str = Field(..., description="Human-readable permission, verbatim from the mockup.")
     granted: bool
+
+
+# --- F5 /roles response wrappers (W24c F5 per ADR-0027 §Context Roles tab) ---
+
+
+class RoleListResponse(BaseModel):
+    """`GET /roles` payload — the 4 RBAC roles, ordered Admin → Power User.
+
+    Per-role member counts are not carried — the mockup `RolesTab` counts
+    client-side from the users list (CLAUDE.md §13, F5 R6 finding #3).
+    """
+
+    roles: list[Role]
+    total: int
+
+
+class PermissionMatrixResponse(BaseModel):
+    """`GET /roles/permissions` payload — the flat 92-cell permissions matrix.
+
+    One `RolePermission` per (role, permission). The backend ships the
+    canonical per-cell shape; the frontend pivots by `area` + `role_key` to
+    render the matrix table (CLAUDE.md §13 — backend wins on field shape).
+    """
+
+    permissions: list[RolePermission]
+    total: int

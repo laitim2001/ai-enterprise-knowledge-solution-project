@@ -190,4 +190,38 @@ status: active                      # active | closed
 
 **Day 4 F4 Verdict**:F4 complete — `/users` Members tab backend landed。NEW `api/routes/users.py`(4 endpoints,router-level `require_role("admin")` — F3.4「per-endpoint apply」首次兌現)+ NEW `api/schemas/user.py` + `users_repo` 4 management functions + `UserRecord.status` + `UsersStore.list_users` + `AuditAction` +3。6 R6 findings resolved(全 §13 backend-wins / additive field / scope sequencing,auto-adjust)。backend pytest 854 + 0 fail。F5 `/users` Roles tab backend next。
 
-<!-- Day 5+ F5 entries land at F5 active flip per CLAUDE.md §10 R2 -->
+## Day 5 — 2026-05-21 — F5 /roles Roles tab backend
+
+### Done
+
+- **F5 pre-active-flip 5-step grep audit recursive**(per CLAUDE.md §10 R6)— 讀 mockup `ekp-page-users.jsx` lines 19-286(`ROLES` + `PERMISSIONS_MATRIX` + `RolesTab`)+ `api/schemas/rbac.py` + `storage/rbac_storage.py`/`rbac_factory.py` + `server.py` lifespan + `routes/users.py` F4 router → 6 findings(plan §7 Day 5 row)
+- **F5 NEW `api/routes/roles.py`** — 2 read-only endpoints router-level `require_role("admin")`:`GET /roles`(`RoleListResponse{roles,total}`,`backend.list_roles()`)+ `GET /roles/permissions`(`PermissionMatrixResponse{permissions,total}`,`backend.list_role_permissions()`);`_get_rbac_backend` helper 503-on-unwired per `routes/admin/identity.py` precedent
+- **F5 EDIT `api/schemas/rbac.py`** — 加 2 response wrappers:`RoleListResponse{roles: list[Role], total}` + `PermissionMatrixResponse{permissions: list[RolePermission], total}`
+- **F5 EDIT `api/server.py`** — lifespan 加 `rbac_backend = make_rbac_backend(settings)` + `await rbac_backend.seed_defaults()` + `app.state.rbac_backend = rbac_backend`(startup seed mandatory — `InMemoryRbacBackend` restart-wipe);import `make_rbac_backend` + `roles` route + `app.include_router(roles.router)`(無 `_auth` — router 自帶 `require_role`);endpoint count 49 → **51**
+- **F5 tests** NEW `tests/api/test_roles_route.py` 14 cases(GET /roles:4-role/order/Power-User-Tier2-disabled/Tier1-active/admin-gate-403/401/503-unwired;GET /roles/permissions:92-row/23-distinct-key/5-area/admin-all-granted/user-denied-kb.create/admin-gate-403/503-unwired)
+- **F5 committed** `(this commit)`
+
+### Decisions
+
+- **D5.1 — `app.state.rbac_backend` lifespan-wired + startup seed**(R6 #1)— F2 建咗 `make_rbac_backend` factory 但 `server.py` lifespan 從未 wire(key_vault/admin_provider/admin_identity/audit_log 都 wire 咗,RBAC 漏咗)。F5 lifespan 加 wire + `await …seed_defaults()`。`seed_defaults` 必須喺 startup await:`InMemoryRbacBackend` restart-wipe,唔 seed 則 `list_roles` 返回空;`seed_defaults` idempotent → Postgres path 已有 rows 時 no-op。用 local var(`rbac_backend = make_…` → `await` → assign)而非 `await app.state.rbac_backend.…`,因 `app.state.X` attribute 係 `Any` → mypy 失去 type-check;local var typed `RbacBackend`。
+- **D5.2 — F5 = NEW `routes/roles.py` `prefix="/roles"` 獨立 module**(R6 #2)— plan §1 F5 spec-ref column 寫「`routes/users/` package」係 W22 D9 plan-text contamination(sketch-era 設想 users 係 package);plan §2 寫 literal path `GET /roles`(無 `/users` prefix)。F4 active-flip 已 deviate 到 `routes/users.py` single module(router `prefix="/users"`)。把 `/roles` 加入該 router → path 變 `/users/roles` 偏離 plan literal。roles/permissions 係 RBAC resource(非 users sub-resource);mockup 嘅 tab grouping(Roles tab 喺 `/users` page)係 frontend IA,≠ backend path nesting。F5 = 獨立 `routes/roles.py`。R6 auto-adjust(plan-text contamination,convention 明確)。
+- **D5.3 — `GET /roles` 返回純 `Role` list,member count F9 client-side**(R6 #3)— mockup `RolesTab` line 225 `count = MOCK_USERS.filter(u => u.role === key).length` 100% client-side。F2 `Role` schema 無 `member_count` field。backend 加 count 要 join `users` table count-by-role = speculative surface(Karpathy §1.2)。F9 frontend `/users` page 已 fetch users list(Members tab,F4 `GET /users`)→ Roles tab client-side count。§13 backend wins on field shape;mirrors F4 D4.6(filter seg client-side)+ D4.1(backend subset)。
+- **D5.4 — `GET /roles/permissions` 返回 flat `list[RolePermission]`(92-row),非 area-grouped pivot**(R6 #4)— mockup `PERMISSIONS_MATRIX` row shape = `{p, a, e, u, w}`(per-permission + 4 grants,area-grouped);F2 backend canonical = flat `RolePermission`(per-cell,92 row = 23 perm × 4 role,有 `area` field)。F5.2 返回 F2 canonical flat shape — §13 backend wins on field shape(`RolePermission` F2 已 lock)。F9 frontend pivot:group by `area` + per-permission collapse 4 role 嘅 `granted` 落一行 4-column。Backend pivot reshape = speculative。
+- **D5.5 — F5 response schema 入 `api/schemas/rbac.py`,非 F4 `user.py`** — `RoleListResponse` + `PermissionMatrixResponse` 屬 roles/permissions domain → RBAC schema natural home(`rbac.py` 已有 `Role`/`RolePermission`/`RoleKey`)。F4 `user.py` 係 user-domain(`UserSummary` 等)。Roles ≠ users。
+- **D5.6 — F5 router-level `require_role("admin")`**(R6 #6)— `/roles` + `/roles/permissions` 係 `/users` admin console surface 嘅一部分(mockup Roles tab 喺 admin `/users` page;permissions matrix view = admin policy surface)。一致 F4 `users.py` router-level gate — F3.4「per-endpoint apply F4-F10 inline」持續兌現。`_get_rbac_backend` 503-on-unwired helper 對齊 `routes/admin/identity.py` `_get_backend` precedent。
+
+### Acceptance(plan §3 + checklist F5)
+
+- [x] F5.1 `GET /roles` 返回 `RoleListResponse{roles,total}`(4 roles `_ROLE_ORDER`;Power User Tier 2 `active=False`)— NEW `routes/roles.py` + `app.state.rbac_backend` lifespan-wired + seeded;member count F9 client-side
+- [x] F5.2 `GET /roles/permissions` 返回 `PermissionMatrixResponse{permissions,total}`(flat 92-row `RolePermission`;read-only,custom roles Tier 2 per H4)— router-level `require_role("admin")`
+
+### Verify
+
+- **backend pytest 868 passed**(F4 baseline 854 → +14 `test_roles_route.py`)+ 11 skipped + 0 failed — regression 0
+- **mypy `--strict`** — `api/routes/roles.py` / `api/schemas/rbac.py` / `api/server.py` 0 error;`storage/rbac_postgres.py` reported errors(psycopg import-not-found)= CO17 R8 既有豁免(psycopg 未裝,與 `audit_log_postgres.py`/`postgres_users_store.py` 同類,非 F5 引入);jose/azure import-untyped + no-any-return pre-existing 豁免
+- **ruff** — F5 NEW files(`routes/roles.py` / `tests/api/test_roles_route.py`)+ EDIT `schemas/rbac.py` all clean;`server.py` E402 34 → 35(+1 = 新 `make_rbac_backend` import line,truststore-after-imports 結構)= pre-existing structural class,`git show HEAD:backend/api/server.py` 確認 F5 前已 34,per Karpathy §1.3 surgical 未順手修
+- **endpoint count** 49 → 51(+2 `/roles` + `/roles/permissions`)
+
+**Day 5 F5 Verdict**:F5 complete — `/roles` Roles tab backend landed。NEW `api/routes/roles.py`(2 read-only endpoints,router-level `require_role("admin")`)+ `api/schemas/rbac.py` +2 response wrappers + `server.py` lifespan `app.state.rbac_backend` wire+seed(F2 factory 首次有 caller)。6 R6 findings resolved(全 §13 backend-wins / plan-text contamination / Karpathy §1.2 no-speculative,auto-adjust)。backend pytest 868 + 0 fail。F6 `/users` Groups tab backend + `sync-from-entra` next。
+
+<!-- Day 6+ F6 entries land at F6 active flip per CLAUDE.md §10 R2 -->

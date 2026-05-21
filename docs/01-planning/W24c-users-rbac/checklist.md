@@ -2,7 +2,7 @@
 phase: W24c-users-rbac
 plan_ref: ./plan.md
 status: active
-last_updated: 2026-05-21  # F4 active-flip → F4.1-F4.3 complete (/users Members tab: routes/users.py 4 endpoints + UserRecord.status; backend pytest 854)
+last_updated: 2026-05-21  # F5 active-flip → F5.1-F5.2 complete (/roles Roles tab: routes/roles.py 2 endpoints + rbac.py +2 response wrappers + lifespan rbac_backend wire; backend pytest 868)
 ---
 
 # W24c-users-rbac — Checklist
@@ -57,8 +57,10 @@ last_updated: 2026-05-21  # F4 active-flip → F4.1-F4.3 complete (/users Member
 
 ## F5 — `/users` Roles tab backend
 
-- [ ] **F5.1** `GET /roles` 4 role cards(3 active + Power User Tier 2 disabled)
-- [ ] **F5.2** permissions matrix endpoint(read — custom roles Tier 2 per H4)
+> R6 Day 5 finding(plan §7,6 findings):**(1)** `server.py` lifespan 無 `app.state.rbac_backend` → F5 lifespan wire + `seed_defaults()`;**(2)** plan §1「`routes/users/` package」係 plan-text contamination → F5 = NEW `routes/roles.py` `prefix="/roles"` 獨立 module;**(3)** role member count client-side per mockup(§13);**(4)** `GET /roles/permissions` flat `list[RolePermission]` 92-row(F2 canonical,F9 pivot);**(5)** response schema 入 `rbac.py`;**(6)** router-level `require_role("admin")`。
+
+- [x] **F5.1** `GET /roles` 返回 `RoleListResponse{roles,total}`(4 roles `_ROLE_ORDER` — Admin/Editor/End User active + Power User Tier 2 `active=False`)— NEW `routes/roles.py` + `app.state.rbac_backend` lifespan-wired + seeded;role member count = F9 client-side per mockup(R6 #3)
+- [x] **F5.2** `GET /roles/permissions` 返回 `PermissionMatrixResponse{permissions,total}`(flat `list[RolePermission]` 92-row — F2 canonical per-cell,F9 frontend pivot by area+role;read-only,custom roles Tier 2 per H4)— router-level `require_role("admin")`
 
 ## F6 — `/users` Groups tab backend + sync-from-entra
 

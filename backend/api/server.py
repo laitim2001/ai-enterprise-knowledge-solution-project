@@ -34,6 +34,7 @@ from api.routes import (
     observability,
     query,
     retrieval_test,
+    roles,
     screenshots,
     users,
 )
@@ -59,6 +60,7 @@ from storage.admin_identity_factory import make_admin_identity_backend
 from storage.admin_provider_factory import make_admin_provider_backend
 from storage.audit_log_factory import make_audit_log_backend
 from storage.key_vault_factory import make_key_vault_provider
+from storage.rbac_factory import make_rbac_backend
 from storage.settings import get_settings
 
 
@@ -97,6 +99,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.admin_identity_backend = make_admin_identity_backend(settings)
     # F4 — audit log backend (write-mostly Wave C1; read endpoint = Wave C2 / F5).
     app.state.audit_log_backend = make_audit_log_backend(settings)
+    # W24c F5 — RBAC backend (roles + permissions matrix). Seeded at startup —
+    # `InMemoryRbacBackend` is restart-wiped; `seed_defaults` is idempotent so
+    # the Postgres path is a no-op once the rows exist.
+    rbac_backend = make_rbac_backend(settings)
+    await rbac_backend.seed_defaults()
+    app.state.rbac_backend = rbac_backend
 
     if settings.azure_openai_api_key and settings.azure_search_admin_key:
         embedder = AzureOpenAIEmbedder(
@@ -290,3 +298,6 @@ app.include_router(admin_audit_log.router, tags=["admin"], dependencies=_auth)
 # W24c F4 — /users Members tab per ADR-0027 Option A. The router carries its own
 # `require_role("admin")` gate (which chains get_current_user), so no _auth here.
 app.include_router(users.router)
+# W24c F5 — /roles Roles tab per ADR-0027 Option A. Same self-gated pattern as
+# /users — the router carries `require_role("admin")`.
+app.include_router(roles.router)
