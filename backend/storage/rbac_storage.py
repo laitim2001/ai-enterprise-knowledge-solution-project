@@ -131,7 +131,8 @@ def permission_matrix_rows() -> list[RolePermission]:
     rows: list[RolePermission] = []
     for area, perms in _PERMISSION_MATRIX:
         for perm_key, label, *grants in perms:
-            for role_key, granted in zip(_ROLE_ORDER, grants):
+            # strict=True — a matrix row must carry exactly 4 grants (a/e/u/w).
+            for role_key, granted in zip(_ROLE_ORDER, grants, strict=True):
                 rows.append(
                     RolePermission(
                         role_key=role_key,
