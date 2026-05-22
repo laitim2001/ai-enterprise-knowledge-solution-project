@@ -114,7 +114,6 @@ interface Message {
 
 type CitationMode = 'inline' | 'footnote' | 'sidebar';
 
-const DEFAULT_KB_ID = 'drive_user_manuals'; // W3 single-KB POC
 const CITATION_MODE_KEY = 'ekp-citation-mode';
 const HISTORY_COLLAPSED_KEY = 'ekp-chat-history-collapsed';
 const SOURCES_COLLAPSED_KEY = 'ekp-chat-sources-collapsed';
@@ -160,7 +159,7 @@ export default function ChatPage() {
   const [citationMode, setCitationMode] = useState<CitationMode>('inline');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
-  const [kbId, setKbId] = useState<string>(DEFAULT_KB_ID);
+  const [kbId, setKbId] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -168,8 +167,18 @@ export default function ChatPage() {
     queryKey: ['kb', 'list'],
     queryFn: () => kbApi.list(),
   });
-  const kbs: KbStatus[] = kbsQuery.data ?? [];
+  const kbs = useMemo<KbStatus[]>(() => kbsQuery.data ?? [], [kbsQuery.data]);
   const activeKb = kbs.find((k) => k.kb_id === kbId) ?? kbs[0];
+
+  // Sync the selected KB to a real one once the list loads. `kbId` starts
+  // empty and a stale value (e.g. a since-deleted KB, or an old single-KB-POC
+  // default) must never reach the backend — it would resolve to a wrong or
+  // non-existent Azure index. BUG-006.
+  useEffect(() => {
+    if (kbs.length > 0 && !kbs.some((k) => k.kb_id === kbId)) {
+      setKbId(kbs[0].kb_id);
+    }
+  }, [kbs, kbId]);
 
   // Hydrate persisted preferences (SSR-stable).
   useEffect(() => {
@@ -864,7 +873,7 @@ function ChatHeader({
           style={{ height: 28 }}
         >
           {kbs.length === 0 ? (
-            <option value="">{DEFAULT_KB_ID}</option>
+            <option value="">No knowledge bases yet</option>
           ) : (
             kbs.map((k) => (
               <option key={k.kb_id} value={k.kb_id}>

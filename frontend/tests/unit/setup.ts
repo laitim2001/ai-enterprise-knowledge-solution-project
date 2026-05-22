@@ -21,6 +21,17 @@ if (!('ResizeObserver' in globalThis)) {
     ResizeObserverStub;
 }
 
+// jsdom implements neither Element.scrollTo nor scrollIntoView — components
+// that auto-scroll (e.g. the chat thread) call them in effects. Stub as no-ops.
+// (BUG-006 — the chat page test renders the auto-scrolling thread.)
+const elementProto = Element.prototype as unknown as Record<string, unknown>;
+if (typeof elementProto.scrollTo !== 'function') {
+  elementProto.scrollTo = () => {};
+}
+if (typeof elementProto.scrollIntoView !== 'function') {
+  elementProto.scrollIntoView = () => {};
+}
+
 afterEach(() => {
   cleanup();
 });
