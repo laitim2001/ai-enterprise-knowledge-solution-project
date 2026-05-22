@@ -55,7 +55,34 @@ status: closed              # in-progress | closed
 | Hash | Subject |
 |---|---|
 | `e6c4fbd` | `fix(frontend): restore chat meta-row model+cost, sources toggle, ImageGallery — BUG-007` |
-| _(this commit)_ | `fix(frontend): normalize done-event cost to null when backend omits it — BUG-007 follow-up` |
+| `65e2bc7` | `fix(frontend): normalize done-event cost to null when backend omits it — BUG-007 follow-up` |
+| _(amendment commit)_ | `fix(frontend): resolve 3 residual BUG-007 chat fidelity defects — cost lookup, sources toggle, card overflow` |
+
+---
+
+## 2026-05-22 — amendment (3 residual defects found on re-test)
+
+用戶重建 KB 後重測 `/chat`,3 個原報問題仍然出現。Root-cause 出 3 個 residual defect(Chris confirmed BUG-007 amendment via chat 2026-05-22)。
+
+### A1 — cost 仍然空白（problem 1）
+- **Root cause**:`realtime_cost.py` `_PRICING_TABLE` key 用 dash(`gpt-5-5`),但真實 Azure deployment(`.env` `AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY`)用 dot(`gpt-5.5`)。`_rate_for("gpt-5.5")` 對 `gpt-5-5` 既唔 `==` 又唔 `startswith` → `None` → `estimate_query_cost` → `None` → `cost: null`。BUG-007 cost wiring 機制啱,但 pricing-table lookup miss 真實 deployment 名。
+- **Fix**:`_rate_for` dot/dash normalization(`.`→`-` 兩邊)→ `gpt-5.5` 解析到 `gpt-5-5` rate row。`realtime_cost.py` 內部改動,table 不變(dash key 仍 match)。+2 test。
+
+### A2 — sources-panel toggle 仍然冇（problem 2）
+- **Root cause**:BUG-007 已將 `citationMode` 預設改 `'sidebar'`,但 `page.tsx` localStorage hydration effect 讀 `ekp-citation-mode` → 用戶 browser 有 **W20-era 遺留值 `'inline'`**(W20 chat 3-mode toggle 寫低)→ override 預設 → 仍 inline mode、toggle 唔出。BUG-007 改預設啱,但漏咗 localStorage hydration 會蓋過佢。
+- **Fix**:`page.tsx` 移除 `citationMode` localStorage hydration + orphan `CITATION_MODE_KEY` + `isCitationMode`;`useState` 改 `const [citationMode]`(drop unused setter)。`citationMode` 而家永遠 `'sidebar'`(mockup `tweaks.citationPlacement` 本身 dev-only、唔 persist)。+1 test。
+
+### A3 — source 卡片 overflow（problem 3）
+- **Root cause**:`SourcesStrip` grid `1fr 1fr`。CSS `1fr` = `minmax(auto,1fr)` — track 唔縮細過內容 min-content。真實 `doc_title`(`DCE_Integration_Platform_Implementation_Plan` — 無空格、無斷行點)min-content 好闊 → track 撐爆 container → 卡片突出。
+- **BUG-007 mis-judgment**:BUG-007 原 D5 + checklist 🚧 將呢項 dismiss 做「`1fr 1fr` 已 faithful、改 responsive 反 violate H7」。**嗰個判斷錯** — 漏咗 real-data unbreakable-string overflow(mockup sample data 啲 title 有空格所以無暴露)。
+- **Fix**:grid `1fr 1fr` → `minmax(0, 1fr) minmax(0, 1fr)`。視覺一樣 2 等寬,但 track 可縮 → 配合 card 內既有 `minWidth:0` + ellipsis → 無 overflow。非 H7 deviation(mockup intent = 2 等寬 column;`minmax(0,1fr)` 一樣係 2 等寬,只係 overflow-safe)。
+
+### Verify（amendment）
+- Backend:`pytest` test_realtime_cost + test_stream_composer + test_observability_routes **60 passed**(含 2 NEW dot-form test)+ `ruff` clean + `mypy` `realtime_cost.py` 0 error。
+- Frontend:`tsc` exit 0 + `next lint` clean + `[oklch`(`chat/page.tsx`)=0 + Vitest chat **2 files / 4 tests passed**(含 NEW sources-panel toggle test)。
+- Backend restart 載入 `realtime_cost.py` 修正。
+
+**Amendment verdict**:BUG-007 3 個 residual defect 全部修正並 verified;BUG-007 整體保持 CLOSED。
 
 ---
 

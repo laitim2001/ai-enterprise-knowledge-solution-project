@@ -52,6 +52,16 @@ def test_rate_for_case_insensitive() -> None:
     assert _rate_for("Cohere-Rerank-v3.5") is not None
 
 
+def test_rate_for_dot_form_deployment() -> None:
+    """Azure deployment names use dots(`gpt-5.5`)while `_PRICING_TABLE` keys
+    use dashes(`gpt-5-5`)— dot/dash normalization must resolve them
+    (BUG-007 amendment — un-normalized lookup returned None → chat cost blank)。"""
+    assert _rate_for("gpt-5.5") is _rate_for("gpt-5-5")
+    assert _rate_for("gpt-5.5") is not None
+    assert _rate_for("gpt-5.4-mini") is not None
+    assert _rate_for("gpt-5.5-prod-eastus2") is not None  # dot + suffix
+
+
 def test_rate_for_unknown_returns_none() -> None:
     assert _rate_for("claude-opus-4-7") is None
     assert _rate_for("") is None
@@ -73,6 +83,14 @@ def test_estimate_query_cost_prefix_tolerant() -> None:
     assert estimate_query_cost("gpt-5-5-prod", 2000, 500) == pytest.approx(
         2000 / 1000 * 0.005 + 500 / 1000 * 0.015
     )
+
+
+def test_estimate_query_cost_dot_form_deployment() -> None:
+    """`gpt-5.5`(Azure dot form,the real `AZURE_OPENAI_DEPLOYMENT_LLM_PRIMARY`)
+    resolves to the `gpt-5-5` table row — the un-normalized lookup returned None
+    so the chat meta row showed no cost(BUG-007 amendment)。"""
+    assert estimate_query_cost("gpt-5.5", 1000, 1000) == pytest.approx(0.02)
+    assert estimate_query_cost("gpt-5.5", 2000, 500) is not None
 
 
 def test_estimate_query_cost_unknown_deployment_returns_none() -> None:

@@ -120,18 +120,22 @@ PRICING_BASELINE_LABEL = "placeholder_publicly_quoted_rates_2026-Q2"
 
 
 def _rate_for(deployment: str) -> _DeploymentRate | None:
-    """Lookup rate row by deployment label;case-insensitive,prefix-tolerant。
+    """Lookup rate row by deployment label;case-insensitive,prefix-tolerant,
+    dot/dash-insensitive。
 
-    Langfuse generation events emit `model` from `Synthesizer.deployment`
-    field which can vary between deployments(`gpt-5-5` / `gpt-5-5-prod` /
-    etc.);prefix match keeps the rate lookup robust without rebuilding
-    the table per-tenant。
+    Azure OpenAI deployment names use dots(`gpt-5.5`,per `.env` —「note dots,
+    not dashes」)while `_PRICING_TABLE` keys use dashes(`gpt-5-5`)。Normalize
+    `.`→`-` on both sides so the real deployment name resolves(BUG-007
+    amendment — the un-normalized lookup returned None → cost showed blank)。
+    Langfuse `model` / `Synthesizer.deployment` can also carry `-prod` /
+    `-eastus2` suffixes;prefix match keeps the lookup robust。
     """
     if not deployment:
         return None
-    lowered = deployment.lower().strip()
+    lowered = deployment.lower().strip().replace(".", "-")
     for row in _PRICING_TABLE:
-        if lowered == row.deployment or lowered.startswith(row.deployment + "-"):
+        rate_key = row.deployment.replace(".", "-")
+        if lowered == rate_key or lowered.startswith(rate_key + "-"):
             return row
     return None
 

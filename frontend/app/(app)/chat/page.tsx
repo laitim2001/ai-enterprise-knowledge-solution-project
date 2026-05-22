@@ -15,7 +15,7 @@
  *   - `streamQuery` SSE flow from `/lib/api/query`
  *   - `conversationsApi` CRUD (server-side Conversation History per
  *     ADR-0031 Option B → C10 §7 Tier 2 → Tier 1 promotion preserved)
- *   - localStorage keys (`ekp-citation-mode` read-only, `ekp-chat-history-collapsed`)
+ *   - localStorage keys (`ekp-chat-history-collapsed`, `ekp-chat-sources-collapsed`)
  *   - `?q=` deep-link from `<GlobalSearch>` (W18 F6)
  *   - Per-turn persistence (user prompt + assistant reply POST to
  *     `/conversations/{id}/messages` after `done` event;best-effort tail)
@@ -25,10 +25,12 @@
  * F4 fidelity correction 2026-05-18 — ChatHeader right-side rebuilt to mockup
  * direct-copy: CRAG switch + Show images switch + Focus eye + Sources book.
  * The W20-era 3-mode citation seg-toggle was removed (mockup never had it).
- * citationMode defaults to `sidebar` per mockup (ekp-page-chat.jsx:79) — the
- * BookOpen header toggle + right CitationPanel render in that mode. BUG-007
- * reverted a W22 F4 `sidebar`→`inline` default flip that had hidden both.
- * The placement-mode machinery stays in state for future ADR re-introduction.
+ * citationMode is fixed at `sidebar` per mockup (ekp-page-chat.jsx:79) — the
+ * BookOpen header toggle + right CitationPanel render in that mode. It is not
+ * persisted nor user-switchable: BUG-007 reverted a W22 F4 default flip, and
+ * the BUG-007 amendment dropped the `ekp-citation-mode` localStorage hydration
+ * (a stale W20-era value still overrode the default and hid the toggle).
+ * The inline/footnote placement machinery stays dormant for future ADR use.
  *
  * Visual rebuild (mockup-direct per memory rule #1 + rule #2):
  *   - Inline ConversationHistoryPanel (260px aside, mockup lines 134-219)
@@ -121,13 +123,8 @@ interface Message {
 
 type CitationMode = 'inline' | 'footnote' | 'sidebar';
 
-const CITATION_MODE_KEY = 'ekp-citation-mode';
 const HISTORY_COLLAPSED_KEY = 'ekp-chat-history-collapsed';
 const SOURCES_COLLAPSED_KEY = 'ekp-chat-sources-collapsed';
-
-function isCitationMode(value: string | null): value is CitationMode {
-  return value === 'inline' || value === 'footnote' || value === 'sidebar';
-}
 
 function formatTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
@@ -163,9 +160,10 @@ export default function ChatPage() {
     citation: Citation;
     image: ImageRef;
   } | null>(null);
-  // Default `sidebar` per mockup ekp-page-chat.jsx:79 — surfaces the BookOpen
-  // header toggle + right CitationPanel (BUG-007).
-  const [citationMode, setCitationMode] = useState<CitationMode>('sidebar');
+  // Fixed `sidebar` per mockup ekp-page-chat.jsx:79 — surfaces the BookOpen
+  // header toggle + right CitationPanel. Not persisted / not user-switchable;
+  // the inline/footnote modes are dormant W20 machinery (BUG-007 amendment).
+  const [citationMode] = useState<CitationMode>('sidebar');
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [kbId, setKbId] = useState<string>('');
@@ -189,10 +187,11 @@ export default function ChatPage() {
     }
   }, [kbs, kbId]);
 
-  // Hydrate persisted preferences (SSR-stable).
+  // Hydrate persisted preferences (SSR-stable). citationMode is intentionally
+  // NOT hydrated — it stays at the mockup default `sidebar`. A stale W20-era
+  // `ekp-citation-mode` localStorage value used to override it here and hide
+  // the sources-panel toggle (BUG-007 amendment).
   useEffect(() => {
-    const stored = window.localStorage.getItem(CITATION_MODE_KEY);
-    if (isCitationMode(stored)) setCitationMode(stored);
     if (window.localStorage.getItem(HISTORY_COLLAPSED_KEY) === '1') {
       setHistoryCollapsed(true);
     }
@@ -1460,7 +1459,16 @@ function SourcesStrip({
           {docCount === 1 ? '' : 's'}
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {/* minmax(0,1fr) not 1fr — `1fr` = minmax(auto,1fr) lets a long unbroken
+          doc_id/doc_title push the track wider than the container (BUG-007
+          amendment: real-data overflow). Visually identical 2 equal columns. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+          gap: 8,
+        }}
+      >
         {citations.map((c, i) => (
           <SourceDocCard
             key={c.chunk_id}

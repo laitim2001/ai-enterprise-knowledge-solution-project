@@ -169,4 +169,15 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     // Two image-bearing citations → two gallery thumbnails.
     expect(screen.getAllByRole('img')).toHaveLength(2);
   });
+
+  it('renders the sources-panel toggle in the header', async () => {
+    // ChatHeader shows the BookOpen sources-panel toggle in sidebar mode (the
+    // mockup default). BUG-007 amendment — a stale `ekp-citation-mode`
+    // localStorage value used to flip citationMode to `inline` and hide it.
+    renderChat();
+    await screen.findByRole('option', { name: /drive-user-manual-1/i });
+    expect(
+      screen.getByRole('button', { name: /sources panel/i }),
+    ).toBeInTheDocument();
+  });
 });
