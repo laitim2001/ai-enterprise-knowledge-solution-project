@@ -168,3 +168,25 @@ class ScreenshotUploader:
         import asyncio
 
         return await asyncio.gather(*(self.upload(r) for r in records))
+
+
+async def download_screenshot(
+    connection_string: str, container: str, blob_name: str,
+) -> tuple[bytes, str]:
+    """BUG-010 — fetch one screenshot blob's bytes + content-type.
+
+    Backs the `GET /kb/{kb_id}/screenshots/{blob_name}` proxy route: the
+    screenshot container is private, so a browser `<img>` can't read the blob
+    directly — the API streams it instead. Returns `(data, content_type)`;
+    raises `ResourceNotFoundError` when the blob is absent (route → 404).
+    """
+    client = BlobServiceClient.from_connection_string(connection_string)
+    async with client:
+        blob = client.get_blob_client(container=container, blob=blob_name)
+        stream = await blob.download_blob()
+        data = await stream.readall()
+        content_settings = stream.properties.content_settings
+        content_type = (content_settings.content_type if content_settings else None) or (
+            "application/octet-stream"
+        )
+    return data, content_type

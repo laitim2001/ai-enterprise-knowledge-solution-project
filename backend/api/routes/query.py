@@ -18,7 +18,8 @@ import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-from api.schemas.query import ChunkPreview, QueryRequest, QueryResponse
+from api.routes.documents import screenshot_proxy_url
+from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations
 from generation.crag import CragLoop
 from generation.stream_composer import compose_query_stream
@@ -34,6 +35,27 @@ _W2_PLACEHOLDER_ANSWER = (
     "[W2 baseline: retrieval-only response; synthesis answer wired W3 per "
     "architecture.md §3.1 CRAG pipeline]"
 )
+
+
+def _proxy_citation_images(
+    citations: list[Citation], request: Request, kb_id: str,
+) -> list[Citation]:
+    """BUG-010 — rewrite citation `embedded_images` blob URLs to the screenshot
+    proxy route. The screenshot container is private; a chat-surface `<img>`
+    can't read the blob directly, so URLs go through the API proxy.
+    """
+    proxied: list[Citation] = []
+    for citation in citations:
+        images = [
+            image.model_copy(
+                update={"blob_url": screenshot_proxy_url(request, kb_id, image.blob_url)},
+            )
+            if image.blob_url
+            else image
+            for image in citation.embedded_images
+        ]
+        proxied.append(citation.model_copy(update={"embedded_images": images}))
+    return proxied
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -157,6 +179,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
             ]
 
     citations = build_citations(final_synth.citation_ids, final_chunks)
+    citations = _proxy_citation_images(citations, request, payload.kb_id)
 
     return QueryResponse(
         answer=final_synth.answer,
@@ -230,6 +253,14 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
                 extra_metadata_fields=("refused", "reranker_used"),
             )
             async for event in observed:
+                # BUG-010 — rewrite citation image URLs to the screenshot proxy
+                # route (private blob → browser <img> can't read it directly).
+                if event.get("type") == "citation":
+                    for image in event.get("citation", {}).get("embedded_images", []):
+                        if isinstance(image, dict) and image.get("blob_url"):
+                            image["blob_url"] = screenshot_proxy_url(
+                                request, payload.kb_id, image["blob_url"],
+                            )
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             logger.info("query_stream_cancelled", query_chars=len(payload.query))

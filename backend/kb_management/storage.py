@@ -48,6 +48,7 @@ class KBStorageBackend(Protocol):
         *,
         documents_delta: int = 0,
         chunks_delta: int = 0,
+        screenshots_delta: int = 0,
         last_indexed_at: datetime | None = None,
         append_failure: FailureRecord | None = None,
     ) -> KbStatus: ...  # CH-001 — post-ingest counter sync (closes AC10)
@@ -114,19 +115,26 @@ class InMemoryKBBackend:
         *,
         documents_delta: int = 0,
         chunks_delta: int = 0,
+        screenshots_delta: int = 0,
         last_indexed_at: datetime | None = None,
         append_failure: FailureRecord | None = None,
     ) -> KbStatus:
         """CH-001 — post-ingest counter sync. Read-modify-write on the cached KB.
 
-        documents_delta / chunks_delta: signed integers (positive on
-        upload-success, negative on delete). Floors at 0 to prevent
-        underflow drift if a delete touches a counter we forgot to
+        documents_delta / chunks_delta / screenshots_delta: signed integers
+        (positive on upload-success, negative on delete). Floors at 0 to
+        prevent underflow drift if a delete touches a counter we forgot to
         increment on a prior upload failure.
+
+        BUG-010 — `screenshots_delta` carries `IngestionResult.images_uploaded`
+        on ingest success so the Images-tab counter reflects reality. Delete /
+        reindex screenshot decrement stays a documented future-tier follow-up
+        (dedup makes screenshots shared across docs — needs ref-counting).
         """
         kb = await self.get(kb_id)
         new_documents = max(0, kb.total_documents + documents_delta)
         new_chunks = max(0, kb.total_chunks + chunks_delta)
+        new_screenshots = max(0, kb.total_screenshots + screenshots_delta)
         new_indexed_at = last_indexed_at if last_indexed_at is not None else kb.last_indexed_at
         new_failures = list(kb.failed_documents)
         if append_failure is not None:
@@ -134,6 +142,7 @@ class InMemoryKBBackend:
         updated = kb.model_copy(update={
             "total_documents": new_documents,
             "total_chunks": new_chunks,
+            "total_screenshots": new_screenshots,
             "last_indexed_at": new_indexed_at,
             "failed_documents": new_failures,
         })

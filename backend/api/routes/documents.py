@@ -30,7 +30,8 @@ from pathlib import Path
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
+from azure.core.exceptions import ResourceNotFoundError
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
 from api.schemas.kb import FailureRecord
 from api.schemas.listing import (
@@ -46,9 +47,10 @@ from ingestion.chunker.base import Chunker
 from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
-from ingestion.screenshots.uploader import ScreenshotUploader
+from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from retrieval.retrieval_engine import RetrievalEngine
+from storage.kb_naming import kb_id_to_screenshot_container
 from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
@@ -56,6 +58,9 @@ _stdlib_logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTS = {".docx", ".pdf", ".pptx"}
 _DOC_ID_RE = re.compile(r"[^a-z0-9-]+")
+# BUG-010 — screenshot blob names are `{sha256}.{ext}`; gates the proxy route's
+# path param (defence-in-depth alongside `Path(...).name` traversal stripping).
+_SCREENSHOT_BLOB_RE = re.compile(r"^[a-f0-9]{64}\.[a-z0-9]{2,5}$")
 
 router = APIRouter()
 
@@ -236,7 +241,7 @@ async def list_kb_images(
                     continue
                 seen[sha] = KbImageItem(
                     id=sha,
-                    url=blob_url,
+                    url=screenshot_proxy_url(request, kb_id, blob_url),
                     doc_id=doc_id,
                     doc_name=doc_title,
                     ocr_text=str(img.get("alt_text") or ""),
@@ -246,6 +251,60 @@ async def list_kb_images(
     total = len(items)
     paginated = items[offset : offset + limit]
     return KbImagesResponse(items=paginated, total=total, limit=limit, offset=offset)
+
+
+def screenshot_proxy_url(request: Request, kb_id: str, blob_url: str) -> str:
+    """BUG-010 — rewrite a raw screenshot blob URL to the API proxy route.
+
+    The stored `blob_url` ends in `/{container}/{sha}.{ext}`; the browser can't
+    read the private blob directly, so image URLs are served via
+    `GET /kb/{kb_id}/screenshots/{blob_name}`. An absolute URL (built from
+    `request.base_url`) is required — the frontend origin differs from the API.
+    """
+    blob_name = blob_url.rsplit("/", 1)[-1]
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/kb/{kb_id}/screenshots/{blob_name}"
+
+
+@router.get("/kb/{kb_id}/screenshots/{blob_name}")
+async def get_kb_screenshot(
+    kb_id: str,
+    blob_name: str,
+    request: Request,
+    service: KbServiceDep,
+) -> Response:
+    """BUG-010 — stream a private screenshot blob to the browser.
+
+    The screenshot container has no public read and no SAS, so a browser
+    `<img>` can't authenticate to Azure Blob directly. This route proxies the
+    bytes — the API holds the connection string. Auth is the `/kb` prefix's
+    existing middleware; a logged-in browser sends its session cookie on the
+    `<img>` request automatically.
+    """
+    await _verify_kb_or_404(kb_id, service)
+    if Path(blob_name).name != blob_name or not _SCREENSHOT_BLOB_RE.match(blob_name):
+        raise _api_error(
+            "validation.bad_blob_name",
+            f"screenshot blob name {blob_name!r} is not a valid '{{sha256}}.{{ext}}'",
+            "Use a URL returned by GET /kb/{kb_id}/images.",
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    settings = get_settings()
+    container = kb_id_to_screenshot_container(
+        kb_id, legacy_default_container=settings.azure_blob_container_screenshots,
+    )
+    try:
+        data, content_type = await download_screenshot(
+            settings.azure_blob_connection_string, container, blob_name,
+        )
+    except ResourceNotFoundError as exc:
+        raise _api_error(
+            "screenshot.not_found",
+            f"screenshot {blob_name!r} not found for KB {kb_id!r}",
+            "The image may not be ingested yet, or the KB was re-created.",
+            status.HTTP_404_NOT_FOUND,
+        ) from exc
+    return Response(content=data, media_type=content_type)
 
 
 @router.get("/kb/{kb_id}/docs/{doc_id}", response_model=DocumentDetail)
@@ -566,6 +625,7 @@ async def _run_ingest_pipeline(
                 kb_id,
                 documents_delta=+1,
                 chunks_delta=upload_result.succeeded,
+                screenshots_delta=result.images_uploaded,  # BUG-010 — feed the Images-tab counter
                 last_indexed_at=now,
             )
         except Exception:  # noqa: BLE001 — counter drift is recoverable

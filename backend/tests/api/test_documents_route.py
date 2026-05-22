@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from azure.core.exceptions import ResourceNotFoundError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -964,4 +965,88 @@ async def test_list_kb_images_malformed_json_is_skipped(
     resp = TestClient(app).get("/kb/drive_user_manuals/images")
     assert resp.status_code == 200, resp.text
     assert resp.json()["total"] == 0
+
+
+# =========================================================================== #
+# BUG-010 — total_screenshots counter + GET /kb/{kb_id}/screenshots proxy
+# =========================================================================== #
+
+_VALID_BLOB = "a" * 64 + ".png"
+
+
+@pytest.mark.asyncio
+async def test_upload_increments_total_screenshots_counter(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BUG-010 — ingest success feeds `IngestionResult.images_uploaded` into the
+    KB `total_screenshots` counter (was never wired → Images-tab badge stuck 0)."""
+    _patch_orchestrator(
+        monkeypatch,
+        ingest_result=IngestionResult(
+            chunks=[MagicMock(name=f"c{i}") for i in range(12)],
+            failure=None,
+            images_uploaded=8,
+            images_deduped=0,
+        ),
+    )
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("m.docx"),
+    )
+    assert resp.status_code == 202, resp.text
+
+    kb = await kb_service_with_drive.get("drive_user_manuals")
+    assert kb.total_screenshots == 8
+
+
+def _screenshot_app(
+    kb_service: KBService, monkeypatch: pytest.MonkeyPatch, download: AsyncMock,
+) -> FastAPI:
+    """App wired for the screenshot proxy route — `download_screenshot` mocked."""
+    monkeypatch.setattr(documents_routes, "download_screenshot", download)
+    return _build_app(
+        kb_service=kb_service, populator=None, engine=None, with_error_handlers=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_screenshot_proxy_streams_blob(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BUG-010 — the proxy route streams the private blob's bytes + content-type."""
+    download = AsyncMock(return_value=(b"\x89PNG-fake-bytes", "image/png"))
+    app = _screenshot_app(kb_service_with_drive, monkeypatch, download)
+
+    resp = TestClient(app).get(f"/kb/drive_user_manuals/screenshots/{_VALID_BLOB}")
+    assert resp.status_code == 200, resp.text
+    assert resp.content == b"\x89PNG-fake-bytes"
+    assert resp.headers["content-type"] == "image/png"
+
+
+@pytest.mark.asyncio
+async def test_get_screenshot_proxy_missing_blob_returns_404(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BUG-010 — a blob absent from storage → 404 (not 500)."""
+    download = AsyncMock(side_effect=ResourceNotFoundError("nope"))
+    app = _screenshot_app(kb_service_with_drive, monkeypatch, download)
+
+    resp = TestClient(app).get(f"/kb/drive_user_manuals/screenshots/{_VALID_BLOB}")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_screenshot_proxy_rejects_bad_blob_name(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BUG-010 — a blob name that isn't `{sha256}.{ext}` → 422 before any blob I/O."""
+    download = AsyncMock(return_value=(b"x", "image/png"))
+    app = _screenshot_app(kb_service_with_drive, monkeypatch, download)
+
+    resp = TestClient(app).get("/kb/drive_user_manuals/screenshots/not-a-valid-sha.png")
+    assert resp.status_code == 422
+    download.assert_not_awaited()
 

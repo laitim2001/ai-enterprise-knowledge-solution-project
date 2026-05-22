@@ -63,21 +63,27 @@ class KBService:
         *,
         documents_delta: int = 0,
         chunks_delta: int = 0,
+        screenshots_delta: int = 0,
         last_indexed_at: datetime | None = None,
         append_failure: FailureRecord | None = None,
     ) -> KbStatus:
         """CH-001 — post-ingest counter sync (closes AC10).
 
         Wraps `KBStorageBackend.update_metrics`. Use:
-        - On upload success → `documents_delta=+1, chunks_delta=+N, last_indexed_at=now`
+        - On upload success → `documents_delta=+1, chunks_delta=+N, screenshots_delta=+S, last_indexed_at=now`
         - On delete success → `documents_delta=-1, chunks_delta=-M, last_indexed_at=now`
         - On reindex success → `chunks_delta=(new_N - old_M), last_indexed_at=now`
         - On ingest failure → `append_failure=FailureRecord(...), last_indexed_at=now`
+
+        BUG-010 — `screenshots_delta` carries `IngestionResult.images_uploaded`
+        so the Images-tab counter tracks reality. Delete/reindex screenshot
+        decrement is a documented future-tier follow-up (dedup ref-counting).
         """
         return await self._backend.update_metrics(
             kb_id,
             documents_delta=documents_delta,
             chunks_delta=chunks_delta,
+            screenshots_delta=screenshots_delta,
             last_indexed_at=last_indexed_at,
             append_failure=append_failure,
         )

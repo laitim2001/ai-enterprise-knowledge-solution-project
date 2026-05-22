@@ -177,6 +177,7 @@ class PostgresKBBackend:
         *,
         documents_delta: int = 0,
         chunks_delta: int = 0,
+        screenshots_delta: int = 0,
         last_indexed_at: datetime | None = None,
         append_failure: FailureRecord | None = None,
     ) -> KbStatus:
@@ -196,8 +197,9 @@ class PostgresKBBackend:
             await cur.execute(
                 f"""
                 UPDATE {_TABLE} SET
-                    total_documents = GREATEST(0, total_documents + %s),
-                    total_chunks    = GREATEST(0, total_chunks    + %s),
+                    total_documents   = GREATEST(0, total_documents   + %s),
+                    total_chunks      = GREATEST(0, total_chunks      + %s),
+                    total_screenshots = GREATEST(0, total_screenshots + %s),
                     last_indexed_at = COALESCE(%s, last_indexed_at),
                     failed_documents = CASE
                         WHEN %s::jsonb IS NOT NULL THEN failed_documents || %s::jsonb
@@ -209,6 +211,7 @@ class PostgresKBBackend:
                 (
                     documents_delta,
                     chunks_delta,
+                    screenshots_delta,
                     last_indexed_at,
                     appended_failure_jsonb,
                     appended_failure_jsonb,
