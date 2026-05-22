@@ -289,6 +289,32 @@ async def test_delete_index_retries_on_429_then_succeeds() -> None:
     assert instance.delete.await_count == 2
 
 
+@pytest.mark.asyncio
+async def test_create_index_for_kb_does_not_retry_on_quota_429() -> None:
+    """BUG-005 amendment — a 429 index-quota breach is a hard limit: surface at
+    once, no retry. Azure 429 covers both throttling and quota; only the body's
+    "quota" wording marks the deterministic (non-retryable) case."""
+    quota = MagicMock(spec=httpx.Response)
+    quota.status_code = 429
+    quota.text = (
+        '{"error":{"message":"Index quota has been exceeded for this service. '
+        'Maximum number of indexes allowed: 3"}}'
+    )
+    quota.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("429", request=MagicMock(), response=quota),
+    )
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.put = AsyncMock(return_value=quota)
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "idx") as pop:
+            with pytest.raises(httpx.HTTPStatusError):
+                await pop.create_index_for_kb("drive-sop")
+
+    assert instance.put.await_count == 1  # quota 429 is a hard limit — not retried
+
+
 def test_make_chunk_id_sanitizes_forbidden_chars() -> None:
     """Azure AI Search keys: [A-Za-z0-9_=-] only. Spaces / parens / dots → `_`."""
     cid = make_chunk_id(

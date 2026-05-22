@@ -88,12 +88,23 @@ HTTPStatusError: Client error '429 Too Many Requests' for url
 - [ ] `ruff` clean on touched files
 - [ ] **Out of scope（不修，environmental）**:Free-tier 3-index 硬上限 + 持續限流 → 需 Standard S1 per architecture.md §3.2 + Track A
 
+### Amendment — quota-429 vs throttle-429（2026-05-22,per Chris confirm post-incident evidence）
+
+初版 fix retry **所有** 429。事發 backend 嘅 log(`bmsjq80kn` background task)揭示 Azure 嘅實際訊息 ——「Index quota has been exceeded ... Maximum number of indexes allowed: 3」—— 即係嗰個 429 係**硬 index-quota 上限**,**唔係** transient throttle。Azure 兩種情況都用 429,但只有 throttle 嗰種 backoff retry 有用;quota 嗰種 retry 純粹白燒 backoff budget(~13s)。
+
+- [x] **A1** `populate.py` NEW `_is_quota_exceeded(response)` — 透過 response body 含 `"quota"` 偵測 quota 上限
+- [x] **A2** `_is_retryable_azure_error` — 429 **只在 NOT `_is_quota_exceeded` 時** retryable(5xx + transport error 不變;quota-429 + 其他 4xx → 不 retry)
+- [x] **A3** `kb.py` `_index_create_hint` — 429 hint 分拆:quota →「刪走無用 index / 升 Standard S1」;throttle →「等 ~1 分鐘再試」
+- [x] **A4** Tests — `test_populate.py` `test_create_index_for_kb_does_not_retry_on_quota_429`(quota-429 → `put.await_count==1`,不 retry)+ `test_documents_route.py` `test_index_create_hint_distinguishes_quota_throttle_400`(hint 4-case unit test)
+- [x] **A5** Verify — backend pytest no regression;ruff clean on touched files;mypy `populate.py` target-clean
+
 ## 8. Report Changelog
 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-05-22 | Initial triage(Sev3)+ root cause confirmed via code read(3 CH-001 methods lack `@retry`;`kb.py` hint misleading)+ fix scope (b) all 3 methods + hint per Chris chat-confirm | User(Chris)reported frontend KB-create 429 failure 2026-05-22;Chris confirmed Bug-fix BUG-005 + scope (b) + hint fix + Azure tier = Free | Chris(chat-confirm 2026-05-22) |
 | 2026-05-22 | Fix landed + verified → status `triaged → done`。`populate.py` 共用 `_is_retryable_azure_error` predicate + `_azure_lifecycle_retry` decorator apply 落 3 個 CH-001 method;`kb.py` `_index_create_hint(exc)` error-class-aware hint。4 NEW test;backend pytest **912 passed**(908 baseline +4,0 regression);ruff clean;mypy `populate.py` target-clean(`kb.py:246` pre-existing,outside diff)。 | BUG-005 single-sitting close | Chris |
+| 2026-05-22 | **Amendment — quota-429 vs throttle-429**(§7 Amendment block A1-A5)。事發 backend log 揭示個 429 係 Azure index-quota 硬上限(「Index quota has been exceeded ... Maximum 3」),非 transient throttle → 初版 retry-all-429 對 quota 個案白燒 backoff + hint 誤導。`_is_quota_exceeded` 偵測 + `_is_retryable_azure_error` 只 retry non-quota 429 + `_index_create_hint` 429 分拆 quota/throttle。+2 NEW test。pytest no regression;ruff clean。 | Chris confirm amendment 2026-05-22(post-incident Azure-message evidence) | Chris |
 
 ---
 

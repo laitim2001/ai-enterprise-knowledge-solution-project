@@ -2,7 +2,7 @@
 bug_id: BUG-005
 report_ref: ./report.md
 status: done            # in-progress | done
-last_updated: 2026-05-22
+last_updated: 2026-05-22  # + amendment: quota-429 vs throttle-429
 ---
 
 # BUG-005 — Checklist
@@ -28,6 +28,16 @@ last_updated: 2026-05-22
 - [x] No ADR — H1(無架構/vendor/storage-layout 改動,retry 屬內部 robustness)+ H2(無新 dependency — `tenacity` 已在 `pyproject.toml`)均不觸發
 - [x] `report.md` status `triaged → done`;此 `checklist.md` status `in-progress → done`;`progress.md` written
 - [x] No CLAUDE.md / session-start.md update needed(Sev3 bug-fix,無 standing-instruction 影響)
+
+## Amendment — quota-429 vs throttle-429（2026-05-22）
+
+> Derived from `report.md §7 Amendment block`。事發 backend log(`bmsjq80kn`)揭示個 429 係 Azure index-quota 硬上限(「Index quota has been exceeded ... Maximum 3」),非 transient throttle → 初版 retry-all-429 對 quota 個案白燒 backoff(~13s)+ hint 誤導。
+
+- [x] **A1** `populate.py` NEW `_is_quota_exceeded(response)` — `"quota"` in response body lowercased
+- [x] **A2** `_is_retryable_azure_error` — 429 只在 NOT `_is_quota_exceeded` 時 retryable;5xx + transport error 不變;quota-429 + 其他 4xx → 不 retry
+- [x] **A3** `kb.py` `_index_create_hint` — 429 分拆:quota →「刪走無用 index / 升 Standard S1」/ throttle →「等 ~1 分鐘再試」;helper docstring 更新
+- [x] **A4** Tests — `test_populate.py` `test_create_index_for_kb_does_not_retry_on_quota_429`(quota-429 → `put.await_count==1`)+ `test_documents_route.py` `test_index_create_hint_distinguishes_quota_throttle_400`(4-case hint unit test,+`import httpx`)
+- [x] **A5** Verify — `test_populate.py` + `test_documents_route.py` **50 passed**;backend pytest full suite no regression;ruff All checks passed on touched files;mypy `populate.py` target-clean(`kb.py:253` = 同一 pre-existing `dict` type-arg — BUG-005 前喺 `:246`,amendment 加 7 行後移位,非 amendment 引入)
 
 ## 🚧 Out of scope（environmental — 不修,per report.md §4 + §7）
 

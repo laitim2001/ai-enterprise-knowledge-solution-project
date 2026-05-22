@@ -50,17 +50,24 @@ def _get_populator(request: Request) -> IndexPopulator | None:
 def _index_create_hint(exc: Exception) -> str:
     """An actionable hint for an index-create failure, matched to the cause.
 
-    A 429/5xx is an Azure-side throttle/outage — the kb_id is fine and a retry
-    usually clears it; only a 400 means Azure rejected the index name. Surfacing
-    a blanket "check your kb_id" hint on a 429 sent users debugging a non-issue.
+    Azure AI Search returns 429 for two different things — a hard index-quota
+    breach (delete an index / upgrade the tier) and transient throttling (wait
+    and retry); the body's "quota" wording tells them apart. A 5xx is an outage,
+    a 400 means Azure rejected the index name. Surfacing a blanket "check your
+    kb_id" hint on any of these sent users debugging a non-issue.
     """
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
         if code == 429:
+            if "quota" in exc.response.text.lower():
+                return (
+                    "Azure AI Search index quota is full — the Free tier caps at 3 "
+                    "indexes. The KB record was rolled back. Delete an unused index "
+                    "or upgrade the Search tier (Standard S1), then retry."
+                )
             return (
                 "Azure AI Search throttled the request (429) — the KB record was "
-                "rolled back; wait ~1 min and retry. Sustained 429 means the Search "
-                "tier is too low (the Free tier throttles hard and caps at 3 indexes)."
+                "rolled back; wait ~1 min and retry."
             )
         if code >= 500:
             return (

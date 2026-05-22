@@ -46,4 +46,33 @@ status: closed              # in-progress | closed
 
 ---
 
+## 2026-05-22 — Amendment: quota-429 vs throttle-429 (single sitting)
+
+### Done
+- **Trigger** — post-incident evidence:被 kill 嘅舊 backend 嘅 log(`bmsjq80kn` background task)帶住 Azure 嘅實際 429 body —「Index quota has been exceeded for this service ... Maximum number of indexes allowed: 3」。即係事發個 429 係 Free-tier index-quota **硬上限**,**唔係** transient throttle —— 初版 BUG-005 fix retry-all-429 對 quota 個案白燒 ~13s backoff,`_index_create_hint` 亦誤導(叫人「wait + retry」,但 quota 等幾耐都唔得)。
+- Chris confirmed amendment 2026-05-22。
+- **A1-A3 fix** — `populate.py` NEW `_is_quota_exceeded(response)`(`"quota"` in body)+ `_is_retryable_azure_error` 改為 429 只在 NOT quota-exceeded 時 retryable(5xx + transport error 不變);`kb.py` `_index_create_hint` 429 branch 分拆 quota(「刪走無用 index / 升 Standard S1」)vs throttle(「等 ~1 分鐘再試」)+ helper docstring 更新。
+- **A4 tests** — `test_populate.py` `test_create_index_for_kb_does_not_retry_on_quota_429`(quota-429 → `put.await_count==1`,不 retry)+ `test_documents_route.py` `test_index_create_hint_distinguishes_quota_throttle_400`(quota/throttle/400/generic 4-case hint unit test)+ `import httpx`。
+- **Amendment committed** `(this commit)`
+
+### Decisions
+- **D6 — `"quota"` substring discriminator**:Azure 兩種情況都用 429。靠 response body 分辨 —— quota-429 帶「Index quota has been exceeded」,throttle-429 唔帶。Match `"quota"`(lowercased substring)—— robust(throttle body 唔會含「quota」)+ 對 Azure 改字眼有容忍度。Body 空 / 讀唔到 → fallback 當 throttle(retryable)= 安全 default。
+- **D7 — `"quota"` check 喺 `populate.py` + `kb.py` 各自 inline,不開 cross-module shared helper**:check 係一行;`populate.py` 有 `_is_quota_exceeded`,`kb.py` inline `"quota" in exc.response.text.lower()`。跨 module import 一個 `_`-private helper 比一行 dup 更醜(Karpathy §1.2 — three similar lines beats premature abstraction)。
+- **D8 — `delete_index`/`delete_doc` 唔另測 quota**:三者共用同一個 `_azure_lifecycle_retry` decorator + predicate;quota-429 行為係 decorator-level,經 `create_index_for_kb` 測一次已覆蓋(Karpathy §1.2 no triplication)。
+
+### Verify
+- backend pytest **914 passed + 11 skipped + 0 failed**(BUG-005 baseline 912 + 2 NEW amendment test — 0 regression)
+- `test_populate.py` + `test_documents_route.py` **50 passed**(targeted)
+- `ruff` **All checks passed** on `populate.py` / `kb.py` / `test_populate.py` / `test_documents_route.py`
+- `mypy --strict` `populate.py` target-clean;`kb.py:253` `dict` type-arg = **同一個 pre-existing issue**(BUG-005 時喺 `:246`,amendment 喺 `_index_create_hint` 加 7 行後移位到 `:253`)— 非 amendment 引入,out of scope per Karpathy §1.3
+
+**Amendment Verdict**:quota-429 vs throttle-429 區分已落地。一個 429 index-quota 硬上限(Free-tier 3-index cap)而家會被識別為硬限制 —— 即刻 surface,唔再 retry —— user-facing hint 亦改為叫用戶刪 index / 升 tier,而非「wait + retry」。真正嘅 transient-throttle 429 仍然會 backoff retry。BUG-005 + amendment 完整 close 咗 index-create 429 handling。
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(this commit)_ | `fix(indexing): distinguish quota-429 from throttle-429 — BUG-005 amendment` |
+
+---
+
 **End of BUG-005 progress**

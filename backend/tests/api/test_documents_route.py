@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -644,6 +645,30 @@ async def test_post_kb_index_create_fail_rolls_back_returns_502(
     # Storage record rolled back.
     get_resp = client.get("/kb/BadKbId")
     assert get_resp.status_code == 404
+
+
+def test_index_create_hint_distinguishes_quota_throttle_400() -> None:
+    """BUG-005 amendment — `_index_create_hint` matches the failure cause:
+    a 429 quota breach (delete an index) vs transient throttling (wait + retry)
+    vs a 400 name rejection vs a generic fallback."""
+    def _http_error(status: int, body: str = "") -> httpx.HTTPStatusError:
+        resp = MagicMock(spec=httpx.Response)
+        resp.status_code = status
+        resp.text = body
+        return httpx.HTTPStatusError(str(status), request=MagicMock(), response=resp)
+
+    quota = kb_routes._index_create_hint(_http_error(429, "Index quota has been exceeded"))
+    assert "quota" in quota.lower() and "delete" in quota.lower()
+
+    throttle = kb_routes._index_create_hint(_http_error(429, ""))
+    assert "throttled" in throttle.lower() and "retry" in throttle.lower()
+    assert "quota" not in throttle.lower()
+
+    bad_name = kb_routes._index_create_hint(_http_error(400))
+    assert "kb_id" in bad_name
+
+    generic = kb_routes._index_create_hint(ValueError("boom"))
+    assert "rolled back" in generic.lower()
 
 
 @pytest.mark.asyncio

@@ -52,18 +52,33 @@ _AZURE_BATCH_LIMIT = 1000  # Azure AI Search /docs/index hard cap per request
 logger = structlog.get_logger(__name__)
 
 
+def _is_quota_exceeded(response: httpx.Response) -> bool:
+    """Whether a 429 is a hard index-quota breach rather than transient throttling.
+
+    Azure AI Search returns 429 for BOTH cases. Only the quota breach carries
+    "quota" in the body ("Index quota has been exceeded ... Maximum number of
+    indexes allowed: 3"); a throttle 429 does not. A quota breach is a hard
+    limit — retrying never succeeds until an index is freed or the tier upgraded.
+    """
+    return "quota" in response.text.lower()
+
+
 def _is_retryable_azure_error(exc: BaseException) -> bool:
     """Whether an Azure AI Search call failure is worth a backoff retry.
 
-    Retry transport errors and Azure throttle/outage responses (429 + 5xx) —
-    those clear on backoff. Never retry other 4xx: a 400 (e.g. a malformed
-    index name) is deterministic, so retrying it only delays the failure.
+    Retry transport errors and 5xx outages. A 429 is retried only when it is
+    transient throttling — never when it is a hard index-quota breach (those
+    are deterministic, so retrying just burns the backoff budget). Never retry
+    other 4xx either: a 400 (e.g. a malformed index name) is deterministic too.
     """
     if isinstance(exc, httpx.TransportError):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
-        return code == 429 or code >= 500
+        if code >= 500:
+            return True
+        if code == 429:
+            return not _is_quota_exceeded(exc.response)
     return False
 
 
