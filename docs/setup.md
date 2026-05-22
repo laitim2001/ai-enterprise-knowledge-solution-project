@@ -432,8 +432,10 @@ EMBEDDING_DIMENSION=1024            # MRL truncate from 3072
 # ----------------------------------------------------------------------------
 # Azure Blob Storage
 # ----------------------------------------------------------------------------
-# Local dev:用 Azurite emulator(default key 係 well-known constant)
-AZURE_BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEhGzF0ePEMoxLdF8Ok2j3pgnT88t1MUSzJGdu/XpGV1KZL3Y7gLXnUMNm5zlcA==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
+# Local dev:用 Azurite emulator。SDK 捷徑 "UseDevelopmentStorage=true" 行內部
+# Azurite-correct path-style SharedKey 邏輯;顯式 BlobEndpoint string 會令
+# azure-storage-blob 12.28 撞 403 signature mismatch(R12 / BUG-009)。
+AZURE_BLOB_CONNECTION_STRING=UseDevelopmentStorage=true
 AZURE_BLOB_CONTAINER_SCREENSHOTS=ekp-kb-drive-screenshots
 
 # Cloud(POC / Beta+):用 real Azure Blob,replace 上面
@@ -608,8 +610,9 @@ curl -X POST http://localhost:8000/debug/embed-test \
 |---|---|---|
 | `port 10000 already in use` | 其他 Azure tool 用緊 | `lsof -i :10000` 搵出 process kill;或者改 `docker-compose.yml` 嘅 port mapping |
 | Azurite 容器一啟即 exit | Volume permission | `docker compose down -v && docker compose up -d`(清 volume 重來) |
-| 連得到 Azurite 但 Blob upload fail | Account name / key 同 default 唔同 | 用 default `devstoreaccount1` + well-known key,**唔好**改 |
-| `docker compose up -d azurite` 失敗 `503 Service Unavailable` / `httpReadSeeker: failed open` mid-blob 喺 `mcr.microsoft.com` | R8/R9 corp proxy 截 MCR layer blob CDN(`southeastasia.data.mcr.microsoft.com`)— see ADR-0017 occurrence #6 + RISK_REGISTER R9 | **Plan B (b) native npm**:`npm install -g azurite`(一次過,如未裝)→ `azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location infrastructure/azurite-data --silent`(host-side background)。data dir 同 docker volume mount 100% interchangeable;`AZURE_BLOB_CONNECTION_STRING` 唔需改 |
+| 連得到 Azurite 但 Blob op fail `403 AuthorizationFailure`(signature mismatch) | 用咗顯式 path-style `BlobEndpoint` connection string — azure-storage-blob 12.28 計嘅 SharedKey canonicalized-resource 同 Azurite 對唔上(R12 / BUG-009) | `AZURE_BLOB_CONNECTION_STRING=UseDevelopmentStorage=true`(SDK 專用 Azurite 捷徑,行 Azurite-correct path-style 邏輯)。R12 已 Resolved |
+| Blob op fail `InvalidHeaderValue — API version ... not supported` | azure-storage-blob 12.28 預設 `x-ms-version` 新過 Azurite 3.35.0(npm latest)支援 | Azurite launch 加 `--skipApiVersionCheck`(`docker-compose.yml` command 已含;npm Plan B 指令同樣加)|
+| `docker compose up -d azurite` 失敗 `503 Service Unavailable` / `httpReadSeeker: failed open` mid-blob 喺 `mcr.microsoft.com` | R8/R9 corp proxy 截 MCR layer blob CDN(`southeastasia.data.mcr.microsoft.com`)— see ADR-0017 occurrence #6 + RISK_REGISTER R9 | **Plan B (b) native npm**:`npm install -g azurite@3.35.0`(一次過,如未裝)→ `azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location infrastructure/azurite-data --skipApiVersionCheck --silent`(host-side background)。data dir 同 docker volume mount 100% interchangeable;`AZURE_BLOB_CONNECTION_STRING` 唔需改 |
 
 ### 8.2 Azure OpenAI
 

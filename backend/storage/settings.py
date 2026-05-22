@@ -67,12 +67,14 @@ class Settings(BaseSettings):
     azure_openai_deployment_llm_eval_judge: str = "gpt-5-5-pro"
     embedding_dimension: int = 1024
 
-    # Azure Blob (default = Azurite local)
-    azure_blob_connection_string: str = (
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
-        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEhGzF0ePEMoxLdF8Ok2j3pgnT88t1MUSzJGdu"
-        "/XpGV1KZL3Y7gLXnUMNm5zlcA==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-    )
+    # Azure Blob — the local default targets the Azurite emulator via the SDK's
+    # `UseDevelopmentStorage=true` shortcut (BUG-009). An explicit path-style
+    # `BlobEndpoint=.../devstoreaccount1` connection string makes
+    # azure-storage-blob 12.28 compute a SharedKey canonicalized-resource that
+    # Azurite rejects (403 — R12); the shortcut routes the SDK through its
+    # Azurite-correct path-style logic. Cloud overrides the env var with a real
+    # `DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...` string.
+    azure_blob_connection_string: str = "UseDevelopmentStorage=true"
     azure_blob_container_screenshots: str = "ekp-kb-drive-screenshots"
 
     # Reranker selection — W4 D3 F3 4-way shootout per architecture.md §3.2

@@ -46,8 +46,10 @@ from ingestion.chunker.base import Chunker
 from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
+from ingestion.screenshots.uploader import ScreenshotUploader
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from retrieval.retrieval_engine import RetrievalEngine
+from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 _stdlib_logger = logging.getLogger(__name__)
@@ -181,10 +183,10 @@ async def list_kb_images(
     slicing post-dedup (Tier 1 — image counts stay modest, no need for
     server-side pagination yet).
 
-    Today's reality: `uploader=None` (R12 Azurite signature mismatch) means
-    `embedded_images_json` is always `[]` for newly-ingested chunks → the
-    endpoint returns an empty list with 200 OK. The plumbing is forward-compat
-    for the W16+ Track A Azure Blob switch when real screenshots land.
+    Newly-ingested chunks carry real `embedded_images_json` once the KB opted
+    into `extract_embedded_images` (BUG-009 wired the orchestrator's screenshot
+    uploader; R12 resolved via the `UseDevelopmentStorage=true` connection
+    string). Text-only KBs still flatten to an empty list with 200 OK.
 
     Returns 404 when `kb_id` doesn't exist (KB not found). 503 when retrieval
     engine isn't initialized (Azure config missing).
@@ -468,29 +470,39 @@ async def _run_ingest_pipeline(
             shutil.copyfileobj(upload_file.file, tmp)
 
         parser = select_parser(tmp_path)
-        orchestrator = IngestionOrchestrator(
-            parser=parser,
-            chunker=deps.chunker,
-            embedder=deps.embedder,
-            uploader=None,  # R12 — Azurite signature mismatch; screenshot blob upload skipped
-        )
-        # W20 F4.2 — pass the KB's KbConfig so the orchestrator honours the
+        # W20 F4.2 — read the KB's KbConfig so the orchestrator honours the
         # ADR-0028 Step-4 multimodal toggles (`extract_embedded_images`, etc).
-        # `service.get_kb` already ran upstream via `_assert_kb_exists`, so this
-        # second read is a cheap in-memory lookup for the in-memory backend and a
-        # single Postgres SELECT for the persistent backend.
+        # `service.get` already ran upstream via `_assert_kb_exists`, so this
+        # second read is a cheap in-memory lookup / single Postgres SELECT.
         try:
             kb_record = await service.get(kb_id)
             kb_config = kb_record.config
         except Exception:  # noqa: BLE001 — defensive: fall back to W2 baseline
             kb_config = None
-        result = await orchestrator.ingest(
-            source=tmp_path,
-            kb_id=kb_id,
-            doc_id=doc_id,
-            source_url=f"upload://{filename}",
-            kb_config=kb_config,
-        )
+        # BUG-009 — wire the screenshot uploader (was `uploader=None` while R12
+        # blocked Azurite). The orchestrator only invokes it for a KB that opted
+        # into `extract_embedded_images`, so a text-only KB pays nothing beyond a
+        # lazy (no-network) client construct/close. `UseDevelopmentStorage=true`
+        # in local `.env` routes the SDK to Azurite; cloud sets a real connection
+        # string — the env var is the only switch, app code stays unchanged.
+        settings = get_settings()
+        async with ScreenshotUploader(
+            connection_string=settings.azure_blob_connection_string,
+            container_name=settings.azure_blob_container_screenshots,
+        ) as uploader:
+            orchestrator = IngestionOrchestrator(
+                parser=parser,
+                chunker=deps.chunker,
+                embedder=deps.embedder,
+                uploader=uploader,
+            )
+            result = await orchestrator.ingest(
+                source=tmp_path,
+                kb_id=kb_id,
+                doc_id=doc_id,
+                source_url=f"upload://{filename}",
+                kb_config=kb_config,
+            )
 
         now = datetime.now(UTC)
 
@@ -598,10 +610,11 @@ async def upload_document(
     (per ADR-0019), `.pptx` → python-pptx. Other extensions → 422
     `validation.unsupported_format`.
 
-    `uploader=None` on the orchestrator — R12 Azurite signature mismatch is
-    still open; screenshot blob upload is skipped (text retrieval unaffected
-    per architecture.md §3.5 ChunkRecord schema; citation thumbnails will be
-    empty until R12 is fixed at W16+ cloud Blob switch).
+    The orchestrator's screenshot uploader is wired (BUG-009) — blob upload runs
+    when the KB opted into `extract_embedded_images`; R12 (Azurite SharedKey
+    signature mismatch) is resolved via the `UseDevelopmentStorage=true`
+    connection string. Text retrieval is unaffected either way per
+    architecture.md §3.5 (`embedded_images` is citation-render metadata).
     """
     await _refuse_if_archived(kb_id, service)
     deps = _ingestion_deps_or_503(request)

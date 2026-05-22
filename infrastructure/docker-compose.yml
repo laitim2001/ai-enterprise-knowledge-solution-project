@@ -64,20 +64,26 @@ services:
   # Unavailable` mid-stream on `mcr.microsoft.com` (occurrence #6 reproduced
   # 2026-05-14; see ADR-0017 + RISK_REGISTER R9), use the native npm CLI instead:
   #
-  #   npm install -g azurite        # one-time, only if not already installed
+  #   npm install -g azurite@3.35.0  # one-time, only if not already installed
   #   azurite \
   #     --blobHost 0.0.0.0 \
   #     --queueHost 0.0.0.0 \
   #     --tableHost 0.0.0.0 \
   #     --location infrastructure/azurite-data \
+  #     --skipApiVersionCheck \
   #     --silent
   #
   # The `--location infrastructure/azurite-data` path is the same one the
   # `azurite-data` named volume below mounts to /data, so blobs written by
   # either delivery path are data-interchangeable. `AZURE_BLOB_CONNECTION_STRING`
   # in `.env` works unchanged for both.
+  #
+  # BUG-009: `--skipApiVersionCheck` is required — azure-storage-blob 12.28 sends
+  # an `x-ms-version` newer than Azurite 3.35.0 (npm's latest) accepts; the flag
+  # lets Azurite process the (basic PutBlob/GetBlob) request. The image tag is
+  # pinned to 3.35.0 so the local emulator stays reproducible.
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:latest
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
     container_name: ekp-azurite
     restart: unless-stopped
     networks: [ekp-local]
@@ -93,6 +99,7 @@ services:
       --queueHost 0.0.0.0
       --tableHost 0.0.0.0
       --location /data
+      --skipApiVersionCheck
       --debug /data/debug.log
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "10000"]
