@@ -167,7 +167,9 @@ def test_health_postgres_not_configured(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(
         health_routes, "get_langfuse_client", lambda: MagicMock()
     )
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    # Empty (not delete) — the dev `.env` may carry DATABASE_URL; an empty env
+    # var overrides the `.env` file value, `delenv` would expose it. BUG-008.
+    monkeypatch.setenv("DATABASE_URL", "")
 
     app = _build_app(retrieval_engine=engine, embedder=embedder)
     client = TestClient(app)
@@ -208,7 +210,9 @@ def test_health_response_schema(monkeypatch: pytest.MonkeyPatch) -> None:
     """The 5-component key set + the `{status, latency_ms, detail}` shape is the contract
     the `/dashboard` System health card depends on (W20 F2 ADR-0030 absorbed scope)."""
     monkeypatch.setattr(health_routes, "get_langfuse_client", lambda: None)
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    # Empty (not delete) — the dev `.env` may carry DATABASE_URL; an empty env
+    # var overrides the `.env` file value, `delenv` would expose it. BUG-008.
+    monkeypatch.setenv("DATABASE_URL", "")
 
     app = _build_app(retrieval_engine=None, embedder=None)
     client = TestClient(app)

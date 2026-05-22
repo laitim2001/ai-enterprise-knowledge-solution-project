@@ -248,7 +248,9 @@ def test_test_connection_azure_blob_local_http_returns_ok() -> None:
 def test_test_connection_postgres_not_configured_when_database_url_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    # Empty (not delete) — the dev `.env` may carry DATABASE_URL; an empty env
+    # var overrides the `.env` file value, `delenv` would expose it. BUG-008.
+    monkeypatch.setenv("DATABASE_URL", "")
     app = _build_app(backend=InMemoryAdminProviderBackend(), key_vault=EnvVarProvider())
     client = TestClient(app)
     response = client.post("/admin/connections/postgres/test")

@@ -312,3 +312,25 @@ app.include_router(groups.router)
 # W24c F8 — /kb/{id}/acl per-KB ACL per ADR-0027. Router self-gated by
 # require_kb_acl("manage") — no _auth (the guard chains get_current_user).
 app.include_router(kb_acl.router)
+
+
+# ── Server launcher (BUG-008) ──────────────────────────────────────────────
+# Run with `python -m api.server` — NOT `python -m uvicorn api.server:app`.
+#
+# uvicorn's `Server.run()` builds its event loop with `loop_factory=
+# asyncio.ProactorEventLoop` on Windows (uvicorn/loops/asyncio.py) — it ignores
+# the event loop policy entirely. psycopg's async mode (ADR-0023 Postgres path)
+# rejects ProactorEventLoop. So on Windows we bypass `Server.run()` and drive
+# `Server.serve()` through `asyncio.run` with an explicit SelectorEventLoop
+# factory. Off Windows, uvicorn's default (SelectorEventLoop) is already fine.
+if __name__ == "__main__":
+    import asyncio
+    import sys
+
+    import uvicorn
+
+    _server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=8000))
+    if sys.platform == "win32":
+        asyncio.run(_server.serve(), loop_factory=asyncio.SelectorEventLoop)
+    else:
+        _server.run()

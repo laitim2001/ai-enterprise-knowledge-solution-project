@@ -82,8 +82,10 @@ cd backend
 uv sync
 uv run python -m scripts.init_azure_search_index
 
-# 6. Backend dev server
-uv run uvicorn api.server:app --reload --port 8000 &
+# 6. Backend dev server — run via `-m api.server`, NOT `-m uvicorn` (BUG-008:
+#    the api.server __main__ launcher forces a Windows-safe SelectorEventLoop
+#    so psycopg's async Postgres path works; `-m uvicorn` would crash on it)
+uv run python -m api.server &
 
 # 7. Frontend
 cd ../frontend
@@ -344,8 +346,12 @@ uv sync                        # 讀 pyproject.toml + uv.lock
 # Initialize Azure AI Search index
 uv run python -m scripts.init_azure_search_index --kb-id drive_user_manuals
 
-# Run dev server
-uv run uvicorn api.server:app --reload --port 8000
+# Run dev server — `-m api.server` (the __main__ launcher), NOT `-m uvicorn`.
+# BUG-008: api.server's launcher drives uvicorn through a SelectorEventLoop on
+# Windows so psycopg's async Postgres path (DATABASE_URL set) works; plain
+# `-m uvicorn` forces a ProactorEventLoop that psycopg rejects.
+# No `--reload` — code changes need a manual restart (matches existing workflow).
+uv run python -m api.server
 
 # 應該見到:
 # INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
