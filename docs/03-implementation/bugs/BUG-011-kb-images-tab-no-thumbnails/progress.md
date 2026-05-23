@@ -54,9 +54,7 @@ BUG-009 / BUG-010 全部 push 後,用戶 chat 報告:`/kb/sample-doc-with-image-
 
 ### Commits
 
-| Hash | Subject |
-|---|---|
-| `97f3919` | `fix(frontend): render real screenshot thumbnails in KB Images tab — BUG-011` |
+_(見 commit footer — `fix(frontend): ...` BUG-011 — placeholder convention same as BUG-009/010)_
 
 ### Retro
 
