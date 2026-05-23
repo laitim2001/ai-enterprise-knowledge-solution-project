@@ -11,8 +11,16 @@ Algorithm:
 4. Embedded image positions: associate by doc_order — each image attached to the
    chunk whose section spans its doc_order.
 5. low_value_flag heuristic (per architecture.md §3.3 + checklist F2):
-   - chunk_token_count < 100 (soft floor per spec) OR
+   - chunk_token_count < 60 (soft floor lowered W25 D3 per ADR-0033;
+     was 100, see ADR §Decision (a) for the 60% low_value ratio empirical
+     signal that triggered the change) OR
    - chunk title or text matches TOC pattern OR version statement.
+6. Adjacent-short-merge post-process (W25 D3 per ADR-0033 §Decision (b)):
+   - After main event loop emits raw chunks, walk pairs (prev, curr) and
+     consolidate consecutive text chunks where both fall below
+     _MIN_CHUNK_MERGE_FLOOR (160). Tables stay independent.
+   - Merge respects hard_cap_tokens (skip merge if combined would exceed).
+   - Re-indexes chunks 0..N-1 contiguous after merge pass.
 
 Carry-over from W2 D1: 6 sample chunk count expected to land below plan §2 F2
 estimate "2000-3000 chunks total" — that estimate assumed per-row table chunks,
@@ -23,7 +31,7 @@ sanity report; non plan deviation since architecture spec is authoritative.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import tiktoken
 
@@ -32,7 +40,8 @@ from ingestion.parsers.base import ParagraphItem, ParserResult, Table
 
 _TOKEN_TARGET = 500
 _TOKEN_HARD_CAP = 1500
-_TOKEN_LOW_VALUE_FLOOR = 100  # per architecture.md §3.3 soft floor
+_TOKEN_LOW_VALUE_FLOOR = 60  # lowered 100→60 W25 D3 per ADR-0033 (amends §3.3)
+_MIN_CHUNK_MERGE_FLOOR = 160  # adjacent-short-merge threshold per ADR-0033 (b)
 
 _TOC_PATTERNS = (
     re.compile(r"^\s*table of contents\s*$", re.IGNORECASE),
@@ -67,10 +76,12 @@ class LayoutAwareChunker:
         target_tokens: int = _TOKEN_TARGET,
         hard_cap_tokens: int = _TOKEN_HARD_CAP,
         low_value_floor: int = _TOKEN_LOW_VALUE_FLOOR,
+        min_chunk_merge_floor: int = _MIN_CHUNK_MERGE_FLOOR,
     ) -> None:
         self.target_tokens = target_tokens
         self.hard_cap_tokens = hard_cap_tokens
         self.low_value_floor = low_value_floor
+        self.min_chunk_merge_floor = min_chunk_merge_floor
         self._enc = tiktoken.get_encoding("cl100k_base")
 
     def chunk(self, parser_result: ParserResult) -> list[ChunkSpec]:
@@ -152,7 +163,8 @@ class LayoutAwareChunker:
         if accumulator is not None:
             chunks.extend(self._flush_text_section(accumulator, len(chunks)))
 
-        return chunks
+        # ADR-0033 (b): consolidate adjacent short text chunks before returning.
+        return self._merge_adjacent_shorts(chunks)
 
     def _merge_events(
         self,
@@ -278,3 +290,64 @@ class LayoutAwareChunker:
             if pat.match(title):
                 return True
         return False
+
+    def _merge_adjacent_shorts(self, chunks: list[ChunkSpec]) -> list[ChunkSpec]:
+        """Per ADR-0033 (b) — consolidate consecutive text chunks where both
+        fall below min_chunk_merge_floor. Tables stay independent. Merges
+        backward into prev (inherits prev's section_path / chunk_title /
+        heading_anchor). Respects hard_cap_tokens. Re-indexes 0..N-1.
+        """
+        if not chunks:
+            return chunks
+
+        merged: list[ChunkSpec] = []
+        for chunk in chunks:
+            if not merged:
+                merged.append(chunk)
+                continue
+
+            prev = merged[-1]
+            if not self._should_merge(prev, chunk):
+                merged.append(chunk)
+                continue
+
+            combined_text = f"{prev.chunk_text}\n\n{chunk.chunk_text}"
+            combined_token_count = len(self._enc.encode(combined_text))
+
+            # Safety: never break hard cap (re-checked post-encode because
+            # token counts are not strictly additive).
+            if combined_token_count > self.hard_cap_tokens:
+                merged.append(chunk)
+                continue
+
+            combined_images = list(prev.embedded_image_positions) + list(
+                chunk.embedded_image_positions,
+            )
+            merged[-1] = ChunkSpec(
+                section_path=list(prev.section_path),
+                chunk_title=prev.chunk_title,
+                chunk_text=combined_text,
+                chunk_token_count=combined_token_count,
+                chunk_kind="text",
+                chunk_index=prev.chunk_index,  # re-indexed below
+                low_value_flag=self._is_low_value(
+                    prev.chunk_title, combined_text, combined_token_count,
+                ),
+                embedded_image_positions=combined_images,
+                heading_anchor=prev.heading_anchor,
+            )
+
+        # Re-index 0..N-1 contiguous after any merges.
+        return [replace(c, chunk_index=i) for i, c in enumerate(merged)]
+
+    def _should_merge(self, prev: ChunkSpec, curr: ChunkSpec) -> bool:
+        """Both text-kind + both below merge floor. Hard-cap check happens
+        post-encode in _merge_adjacent_shorts (token counts are not strictly
+        additive after rejoining)."""
+        if prev.chunk_kind != "text" or curr.chunk_kind != "text":
+            return False
+        if prev.chunk_token_count >= self.min_chunk_merge_floor:
+            return False
+        if curr.chunk_token_count >= self.min_chunk_merge_floor:
+            return False
+        return True

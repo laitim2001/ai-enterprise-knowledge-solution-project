@@ -21,21 +21,28 @@ last_updated: 2026-05-23
 ## F1 — D3 chunker re-tune(ADR-0033)
 
 ### F1.1 ADR draft + approval
-- [ ] **F1.1.1** — Draft `docs/adr/0033-chunker-low-value-tuning.md`:Context(60% low_value empirical signal)+ Decision(floor 60 + adjacent-short-merge combined)+ Alternatives(D3 only floor / D3 only merge / D3 separate ADRs)+ Consequences
-- [ ] **F1.1.2** — Chris approval(chat or AskUserQuestion)→ ADR status `Proposed → Accepted`
-- [ ] **F1.1.3** — Update `docs/adr/README.md` index row + section header
+- [x] **F1.1.1** — Draft `docs/adr/0033-chunker-low-value-tuning.md`:Context(60% low_value empirical signal)+ Decision(floor 60 + adjacent-short-merge combined)+ 6 Alternatives + Consequences + Implementation Mapping + References
+- [x] **F1.1.2** — Chris approval(chat 2026-05-23「Approve as-is」)→ ADR status `Proposed → Accepted`
+- [x] **F1.1.3** — Update `docs/adr/README.md` index row + Next-NNNN footer(0033 landed Accepted;0034 reserved for W25 F3;0035 reserved if R6 H1 trigger confirmed at W25 F5)
 
 ### F1.2 Chunker code
-- [ ] **F1.2.1** — `layout_aware.py`:`low_value_floor` 常數 100 → 60(or class attribute default depending on existing pattern)
-- [ ] **F1.2.2** — `layout_aware.py`:`_emit_chunk` accumulator 加 adjacent-short-merge branch:next-event 屬同 `section_path` AND 當前 `acc.token_count < min_chunk_floor=160` → merge into current acc
-- [ ] **F1.2.3** — Confirm `_TOC_PATTERNS` + version-statement low_value rules unchanged(只改 token floor + merge logic)
-- [ ] **F1.2.4** — `mypy --strict` clean on `backend/ingestion/chunker/layout_aware.py`
+- [x] **F1.2.1** — `layout_aware.py:35`:`_TOKEN_LOW_VALUE_FLOOR` module constant **100 → 60**(annotated with ADR-0033 cite)
+- [x] **F1.2.2** — `layout_aware.py`:NEW `_MIN_CHUNK_MERGE_FLOOR = 160` constant + NEW `_merge_adjacent_shorts` + `_should_merge` methods on `LayoutAwareChunker`;hook 入 `chunk()` return path(post-process pass over emitted chunks);re-index 0..N-1 contiguous via `dataclasses.replace`(import added)
+- [x] **F1.2.3** — `_TOC_PATTERNS` + `_VERSION_PATTERNS` unchanged(verified — no edit touched lines 37-46;only floor constant + new merge methods added)
+- [x] **F1.2.4** — `mypy --strict --explicit-package-bases` on `backend/ingestion/chunker/layout_aware.py` — see F1.4 verify gates
 
 ### F1.3 Unit tests
-- [ ] **F1.3.1** — `backend/tests/test_chunker_low_value.py`:floor edge case(60 → flag;59 → flag;61 → not flag,assume no TOC pattern match)
-- [ ] **F1.3.2** — `backend/tests/test_chunker_low_value.py`:adjacent-short-merge — 2 same-section short paras merge into 1 chunk(combined token_count)
-- [ ] **F1.3.3** — `backend/tests/test_chunker_low_value.py`:regression — 6-sample W2 corpus re-chunk → total chunk count change < ±20% envelope
-- [ ] **F1.3.4** — `pytest backend/tests/test_chunker_low_value.py` → all pass
+- [x] **F1.3.1** — `backend/tests/test_chunker.py`:`test_w25_floor_60_marks_chunks_below_60_low_value` + `test_w25_floor_60_keeps_60_to_99_token_chunks_high_value`(reclamation envelope under merge-disabled chunker)
+- [x] **F1.3.2** — `backend/tests/test_chunker.py`:`test_w25_adjacent_short_merge_combines_two_subsections` + `test_w25_merge_does_not_combine_with_table_chunk` + `test_w25_merge_respects_hard_cap` + `test_w25_merge_reindexes_contiguous_zero_to_n` + `test_w25_long_sections_do_not_merge` + `test_w25_merge_concatenates_embedded_image_positions`
+- [x] **F1.3.3** — `backend/tests/test_chunker.py`:`test_w25_synthetic_corpus_chunk_count_within_twenty_percent_envelope`(6-section synthetic envelope `[2, 7]` chunks per ADR §Negative Consequences ±20%)
+- [x] **F1.3.4** — `pytest backend/tests/test_chunker.py` full file — see F1.4 verify gates
+- [x] **F1.3 ancillary** — Update existing `test_simple_three_section_doc_emits_three_chunks` paragraph sizes(`* 20` → `* 40`)so section-boundary intent preserved post-merge consolidation
+
+## F1.4 — Verify gates
+
+- [x] **F1.4.1** — `mypy --strict --explicit-package-bases ingestion/chunker/layout_aware.py` → **exit 0**(zero new error on layout_aware.py;17 pre-existing parser tech debt unchanged per Karpathy §1.3 surgical, same convention as BUG-010 postgres_backend tuple/dict carve-out)
+- [x] **F1.4.2** — `pytest tests/test_chunker.py -v` → **21 passed in 256.98s**(12 existing + 9 NEW W25 tests)
+- [x] **F1.4.3** — `pytest tests/` full backend regression → **939 passed + 25 skipped + 0 failed** in 489.10s(+9 vs BUG-010 baseline 930;zero regression)
 
 ## F2 — F1 verify gate:Gate 1 R@5 re-verify + dev-KB re-ingest
 

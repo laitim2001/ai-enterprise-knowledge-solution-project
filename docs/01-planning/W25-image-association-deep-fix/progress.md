@@ -82,3 +82,64 @@ Per session-start.md §11 W24c CLOSED block — **none directly for W25**:
 ---
 
 **End of Day 0 entry** — F1 active-flip kickoff next session
+
+---
+
+## Day 1 — 2026-05-23: F1 D3 chunker re-tune(ADR-0033)
+
+### Done
+
+**F1.1 ADR draft + approval** —
+- F1.1.1 — `docs/adr/0033-chunker-low-value-tuning.md` written:Context(60% low_value empirical signal + BUG-009/010/011 cascade trigger)+ Decision(two-pronged:floor 100→60 + adjacent-short-merge post-process)+ 6 Alternatives evaluation(rejected:floor-only / merge-only / image-skip retrieval rule / raise target / eliminate low_value entirely / no-change)+ Consequences(positive / negative / neutral)+ Implementation Mapping table 1-to-1 to plan F1.2/F1.3 checklist items
+- F1.1.2 — Chris approved as-is chat 2026-05-23 → ADR status `Proposed → Accepted` + Approver field updated
+- F1.1.3 — `docs/adr/README.md` index row added(0033 Accepted)+ Next-NNNN footer updated(0034 reserved for W25 F3 query expansion;0035 reserved if R6 H1 trigger confirmed at W25 F5)
+
+**F1.2 Chunker code(per ADR-0033 Decision)** —
+- F1.2.1 — `backend/ingestion/chunker/layout_aware.py:35`:`_TOKEN_LOW_VALUE_FLOOR` 常數 **100 → 60**(annotated「lowered 100→60 W25 D3 per ADR-0033 (amends §3.3)」)
+- F1.2.2 — NEW `_MIN_CHUNK_MERGE_FLOOR = 160`(line 36)+ NEW `_merge_adjacent_shorts` method + helper `_should_merge` method on `LayoutAwareChunker`;hook into `chunk()` return path:`return self._merge_adjacent_shorts(chunks)` 取代 plain `return chunks`;import added `from dataclasses import dataclass, replace` for chunk_index re-index pass
+- F1.2.3 — Confirmed `_TOC_PATTERNS`(line 37-41)+ `_VERSION_PATTERNS`(line 42-46)+ `_is_low_value` TOC/version rules(line 274-279)unchanged per ADR scope constraint
+- F1.2.4 — Module docstring §5 updated(floor 60 cite)+ NEW §6 documents adjacent-short-merge post-process step
+- Class `__init__` signature extended:`min_chunk_merge_floor: int = _MIN_CHUNK_MERGE_FLOOR` parameter(BC default;tests can override to 0 to disable merge for unit-level inspection)
+
+**F1.3 Unit tests(`backend/tests/test_chunker.py`)** —
+- F1.3.1 — `test_w25_floor_60_marks_chunks_below_60_low_value` + `test_w25_floor_60_keeps_60_to_99_token_chunks_high_value`(reclamation envelope under `min_chunk_merge_floor=0` chunker for isolation)
+- F1.3.2 — 6 NEW merge tests:`test_w25_adjacent_short_merge_combines_two_subsections` + `test_w25_merge_does_not_combine_with_table_chunk` + `test_w25_merge_respects_hard_cap` + `test_w25_merge_reindexes_contiguous_zero_to_n` + `test_w25_long_sections_do_not_merge` + `test_w25_merge_concatenates_embedded_image_positions`
+- F1.3.3 — `test_w25_synthetic_corpus_chunk_count_within_twenty_percent_envelope`(6-section synthetic corpus envelope [2, 7] chunks per ADR §Negative consequences ±20%)
+- F1.3 ancillary — Updated existing `test_simple_three_section_doc_emits_three_chunks` paragraph sizes(`* 20` → `* 40` so each section's ~200 tokens > merge floor 160,preserving section-boundary test intent under W25 merge behaviour)
+
+### Diagnosis update
+
+R6 finding (iii) at Day 0 already surfaced D2 H1 boundary risk for W25 F5 —— F1 / F2 / F3 / F4 unaffected(chunker change is module-internal,not §3.6 interface);F5 D2 re-examination 仍 deferred 到 F5.1.2 CH-003 spec drafting time per Day 0 D0.4。
+
+### Decisions(Day 1)
+
+- **D1.1** — Adjacent-short-merge as **post-process** not embedded in main event loop:per ADR §Decision (b) rationale — main event loop complexity already non-trivial(heading stack + table interleaving + image attach by doc_order),mixing merge logic in compromises readability + makes A/B harder。Implementation = pure function over `list[ChunkSpec]` → easy isolated unit testing。
+- **D1.2** — `min_chunk_merge_floor` 作為 class parameter(default `_MIN_CHUNK_MERGE_FLOOR=160`)allow `min_chunk_merge_floor=0` disable for unit-level floor isolation tests(`test_w25_floor_60_marks_chunks_below_60_low_value` 等用 0 disable merge,清晰測試 floor 行為 without merge consolidation noise)
+- **D1.3** — Existing test `test_simple_three_section_doc_emits_three_chunks` paragraph sizes bumped(`* 20` ≈ 100 tokens → `* 40` ≈ 200 tokens)preserves section-boundary intent under merge behaviour;**not** `min_chunk_merge_floor=0` workaround because the test's intent was demonstrating section split behaviour for *real-size* sections,which post-W25 are still split correctly when above floor
+- **D1.4** — Verify gates per F1.4(see below)
+
+### Verify gates(F1.4)
+
+- **F1.4.1** — `mypy --strict --explicit-package-bases ingestion/chunker/layout_aware.py` → **exit 0**。Summary「Found 17 errors in 5 files (**checked 1 source file**)」—— `layout_aware.py` 本身 **zero new error**;17 errors 全部喺 transitively-imported `ingestion/parsers/{pdf_parser.py, docx_parser.py, __init__.py}`(Docling `NodeItem.export_to_dataframe` / `get_image` / `caption_text` `attr-defined` + `Parser` Protocol return-type variance)= **pre-existing tech debt**,**同 BUG-010 `postgres_backend.py` 7 個 `_row_to_kb` tuple/dict error 一樣 pattern**(per Karpathy §1.3 surgical 不順手修)。
+- **F1.4.2** — `pytest tests/test_chunker.py -v` → **21 passed in 256.98s**(12 existing + 9 NEW W25 tests 全綠;existing `test_simple_three_section_doc_emits_three_chunks` 經 paragraph 大小調整後 preserve section-boundary intent)。
+- **F1.4.3** — `pytest tests/` full backend regression → **939 passed + 25 skipped + 0 failed** in 489.10s。Vs BUG-010 baseline 930 passed = **+9 NEW** W25 tests passed,**zero regression**。Skipped 25 unchanged(pre-existing skips unrelated to chunker)。
+
+### Blockers
+
+無。
+
+### Actual vs Planned Effort
+
+| Deliverable | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| F1.1 ADR(draft + approval + README index)| 2 | ~1 | -1(structure clear from Day 0 prep)|
+| F1.2 chunker code | 4 | ~1 | -3(R6 grep upfront gave precise change loci)|
+| F1.3 unit tests(8 NEW + 1 existing update)| 4 | ~1.5 | -2.5(test fixtures already established)|
+
+Compression factor ~3-5×(consistent with W12-W22 phase compression pattern)。
+
+### Commits
+
+_(見 commit footer — `feat(chunker): F1 D3 ADR-0033 chunker low-value tuning — W25`)_
+
+
