@@ -91,6 +91,12 @@ def _resolve_eval_set_path(eval_set_id: str) -> Path:
     mapping = {
         "eval-set-v0": _PROJECT_ROOT / "docs" / "eval-set-v0.yaml",
         "eval-set-v1-draft": _PROJECT_ROOT / "docs" / "eval-set-v1-draft.yaml",
+        # W25 F2.2 Path A — supplementary corpus-matched queries against
+        # sample-doc-with-image-1 (DCE Integration Platform). 12 queries
+        # (6 text + 6 image-bearing) keyword-mode. Apples-to-apples pre/
+        # post-W25 chunker comparison on real dev KB. See docs/eval-set-
+        # v0-w25-supplement.yaml header.
+        "eval-set-v0-w25-supplement": _PROJECT_ROOT / "docs" / "eval-set-v0-w25-supplement.yaml",
     }
     path = mapping.get(eval_set_id)
     if path is None or not path.exists():

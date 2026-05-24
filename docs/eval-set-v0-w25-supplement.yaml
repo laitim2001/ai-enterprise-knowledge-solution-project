@@ -1,0 +1,285 @@
+# EKP W25 image-association-deep-fix — Supplementary eval set
+#
+# Authored 2026-05-23 as Path A response to W25 F2 R6 active-flip catch:
+# eval-set-v0.yaml queries are Ricoh MFP synthetic placeholders that
+# don't match current dev KBs (sample-doc-with-image-1 = DCE Integration
+# Platform Implementation Plan + 2 archived test KBs). Without a corpus-
+# matched eval set, F2.3 Gate 1 R@5 re-verify against eval-set-v0
+# produces meaningless keyword-fallback numbers.
+#
+# This supplement targets the ACTUAL dev KB `sample-doc-with-image-1`
+# (DCE Integration Platform Implementation Plan, 26 pages, ~121 chunks
+# pre-W25, 8 embedded screenshot images) with hand-authored queries +
+# expected_answer_keywords that:
+#   • Text queries (T-series): exercise general retrieval across the doc's
+#     real sections (Phase 0 / Team structure / CI-CD pipeline / etc.).
+#   • Image queries (I-series): exercise retrieval for sections whose
+#     chunks SHOULD carry embedded_images (high-level architecture /
+#     integration components / deployment topology). These directly
+#     measure the W25 phase goal — image-text association rate.
+#
+# All entries explicit `annotation.validated: false` → triggers runner.py
+# keyword-mode (placeholder acceptable_chunk_ids dropped, scoring uses
+# expected_answer_keywords against retrieved top-5 chunk_text). Same
+# eval set runs pre-W25 (current 121-chunk Azurite state) and post-W25
+# (re-ingested under D3 chunker) → apples-to-apples comparison on a
+# single KB across the chunker change.
+#
+# Per ADR-0033 + W25 plan §3 Phase Gate G1+G2:
+#   G1 image_association_rate target ≥ 5/8 image-bearing query
+#   G2 Recall@5 absolute ≥ 0.80 (gates.py:17 baseline)
+#   non-regression: post-W25 R@5 ≥ pre-W25 R@5 - 5pp envelope
+
+metadata:
+  version: "0.0-w25-supplement"
+  created_at: "2026-05-23"
+  created_by: "AI (W25 F2.2 Path A hand-author per Chris chat 2026-05-23)"
+  intended_use: "W25 F2/F4/F6 Gate 1 R@5 + image-association measurement on real dev KB sample-doc-with-image-1"
+  status: "UNVALIDATED — not Q14 SME-labelled; runner.py keyword-mode (annotation.validated=false)"
+
+  total_queries: 12
+  composition:
+    text_queries: 6        # T-series — general retrieval
+    image_queries: 6       # I-series — image-bearing section retrieval
+
+  target_kb_id: "sample-doc-with-image-1"
+  target_doc:
+    doc_id: "dce-integration-platform-implementation-plan"
+    title: "DCE Integration Platform Implementation Plan"
+    format: "docx"
+    pages: ~26
+    pre_w25_chunks: 121
+    pre_w25_low_value_chunks: 72   # 60% — the W25 trigger signal
+    embedded_images: 8
+
+# ============================================================================
+# SECTION T — Text queries (general retrieval across real sections)
+# ============================================================================
+
+queries:
+
+  - query_id: Q-W25-T01
+    query_text: "What does Phase 0 Foundation deliver in the integration platform plan?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t01"   # placeholder → triggers keyword-mode
+      expected_answer_keywords:
+        - "Phase 0"
+        - "Foundation"
+        - "Deliverables"
+        - "weeks"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-T02
+    query_text: "What is the recommended team structure for the integration platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t02"
+      expected_answer_keywords:
+        - "team structure"
+        - "recommended"
+        - "Team"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-T03
+    query_text: "How does the CI/CD pipeline work for the integration platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t03"
+      expected_answer_keywords:
+        - "CI/CD"
+        - "pipeline"
+        - "Pull request"
+        - "Release"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-T04
+    query_text: "What APIM policies are required for the integration platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t04"
+      expected_answer_keywords:
+        - "APIM"
+        - "policies"
+        - "API"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-T05
+    query_text: "What are the key risks and mitigation strategies for the integration platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t05"
+      expected_answer_keywords:
+        - "Risk"
+        - "mitigation"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-T06
+    query_text: "What success metrics are defined for the delivery and operations?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-t06"
+      expected_answer_keywords:
+        - "Success metrics"
+        - "Delivery"
+        - "Operational"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+# ============================================================================
+# SECTION I — Image-bearing queries (the W25 phase goal target)
+# Sections whose chunks SHOULD carry embedded_images_json (the doc has 8
+# screenshots embedded across sections including §4 High-level
+# architecture / §5+ component / deployment / etc. per investigation
+# memo's image_refs aggregate of 8 unique sha256).
+# ============================================================================
+
+  - query_id: Q-W25-I01
+    query_text: "How does the high-level architecture look like? Show me the system zones."
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i01"
+      expected_answer_keywords:
+        - "high-level architecture"
+        - "components"
+        - "zones"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-I02
+    query_text: "What are the integration components in the platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: easy
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i02"
+      expected_answer_keywords:
+        - "integration"
+        - "components"
+        - "Component"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-I03
+    query_text: "What does the deployment topology look like for the integration platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i03"
+      expected_answer_keywords:
+        - "deployment"
+        - "topology"
+        - "environment"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-I04
+    query_text: "Where is the API contracts and message-flow section?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: single_step_lookup
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i04"
+      expected_answer_keywords:
+        - "API contracts"
+        - "message"
+        - "flow"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-I05
+    query_text: "Show me the data integration pattern between source and target systems."
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i05"
+      expected_answer_keywords:
+        - "integration"
+        - "pattern"
+        - "source"
+        - "target"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"
+
+  - query_id: Q-W25-I06
+    query_text: "How is the network and security topology designed for the platform?"
+    kb_id: "sample-document-with-image-1"
+    query_phrasing_source: synthetic
+    difficulty: medium
+    query_type: multi_step_synthesis
+    ground_truth:
+      acceptable_chunk_ids:
+        - "placeholder-w25-i06"
+      expected_answer_keywords:
+        - "network"
+        - "security"
+        - "topology"
+    annotation:
+      validated: false
+      annotator: "W25-supplement-AI"
+      date: "2026-05-23"

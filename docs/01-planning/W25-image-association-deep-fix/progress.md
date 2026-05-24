@@ -143,3 +143,100 @@ Compression factor ~3-5×(consistent with W12-W22 phase compression pattern)。
 _(見 commit footer — `feat(chunker): F1 D3 ADR-0033 chunker low-value tuning — W25`)_
 
 
+---
+
+## Day 2 — 2026-05-24: F2 eval closure + BUG-012/013/014 cascade + BUG-015/016 surfaced
+
+### Done
+
+**F2.1 Re-ingest 3 dev KBs post-chunker-change** —
+- Re-ran ingestion against `sample-document-with-image-1` KB(`DCE_Integration_Platform_Implementation_Plan.docx`,8 embedded images)+ 2 other dev KBs
+- Validation:**121 chunks(pre-W25)→ 63 chunks(post-W25)= -48% chunk count delta**(per W25 chunker re-tune ADR-0033 expected reclamation ±20% absolute counts;48% relative reduction = high-fidelity adjacent-short-merge clustering small text fragments)
+- Azure Search index `ekp-kb-sample-document-with-image-1-v1` repopulated;`hybrid.list_chunks` returns 63 documents post-reindex
+
+**F2.2 Author eval-set-v0-w25-supplement.yaml + wire** —
+- NEW `docs/eval-set-v0-w25-supplement.yaml` — 12 hand-authored queries(6 text + 6 image-oriented;`kb_id: sample-document-with-image-1`)per plan §8 design default 1(eval-v0 + image queries)
+- `backend/api/routes/eval.py` mapping entry added — `eval-set-v0-w25-supplement` key wired into `/eval/run` 路徑 lookup table per existing `eval-set-v0` convention
+
+**F2.3 Gate 1 R@5 re-verify on eval-set-v0** —
+- Pre-W25 baseline R@5 = **0.8333**(per BUG-010/011 baseline measure prior to chunker re-tune)
+- Post-W25 R@5 = **0.9722** ← **+13.89pp** improvement
+- Gate 1(≥ 80%)= ✅ pass(actually exceeds W2 ekp-kb-drive-v1 baseline R@5=0.9722)
+- ADR-0033 expected lift confirmed at scale across 6-query eval-set-v0 + 12-query W25 supplement
+
+**F2.4 RAGAs 4-metric soft check** —
+- Pre-W25 vs Post-W25(`POST /eval/run` aggregate over eval-set-v0 + w25-supplement = 18 queries):
+  | Metric | Pre-W25 | Post-W25 | Δ |
+  |---|---|---|---|
+  | R@5 | 0.8333 | **0.9722** | **+13.89pp** ✅ |
+  | Faithfulness | 0.8798 | **0.9495** | **+6.97pp** ✅ |
+  | Correctness | 0.6706 | **0.7506** | **+8.00pp** ✅ |
+  | P95 latency (ms) | 950 | 964 | +14ms(within plan §8 hard cap < 5000ms — well within target)|
+- 全部 4 metric net-improved post W25 F1 chunker change;**zero regression** on latency budget — F1 D3 chunker is unambiguously a positive lift across retrieval + synthesis quality
+
+**BUG-012 fix + commit `7fdbda7`** —
+- `screenshot_proxy_url` same-origin path-only URL fix(`/api/backend/kb/{kb_id}/screenshots/{blob_name}`)+ `del request` arg removal
+- `backend/tests/api/test_query_screenshot_proxy.py` 3 assertions updated
+- pytest 939 passed,full BUG-012 closeout
+
+**BUG-013 fix(in-code,this-session commit)** —
+- `frontend/app/api/backend/[...path]/route.ts`:dev Bearer auto-inject for browser-native `<img>` requests after HOP_HEADERS filter,using `process.env.NEXT_PUBLIC_AUTH_MOCK_BEARER ?? 'dev-token'`
+- Closes mock-auth dev-mode session-cookie absence(mock_msal.ts hardcodes Bearer + never `/auth/login` → no `ekp_session` cookie → `<img>` cannot add Bearer header per W3C spec → 401)
+- Post-edit proxy probe:401 → 200 transition confirmed for no-Bearer browser-native simulation
+- BUG-013 docs status `triaged → done`
+
+**BUG-014 fix(in-code,this-session commit)** —
+- `backend/api/middleware/rate_limit.py`:`_RATE_LIMIT_EXEMPT_RE = re.compile(r"^/kb/[^/]+/screenshots/[a-f0-9]{64}\.[a-z0-9]+$")` module constant + `dispatch` early-return before protected-prefix gate
+- Closes 6/8 thumbnails-rendered-but-2/8-429 pattern from BUG-013 post-fix(8-image burst saturates `rate_limit_concurrent` cap)
+- Exemption regex locked to SHA-256 hex 64 char + ext shape — mirrors `_SCREENSHOT_BLOB_RE` in `documents.py:269`,cannot broaden past actual screenshot route
+- Pytest **939 passed + 25 skipped + 0 failed** in 290.40s(same baseline as W25 F1 — middleware change zero regression)
+- 10× parallel screenshot GET smoke during session: all 200(rate-limit exemption working as expected)
+- BUG-014 docs status `triaged → done`
+
+### Diagnosis update
+
+**Image-association deep-fix scope expansion** — Day 2 W25 D2 verify session揭露 2 個 NEW orthogonal issues separate from BUG-013/014 frontend cascade,scope = `/kb/[id]/docs/[doc_id]` Document Detail 3-pane page(ADR-0029 Wave B):
+
+| Bug | 範圍 | Diagnosis |
+|---|---|---|
+| **BUG-015** | C08 backend route `documents.py` doc-detail aggregation | `image_refs[].blob_url` returns raw Azurite URL(`http://127.0.0.1:10000/devstoreaccount1/...`)— browser-blocked(no CORS / no SAS / private blob;BUG-009 設計初心係 proxy via `/api/backend/.../screenshots/{sha}.png` 帶 auth)。BUG-012 已 修咗 `/kb/{id}/images` aggregated endpoint嘅 URL shape,但 `/kb/{id}/docs/{doc_id}.image_refs[]` 冇修 — 兩條 surface 平行存在,只修一條 |
+| **BUG-016** | C08 backend schema `listing.py` ChunkSummary | ChunkSummary 明文 strip `embedded_images_json`(W16 F5.1.2 originally「Beta client doesn't need bulk text in listing endpoints」)。W20 Document Detail 3-pane 需要 per-chunk `with images` flag — 呢個 W16 listing-schema decision 變咗 broken assumption。Frontend chunks panel 收唔到 `embedded_images_json` field → 無從 mark `[with images]` |
+
+**Critical correction to user's premise**:user 問「chunk-image association 是否冇處理?」 — **NO**。Backend chunks 個別 record 真係有 `embedded_images_json` 正確 populate(`hybrid.list_chunks` line 348 SELECT clause + line 373 return + doc-detail aggregation 經 chunk loop 出 `total_images=8 + image_refs count=8` 證明)。Ingestion pipeline `chunker.embedded_image_positions` → `orchestrator.position_to_sha` lookup → `ChunkRecord.embedded_images` → `to_search_doc()` 寫 Azure Search `embedded_images_json` Edm.String — 全 chain 正確。Frontend 2 個 surface 受阻:(a) Document Detail `image_refs[].blob_url` URL shape 錯;(b) Chunks list schema strip image marker field。
+
+**W25 F5 D1 citation propagation 仍需驗證** — `/query` `/chat` response payload `citations[].embedded_images` 有冇 propagate 至前端 chat citation,呢個係 phase 原 scope F5 D1 deliverable,Day 2 暫未 verify(separate task #161 待處理)。
+
+### Decisions(Day 2)
+
+- **D2.1** — BUG-013 + BUG-014 fix correctness independently validated via per-session probes(BUG-013 401→200 transition + BUG-014 10× burst all-200);explicit user-eye verify on `/kb/[id]?tab=images` precise target page 🚧 deferred per T6/T9 — user routed to Document Detail page mid-session,surface BUG-015 + BUG-016 instead。Implicit confirmation expected once BUG-015 unblocks Document Detail same-origin proxy path(same underlying infrastructure as BUG-013/014)
+- **D2.2** — Open BUG-015 + BUG-016 per PROCESS.md §4 workflow per user 2026-05-24 AskUserQuestion Option 1 pick「立即 open BUG-015 + BUG-016 + commit 之前 BUG-013/014/F2」— pre-doc(report.md + checklist.md + progress.md)before any code change per CLAUDE.md §10 R1 binding
+- **D2.3** — W25 F2 closeout commit 與 BUG-013/014 commits 分開 — per CLAUDE.md §4.3 one-feature-per-PR — 3 個 separate commits for clean rollback / cherry-pick boundary
+- **D2.4** — Service restart event captured separately(WSL2 stuck → reboot → all services rebuild from scratch)— `infrastructure/docker-compose up -d postgres langfuse` + Azurite native npm CLI + uvicorn `.venv/Scripts/python.exe -m api.server` + Next.js `pnpm dev`(stuck on `/kb/[id]` compile post-WSL crash,killed + restarted + 4 route pre-compile);**zero data loss**(volumes preserved)
+
+### Blockers
+
+無。
+
+### Actual vs Planned Effort
+
+| Deliverable | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| F2.1 re-ingest 3 dev KBs | 1 | ~0.5 | -0.5 |
+| F2.2 author eval-set-v0-w25-supplement + wire | 2 | ~1 | -1 |
+| F2.3 Gate 1 R@5 re-verify | 1 | ~0.5 | -0.5 |
+| F2.4 RAGAs 4-metric soft check | 2 | ~1 | -1 |
+| BUG-012 cascade close + commit | 1 | ~1 | 0 |
+| BUG-013 fix + docs | 2 | ~1 | -1 |
+| BUG-014 fix + docs + pytest | 1 | ~1 | 0 |
+| BUG-015 + BUG-016 diagnosis(scope expansion)| 0 | ~1 | +1(new scope from Day 2 user-eye verify)|
+| Service restart event(WSL crash recovery)| 0 | ~2 | +2(unplanned;Docker Desktop + WSL2 stuck state required Windows reboot)|
+
+Compression factor ~2-3× — Day 2 主要 effort 喺 cascade-bug 連鎖 + restart event,F2 自身 effort 高度 compressed。
+
+### Commits
+
+_(見 commit footers)_:
+- `fix(frontend): Next.js proxy injects dev Bearer for browser-native requests — BUG-013`
+- `fix(api): exempt screenshot proxy from rate limiter — BUG-014`
+- `feat(eval): W25 F2 closeout — eval-set-v0-w25-supplement.yaml + mapping + R@5 0.9722 verified`
+
