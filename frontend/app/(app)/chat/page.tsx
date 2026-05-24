@@ -97,7 +97,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import {
-  Fragment,
+  Children,
   useEffect,
   useMemo,
   useRef,
@@ -515,6 +515,18 @@ export default function ChatPage() {
         <ScreenshotModal
           citation={modalImage.citation}
           image={modalImage.image}
+          idx={
+            // Resolve numeric idx from the latest assistant's citations so
+            // the modal header matches CitationPill / PanelSourceCard.
+            // Fallback to chunk_index + 1 if citation not in latest list.
+            (() => {
+              const found = latestAssistantCitations.findIndex(
+                (c) => c.chunk_id === modalImage.citation.chunk_id,
+              );
+              return found >= 0 ? found + 1 : modalImage.citation.chunk_index + 1;
+            })()
+          }
+          kbId={kbId || activeKb?.kb_id || ''}
           onClose={() => setModalImage(null)}
         />
       )}
@@ -1271,68 +1283,96 @@ function MessageRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// AnswerBodyMarkdown — BUG-021. Two transforms layered on top of LLM output:
-//   1. Verbose chunk markers `[chunk-{chunk_id}]` (backend synthesiser format)
-//      are parsed and replaced with inline numeric <CitationPill> components
-//      mapped to citation idx. Markers referencing unknown chunk_ids fall back
-//      to the original text (defensive — hallucinated citations are already
-//      logged backend-side, see citation_enrichment.py).
-//   2. The remaining text is rendered via <ReactMarkdown> (ADR-0036 H2 dep)
-//      so backend-emitted markdown (numbered list / bold / inline code) shows
-//      formatted instead of `whiteSpace: 'pre-wrap'` plain text.
-// Pre-process splits content into text+marker tokens, renders each text token
-// via ReactMarkdown and each marker token via CitationPill inline (using
-// Fragment to avoid extra wrapping that would break markdown block flow).
+// AnswerBodyMarkdown — BUG-021 + BUG-021 amendment.
+//
+// Two layered transforms applied to LLM synthesiser output:
+//   1. Pre-process step replaces verbose `[chunk-{chunk_id}]` markers with a
+//      placeholder token `⟦CITn⟧` (1-indexed citation idx, U+27E6/U+27E7
+//      brackets unlikely to appear in real LLM output).
+//   2. The pre-processed content is fed to a SINGLE <ReactMarkdown> render so
+//      the markdown block structure (paragraphs / lists / bold / code) stays
+//      intact. Custom `components` override walks the rendered children for
+//      each inline-host element (p / li / strong / em / code) and splits any
+//      string child containing `⟦CITn⟧` placeholders into a mix of literal
+//      text and inline <CitationPill> components — keeping pills inline with
+//      the surrounding text without breaking the block flow.
+//
+// The original BUG-021 approach split the content into tokens and called
+// ReactMarkdown per token, which wrapped every text fragment in its own
+// <p> block (forcing pills onto their own line + losing the cross-fragment
+// markdown context like numbered lists). This amendment fixes that.
 // ──────────────────────────────────────────────────────────────────────────
 
-const MARKDOWN_COMPONENTS = {
-  p: ({ children, ...rest }: { children?: ReactNode }) => (
-    <p style={{ margin: '0 0 10px 0' }} {...rest}>
-      {children}
-    </p>
-  ),
-  ol: ({ children, ...rest }: { children?: ReactNode }) => (
-    <ol
-      style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
-      {...rest}
-    >
-      {children}
-    </ol>
-  ),
-  ul: ({ children, ...rest }: { children?: ReactNode }) => (
-    <ul
-      style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
-      {...rest}
-    >
-      {children}
-    </ul>
-  ),
-  li: ({ children, ...rest }: { children?: ReactNode }) => (
-    <li style={{ marginBottom: 2 }} {...rest}>
-      {children}
-    </li>
-  ),
-  strong: ({ children, ...rest }: { children?: ReactNode }) => (
-    <strong style={{ fontWeight: 600 }} {...rest}>
-      {children}
-    </strong>
-  ),
-  code: ({ children, ...rest }: { children?: ReactNode }) => (
-    <code
-      style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 12.5,
-        background: 'oklch(var(--muted) / 0.6)',
-        border: '1px solid oklch(var(--border))',
-        padding: '1px 5px',
-        borderRadius: 3,
-      }}
-      {...rest}
-    >
-      {children}
-    </code>
-  ),
-};
+const CITATION_PLACEHOLDER_PATTERN = /⟦CIT(\d+)⟧/g;
+
+function preprocessAnswerContent(
+  content: string,
+  citations: Citation[],
+): string {
+  return content.replace(/\[chunk-([^\]]+)\]/g, (raw, id) => {
+    const idx = citations.findIndex((c) => c.chunk_id === id);
+    // Hallucinated chunk_id → keep raw marker (defensive — backend already
+    // warns via `citation_hallucinated_ids` log).
+    return idx >= 0 ? `⟦CIT${idx + 1}⟧` : raw;
+  });
+}
+
+function splitStringForPills(
+  text: string,
+  citations: Citation[],
+  keyPrefix: string,
+): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+  CITATION_PLACEHOLDER_PATTERN.lastIndex = 0;
+  while ((match = CITATION_PLACEHOLDER_PATTERN.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(text.slice(lastIdx, match.index));
+    }
+    const citIdx = parseInt(match[1]!, 10) - 1;
+    const citation = citations[citIdx];
+    if (citation) {
+      parts.push(
+        <CitationPill
+          key={`${keyPrefix}-${match.index}`}
+          citation={citation}
+          idx={citIdx + 1}
+        />,
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    lastIdx = match.index + match[0].length;
+  }
+  if (lastIdx < text.length) {
+    parts.push(text.slice(lastIdx));
+  }
+  return parts;
+}
+
+function injectPillsIntoChildren(
+  children: ReactNode,
+  citations: Citation[],
+  keyPrefix: string,
+): ReactNode {
+  // React-markdown passes children as a string for simple inline text,
+  // an array when bold/em/code split the inline content. Walk the array,
+  // splitting string children that contain `⟦CITn⟧` placeholders.
+  if (typeof children === 'string') {
+    if (!children.includes('⟦CIT')) return children;
+    return splitStringForPills(children, citations, keyPrefix);
+  }
+  if (Array.isArray(children)) {
+    return Children.map(children, (child, i) => {
+      if (typeof child === 'string' && child.includes('⟦CIT')) {
+        return splitStringForPills(child, citations, `${keyPrefix}-${i}`);
+      }
+      return child;
+    });
+  }
+  return children;
+}
 
 function AnswerBodyMarkdown({
   content,
@@ -1341,62 +1381,66 @@ function AnswerBodyMarkdown({
   content: string;
   citations: Citation[];
 }) {
-  // Regex `[chunk-{chunk_id}]` capture group 1 is the chunk_id (mockup line
-  // 457-466 uses inline numeric ids; backend emits the full chunk_id wrapped).
-  const tokens = useMemo(() => {
-    const pattern = /\[chunk-([^\]]+)\]/g;
-    const out: Array<{ kind: 'text'; value: string } | { kind: 'pill'; idx: number; citation: Citation } | { kind: 'raw'; value: string }> = [];
-    let lastIdx = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(content)) !== null) {
-      if (match.index > lastIdx) {
-        out.push({ kind: 'text', value: content.slice(lastIdx, match.index) });
-      }
-      const id = match[1];
-      const citationIdx = citations.findIndex((c) => c.chunk_id === id);
-      if (citationIdx >= 0) {
-        out.push({
-          kind: 'pill',
-          idx: citationIdx + 1,
-          citation: citations[citationIdx]!,
-        });
-      } else {
-        out.push({ kind: 'raw', value: match[0] });
-      }
-      lastIdx = match.index + match[0].length;
-    }
-    if (lastIdx < content.length) {
-      out.push({ kind: 'text', value: content.slice(lastIdx) });
-    }
-    return out;
-  }, [content, citations]);
-
-  return (
-    <>
-      {tokens.map((t, i) => {
-        if (t.kind === 'pill') {
-          return (
-            <CitationPill
-              key={`pill-${i}`}
-              citation={t.citation}
-              idx={t.idx}
-            />
-          );
-        }
-        if (t.kind === 'raw') {
-          return <Fragment key={`raw-${i}`}>{t.value}</Fragment>;
-        }
-        return (
-          <ReactMarkdown
-            key={`md-${i}`}
-            components={MARKDOWN_COMPONENTS}
-          >
-            {t.value}
-          </ReactMarkdown>
-        );
-      })}
-    </>
+  const processed = useMemo(
+    () => preprocessAnswerContent(content, citations),
+    [content, citations],
   );
+
+  const components = useMemo(
+    () => ({
+      p: ({ children }: { children?: ReactNode }) => (
+        <p style={{ margin: '0 0 10px 0' }}>
+          {injectPillsIntoChildren(children, citations, 'p')}
+        </p>
+      ),
+      ol: ({ children }: { children?: ReactNode }) => (
+        <ol
+          style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
+        >
+          {children}
+        </ol>
+      ),
+      ul: ({ children }: { children?: ReactNode }) => (
+        <ul
+          style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
+        >
+          {children}
+        </ul>
+      ),
+      li: ({ children }: { children?: ReactNode }) => (
+        <li style={{ marginBottom: 2 }}>
+          {injectPillsIntoChildren(children, citations, 'li')}
+        </li>
+      ),
+      strong: ({ children }: { children?: ReactNode }) => (
+        <strong style={{ fontWeight: 600 }}>
+          {injectPillsIntoChildren(children, citations, 'strong')}
+        </strong>
+      ),
+      em: ({ children }: { children?: ReactNode }) => (
+        <em style={{ fontStyle: 'italic' }}>
+          {injectPillsIntoChildren(children, citations, 'em')}
+        </em>
+      ),
+      code: ({ children }: { children?: ReactNode }) => (
+        <code
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12.5,
+            background: 'oklch(var(--muted) / 0.6)',
+            border: '1px solid oklch(var(--border))',
+            padding: '1px 5px',
+            borderRadius: 3,
+          }}
+        >
+          {injectPillsIntoChildren(children, citations, 'code')}
+        </code>
+      ),
+    }),
+    [citations],
+  );
+
+  return <ReactMarkdown components={components}>{processed}</ReactMarkdown>;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -2410,13 +2454,25 @@ function FeedbackBar({
 // not synthetic). Centred dialog with image + caption + close.
 // ──────────────────────────────────────────────────────────────────────────
 
+// ScreenshotModal — mockup ekp-page-chat.jsx:1068-1121 2-column layout
+// (image ~1.6fr left + side panel ~1fr right with section_path / chunk_id /
+// chunk_title / Open in Document Detail + Open original buttons). BUG-021
+// amendment: prior single-pane image-only viewer replaced. `idx` resolved
+// at call site from latestAssistantCitations so the header carries the same
+// numeric badge as CitationPill / PanelSourceCard. `kbId` is needed for the
+// Document Detail deep-link (matches the AppShell `/kb/[id]/docs/[docId]`
+// route per ADR-0029).
 function ScreenshotModal({
   citation,
   image,
+  idx,
+  kbId,
   onClose,
 }: {
   citation: Citation;
   image: ImageRef;
+  idx: number;
+  kbId: string;
   onClose: () => void;
 }) {
   return (
@@ -2439,7 +2495,8 @@ function ScreenshotModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '90vw',
+          width: 1040,
+          maxWidth: '92vw',
           maxHeight: '90vh',
           background: 'oklch(var(--card))',
           border: '1px solid oklch(var(--border))',
@@ -2449,22 +2506,51 @@ function ScreenshotModal({
           flexDirection: 'column',
         }}
       >
+        {/* Header — idx badge + chunk_title + doc_title + relevance_score + close */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '10px 14px',
+            gap: 10,
+            padding: '12px 16px',
             borderBottom: '1px solid oklch(var(--border))',
           }}
         >
+          <span
+            style={{
+              flexShrink: 0,
+              width: 22,
+              height: 22,
+              background: 'oklch(var(--accent))',
+              color: 'oklch(var(--accent-foreground))',
+              borderRadius: 4,
+              display: 'grid',
+              placeItems: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            {idx}
+          </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {citation.doc_title}
+            <div style={{ fontSize: 14.5, fontWeight: 600 }}>
+              {citation.chunk_title || 'Screenshot'}
             </div>
-            <div className="text-xs muted mono">
-              {image.alt_text || `chunk #${citation.chunk_index}`}
+            <div
+              className="text-xs muted mono"
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {citation.doc_title} · chunk #{citation.chunk_index}
             </div>
           </div>
+          <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+            {citation.relevance_score.toFixed(3)}
+          </span>
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-sm"
@@ -2474,22 +2560,130 @@ function ScreenshotModal({
             <XIcon size={14} />
           </button>
         </div>
+
+        {/* Body — 2-column grid (image left ~1.6fr, side panel right ~1fr) */}
         <div
           style={{
             flex: 1,
             overflow: 'auto',
             display: 'grid',
-            placeItems: 'center',
-            background: 'oklch(var(--muted))',
-            padding: 8,
+            gridTemplateColumns: '1.6fr 1fr',
+            gap: 16,
+            padding: 16,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={image.blob_url}
-            alt={image.alt_text}
-            style={{ maxWidth: '100%', maxHeight: '80vh', display: 'block' }}
-          />
+          <div
+            style={{
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 'var(--radius-md)',
+              overflow: 'hidden',
+              background: 'oklch(var(--muted) / 0.2)',
+              display: 'grid',
+              placeItems: 'center',
+              minHeight: 280,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image.blob_url}
+              alt={image.alt_text || citation.chunk_title || 'Screenshot'}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '70vh',
+                display: 'block',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+
+          {/* Side panel — section_path / chunk_id / chunk_title preview / actions */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              minWidth: 0,
+            }}
+          >
+            <div>
+              <div
+                className="text-xs muted mono"
+                style={{
+                  marginBottom: 4,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                section_path
+              </div>
+              <div className="section-path text-xs">
+                {citation.section_path.length > 0 ? (
+                  citation.section_path.map((s, j) => <span key={j}>{s}</span>)
+                ) : (
+                  <span className="muted">(root)</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <div
+                className="text-xs muted mono"
+                style={{
+                  marginBottom: 4,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                chunk_id
+              </div>
+              <div
+                className="mono text-xs"
+                style={{
+                  wordBreak: 'break-all',
+                  color: 'oklch(var(--foreground))',
+                }}
+              >
+                {citation.chunk_id}
+              </div>
+            </div>
+            <div>
+              <div
+                className="text-xs muted mono"
+                style={{
+                  marginBottom: 4,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Section preview
+              </div>
+              <div
+                style={{
+                  padding: '10px 12px',
+                  background: 'oklch(var(--muted) / 0.4)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 12.5,
+                  lineHeight: 1.55,
+                  border: '1px solid oklch(var(--border))',
+                }}
+              >
+                {citation.chunk_title || image.alt_text || '(no preview)'}
+              </div>
+            </div>
+            <div className="spacer" style={{ flex: 1 }} />
+            <Link
+              href={`/kb/${kbId}/docs/${citation.doc_id}`}
+              className="btn btn-accent"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                justifyContent: 'center',
+              }}
+              onClick={onClose}
+            >
+              <FileText size={14} /> Open in Document Detail
+            </Link>
+          </div>
         </div>
       </div>
     </div>

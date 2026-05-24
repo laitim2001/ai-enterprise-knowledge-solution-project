@@ -300,15 +300,22 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     renderChat();
     await sendQuery();
 
-    // Verbose marker text must not appear inline; numeric pills replace them.
+    // Verbose marker text must not appear inline (regex match — surrounding
+    // text split into [text, pill, text, pill, text] children so getByText
+    // exact-match would miss). Numeric pills replace markers inline.
     await waitFor(() =>
-      expect(screen.getByText('Architecture overview')).toBeInTheDocument(),
+      expect(
+        screen.getByText(/Architecture overview/),
+      ).toBeInTheDocument(),
     );
     expect(
       screen.queryByText(/\[chunk-chunk-1\]/),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/\[chunk-chunk-2\]/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/⟦CIT/),
     ).not.toBeInTheDocument();
   });
 
