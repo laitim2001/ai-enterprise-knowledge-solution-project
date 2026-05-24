@@ -55,6 +55,18 @@ async function proxy(
     if (!HOP_HEADERS.has(key.toLowerCase())) headers[key] = value;
   });
 
+  // BUG-013 — In mock-auth dev mode, browser-native subresource requests
+  // (<img>, <video>) can't add an Authorization header and the mock flow
+  // never sets the ekp_session cookie (mock_msal.ts hardcodes a Bearer
+  // in-memory with no /auth/login round-trip). Auto-inject the dev Bearer
+  // at the server-side proxy so browser-native requests still authenticate.
+  // Production (isDev=false): no injection — real MSAL Bearer / cookie
+  // flow through unchanged.
+  if (isDev && !headers['authorization']) {
+    const devBearer = process.env.NEXT_PUBLIC_AUTH_MOCK_BEARER ?? 'dev-token';
+    headers['authorization'] = `Bearer ${devBearer}`;
+  }
+
   // Buffer body for non-GET/HEAD. Streaming the request body would require
   // chunked transfer + duplex 'half' handling; FormData uploads in Tier 1
   // are infrequent + small, buffering is acceptable.
