@@ -136,6 +136,30 @@ class Settings(BaseSettings):
     hybrid_top_k_retrieval: int = 50
     rerank_top_k: int = 5
 
+    # W25 F3 D4 — ADR-0034 query expansion + RAG-Fusion (`backend/generation/
+    # query_reformulator.py` + `backend/retrieval/result_fusion.py`). Default
+    # False = original single-query path preserved bit-identical (Tier 1
+    # backward-compat baseline). Set True via .env ENABLE_QUERY_EXPANSION=true
+    # for staging / Beta opt-in; future per-KB tuning would promote to
+    # KbConfig per ADR-0034 §Alternatives rationale.
+    enable_query_expansion: bool = False
+    # max_variants = original + (N-1) reformulations; 3 = original + 2 = ~3
+    # parallel retrieves per query. Beyond 4 hits diminishing returns +
+    # latency budget pressure per ADR-0034 §Consequences negative.
+    query_expansion_max_variants: int = 3
+    # Hard reformulation latency cap inside the P95 < 5s pipeline budget
+    # (W25 plan §8 Q4). 3s leaves ~2s for downstream retrieve+rerank+
+    # synthesize. Timeout → graceful fallback to [original] only.
+    query_expansion_latency_cap_s: float = 3.0
+    # RRF rank-floor (Cormack et al. 2009). Empirically robust in [40, 100];
+    # 60 is the canonical paper value.
+    query_expansion_rrf_k: int = 60
+    # Per-variant overfetch multiplier — each variant fetches
+    # `per_variant_overfetch * top_k` candidates so chunks ranking outside
+    # one variant's top-K still seed the fused set if they rank highly in
+    # other variants.
+    query_expansion_per_variant_overfetch: int = 2
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

@@ -49,6 +49,7 @@ from api.routes.admin import connections as admin_connections
 from api.routes.admin import identity as admin_identity
 from api.routes.admin import usage_stats as admin_usage_stats
 from generation.crag import CragGrader, CragLoop
+from generation.query_reformulator import QueryReformulator
 from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
 from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
@@ -79,9 +80,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     synthesizer: Synthesizer | None = None
     crag_grader: CragGrader | None = None
     populator: IndexPopulator | None = None
+    # W25 F3 D4 — ADR-0034 query reformulator (cheap-LLM variant generator
+    # for RAG-fusion). Wired only when `enable_query_expansion=True` to
+    # avoid spinning up an extra AsyncAzureOpenAI client for the default
+    # baseline path.
+    query_reformulator: QueryReformulator | None = None
     app.state.retrieval_engine = None
     app.state.synthesizer = None
     app.state.crag_loop = None
+    app.state.query_reformulator = None
     # CH-001 — ingestion-side state (embedder exposed for the ingestion orchestrator;
     # populator owned here so POST /kb / POST /kb/{kb_id}/documents / DELETE /kb route
     # handlers can call create_index_for_kb / upload / delete_doc / delete_index without
@@ -181,9 +188,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             max_corrections=settings.crag_max_reformulations,
         )
 
+        # W25 F3 D4 — Query reformulator (ADR-0034). Spin up only when the
+        # feature is enabled to avoid an extra AsyncAzureOpenAI client for
+        # the default-off Tier 1 baseline path.
+        if settings.enable_query_expansion:
+            query_reformulator = QueryReformulator(
+                endpoint=settings.azure_openai_endpoint,
+                api_key=settings.azure_openai_api_key,
+                api_version=settings.azure_openai_api_version,
+                deployment=settings.azure_openai_deployment_llm_judge,
+                max_variants=settings.query_expansion_max_variants,
+                latency_cap_s=settings.query_expansion_latency_cap_s,
+            )
+            await query_reformulator.__aenter__()
+            app.state.query_reformulator = query_reformulator
+
     try:
         yield
     finally:
+        if query_reformulator is not None:
+            await query_reformulator.__aexit__(None, None, None)
         if crag_grader is not None:
             await crag_grader.__aexit__(None, None, None)
         if synthesizer is not None:

@@ -1,8 +1,8 @@
 # ADR-0034: Query expansion + RAG-Fusion — multi-variant retrieval with Reciprocal Rank Fusion
 
 **Date**: 2026-05-24
-**Status**: Proposed
-**Approver**: _(pending Chris approval — chat or AskUserQuestion confirm)_
+**Status**: Accepted
+**Approver**: Chris(chat 2026-05-24「可以開始執行 ADR-0034」)
 **Phase context**: `W25-image-association-deep-fix` F3 deliverable
 **Related**:
 - ADR-0033 chunker low-value tuning(F1 deliverable — chunker fix is prerequisite to F3 lift quantification)

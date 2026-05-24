@@ -22,10 +22,13 @@ from api.routes.documents import screenshot_proxy_url
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations
 from generation.crag import CragLoop
+from generation.query_reformulator import QueryReformulator
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
 from observability.observe import observe_async, observe_streaming
-from retrieval.retrieval_engine import RetrievalEngine
+from retrieval.result_fusion import fused_retrieve
+from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult
+from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -92,13 +95,41 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
+    settings = get_settings()
+    reformulator: QueryReformulator | None = getattr(
+        request.app.state, "query_reformulator", None,
+    )
 
     try:
-        result = await engine.retrieve(
-            query=payload.query,
-            kb_id=payload.kb_id,
-            top_k=payload.top_k_rerank,
-        )
+        # W25 F3 D4 — ADR-0034 RAG-fusion branch.
+        # When `enable_query_expansion=True` AND the reformulator is wired
+        # (Azure OpenAI creds present), reformulate to N variants + parallel
+        # retrieve + RRF fuse. Otherwise preserve the original single-query
+        # path bit-identical (Tier 1 backward-compat baseline).
+        if settings.enable_query_expansion and reformulator is not None:
+            reform = await reformulator.reformulate(payload.query)
+            fused = await fused_retrieve(
+                variants=reform.variants,
+                kb_id=payload.kb_id,
+                top_k=payload.top_k_rerank,
+                engine=engine,
+                rrf_k=settings.query_expansion_rrf_k,
+                per_variant_overfetch=settings.query_expansion_per_variant_overfetch,
+            )
+            result: RetrievalResult = fused.as_retrieval_result()
+            logger.info(
+                "query_expansion_used",
+                variant_count=fused.variant_count,
+                fallback_used=reform.fallback_used,
+                fusion_latency_ms=fused.fusion_latency_ms,
+                total_latency_ms=fused.total_latency_ms,
+            )
+        else:
+            result = await engine.retrieve(
+                query=payload.query,
+                kb_id=payload.kb_id,
+                top_k=payload.top_k_rerank,
+            )
     except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
