@@ -414,8 +414,12 @@ async def get_document_detail(
             blob_url = str(img.get("blob_url") or "")
             if not sha or sha in seen_images or not blob_url:
                 continue
+            # BUG-015 — override the ingestion-time raw Azurite URL with the
+            # same-origin proxy path (mirrors `/kb/{kb_id}/images` aggregator
+            # post-BUG-012); raw Azurite blob URLs are browser-blocked (no CORS
+            # / no SAS / private blob — BUG-009 设计初心 = proxy through auth).
             seen_images[sha] = ImageRef(
-                blob_url=blob_url,
+                blob_url=screenshot_proxy_url(request, kb_id, blob_url),
                 alt_text=str(img.get("alt_text") or ""),
                 checksum_sha256=sha,
                 width=int(img.get("width") or 0),

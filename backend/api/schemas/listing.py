@@ -28,7 +28,15 @@ class DocumentSummary(BaseModel):
 
 
 class ChunkSummary(BaseModel):
-    """Chunk-level metadata for doc detail view (per F5.1.2; chunk_text excluded)."""
+    """Chunk-level metadata for doc detail view (per F5.1.2; chunk_text excluded).
+
+    BUG-016 (W25 D2) — adds `embedded_image_count` count-only field so the W20
+    Document Detail 3-pane (ADR-0029) Chunks panel can mark `[with images]`
+    affordance per chunk. Bulk `embedded_images_json` JSON string remains
+    excluded per W16 F5.1.2 listing-payload bulk-exclusion intent — count is
+    backend-cheap (derived from already-fetched JSON length), frontend-actionable
+    (non-zero → render marker).
+    """
 
     chunk_id: str
     chunk_index: int
@@ -37,6 +45,7 @@ class ChunkSummary(BaseModel):
     section_path: list[str] = []
     enabled: bool = True
     low_value_flag: bool = False
+    embedded_image_count: int = 0  # BUG-016 — non-zero → frontend marks [with images]
 
 
 # --------------------------------------------------------------------------- #

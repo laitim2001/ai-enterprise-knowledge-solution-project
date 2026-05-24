@@ -34,6 +34,10 @@ export interface ChunkSummary {
   section_path: string[];
   enabled: boolean;
   low_value_flag: boolean;
+  /** BUG-016 — count of embedded images attached to this chunk. Non-zero =>
+   * Chunks panel can mark `[with images]` affordance. Backend derives via
+   * `len(json.loads(embedded_images_json))` from already-fetched data. */
+  embedded_image_count: number;
 }
 
 // W21 F1 — `GET /kb/{kb_id}/docs/{doc_id}` enriched (per ADR-0029 Option C).

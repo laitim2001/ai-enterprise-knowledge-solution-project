@@ -532,6 +532,12 @@ export default function DocDetailPage() {
                         <span key={j}>{s}</span>
                       ))}
                     </div>
+                    {c.embedded_image_count > 0 && (
+                      <span className="badge badge-accent">
+                        embedded_images{' '}
+                        <b style={{ marginLeft: 2 }}>{c.embedded_image_count}</b>
+                      </span>
+                    )}
                     {c.low_value_flag && (
                       <span className="badge badge-warning">low_value</span>
                     )}
@@ -588,6 +594,14 @@ function ImageThumb({ img, idx }: { img: ImageRef; idx: number }) {
     'oklch(0.65 0.18 25)',
   ];
   const c = colors[idx % colors.length];
+  // BUG-015 + Issue-1 H7 deviation (user-authorized 2026-05-24 Option B):
+  // render real screenshot thumbnail via the BUG-015-emit proxy URL with
+  // onError fallback to the mockup gradient + Layers placeholder (same
+  // pattern as BUG-011 in `app/(app)/kb/[id]/page.tsx` `ImageCard`). Mockup's
+  // pure-gradient `ImageThumb` is a static-prototype limitation (no image
+  // server when the HTML mockup ran), not a design choice.
+  const [imgError, setImgError] = useState(false);
+  const showPlaceholder = !img.blob_url || imgError;
   return (
     <div
       title={img.alt_text}
@@ -604,17 +618,37 @@ function ImageThumb({ img, idx }: { img: ImageRef; idx: number }) {
       <div
         style={{
           height: 78,
-          backgroundImage: `linear-gradient(135deg, ${c.replace(
-            ')',
-            ' / 0.2)',
-          )}, ${c.replace(')', ' / 0.05)')})`,
-          display: 'grid',
-          placeItems: 'center',
           position: 'relative',
-          color: c,
+          ...(showPlaceholder
+            ? {
+                backgroundImage: `linear-gradient(135deg, ${c.replace(
+                  ')',
+                  ' / 0.2)',
+                )}, ${c.replace(')', ' / 0.05)')})`,
+                display: 'grid',
+                placeItems: 'center',
+                color: c,
+              }
+            : { background: 'oklch(var(--muted) / 0.4)' }),
         }}
       >
-        <Layers size={20} />
+        {showPlaceholder ? (
+          <Layers size={20} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={img.blob_url}
+            alt={img.alt_text || 'embedded image thumbnail'}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        )}
       </div>
       <div style={{ padding: '6px 8px' }}>
         <div

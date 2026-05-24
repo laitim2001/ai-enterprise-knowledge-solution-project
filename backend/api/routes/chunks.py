@@ -8,6 +8,7 @@ PATCH /kb/{kb_id}/chunks/{chunk_id} remains 501 stub pending W2 admin chunk
 toggle implementation (architecture.md §3.5 + §7.1 F13;out of W16 F5 batch).
 """
 
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -77,7 +78,26 @@ async def list_chunks(
             detail=f"chunk listing failure: {type(exc).__name__}: {exc}",
         ) from exc
 
-    return [ChunkSummary(**row) for row in rows]
+    # BUG-016 (W25 D2) — derive per-chunk image count from the
+    # `embedded_images_json` JSON string already fetched by hybrid.list_chunks
+    # (W20 F5.2 select clause). Bulk JSON itself stays out of the response per
+    # W16 F5.1.2 intent; count surfaces enough for the Document Detail Chunks
+    # panel `[with images]` marker.
+    summaries: list[ChunkSummary] = []
+    for row in rows:
+        raw = row.get("embedded_images_json") or "[]"
+        try:
+            images = json.loads(raw) if isinstance(raw, str) else raw
+            count = len(images) if isinstance(images, list) else 0
+        except (json.JSONDecodeError, TypeError):
+            count = 0
+        summaries.append(
+            ChunkSummary(
+                **{k: v for k, v in row.items() if k != "embedded_images_json"},
+                embedded_image_count=count,
+            ),
+        )
+    return summaries
 
 
 @router.patch("/kb/{kb_id}/chunks/{chunk_id}")
