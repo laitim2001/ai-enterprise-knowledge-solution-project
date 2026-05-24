@@ -44,10 +44,13 @@
  *   - Inline ChatComposer (textarea + submit)
  *
  * Obsolete W20 separate components are deleted alongside (ConversationHistory,
- * InlineImageCard, CitationPill, FeedbackBar, CragStrip) — they were custom
- * abstractions not matching mockup component breakdown. (ImageGallery —
- * mockup ekp-page-chat.jsx:621-664 — was wrongly dropped here in W22 F4 and
- * restored by BUG-007.)
+ * CitationPill, FeedbackBar, CragStrip) — they were custom abstractions not
+ * matching mockup component breakdown. (ImageGallery — mockup
+ * ekp-page-chat.jsx:621-664 — was wrongly dropped here in W22 F4 and restored
+ * by BUG-007. InlineImageCard — mockup ekp-page-chat.jsx:470-498 usage + 581-617
+ * definition — was wrongly dropped here in W22 F4 and restored by BUG-019:
+ * mockup intent = inline image card per imageCitation in answer body, ImageGallery
+ * `>=2` is the collective fallback, not a replacement.)
  *
  * Real Citation schema lacks mockup's `idx` / `preview` / `file_type` /
  * `page` fields → graceful defaults: idx = array index + 1, preview = empty,
@@ -1171,6 +1174,32 @@ function MessageRow({
           />
         )}
 
+        {/* Inline image cards — mockup ekp-page-chat.jsx:470-498 (per imageCitation
+            inline rendering in answer body). Restored by BUG-019 — W22 F4 rebuild
+            wrongly dropped these as "custom abstraction" but mockup line 581-617
+            defines the InlineImageCard function and uses it inline in AnswerBody.
+            Render flat — every image of every imageCitation becomes one card,
+            sequentially numbered. ImageGallery (>=2 gate, mockup 354-357) below
+            stays as the collective fallback. */}
+        {!message.isStreaming &&
+          imageCitations.flatMap((c, citationIdx) =>
+            c.embedded_images.map((image, imageIdx) => ({
+              c,
+              image,
+              citationIdx,
+              imageIdx,
+            })),
+          ).map(({ c, image, citationIdx, imageIdx }, flatIdx) => (
+            <InlineImageCard
+              key={`${c.chunk_id}-${imageIdx}`}
+              citation={c}
+              image={image}
+              citationIdx={citationIdx + 1}
+              figureIdx={flatIdx + 1}
+              onOpen={() => onOpenScreenshot(c, image)}
+            />
+          ))}
+
         {/* Image gallery — mockup ekp-page-chat.jsx:354-357 (2+ image citations) */}
         {!message.isStreaming && imageCitations.length >= 2 && (
           <ImageGallery
@@ -1276,6 +1305,109 @@ function FootnoteList({
         </li>
       ))}
     </ol>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// InlineImageCard — mockup ekp-page-chat.jsx:581-617 (function definition) +
+// 470-498 (usage inline in AnswerBody). Restored by BUG-019 after W22 F4 wrongly
+// dropped it as a "custom abstraction".
+// Mockup uses <SyntheticScreenshot> as a placeholder; real renders <img>
+// against the same-origin proxy URL (Citation.embedded_images[].blob_url,
+// already proxied per BUG-010 via backend query.py::_proxy_citation_images).
+// ──────────────────────────────────────────────────────────────────────────
+
+function InlineImageCard({
+  citation,
+  image,
+  citationIdx,
+  figureIdx,
+  onOpen,
+}: {
+  citation: Citation;
+  image: ImageRef;
+  citationIdx: number;
+  figureIdx: number;
+  onOpen: () => void;
+}) {
+  const title = image.alt_text || citation.chunk_title || 'Screenshot';
+  const caption = `Citation [${citationIdx}] · ${citation.section_path.join(' › ')}`;
+  return (
+    <figure
+      style={{
+        margin: '18px 0',
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden',
+        background: 'oklch(var(--card))',
+      }}
+    >
+      <div style={{ position: 'relative' }}>
+        <img
+          src={image.blob_url}
+          alt={image.alt_text || title}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            maxHeight: 360,
+            objectFit: 'contain',
+            background: 'oklch(var(--muted) / 0.4)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            display: 'flex',
+            gap: 4,
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary btn-xs"
+            style={{ background: 'oklch(var(--background) / 0.9)' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen();
+            }}
+          >
+            <Eye size={11} /> Full size
+          </button>
+        </div>
+      </div>
+      <figcaption
+        style={{
+          padding: '10px 14px',
+          background: 'oklch(var(--muted) / 0.4)',
+          borderTop: '1px solid oklch(var(--border))',
+          fontSize: 12.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        <span className="mono text-xs muted">figure {figureIdx}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 500,
+              color: 'oklch(var(--foreground))',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={title}
+          >
+            {title}
+          </div>
+          <div className="text-xs muted" style={{ marginTop: 1 }}>
+            {caption}
+          </div>
+        </div>
+      </figcaption>
+    </figure>
   );
 }
 

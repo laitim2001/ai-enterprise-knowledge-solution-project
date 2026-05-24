@@ -166,8 +166,11 @@ describe('Chat assistant meta row + ImageGallery (BUG-007)', () => {
     await waitFor(() =>
       expect(screen.getByText('Referenced screenshots')).toBeInTheDocument(),
     );
-    // Two image-bearing citations → two gallery thumbnails.
-    expect(screen.getAllByRole('img')).toHaveLength(2);
+    // Two image-bearing citations → two InlineImageCard renders (per BUG-019,
+    // mockup ekp-page-chat.jsx:470-498 — each image-bearing citation gets an
+    // inline card in the answer body) + two ImageGallery thumbnails (collective
+    // fallback per mockup line 354-357 `>=2` gate). 2 inline + 2 gallery = 4.
+    expect(screen.getAllByRole('img')).toHaveLength(4);
   });
 
   it('renders the sources-panel toggle in the header', async () => {
