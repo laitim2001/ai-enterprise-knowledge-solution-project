@@ -1255,6 +1255,7 @@ function MessageRow({
         {!message.isStreaming && imageCitations.length >= 1 && (
           <ImageGallery
             citations={imageCitations}
+            allCitations={message.citations}
             onOpenScreenshot={onOpenScreenshot}
           />
         )}
@@ -1522,7 +1523,15 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
             whiteSpace: 'normal',
           }}
         >
-          <div
+          {/* BUG-023 — popover inner wrappers were <div> elements, which became
+              descendants of react-markdown's <p> ancestor (via AnswerBodyMarkdown's
+              single-ReactMarkdown render + injectPillsIntoChildren). HTML5 spec
+              disallows <div> inside <p>, surfacing as `<div> cannot be a
+              descendant of <p>` hydration warning on every hover. Span with
+              inline style display:flex/block is layout-equivalent + HTML-valid
+              as a <p> descendant (Karpathy §1.3 surgical — 3 tag swaps, zero
+              visual / behavioral change). */}
+          <span
             style={{
               display: 'flex',
               gap: 6,
@@ -1547,27 +1556,28 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
             <span className="mono text-xs muted">
               {citation.relevance_score.toFixed(3)}
             </span>
-          </div>
+          </span>
           {citation.section_path.length > 0 && (
-            <div
+            <span
               className="section-path text-xs"
-              style={{ marginBottom: 6 }}
+              style={{ display: 'block', marginBottom: 6 }}
             >
               {citation.section_path.map((s, j) => (
                 <span key={j}>{s}</span>
               ))}
-            </div>
+            </span>
           )}
           {citation.chunk_title && (
-            <div
+            <span
               style={{
+                display: 'block',
                 fontSize: 12,
                 lineHeight: 1.5,
                 color: 'oklch(var(--foreground) / 0.85)',
               }}
             >
               {citation.chunk_title}
-            </div>
+            </span>
           )}
         </span>
       )}
@@ -1736,9 +1746,18 @@ function InlineImageCard({
 
 function ImageGallery({
   citations,
+  allCitations,
   onOpenScreenshot,
 }: {
   citations: Citation[];
+  // BUG-024 — `allCitations` is the full message.citations list, used to
+  // compute each thumbnail's numeric badge via findIndex(chunk_id)+1 so the
+  // badge matches CitationPill / SourcesStrip / PanelSourceCard /
+  // ScreenshotModal numbering (all anchor on full-citations position).
+  // Pre-fix we used `i+1` over the imageCitations subset which diverged
+  // when an image-bearing chunk wasn't first in the full citations array
+  // (e.g. subset position 0 -> badge 1, but full position 1 -> modal 2).
+  allCitations: Citation[];
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   return (
@@ -1774,8 +1793,16 @@ function ImageGallery({
           gap: 8,
         }}
       >
-        {citations.map((c, i) => {
+        {citations.map((c) => {
           const img = c.embedded_images[0]!;
+          // BUG-024 — badge idx anchored on full-citations position so it
+          // matches CitationPill / ScreenshotModal / etc. Fallback to a
+          // safe `?` if lookup misses (defensive: should never happen when
+          // citations is a subset of allCitations).
+          const fullIdx = allCitations.findIndex(
+            (a) => a.chunk_id === c.chunk_id,
+          );
+          const badge = fullIdx >= 0 ? fullIdx + 1 : '?';
           return (
             <button
               key={c.chunk_id}
@@ -1825,7 +1852,7 @@ function ImageGallery({
                     fontWeight: 600,
                   }}
                 >
-                  {i + 1}
+                  {badge}
                 </span>
               </div>
               <div style={{ width: '100%', padding: '8px 10px' }}>
