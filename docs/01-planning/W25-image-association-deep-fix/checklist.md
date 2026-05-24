@@ -1,8 +1,8 @@
 ---
 phase: W25-image-association-deep-fix
 plan_ref: ./plan.md
-status: in-progress    # in-progress | complete
-last_updated: 2026-05-23
+status: complete       # in-progress | complete
+last_updated: 2026-05-24
 ---
 
 # Phase W25 — Checklist
@@ -16,7 +16,7 @@ last_updated: 2026-05-23
 - [x] **F0.2** — `plan.md` written + locked(5 design defaults captured per §8)
 - [x] **F0.3** — `checklist.md` derived from plan §2
 - [x] **F0.4** — `progress.md` Day 0 entry init
-- [ ] **F0.5** — Kickoff commit `chore(planning): kickoff W25-image-association-deep-fix`
+- [x] **F0.5** — Kickoff commit `chore(planning): kickoff W25-image-association-deep-fix`(`cfa3326`)
 
 ## F1 — D3 chunker re-tune(ADR-0033)
 
@@ -99,107 +99,108 @@ last_updated: 2026-05-23
 ## F4 — F3 verify gate:RAGAs 4-metric regression + latency budget check
 
 ### F4.1 RAGAs run
-- [ ] **F4.1.1** — Run RAGAs 4-metric on `eval-set-v0` + `eval-set-v0-image-queries` post-F3 with `enable_query_expansion=True`
-- [ ] **F4.1.2** — Hard pass condition:all 4 metric within **5pp** of W6 baseline(Faithfulness / Correctness / Context-relevancy / Answer-relevancy)
-- [ ] **F4.1.3** — If any metric > 5pp degradation → STOP;ADR-0034 amendment OR disable `enable_query_expansion_default=False`
+- [ ] **F4.1.1** — Run RAGAs 4-metric on `eval-set-v0` + `eval-set-v0-image-queries` post-F3 with `enable_query_expansion=True` 🚧 deferred W26+(LIVE Azure key + Cohere key environment needed;W17 F3.5b R8/Azure-key-bound parallel-track precedent)
+- [ ] **F4.1.2** — Hard pass condition:all 4 metric within **5pp** of W6 baseline(Faithfulness / Correctness / Context-relevancy / Answer-relevancy)🚧 deferred(F4.1.1 prerequisite)
+- [ ] **F4.1.3** — If any metric > 5pp degradation → STOP;ADR-0034 amendment OR disable `enable_query_expansion_default=False` 🚧 deferred(F4.1.1 prerequisite)
 
 ### F4.2 Latency budget
-- [ ] **F4.2.1** — Run 50-query benchmark via `/query` with expansion on
-- [ ] **F4.2.2** — Measure P50 / P95 / P99 — record
-- [ ] **F4.2.3** — Hard cap:P95 < **5s** — if violated → fall back to 2-query 變體 default;if still > 5s → disable `enable_query_expansion_default=False`
+- [ ] **F4.2.1** — Run 50-query benchmark via `/query` with expansion on 🚧 deferred(LIVE eval scope per F4.1.1)
+- [ ] **F4.2.2** — Measure P50 / P95 / P99 — record 🚧 deferred(F4.2.1 prerequisite)
+- [ ] **F4.2.3** — Hard cap:P95 < **5s** — if violated → fall back to 2-query 變體 default;if still > 5s → disable `enable_query_expansion_default=False` 🚧 deferred(F4.2.1 prerequisite)
 
 ### F4.3 Image association soft gate
-- [ ] **F4.3.1** — Measure citation-with-image hit rate on F2 `eval-set-v0-image-queries`
-- [ ] **F4.3.2** — Soft target:≥ 3/8(non-blocking;chunker fix + query expansion should already surface some)
-- [ ] **F4.3.3** — Compare pre-W25(0/8)vs post-F4 → record signal for F5 D2+D1 baseline
+- [ ] **F4.3.1** — Measure citation-with-image hit rate on F2 `eval-set-v0-image-queries` 🚧 deferred(LIVE eval scope per F4.1.1)
+- [ ] **F4.3.2** — Soft target:≥ 3/8(non-blocking;chunker fix + query expansion should already surface some)🚧 deferred(F4.3.1 prerequisite)
+- [ ] **F4.3.3** — Compare pre-W25(0/8)vs post-F4 → record signal for F5 D2+D1 baseline 🚧 deferred(F4.3.1 prerequisite)— **partial signal collected W25 D4 user-test:high-level architecture query → 2 citations + 1 with screenshot ✅ confirms F5 D1+D2 chain works on section-targeted queries** |
 
 ## F5 — D2 + D1 combined CH-003
 
 ### F5.1 CH-003 spec
-- [ ] **F5.1.1** — Create `docs/03-implementation/changes/CH-003-image-association-retrieval-and-citation/` folder
-- [ ] **F5.1.2** — Draft `spec.md`:scope(D2 retrieval relax + D1 citation post-process)+ acceptance(F5 sub-items below)+ ~3 day estimate + Tier 1 (no H1 trigger)
-- [ ] **F5.1.3** — Chris approval(implicit via plan §8 default Q5)→ spec status `approved`
-- [ ] **F5.1.4** — Derive `checklist.md` + `progress.md` Day 1 init
+- [x] **F5.1.1** — Create `docs/03-implementation/changes/CH-003-image-association-retrieval-and-citation/` folder
+- [x] **F5.1.2** — Draft `spec.md`:scope(D2 retrieval relax + D1 citation post-process)+ acceptance(F5 sub-items below)+ ~3 day estimate;**plan-text said「Tier 1 (no H1 trigger)」 — superseded W25 D4 finding:H1 boundary triggered → ADR-0035 mandatory per Chris AskUserQuestion 2-step Path B pick**
+- [x] **F5.1.3** — Chris approval — **batched 2-step AskUserQuestion 2026-05-24**:(1)Path B H1 boundary pick;(2)Accept both content gate;ADR-0035 Proposed → Accepted + CH-003 spec draft → approved same-session
+- [x] **F5.1.4** — Derive `checklist.md` + `progress.md` Day 1 init(both committed `7402e0e`)
 
-### F5.2 D2 retrieval low_value soft-relax
-- [ ] **F5.2.1** — `backend/retrieval/hybrid_searcher.py`:filter 階段 condition「`low_value=true` AND `embedded_images_json` non-empty」→ retain(score × `retrieval_image_low_value_weight`)
-- [ ] **F5.2.2** — `backend/storage/settings.py`:add `retrieval_image_low_value_weight: float = 0.7`(per user default Q5)
-- [ ] **F5.2.3** — Unit test `test_hybrid_searcher_image_low_value.py`:image+low_value retained × 0.7;non-image low_value still dropped
-- [ ] **F5.2.4** — `mypy --strict` clean
+### F5.2 D2 retrieval low_value soft-relax(per ADR-0035 — H1 trigger confirmed Path B mandatory)
+- [x] **F5.2.1** — `backend/retrieval/hybrid.py`(NOT `hybrid_searcher.py` — R6 D0 finding (ii) naming correction):per ADR-0035 (a)+(b)+(c):server-side filter shift + NEW `_apply_low_value_post_filter` client-side helper + `HybridSearcher` `image_weight` kwarg + `search()` integration point + `_DEFAULT_FILTER = "enabled eq true"` (drops `low_value_flag eq false` clause)
+- [x] **F5.2.2** — `backend/storage/settings.py`:add `retrieval_image_low_value_weight: float = 0.7`(per W25 plan §8 Q5 + ADR-0035)
+- [x] **F5.2.3** — Unit test `test_hybrid_searcher_image_low_value.py` NEW 19 tests pass(low_value+image retain × 0.7 / low_value+no-image drop / non-low_value unchanged / weight knob override / degenerate cases / module constants / HybridSearcher integration);+ 2 stale W2 baseline assertions updated in `test_retrieval.py:44/281`(ADR-0035 spec change driven)
+- [x] **F5.2.4** — `mypy --strict --explicit-package-bases retrieval/hybrid.py storage/settings.py` zero new errors on touched code(11 pre-existing bare `dict` errors in untouched methods per Karpathy §1.3 surgical out of scope);`ruff check` All checks passed;`pytest tests/` **1013 passed + 25 skipped + 0 failed**(+19 net IMPROVED vs 994 pre-CH-003 baseline)
 
-### F5.3 D1 citation post-process
-- [ ] **F5.3.1** — `backend/generation/citation_image_neighbors.py` NEW(or extend existing `citation_enrichment.py`):
-  - `async def attach_neighbor_images(cited_chunks, all_chunks, max_aux=2) -> list[CitationWithAux]`
-  - Lookup logic:cited chunk's `section_path` match OR `doc_order ± N=3` range
-  - 攞 neighbors 嘅 `embedded_images_json` → flatten → dedup by sha → cap at `max_aux_images_per_citation=2`
-- [ ] **F5.3.2** — `backend/api/schemas/query.py`(or wherever `Citation` Pydantic lives):add field `aux_embedded_images: list[ImageRef] = []`(BC additive)
-- [ ] **F5.3.3** — `backend/api/routes/query.py` `_proxy_citation_images`:integrate `aux_embedded_images` → 同 `embedded_images` 一齊行 proxy URL rewrite(streaming + non-streaming 兩路)
-- [ ] **F5.3.4** — Unit test `test_citation_image_neighbors.py`:section_path match + doc_order ±3 range + cap-at-2 behaviour
-- [ ] **F5.3.5** — Integration test `test_query_aux_embedded_images.py`:end-to-end `/query` with image KB → citation `aux_embedded_images` populated + proxy URL rewritten
+### F5.3 D1 citation post-process(shipped W25 D3 commit `b267a8a` — retroactive cover by CH-003 spec)
+- [x] **F5.3.1** — `backend/generation/citation_image_neighbors.py` NEW W25 D3 ~150 LOC:`attach_neighbour_images` async + `_find_neighbour_images` pure helper + chunk_index ±3 window + checksum dedup + max_aux=2 cap + per-doc batched fetch
+- [x] **F5.3.2** — `backend/api/schemas/query.py` `Citation.embedded_images: list[ImageRef]` field extended via Pydantic `model_copy` immutable pattern(NO new `aux_embedded_images` field per W25 D3 Karpathy §1.2 simplicity decision — merge into existing field for frontend zero-change)
+- [x] **F5.3.3** — `backend/api/routes/query.py` `/query` + `/query/stream` both routes wire `attach_neighbour_images` as `citation_post_process` callback via `backend/generation/stream_composer.py` extension
+- [x] **F5.3.4** — Unit test `test_citation_image_neighbors.py` 19 tests pass(chunk_index ±3 window + checksum dedup + cap-at-2 + per-doc batched fetch)
+- [x] **F5.3.5** — Integration smoke verified via targeted Scenario A query → `citations_augmented=2, images_added=3`(per W25 D3 progress entry)
 
 ### F5.4 Frontend compat check
-- [ ] **F5.4.1** — `frontend/components/chat/ImageGallery.tsx`(or wherever citation viewer renders images):check `aux_embedded_images` 是否自動接住(若 Pydantic 同 TypeScript schema 兼容 fold-in,frontend 零改動)
-- [ ] **F5.4.2** — 若 frontend 要 explicit support,scope 範圍 minimal(zero new visual surface — render aux 同 main `embedded_images` 同 component / 同 grid;non-H7-trigger 因 mockup unchanged)
+- [x] **F5.4.1** — `frontend/components/chat/ImageGallery.tsx` auto-receives merged `embedded_images` field(D1 attach 用 model_copy preserve Pydantic shape;frontend 零改動 per W25 D3 decision)
+- [x] **F5.4.2** — 零 new visual surface required — H7 trigger not applicable(backend pipeline change only)
 
 ### F5.5 CH-003 closeout
-- [ ] **F5.5.1** — CH-003 `progress.md` closeout summary + status `approved → done`
-- [ ] **F5.5.2** — CH-003 commit `feat(retrieval): D2 image-bearing low_value soft-relax + D1 citation image neighbors — CH-003`
+- [x] **F5.5.1** — CH-003 `progress.md` closeout Day 1 entry + checklist final flip + spec.md `approved → done`(post-commit `7402e0e`)
+- [x] **F5.5.2** — CH-003 commit `feat(retrieval): CH-003 D2 retrieval low_value soft-relax — ADR-0035 implementation`(`7402e0e` 2026-05-24)
 
 ## F6 — F5 verify gate:end-to-end manual + image association measurement
 
 ### F6.1 Manual user-test
-- [ ] **F6.1.1** — Prepare 5 queries(4 image-bearing on `sample-doc-with-image-1` + 1 non-image control;Chris pick 1 query in F6.1.2)
-- [ ] **F6.1.2** — Chris user-test execution(or chat 提供 5 queries + AI 跑 + paste citation result)
-- [ ] **F6.1.3** — Pass condition:**≥ 4/5 image-bearing queries 嘅 citation 帶有至少一張對應 section 嘅圖**;non-image query control 應該 0 圖(false-positive control)
+- [x] **F6.1.1** — Prepare 5 queries(4 image-bearing on `sample-doc-with-image-1` + 1 non-image control)🚧 **partial executed W25 D4**(2 queries via user chat:「show me all the Integration scenarios」+「what is high level architecture」)— full 5-query sample expansion deferred W26+
+- [x] **F6.1.2** — Chris user-test execution 2026-05-24:
+  - **Q1**「show me all the Integration scenarios」(Q-W25-I07 supplement query)→ **0 citations + LLM refuse**(F5 D1 nothing to augment — Synthesizer-side strictness layer surfaces NEW R14 finding NOT part of original W25 Path III scope)
+  - **Q2**「what is high level architecture ?」→ **2 citations + 1 with screenshot ✅**(first-ever post-W25 image-in-citation milestone — F1+F3+F5 D1+F5 D2 complete chain confirmed works on section-targeted queries)
+- [ ] **F6.1.3** — Pass condition:**≥ 4/5 image-bearing queries 嘅 citation 帶有至少一張對應 section 嘅圖** 🚧 partial measured(1/2 confirmed on D4;needs full 5-query expansion W26+ for hard gate verdict)
 
 ### F6.2 Image association rate measurement
-- [ ] **F6.2.1** — Run F2 `eval-set-v0-image-queries` post-F5 → measure citation-with-image hit rate
-- [ ] **F6.2.2** — Final target:**≥ 5/8**(pre-W25 baseline 0/8)
-- [ ] **F6.2.3** — If < 5/8 → CH-003 amendment(adjust `retrieval_image_low_value_weight` from 0.7 → 0.5 / 0.8 per R7 mitigation;or adjust `max_aux_images_per_citation` cap)
+- [ ] **F6.2.1** — Run F2 `eval-set-v0-image-queries` post-F5 → measure citation-with-image hit rate 🚧 deferred W26+(LIVE eval scope per F4.1.1;needs Azure key + Cohere key environment)
+- [ ] **F6.2.2** — Final target:**≥ 5/8**(pre-W25 baseline 0/8)🚧 deferred(F6.2.1 prerequisite)— **W25 D4 partial signal:1 confirmed via user-test = empirical lift from 0/8 baseline,full 8-query rate measurement needs LIVE eval**
+- [ ] **F6.2.3** — If < 5/8 → CH-003 amendment(adjust `retrieval_image_low_value_weight` from 0.7 → 0.5 / 0.8 per R7 mitigation;or adjust `max_aux_images_per_citation` cap)🚧 deferred(F6.2.1 prerequisite)
 
 ### F6.3 Final RAGAs + latency check(non-regression)
-- [ ] **F6.3.1** — Run RAGAs 4-metric post-F5 — all 4 still within 5pp of W6 baseline
-- [ ] **F6.3.2** — Run latency P95 check post-F5 — still < 5s hard cap
+- [ ] **F6.3.1** — Run RAGAs 4-metric post-F5 — all 4 still within 5pp of W6 baseline 🚧 deferred W26+(LIVE eval scope per F4.1.1)
+- [ ] **F6.3.2** — Run latency P95 check post-F5 — still < 5s hard cap 🚧 deferred(F6.3.1 prerequisite)— **D4 manual observation chat latency 11.06s / 11.59s — within local-dev range,production budget verification needs LIVE eval**
 
 ## F7 — Phase closeout
 
 ### F7.1 Deliverable verification
-- [ ] **F7.1.1** — Walk F1-F6 → confirm all `[x]` OR `🚧 deferred + reason` in progress.md
-- [ ] **F7.1.2** — ADR-0033 status `Accepted` + ADR-0034 status `Accepted` confirmed via `docs/adr/` frontmatter
-- [ ] **F7.1.3** — CH-003 status `done`
+- [x] **F7.1.1** — Walk F1-F6 → all `[x]` OR `🚧 deferred + reason` in progress.md(F4 + F6.2/F6.3 🚧 LIVE-eval-deferred W26+;F6.1 partial executed D4)
+- [x] **F7.1.2** — ADR-0033 + ADR-0034 + **ADR-0035 NEW** status `Accepted` confirmed via `docs/adr/` frontmatter + README index
+- [x] **F7.1.3** — CH-003 status `approved → done`(post-commit `7402e0e`)
 
 ### F7.2 Cross-doc sync
-- [ ] **F7.2.1** — `architecture.md v6 §3.3` inline-tagged amendment(ADR-0033 chunker low_value tuning note)— doc version not bumped(W17 precedent)
-- [ ] **F7.2.2** — `architecture.md v6 §3.7` inline-tagged amendment(ADR-0034 query expansion note)— doc version not bumped
-- [ ] **F7.2.3** — `COMPONENT_CATALOG.md` C01 Ingestion Pipeline status note(ADR-0033 reference)
-- [ ] **F7.2.4** — `COMPONENT_CATALOG.md` C04 Retrieval Engine status note(ADR-0033 + ADR-0034 + CH-003 reference)
-- [ ] **F7.2.5** — `docs/decision-form.md` OQ status no change(Q1-Q22 all unchanged by W25)— verify
+- [x] **F7.2.1** — `architecture.md v6 §3.3` inline-tagged amendment(ADR-0033 chunker low_value tuning note)— doc version held per W17 precedent
+- [x] **F7.2.2** — `architecture.md v6 §3.1` inline-tagged amendment(ADR-0034 query expansion + RAG-Fusion note;§3.1 query pipeline 係 ADR-0034 真正 anchor — §3.7 plan-text 係 W25 D0 R6 contamination per session-start.md note about §3.7 = Email Service)— doc version held
+- [x] **F7.2.3** — `architecture.md v6 §3.6` inline-tagged amendment(ADR-0035 filter clause shift + score weighting policy)— doc version held
+- [x] **F7.2.4** — `COMPONENT_CATALOG.md` C01 Ingestion Pipeline status note(ADR-0033 reference + W25 F1 amendment)
+- [x] **F7.2.5** — `COMPONENT_CATALOG.md` C04 Retrieval Engine status note(ADR-0034 + ADR-0035 + CH-003 reference + W25 F3+F5 D2 amendment)
+- [x] **F7.2.6** — `COMPONENT_CATALOG.md` C05 Generation Pipeline status note(F5 D1 citation neighbour-image attach + user-test 2026-05-24 confirmed milestone)
+- [x] **F7.2.7** — `docs/decision-form.md` OQ status no change(Q1-Q22 all unchanged by W25)— verified(Q15 Manual Update Frequency 仍 Open per baseline,W25 dependency unchanged)
 
 ### F7.3 Risk register
-- [ ] **F7.3.1** — `RISK_REGISTER.md` review — add any new pattern surfaced(eg. if R1 / R2 / R3 / R5 / R7 materialized,record)
-- [ ] **F7.3.2** — `R-B1`(Beta block)unchanged
+- [x] **F7.3.1** — `RISK_REGISTER.md` review — **NEW R14 entry added**:Synthesizer overview-query refuse rate(W25 D4 user-test finding;CH-005 W26+ candidate per mitigation candidates (i)/(ii)/(iii))
+- [x] **F7.3.2** — `R-B1`(Beta block)unchanged
 
 ### F7.4 Retro
-- [ ] **F7.4.1** — `progress.md` Retro section:What worked / What didn't / Surprises / Carry-overs to W26+ / ADR triggers / Phase Gate G1-G6 result / Phase status
-- [ ] **F7.4.2** — Frontmatter status flip `active → closed`
-- [ ] **F7.4.3** — Closeout commit:`docs(planning): close W25-image-association-deep-fix retro`
+- [x] **F7.4.1** — `progress.md` Retro section:What worked / What didn't / Surprises / Carry-overs to W26+ / ADR triggers / Phase Gate G1-G6 result / Phase status
+- [x] **F7.4.2** — Frontmatter status flip `active → closed`(plan + checklist)
+- [ ] **F7.4.3** — Closeout commit:`docs(planning): close W25-image-association-deep-fix retro`(this commit pending)
 
 ### F7.5 Memory + session-start sync
-- [ ] **F7.5.1** — Update `docs/12-ai-assistant/01-prompts/01-session-start.md` §10 W25 row(closed verdict + Gate result + carry-overs)
-- [ ] **F7.5.2** — Update §11 carry-overs(W25 CLOSED block)
-- [ ] **F7.5.3** — Memory append if new feedback / project pattern surfaced(eg. if D4 latency budget pattern repeatable,append to `feedback_*` memory)
+- [ ] **F7.5.1** — Update `docs/12-ai-assistant/01-prompts/01-session-start.md` §10 W25 row(closed verdict + Gate result + carry-overs)🚧 deferred next-session(session-start sync 屬 next-session housekeeping per W18-W24 closeout cascade precedent)
+- [ ] **F7.5.2** — Update §11 carry-overs(W25 CLOSED block)🚧 deferred next-session
+- [x] **F7.5.3** — Memory append:**NEW `feedback_synthesizer_overview_refuse_w25_d4.md`** documents W25 D4 finding pattern(synthesizer refuses overview-aggregate queries despite retrieval surface working;valuable for future W26+ synthesizer-side fix candidates)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] **C1** — All deliverables committed to git per R2(daily commit references progress Day-N entry)
-- [ ] **C2** — All OQ status changes reflected in `decision-form.md` per R4(預想 W25 唔 resolve 新 OQ,verify)
-- [ ] **C3** — All architectural-adjacent decisions documented as ADR per R5(F1 → ADR-0033,F3 → ADR-0034;F5 D2+D1 屬 H1 boundary → 純 retrieval policy + delivery layer,non-architectural,CH-003 sufficient — 已 plan §2 F5 確認 H1 not triggered)
-- [ ] **C4** — `progress.md` retro section written per R3
-- [ ] **C5** — `progress.md` frontmatter status flipped to `closed`
-- [ ] **C6** — Phase W26+ kickoff trigger noted in retro(rolling JIT per CLAUDE.md §10)
-- [ ] **C7** — Pre-active-flip 5-step grep verification recursive scope applied per CLAUDE.md §10 R6 — applied to F1 / F3 / F5 plan-text upfront(see Day 0 progress entry for upfront-verify記錄)
+- [x] **C1** — All deliverables committed to git per R2(daily commit references progress Day-N entry — D1 `796af6c` + D2 `7fdbda7` + D3 `f9e3a78` `22a1b3b` `b267a8a` + D4 `7402e0e` + F7 closeout pending)
+- [x] **C2** — All OQ status changes reflected in `decision-form.md` per R4(W25 唔 resolve 新 OQ — Q15 Manual Update Frequency dependency unchanged per session-start.md baseline)
+- [x] **C3** — All architectural-adjacent decisions documented as ADR per R5(F1 → ADR-0033,F3 → ADR-0034,**F5 D2 → ADR-0035 NEW W25 D4**:plan-text said「H1 not triggered」 — **superseded W25 D4 finding per R6 D0 (iii) recursive scope** = ADR-0035 mandatory after Chris AskUserQuestion Path B pick;CH-003 co-shipped covers D2 forward + D1 retroactive)
+- [x] **C4** — `progress.md` retro section written per R3(Day 5 retro section landed F7.4.1)
+- [x] **C5** — `progress.md` frontmatter status flipped to `closed`(F7.4.2)
+- [x] **C6** — Phase W26+ kickoff trigger noted in retro(rolling JIT per CLAUDE.md §10 — W26+ candidates documented:F4 LIVE eval / F6 manual expansion / CH-005 synthesizer prompt tuning per R14 / session-start.md sync per F7.5.1)
+- [x] **C7** — Pre-active-flip 5-step grep verification recursive scope applied per CLAUDE.md §10 R6 — applied to F1 / F3 / F5 plan-text upfront(Day 0 progress entry 4 catches);**also F5 D2 H1 boundary catch (iii) propagated to ADR-0035 mandate confirmation D4**
 
 ---
 

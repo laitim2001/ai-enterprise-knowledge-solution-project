@@ -2,7 +2,7 @@
 artifact: risk-register-living
 version: 1.0
 status: active
-last_updated: 2026-06-10
+last_updated: 2026-05-24
 spec_baseline: docs/architecture.md §8 (frozen v5)
 catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 ---
@@ -29,6 +29,7 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **R8** ★ | **Ricoh corp proxy blocks PyPI large wheels + cloud HTTPS SSL inspection** | W1 D1+D2 incident;D5 retest;2026-05-03 partial mitigation;**2026-05-04 permanent fix** | 🟠 High | C12 (primary) + impacts C01 / C06 / C08 | 🟢 **Mitigated 2026-05-04 via `truststore` package**(P2 permanent fix superseding P1 home network);Microsoft enterprise Python pattern,使 Python TLS 用 Windows Cert Store(corp root CA via GPO already trusted there)— Python SDK / urllib / httpx 全 cloud HTTPS work under VPN;P1 home network 仍 fallback if Windows Cert Store somehow misses CA |
 | **R9** ★ | **MCR DNS intercept on Docker image pull** | W1 D1 incident | 🟡 Medium | C12 | 🟢 Mitigated(Azurite npm fallback + docker.io direct path);long-term IT whitelist desirable |
 | **R10** ★ | **Q2 sample manual delivery delay** | W1 D1 OQ partial | 🟠 High | C01 (primary) + C06 (chunk_id discovery) | 🟡 Active(W1 D4 partial unblock:6 docs arrived,F6/Q17/Q18 cleared;F8 Docling 仍 W2 D2 plan)|
+| **R14** ★ | **Synthesizer overview-query refuse rate** | W25 D4 user-test 2026-05-24 | 🟡 Medium | C05 + C04 | 🔴 Open(F1+F3+F5 D1+F5 D2 retrieval+delivery works on targeted queries;synthesizer-side strictness 仍 untouched layer;CH-005 W26+ candidate)|
 | **R11** ★ | **Langfuse health endpoint degradation**(NEW)| W1 D5 closeout finding 2026-05-02 | 🟡 Medium(triaged Sev3 → escalated BUG-001 instance) | C07 + C12 | 🟢 **Closed 2026-05-02**(BUG-001 Path B Docker Desktop GUI restart + clean compose up postgres+langfuse,Langfuse `/api/public/health` HTTP 200 verified sustained)。Mitigation:Path B recovery procedure documented in BUG-001 + W2 carry-over to C07/C12 design notes;daily morning health check ritual added W2+。BUG-001 closed same-day 2026-05-02 |
 | **R12** ★ | **Azurite SDK signature mismatch**(W2 D3) | W2 D3 F3 sanity testing 2026-05-05 | 🟢 Resolved | C12 (primary) + C01 (impacts F3 screenshot upload local verification) | 🟢 **Resolved 2026-05-22 via BUG-009** — root cause = 顯式 path-style `BlobEndpoint` connection string;改用 SDK 捷徑 `UseDevelopmentStorage=true`(行 Azurite-correct path-style canonicalization)→ blob round-trip SUCCESS。獨立疊加:Azurite launch `--skipApiVersionCheck`(SDK 12.28 `x-ms-version` 新過 Azurite 3.35.0)。`documents.py` `ScreenshotUploader` 由 `uploader=None` wire 返。詳見 R12 entry 下方 + `BUG-009-azurite-blob-upload-403/` |
 | **R13** ★ | **truststore depends on Ricoh corp root CA in Windows Cert Store** | W2 D5 cont 2026-05-04(R8 mitigation side-effect awareness)| 🟢 Low(operational accepted)| C12 (primary) | ⚫ **Accepted 2026-05-04** — `truststore.inject_into_ssl()` 信任 OS trust store 而非 `certifi`。**Dependency chain**:Ricoh IT GPO push corp root CA into Windows Cert Store → Windows updates trigger refresh → `truststore` 即生效。**Failure modes**:(a)Workstation 唔 join Ricoh AD domain → corp CA absent → cloud HTTPS fail(自帶 fallback:disconnect VPN go home network)。(b)Corp CA rotation by Ricoh IT 後 Windows GPO 未推送 → 短暫 fail until Windows update。(c)Linux / macOS dev workstation 唔有 GPO push → 需 manual install corp CA into OS trust store(W7+ cloud deploy worker uses managed identity,no proxy issue)。**Decay**:呢 risk 對 Tier 1 dev workstation 有效,Tier 2 production 用 Azure managed identity bypasses 全部 cert chain |
@@ -212,6 +213,23 @@ catalog_anchor: docs/02-architecture/COMPONENT_CATALOG.md
 | **Mitigation in place** | 🟢 **Closed 2026-05-02**:Recovery procedure(Path B)documented in BUG-001 progress.md + W2 D1 morning carry-over to add subsection in C07 + C12 design notes troubleshooting。Daily morning health check ritual added to W2+ daily routine |
 | **Lesson learned** | (1)G3 health check 屬 daily routine non end-of-phase only;(2)`restart: unless-stopped` 對 zombie process state 無效(Docker only triggers on exit);(3)Future similar zombie pattern → 立即 escalate Path B GUI restart,prevent wasted time on `docker rm -f` infinite hang;(4)`docker ps -a` 永遠係 daemon issue 第一個 query(catch orphan containers from failed force-recreate)|
 | **Decay date / review** | ✅ Closed 2026-05-02(BUG-001 closed same-day);R8/R9/R11 corp infra ecosystem trio postmortem 計劃 W2 末 retro batch surface 共通 pattern |
+
+---
+
+### R14 ★ — Synthesizer Overview-Query Refuse Rate(NEW W25 D4 Finding — OPEN 2026-05-24)
+
+| Field | Value |
+|---|---|
+| **Component(s)** | **C05** Generation Pipeline(LLM cite-or-refuse gate)+ secondary **C04** Retrieval Engine(retrieval surface shape affects cite confidence)|
+| **Severity** | 🟡 Medium(Confirmed × Medium impact — affects overview/aggregate queries only;targeted queries unaffected per W25 D4 user-test)|
+| **First observed** | 2026-05-24(W25 D4 user-test post F5 D1 + F5 D2 ship — `/chat` UI Q-W25-I07「show me all the Integration scenarios」returns 0 citations + "I cannot find this in the available documentation" refuse despite F1+F3+F5 D1+F5 D2 four-pronged path III complete)|
+| **Symptom** | Two-shape divergence in chat citation behavior post-W25:**(a) section-targeted queries** like「what is high level architecture」→ **2 citations + 1 with screenshot ✅**(F1+F3+F5 D1+F5 D2 complete chain works);**(b) overview-aggregate queries** like「show me all the Integration scenarios」→ 0 citations + LLM refuse → F5 D1 nothing to augment(citation_post_process callback gets empty citation list)|
+| **Root cause hypothesis** | F3 RAG-Fusion successfully surfaces 29 unique chunks(vs single hybrid retrieve 5)including the §X-summary meta chunk + scenario A-E individual chunks;**但 synthesizer system prompt / CRAG confidence judge** 對 multiple loosely-related chunks(meta intro + A + B + C + D + E vs single targeted match)trigger 「low confidence — refuse」gate。架構性層次:F1+F3+F5 D2 closes **retrieval + delivery** layer;**synthesizer cite gate** 仍是 untouched layer not part of W25 plan original Path III scope |
+| **Empirical scope** | User-eye verify 2026-05-24 confirmed pattern on 1 sample query(Q-W25-I07);F4 LIVE RAGAs eval(13-query supplement)+ F6 manual user-test(5 image-bearing queries)needed to measure full refuse-rate distribution across query shapes |
+| **Mitigation candidates** | (i)Synthesizer system prompt tuning — relax cite-confidence threshold or add「if multiple meta/intro chunks present, synthesize from collective context rather than refuse」instruction(屬 CH-005 candidate W26+);(ii)CRAG confidence_judge threshold lowering(`Settings.crag_confidence_threshold = 0.70` → 0.60 trial);(iii)F3 reformulator prompt strengthening to favor scenario-specific keywords(NOT general "scenario" terms)|
+| **Active blockers** | F4 LIVE eval run pending Azure key environment;F6 manual user-test pending sample query expansion |
+| **Decay date / review** | W26+ candidate(post W25 closeout — needs design pick from candidates (i)/(ii)/(iii)+ AskUserQuestion cycle if H1 boundary 觸 §3.1 CRAG threshold)|
+| **Cross-ref** | W25 plan §1.1 Path III scope(retrieval + delivery only);W25 plan §2 F6 manual user-test acceptance;memory `feedback_synthesizer_overview_refuse_w25_d4.md`(NEW)— W25 D4 finding pattern documented for future synthesizer-side fix candidates |
 
 ---
 

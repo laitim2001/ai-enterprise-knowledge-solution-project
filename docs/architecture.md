@@ -187,13 +187,23 @@ support multi-format document ingestion、advanced/agentic RAG retrieval、moder
 
 ### 3.1 Query Pipeline(Tier 1 with L2 CRAG)
 
+> **W25 F3 D4 amendment per ADR-0034**(2026-05-24,doc-version held — ADR is record):
+> Query rewriter step extended to **multi-variant reformulation + RAG-Fusion** when
+> `Settings.enable_query_expansion=True`(`backend/generation/query_reformulator.py` +
+> `backend/retrieval/result_fusion.py`)。Reformulator(GPT-5.4-mini)expands one query
+> to N variants(default 3 = original + 2);hybrid retrieve runs in parallel per variant
+> with per-variant overfetch(`top_k * 2`);Reciprocal Rank Fusion(RRF k=60)merges
+> ranked lists → top 50 candidates。**Hard latency cap P95 < 5s**(`query_expansion_latency_cap_s`);
+> graceful fallback to single-query path on timeout。Default `enable_query_expansion=False`
+> preserves W2 baseline path bit-identical(BC)。
+
 ```
 User Query
     ↓
 [Query Preprocessor]                    ← normalization + length check
     ↓
-[Query Rewriter]                        ← optional,handle ambiguous query
-    ↓
+[Query Rewriter / Reformulator]         ← W25 F3 ADR-0034: multi-variant + RAG-Fusion
+    ↓                                     (Settings.enable_query_expansion)
 [Hybrid Retrieval - Azure AI Search]
  ├─ Vector search top 50
  ├─ BM25 search top 50
@@ -256,6 +266,13 @@ End User UI
 **統一 chunking rules**:
 - Hard cap:chunk text > 1500 tokens 自動切細
 - Soft floor:chunk text < 100 tokens flag `low_value_chunk`(index 但 deboost retrieval)
+  > **W25 F1 amendment per ADR-0033**(2026-05-24,doc-version held — ADR is record):
+  > `_TOKEN_LOW_VALUE_FLOOR` lowered **100 → 60** + NEW `_merge_adjacent_shorts`
+  > post-process pass(`_MIN_CHUNK_MERGE_FLOOR = 160`)。Empirical signal:60% chunks
+  > flagged on representative corporate docx pre-amendment;post-amendment 60-100 token
+  > sub-section bodies retained as standalone chunks(eg.「Deliverables」/「Exit criteria」
+  > content);adjacent same-section short paras consolidated to ≥ 160 tokens。
+  > See `backend/ingestion/chunker/layout_aware.py`。
 - Title + content 結合:chunk text = `chunk_title + "\n\n" + chunk_content`
 - Metadata 全保留(畀 retrieval filter)
 - Embedded images 統一抽出 → Azure Blob,chunk 記錄 image URL list
@@ -382,6 +399,16 @@ EKP Platform
 ```
 
 **Query 時 filter**:`enabled eq true and low_value_flag eq false`(default deboost low value chunks)
+
+> **W25 F5 D2 amendment per ADR-0035**(2026-05-24,doc-version held — ADR is record):
+> Server-side OData filter shifted to `enabled eq true`(low_value clause移走)+
+> **client-side Python post-filter**:`low_value_flag=True AND embedded_images_json
+> non-empty` → retain with score × `Settings.retrieval_image_low_value_weight`(default
+> 0.7);`low_value_flag=True AND no images` → drop(W2 exclusion preserved for non-image
+> low_value);non-low_value → unchanged。Closes spec wording「deboost」(§3.5 line 258)
+> vs W2 baseline「hard exclude」divergence;image-bearing low_value chunks now retain
+> ranking position vs prior systematic hard-drop。See `backend/retrieval/hybrid.py`
+> `_apply_low_value_post_filter`。
 
 ### 3.7 C13 Email Verification Service(v6 amendment per ADR-0014 hybrid auth)
 

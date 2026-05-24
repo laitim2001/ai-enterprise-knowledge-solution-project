@@ -4,7 +4,7 @@ name: "Image-Text Association — Deep Fix(D3 chunker + D4 query expansion + D2 
 sprint_week: W25
 start_date: 2026-05-23
 end_date: 2026-06-13          # planned ~3 weeks, may slip with changelog log
-status: active
+status: closed
 spec_refs:
   - architecture.md §3.3      # chunking philosophy
   - architecture.md §3.5      # layout-aware chunker
