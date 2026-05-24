@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, replace
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 import structlog
@@ -60,7 +60,7 @@ class HybridSearchHit:
     """One result from /docs/search. score + raw fields dict from index."""
 
     score: float
-    fields: dict
+    fields: dict[str, Any]
 
 
 def _apply_low_value_post_filter(
@@ -143,7 +143,7 @@ class HybridSearcher:
         self,
         chunk_ids: list[str],
         kb_id: str,
-    ) -> dict[str, dict]:
+    ) -> dict[str, dict[str, Any]]:
         """Batch fetch chunks by chunk_id list (no ranking) per ADR-0020 Context Expander.
 
         Single Azure AI Search /docs/search call with `search.in()` filter to retrieve
@@ -170,7 +170,7 @@ class HybridSearcher:
             f"/docs/search?api-version={self.api_version}"
         )
         # search="*" + filter = pure filtering retrieval (no BM25/vector ranking)
-        payload: dict = {
+        payload: dict[str, Any] = {
             "search": "*",
             "filter": full_filter,
             "top": len(chunk_ids),
@@ -184,7 +184,7 @@ class HybridSearcher:
             response.raise_for_status()
 
         body = response.json()
-        result: dict[str, dict] = {}
+        result: dict[str, dict[str, Any]] = {}
         for item in body.get("value", []):
             chunk_id = str(item.get("chunk_id", ""))
             if not chunk_id:
@@ -244,7 +244,7 @@ class HybridSearcher:
             f"/docs/search?api-version={self.api_version}"
         )
         # ADR-0021: assemble the request payload per retrieval mode.
-        payload: dict = {"top": top_k, "filter": full_filter}
+        payload: dict[str, Any] = {"top": top_k, "filter": full_filter}
         vector_query = {
             "kind": "vector",
             "vector": query_vector,
@@ -301,7 +301,7 @@ class HybridSearcher:
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
-    async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:
+    async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict[str, Any]]:
         """W16 F5.1.1 — aggregate doc-level metadata from kb_id-scoped chunks.
 
         Single Azure AI Search query (search="*" + kb_id filter) returns up to
@@ -324,7 +324,7 @@ class HybridSearcher:
             f"{self.endpoint}/indexes/{index_name}"
             f"/docs/search?api-version={self.api_version}"
         )
-        payload: dict = {
+        payload: dict[str, Any] = {
             "search": "*",
             "filter": kb_filter,
             "top": max_chunks,
@@ -341,7 +341,7 @@ class HybridSearcher:
             response.raise_for_status()
 
         body = response.json()
-        docs: dict[str, dict] = {}
+        docs: dict[str, dict[str, Any]] = {}
         for item in body.get("value", []):
             doc_id = str(item.get("doc_id", ""))
             if not doc_id:
@@ -375,7 +375,7 @@ class HybridSearcher:
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
-    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict[str, Any]]:
         """W16 F5.1.2 — list all chunks of a doc (kb_id + doc_id filter;
         ordered by chunk_index ascending).
 
@@ -397,7 +397,7 @@ class HybridSearcher:
             f"{self.endpoint}/indexes/{index_name}"
             f"/docs/search?api-version={self.api_version}"
         )
-        payload: dict = {
+        payload: dict[str, Any] = {
             "search": "*",
             "filter": full_filter,
             "top": top,
@@ -415,7 +415,7 @@ class HybridSearcher:
             response.raise_for_status()
 
         body = response.json()
-        chunks: list[dict] = []
+        chunks: list[dict[str, Any]] = []
         for item in body.get("value", []):
             chunks.append({
                 "chunk_id": str(item.get("chunk_id", "")),
