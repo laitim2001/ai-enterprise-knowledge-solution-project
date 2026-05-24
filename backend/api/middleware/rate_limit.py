@@ -17,6 +17,7 @@ behaviour for unit tests.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
@@ -28,6 +29,18 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from api.auth.mock_msal import authenticate_mock
 from api.auth.msal_provider import authenticate_msal
 from storage.settings import Settings
+
+# BUG-014 — Screenshot blob GETs are benign image subresources (no LLM /
+# no Azure search / no embedding cost). Parallel <img> rendering of an
+# image-rich page exhausts the per-user concurrency budget for nothing.
+# Exempt the precise screenshot proxy path shape from rate metering;
+# other /kb/* routes (POST /documents upload, DELETE, reindex, chunks,
+# /images metadata, …) remain fully rate-limited. The pattern is locked
+# to {sha-256 lower-hex 64 chars}.{ext} so this never broadens beyond
+# the documents.py:269 screenshot route.
+_RATE_LIMIT_EXEMPT_RE = re.compile(
+    r"^/kb/[^/]+/screenshots/[a-f0-9]{64}\.[a-z0-9]+$"
+)
 
 _logger = structlog.get_logger(__name__)
 
@@ -189,6 +202,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
+
+        # BUG-014 — exempt the screenshot proxy path; image subresources are
+        # benign and an image-rich page naturally fires N parallel GETs.
+        if _RATE_LIMIT_EXEMPT_RE.match(path):
+            return await call_next(request)
+
         if not any(path == p or path.startswith(f"{p}/") or path == p for p in self._prefixes):
             return await call_next(request)
         # also match exact prefix without trailing slash (e.g. "/kb")
