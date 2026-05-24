@@ -24,7 +24,13 @@ class Citation(BaseModel):
     chunk_id: str
     doc_id: str
     doc_title: str
-    doc_format: Literal["docx", "pdf", "pptx"]
+    # BUG-021 added doc_format; default "docx" preserves backward compatibility
+    # for Citations persisted to conversations.messages BEFORE the field existed
+    # (Postgres JSONB rows from pre-BUG-021 sessions skip the field on read).
+    # The Drive corpus is .docx-only so the default is realistic for legacy data;
+    # `build_citations` overrides with the chunk-fields doc_format for fresh
+    # retrievals so live `/query` answers always carry the accurate format.
+    doc_format: Literal["docx", "pdf", "pptx"] = "docx"
     chunk_title: str
     chunk_index: int
     section_path: list[str]
@@ -61,3 +67,4 @@ class QueryResponse(BaseModel):
     model_used: str
     reranker_used: str
     refused: bool = False
+
