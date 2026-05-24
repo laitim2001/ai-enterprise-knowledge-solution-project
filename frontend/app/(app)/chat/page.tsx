@@ -2502,7 +2502,27 @@ function ScreenshotModal({
   kbId: string;
   onClose: () => void;
 }) {
+  // CH-004 — click-image-to-zoom progressive enhancement on top of the
+  // mockup-faithful 2-col layout (BUG-021 amendment baseline). The 2-col
+  // grid compresses the image to ~62% of modal width; user opts in to a
+  // full-viewport overlay (z-index 200 > modal z-index 100) when needing
+  // to inspect detail. ESC handler is scoped to isZoomed=true mount so it
+  // never collides with the (currently absent) modal-level ESC handler
+  // and gets cleaned up on flip/unmount — no leaked listener.
+  const [isZoomed, setIsZoomed] = useState(false);
+  useEffect(() => {
+    if (!isZoomed) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setIsZoomed(false);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isZoomed]);
   return (
+    <>
     <div
       role="dialog"
       aria-modal="true"
@@ -2614,11 +2634,19 @@ function ScreenshotModal({
             <img
               src={image.blob_url}
               alt={image.alt_text || citation.chunk_title || 'Screenshot'}
+              onClick={(e) => {
+                // CH-004 — escalate to full-viewport zoom overlay; stop
+                // propagation so the click does not bubble to the dialog
+                // backdrop (which calls onClose).
+                e.stopPropagation();
+                setIsZoomed(true);
+              }}
               style={{
                 maxWidth: '100%',
                 maxHeight: '70vh',
                 display: 'block',
                 objectFit: 'contain',
+                cursor: 'zoom-in',
               }}
             />
           </div>
@@ -2714,6 +2742,48 @@ function ScreenshotModal({
         </div>
       </div>
     </div>
+    {/* CH-004 — full-viewport zoom overlay layer (z-index 200 > modal 100).
+        Conditional mount on isZoomed=true; dismissed via backdrop click,
+        image click, or ESC (window-scoped via useEffect above). objectFit
+        contain caps over-large images at viewport per spec §4.1 — strict
+        1:1 pixel + scroll behaviour deferred per spec §2.2 out-of-scope. */}
+    {isZoomed && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Full-resolution screenshot"
+        onClick={() => setIsZoomed(false)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'oklch(0 0 0 / 0.92)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'zoom-out',
+          padding: 16,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image.blob_url}
+          alt={image.alt_text || citation.chunk_title || 'Screenshot full-resolution'}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsZoomed(false);
+          }}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+            cursor: 'zoom-out',
+            display: 'block',
+          }}
+        />
+      </div>
+    )}
+    </>
   );
 }
 
