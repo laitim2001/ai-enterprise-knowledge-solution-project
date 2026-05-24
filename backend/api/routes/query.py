@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from api.routes.documents import screenshot_proxy_url
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations
+from generation.citation_image_neighbors import attach_neighbour_images
 from generation.crag import CragLoop
 from generation.query_reformulator import QueryReformulator
 from generation.stream_composer import compose_query_stream
@@ -210,6 +211,28 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
             ]
 
     citations = build_citations(final_synth.citation_ids, final_chunks)
+
+    # W25 F5 D1 — attach neighbour-chunk images per ADR-0034 §Implementation
+    # Mapping. When the LLM cites an intro / meta chunk (eg. §8 "Integration
+    # scenarios" intro) that itself has no images but adjacent walkthrough
+    # chunks (§8.1-8.5) do, this surfaces those neighbour images on the
+    # cited citation so the chat UI renders them. Default-on per Settings;
+    # graceful fallback to original citations on exception.
+    if settings.enable_citation_neighbour_images:
+        try:
+            citations = await attach_neighbour_images(
+                citations,
+                kb_id=payload.kb_id,
+                engine=engine,
+                max_aux_per_citation=settings.citation_neighbour_max_aux_images,
+                neighbour_window=settings.citation_neighbour_window,
+            )
+        except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0034 §Consequences
+            logger.warning(
+                "neighbour_images_attach_failed_using_original",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
     citations = _proxy_citation_images(citations, request, payload.kb_id)
 
     return QueryResponse(
@@ -270,6 +293,29 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         )
         expanded_chunks = result.chunks
 
+    # W25 F5 D1 — neighbour-image augmentation callback for the stream's
+    # citation batch (see compose_query_stream's citation_post_process hook).
+    # Graceful fallback to original citations on exception per ADR-0034.
+    stream_settings = get_settings()
+
+    async def _augment_stream_citations(citations: list[Citation]) -> list[Citation]:
+        if not stream_settings.enable_citation_neighbour_images:
+            return citations
+        try:
+            return await attach_neighbour_images(
+                citations,
+                kb_id=payload.kb_id,
+                engine=engine,
+                max_aux_per_citation=stream_settings.citation_neighbour_max_aux_images,
+                neighbour_window=stream_settings.citation_neighbour_window,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "stream_neighbour_images_attach_failed_using_original",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            return citations
+
     async def event_serializer():
         # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
         # terminal `done` frame's model + token counts flow to Langfuse
@@ -279,7 +325,11 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         try:
             synth_stream = synthesizer.synthesize_stream(payload.query, expanded_chunks)
             observed = observe_streaming(
-                compose_query_stream(result, synth_stream),
+                compose_query_stream(
+                    result,
+                    synth_stream,
+                    citation_post_process=_augment_stream_citations,
+                ),
                 name="api.query.stream",
                 extra_metadata_fields=("refused", "reranker_used"),
             )

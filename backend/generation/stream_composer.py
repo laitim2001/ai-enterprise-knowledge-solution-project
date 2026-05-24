@@ -16,8 +16,9 @@ Event sequence to client:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 
+from api.schemas.query import Citation
 from generation.citation_enrichment import build_citations
 from observability.realtime_cost import estimate_query_cost
 from retrieval.retrieval_engine import RetrievalResult
@@ -26,10 +27,17 @@ from retrieval.retrieval_engine import RetrievalResult
 async def compose_query_stream(
     retrieval_result: RetrievalResult,
     synth_stream: AsyncIterator[dict],
+    citation_post_process: Callable[[list[Citation]], Awaitable[list[Citation]]] | None = None,
 ) -> AsyncIterator[dict]:
     """Yield ordered SSE events:text-delta* citation* done.
 
     `synth_stream` is `Synthesizer.synthesize_stream(query, chunks)` directly.
+
+    W25 F5 D1 — optional `citation_post_process` runs on the batch of
+    citations once the synthesizer's `result` event delivers them, before
+    they emit. Used by `/query/stream` to attach neighbour-chunk images
+    via `attach_neighbour_images`. Pure-data semantics preserved when
+    callback omitted (default None = original behaviour bit-identical).
     """
     async for event in synth_stream:
         if event.get("type") == "text-delta":
@@ -41,6 +49,8 @@ async def compose_query_stream(
                 event.get("citation_ids") or [],
                 retrieval_result.chunks,
             )
+            if citation_post_process is not None:
+                citations = await citation_post_process(citations)
             for cit in citations:
                 yield {"type": "citation", "citation": cit.model_dump()}
 

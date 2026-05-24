@@ -160,6 +160,17 @@ class Settings(BaseSettings):
     # other variants.
     query_expansion_per_variant_overfetch: int = 2
 
+    # W25 F5 D1 — citation post-process attach neighbour-chunk images per
+    # ADR-0034 §Implementation Mapping + W25 plan §2 F5. When True, citations
+    # gain up to `citation_neighbour_max_aux_images` extra images sourced
+    # from chunks within `citation_neighbour_window` chunk_index of the
+    # cited chunk (same doc). Default True = W25 phase goal G1 (≥ 5/8
+    # image-bearing query citation gain images); disable via .env for A/B
+    # measurement (F4/F6 verify gate).
+    enable_citation_neighbour_images: bool = True
+    citation_neighbour_window: int = 3
+    citation_neighbour_max_aux_images: int = 2
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False
