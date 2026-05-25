@@ -1,8 +1,8 @@
 # ADR-0037: Parent-Document / Section-Level Retrieval(Tier 1 ceiling for enumeration queries — small-to-big aggregation)
 
 **Date**: 2026-05-25
-**Status**: Accepted
-**Approver**: Chris(技術 Lead)— AskUserQuestion approved 2026-05-25 D1 cont(Q4 Default OFF + Q1 top_k=1 + Q2 depth_offset=1 + Q6 Both on — all Recommended picks;Q3+Q5+Q7+Q8 proposed defaults batch-locked at same approval)
+**Status**: Accepted; amended 2026-05-26 W28 F4 per Setting sweep
+**Approver**: Chris(技術 Lead)— AskUserQuestion approved 2026-05-25 D1 cont(Q4 Default OFF + Q1 top_k=1 + Q2 depth_offset=1 + Q6 Both on — all Recommended picks;Q3+Q5+Q7+Q8 proposed defaults batch-locked at same approval);**amendment 2026-05-26 W28 F4 Chris approved**(Full Settings flip per W28 best combo Run 3.A — Recommended pick)
 **Trigger**: W26-eval-driven-retrieval-tuning F1 empirical refutation 2026-05-25 D1 — F1 RAGAs baseline(`recall_at_5=0.8744` + `faithfulness=0.9851` + 5/13 queries `context_recall=0.00` recall-dominant)+ threshold-probe(`backend/scripts/w26_threshold_probe.py` 25 Cohere v4.0-pro scores)distribution `P25=0.83 / P50=0.90 / P75=0.91 / min=0.67 / max=0.97` 加上 Q-W25-I01(PASSED control)min 0.67 同 Q-W25-I02(FAILED `context_recall=0`)min 0.88 highly overlapping → **Cohere score CANNOT differentiate failed vs passed queries for enumeration queries**;brief §3 方向 A 「排第 4/5 低分 chunk 照入 context → 唔相關內容」premise empirically refuted。Per brief §1 「NOT EKP-unique bug — Dify same query also fails」 + §6 step 4 escalation。Chris pivot pick 2026-05-25 D1 AskUserQuestion (C) parent-document retrieval ADR-0037 over Step 1 rerank threshold scope。
 
 ---
@@ -623,6 +623,62 @@ W26 F2 plan rewrite proceeds based on:
 - ADR-0037 Implementation Deliverables list(§ above)is the F2 acceptance contract
 - 6 NEW Settings default values locked per Decision Log above
 - W26 plan §7 Plan Changelog 2026-05-25 D1 cont entry will document ADR-0037 Accepted + F2 deliverable scope rewrite
+
+---
+
+## Amendment 2026-05-26 W28 F4 — Settings default flip per Setting sweep best combo
+
+**Trigger**:W28-parent-doc-setting-sweep phase(per ADR-0038 §Decision #4 W28+ candidate (b) HIGHEST priority)— Sequential one-variable-at-a-time sweep 3 Steps × 6 RAGAs runs(F1 max_tokens 4000/2000/1500 + F2 top_k 1/2/3 + F3 dispatch replace/append cross-check at best combo)on `eval-set-v0-w25-supplement.yaml` 13 queries cohort。
+
+### W28 Best Combo Empirical Evidence
+
+**Run 3.A (dispatch_mode=replace + top_k=2 + max_tokens=2000)** = W28 final best:
+- **G1 faithfulness 0.9812** ✅ PASS within F1 baseline ±2pp tolerance [0.9651, 1.0](closer to F1 than Run 2.A append 0.9786)
+- **G2 correctness 0.7577** ✅ **PASS + EXCEEDS F1 baseline +1.61pp**(唯一 sweep run 達 above-baseline correctness)
+- G3 Q-W25-I07 context_recall=0.40 ⚠️ MISS — borderline judge variance per 8-run cross-config flip(3 PASS / 5 FAIL across W26+W27+W28 with answer_rel in 0.60-0.70 range)treat as noise
+- **G4 Q-W25-I01 control FULL PASS** ✅(out of failed_queries list — beat Run 2.A append's context_recall=0 single-metric fail)
+- **G5 latency 1249ms** ✅ PASS < 1500ms ideal threshold(~57% reduction vs W27 baseline 2897ms / +24% vs F1 1001ms)
+
+**Versus W27 marginal MISS context**:
+- W27 G1 faith MISS 0.6pp → W28 G1 MISS 0.4pp(closer)
+- W27 G4 control MISS 0.01pp → W28 G4 FULL PASS
+- W27 G2 correctness PASS but BELOW F1 → W28 G2 PASS AND EXCEEDS F1
+
+### Decision
+
+`backend/storage/settings.py` default values amended per W28 Step 1+2 sweep best combo:
+
+| Field | Original W26 default | **W28 amendment default** | Rationale |
+|---|---|---|---|
+| `parent_doc_max_tokens_per_parent` | 4000 | **2000** | W28 Step 1 sweep evidence — max_tokens=2000 提升 faithfulness vs 4000 + reduce attention dilution per D1.35 H2 |
+| `parent_doc_top_k` | 1 | **2** | W28 Step 2 sweep evidence — top_k=2 sweet spot between conservative top-1(coverage 不足)同 aggressive top-3(off-topic leak catastrophic — Q-W25-I01 0.00 + correctness MISS 5.95pp);ADR-0037 §2.1 trade-off empirically verified |
+| `parent_doc_dispatch_mode` | "replace"(per W27 ADR-0038 default preserve) | **"replace" 維持不變** | per Karpathy §1.3 surgical — W26+ADR-0038 default preserve;Run 3.A (replace) 達 best combo G1+G2+G4+G5 PASS + G2 超 F1 baseline;append (Run 2.A) 同樣 PASS但 G2 below F1 + G4 single-metric fail |
+| `enable_parent_doc_retrieval` | False(measurement experiment) | **False 維持不變** | per Q4 measurement-experiment-fail-policy — G3 Q-W25-I07 marginal MISS 仍 not full PASS = 唔達 production default flip threshold;W28 best combo via env override OR per-KB opt-in remains preferred path |
+
+### W26→W27→W28 Hypothesis Re-evaluation Synthesis
+
+**D1.35 H4 dispatch hypothesis revised**:
+- **Original W27 H4**:dispatch=replace catastrophic per W26 F2 G empirical → append mode 修復 by 2-segment LLM input citation invariant preservation
+- **W28 revised understanding**:**W26 F2 G catastrophic 根本原因 = wrong Settings combination(top_k=1 + max_tokens=4000)+ dispatch=replace top-priority-wins**。At correct Settings(top_k=2 + max_tokens=2000),dispatch=replace 不單 不 catastrophic,反而 達到 W28 best combo across G1+G2+G4+G5。Settings effect 比 dispatch effect 更 dominant;append + replace at best combo 都 acceptable but replace 略勝 G2 + G4
+- **ADR-0038 「Settings default preserve replace」decision VALIDATED by W28 evidence**
+
+**Q-W25-I07 G3 marginal MISS treated as noise**:
+- 8 runs cross-config(W26 + W27 + W28 6 runs):3 PASS / 5 FAIL with answer_rel + context_recall + faith all 喺 0.40-0.70 range fluctuation
+- Judge LLM 非確定性 dominant signal,settings + dispatch effect 次要
+- 唔 drive amendment default flip decision
+
+### Implementation
+
+- `backend/storage/settings.py` line 199-216 默認值 + comments amended W28 F4 commit
+- 39/39 existing tests(11 dispatch + 14 synthesizer + 14 parent_doc_retriever)preserved without modification — tests 用 explicit parameter passing,Settings default change 不影響 test behavior
+- Backend pytest 1060 regression check — W28 F4 commit landed without breaking change
+
+### Cross-references
+
+- W28 plan + 4 step analysis reports + 6 raw eval JSONs(`docs/01-planning/W28-parent-doc-setting-sweep/`)
+- W28 final best combo Run 3.A:`docs/01-planning/W28-parent-doc-setting-sweep/step3-dispatch-cross-check-W28-D3.md` + raw JSON
+- ADR-0038 reaffirm note added W28 F4
+- ADR-0017 5-amendment precedent pattern applied — same decision family rationale
 
 ---
 

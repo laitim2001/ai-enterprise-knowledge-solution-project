@@ -1,8 +1,8 @@
 ---
 phase: W28-parent-doc-setting-sweep
 plan_ref: ./plan.md
-status: in-progress
-last_updated: 2026-05-25
+status: complete    # per ADR-0037 amendment W28 F4 closeout 2026-05-26 — Phase Gate PASS
+last_updated: 2026-05-26
 ---
 
 # Phase W28 — Checklist
@@ -126,12 +126,12 @@ last_updated: 2026-05-25
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git
-- [ ] All OQ status changes reflected in `docs/decision-form.md`(若 任何 OQ resolved — 預期無)
-- [ ] All architectural-adjacent decisions documented as ADR — ADR-0037 amendment OR NEW ADR-0039
-- [ ] `progress.md` retro section written
-- [ ] `progress.md` frontmatter status flipped to `closed` OR `closed_partial`
-- [ ] Phase W29+ kickoff trigger noted in retro
+- [x] All deliverables committed to git(F0 kickoff `1fd8806` + F1 Step 1 `fa4b85a` + F2 Step 2 `c22e8ea` + F3 Step 3 `f4b0d96` + F4 closeout commit pending)
+- [N/A] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved this phase
+- [x] All architectural-adjacent decisions documented as ADR — **ADR-0037 amendment ship** + **ADR-0038 reaffirm**(per CLAUDE.md §5.1 H1 + ADR-0017 5-amendment precedent)
+- [x] `progress.md` retro section written(7-section + Phase Gate G1-G6 result + What worked / didn't / Surprises / Carry-overs to W29+ / ADR triggers / Phase status)
+- [x] `progress.md` frontmatter status flipped to `closed`(Phase Gate PASS)
+- [x] Phase W29+ kickoff trigger noted in retro — (c) RAGAs judge tune(降低 priority)+ (d) F3 query expansion standalone test + NEW (e) RAGAs structlog stage emit + NEW (f) Settings-default-tests
 
 ---
 

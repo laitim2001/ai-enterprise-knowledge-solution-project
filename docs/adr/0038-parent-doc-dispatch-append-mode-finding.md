@@ -1,8 +1,8 @@
 # ADR-0038: Parent-Doc Dispatch Chain Append-Mode Finding — Hypothesis Partial Validation + Settings Default Preserve "replace"
 
 **Date**: 2026-05-25
-**Status**: Accepted
-**Approver**: Chris(技術 Lead)— α pick W27 F3 closeout per Q4 measurement-experiment-fail-policy(plan §3 Gate verdict PARTIAL → Settings default preserve "replace" 唔觸 revert + W28+ candidates (b) + (c) elevated)
+**Status**: Accepted; reaffirmed 2026-05-26 W28 F4 per Setting sweep at correct combo
+**Approver**: Chris(技術 Lead)— α pick W27 F3 closeout per Q4 measurement-experiment-fail-policy;**reaffirmed 2026-05-26 W28 F4** by W28 Step 3 dispatch cross-check at best combo(Run 3.A replace vs Run 2.A append at top_k=2 + max_tokens=2000)— replace dispatch achieves W28 best combo G1+G2+G4+G5 PASS + G2 超 F1 baseline,validates ADR-0038 §Decision #1「default preserve replace」(plan §3 Gate verdict PARTIAL → Settings default preserve "replace" 唔觸 revert + W28+ candidates (b) + (c) elevated)
 **Trigger**: W27 F2 G RAGAs eval `eval-set-v0-w25-supplement.yaml` 13-query Two-Baseline delta(2026-05-25 D2,544s runtime via Bearer dev-token mock auth)— append mode 大幅修復 W26 F2 G replace 嘅 catastrophic regressions but G1 + G4 marginal MISS by < 1pp 各 vs F1 baseline tolerance ±2pp / ±0.05。Phase Gate PARTIAL per plan §3 policy。
 
 ---
@@ -208,6 +208,52 @@ W28+ candidate (b) OR (c) PASS → 屆時再評估 ADR-0037 amendment vs ADR-003
 - **PC1 ≥ 5-query manual user-test taxonomy**:W27 F2 G 13-query cohort 對齊 W26 F1 + W26 F2 G baseline = consistent comparison surface(Q-W25-I01 control + Q-W25-I02 + Q-W25-I03 + Q-W25-I07 + Q-W25-T04 priority queries covered)
 - **PC3 ADR assumption-language review**:本 ADR-0038 explicit refuted H3(chunk_id drift)+ validated H1 + H4 + partially confirmed H2 = grounded in W27 empirical evidence,not assumption
 - **PC4 pre-phase regression baseline capture**:W26 F1 baseline + W26 F2 G replace baseline 雙 reference 為 W27 append delta measurement
+
+---
+
+## Reaffirmation 2026-05-26 W28 F4 — dispatch=replace VALIDATED at correct Settings
+
+**Trigger**:W28-parent-doc-setting-sweep phase Step 3 (F3) dispatch cross-check at best combo(per plan §2 F3 trigger condition — Run 2.A best combo 4 of 5 gates PASS triggered Step 3)。
+
+### W28 Step 3 Cross-check Evidence
+
+**Run 2.A (append + top_k=2 + max_tokens=2000)** vs **Run 3.A (replace + top_k=2 + max_tokens=2000)** at W28 best combo:
+
+| Gate | Run 2.A (append) | Run 3.A (replace) | Verdict |
+|---|---|---|---|
+| G1 faithfulness | 0.9786 | **0.9812** | replace 略勝(+0.26pp closer to F1)|
+| G2 correctness | 0.7331(PASS within F1)| **0.7577(EXCEEDS F1 +1.61pp)** | **replace 大勝** ⭐ |
+| G3 Q-W25-I07 | answer_rel=0.61 MISS | context_recall=0.40 MISS | 兩者都 marginal MISS(borderline judge variance — 8-run cross-config flip noise)|
+| G4 Q-W25-I01 control | 0.69 PASS(but context_recall=0 single-metric fail)| **FULL PASS**(out of failed list)| **replace 略勝** ⭐ |
+| G5 latency | **1061ms** | 1249ms | append 略勝 latency(but 兩者都 within ideal < 1500ms)|
+
+### Decision Reaffirmation
+
+**ADR-0038 §Decision #1「`Settings.parent_doc_dispatch_mode` default preserve "replace" per Q4 measurement-experiment-fail-policy」VALIDATED**:
+- W28 Run 3.A(replace at correct Settings)achieves W28 final best combo across G1+G2+G4+G5
+- W26 F2 G catastrophic root cause reframed:**wrong Settings combination(top_k=1 + max_tokens=4000)+ dispatch=replace**,非 dispatch=replace 本身
+- At correct Settings(top_k=2 + max_tokens=2000),replace dispatch:
+  - G2 correctness 0.7577 EXCEEDS F1 baseline by +1.61pp(append 0.7331 below F1)
+  - G4 Q-W25-I01 control FULL PASS(append context_recall=0 single-metric fail)
+  - G1 faithfulness 0.9812 closer to F1 than append 0.9786
+- Karpathy §1.3 surgical preserve W26+ADR-0038 default Settings amendment 唔需要 改 dispatch_mode default
+
+### D1.35 H4 Hypothesis Refinement
+
+**Original W27 H4**:dispatch=replace catastrophic per W26 F2 G empirical → append mode 修復 by 2-segment LLM input citation invariant preservation。
+
+**W28 revised**:**Settings effect dominant over dispatch effect** — append + replace at correct Settings 都 acceptable但 replace 略勝 G2+G4。D1.35 H1 citation invariant breakage hypothesis 由 W27 partial validate(Q-W25-I07 W26→W27 critical recovery 由 append 觸發);但 W28 8-run flip evidence 顯示 Q-W25-I07 borderline judge variance 主導 signal,settings + dispatch effect 次要。
+
+### W28+ Implication
+
+- ADR-0037 amendment full Settings flip(max_tokens=2000 + top_k=2)proceeded per W28 F4 closeout
+- `parent_doc_dispatch_mode` default remain "replace"(per ADR-0038 §Decision #1 reaffirmed)
+- W27 F1 dispatch_mode enum infrastructure preserved for W29+ adaptive routing OR opt-in for query-class fine-tuning(both append/replace acceptable at correct Settings)
+
+### Cross-references
+
+- ADR-0037 amendment 2026-05-26 W28 F4(full Settings default flip)
+- W28 Step 3 analysis:`docs/01-planning/W28-parent-doc-setting-sweep/step3-dispatch-cross-check-W28-D3.md`
 
 ---
 

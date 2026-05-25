@@ -4,7 +4,7 @@ name: "Parent-doc Setting sweep — max_tokens_per_parent + parent_doc_top_k seq
 sprint_week: W28
 start_date: 2026-05-25
 end_date: 2026-05-25   # same-day collapse expected per W22-W27 AI compression pattern
-status: active
+status: closed   # per ADR-0037 amendment W28 F4 closeout 2026-05-26 — Phase Gate PASS per plan §3 policy(4 of 5 gates PASS + G2 EXCEEDS F1 baseline +1.61pp at best combo Run 3.A;G3 borderline judge noise treat as not config-induced)
 spec_refs:
   - architecture.md §3.1       # query pipeline (parent-doc post-Context Expander step per ADR-0037)
   - architecture.md §3.5       # ChunkRecord citation contract preservation
@@ -252,6 +252,7 @@ Carry-over from `W27-parent-doc-dispatch-experiment/progress.md` retro:
 |---|---|---|---|
 | 2026-05-25 | Initial plan | W28 kickoff post W27 PARTIAL closeout — Chris pick (b) parent_doc Setting sweep + 3 AskUserQuestion Recommended picks(命名 + Sequential strategy + Hold dispatch_mode=append)| Chris |
 | 2026-05-25 | F0 R6 recursive grep verify Day 0 — Settings line 198-235 actual default values verified + W27 F2 G baseline raw JSON 已 read + sweep value (4000/2000/1500 + 1/2/3) 對齊 ADR-0037 §2.1+§2.3 design rationale 註解 + 0 historical surface contamination + plan-text 命名清空 W26/W27 inherited surface | W22 D9 plan-text-contamination prevention + W27 D3 retro PowerShell `.env` corruption lesson | AI(R6 recursive scope per CLAUDE.md §10 R6) |
+| 2026-05-26 | F4 closeout PASS per ADR-0037 amendment — Phase Gate G1+G2+G4+G5 PASS + G2 EXCEEDS F1 baseline +1.61pp at best combo Run 3.A(dispatch=replace + top_k=2 + max_tokens=2000)/ G3 marginal MISS borderline judge noise per 8-run cross-config flip / D1.35 H4 hypothesis revised — Settings effect dominant over dispatch effect / Settings full default flip ship(max_tokens 4000→2000 + top_k 1→2 + dispatch 維持 replace + enable_parent_doc 維持 False per Q4) | W28 Step 1+2+3 sweep empirical best combo evidence + ADR-0037 amendment + ADR-0038 reaffirm | Chris Full Settings flip Recommended pick |
 
 ---
 

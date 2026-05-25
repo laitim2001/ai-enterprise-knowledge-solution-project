@@ -200,16 +200,24 @@ class Settings(BaseSettings):
     # ["Doc", "§8: Integration Scenarios", "Scenario A"] → parent =
     # ["Doc", "§8: Integration Scenarios"] aggregates all 5 scenarios.
     parent_doc_section_depth_offset: int = 1
-    # Q1 pick — apply parent-doc to top-1 reranked anchor only (conservative
-    # — minimize off-topic leak per F1 evidence Q-W25-I07 top-5 already
-    # contains §3.1 chunk #8 topically off; top-K anchor parent-doc would
-    # aggregate §3 entire section → counterproductive). W27+ may sweep to
-    # 2/3 for multi-section queries.
-    parent_doc_top_k: int = 1
-    # Q3 pick — token budget cap. ~250-300 tokens per chunk × ~15 sibling
-    # chunks ≈ 4000 tokens. Tail-drop truncation by chunk_index ASC
-    # preserves narrative start. Within ADR-0034 P95<5s latency budget.
-    parent_doc_max_tokens_per_parent: int = 4000
+    # Q1 pick W26 → W28 amendment 2026-05-26 — apply parent-doc to top-2
+    # reranked anchors(W28 Step 2 sweep best combo evidence). Original W26
+    # Q1 default top_k=1 conservative;W28 Run 2.A (top_k=2) achieves G1+G2+G4
+    # PASS within F1 baseline ±2pp tolerance + Q-W25-I01 control 0.69 PASS;
+    # W28 Run 3.A (top_k=2 + replace) achieves G2 EXCEEDS F1 baseline +1.61pp
+    # + Q-W25-I01 control FULL PASS。top_k=3 over-aggregates → Q-W25-I01 0.00
+    # catastrophic + correctness MISS 5.95pp。top_k=2 sweet spot per ADR-0037
+    # §2.1 trade-off + ADR-0037 amendment 2026-05-26 W28 F4。
+    parent_doc_top_k: int = 2
+    # Q3 pick W26 → W28 amendment 2026-05-26 — token budget halved 4000→2000
+    # per W28 Step 1 sweep best combo evidence。Original W26 Q3 default 4000
+    # tokens = ~15 sibling chunks 過大,LLM 注意力被 long parent context 分散
+    # (D1.35 H2 partially confirmed by W27);W28 Step 1 max_tokens=2000 + W28
+    # Step 2 top_k=2 best combo 達 G1+G2+G4+G5 PASS。max_tokens=1500 too
+    # aggressive(broader coverage truncation → 11 failed queries vs 2000 嘅
+    # 10)。2000 sweet spot ~7-8 sibling chunks per ADR-0037 §2.3 truncation
+    # mechanism + ADR-0037 amendment 2026-05-26 W28 F4。
+    parent_doc_max_tokens_per_parent: int = 2000
     # Safety cap on siblings fetched per parent (pathological-doc protection
     # — a section with 1000+ chunks would explode latency + cost). 50 ≈
     # 12-15K tokens raw before truncation, sufficient envelope.
