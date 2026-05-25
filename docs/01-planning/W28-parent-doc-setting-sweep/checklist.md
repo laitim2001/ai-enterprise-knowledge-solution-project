@@ -63,19 +63,19 @@ last_updated: 2026-05-25
 
 ### A. Trigger evaluation
 
-- [ ] Best combo achieves G1-G5 PASS?If yes → proceed F3;If no → skip F3 直接 F4 closeout
+- [x] Best combo Run 2.A achieves 4 of 5 G1-G5 PASS(G3 marginal MISS borderline noise)→ **Step 3 TRIGGERED** per plan §2 F3
 
-### B. Step 3 active flip — 1 NEW run(if triggered)
+### B. Step 3 active flip — 1 NEW run
 
-- [ ] **Run 3.A dispatch_mode=replace at best combo**:`.env` 改 `PARENT_DOC_DISPATCH_MODE=replace`(holding best max_tokens + best top_k)+ uvicorn restart + POST /eval/run = output `step3-dispatch-cross-check-W28-D3-raw.json`
+- [x] **Run 3.A dispatch_mode=replace at best combo**:`.env` Edit `PARENT_DOC_DISPATCH_MODE=replace` + `PARENT_DOC_TOP_K=2`(reset from Run 2.B top_k=3)+ uvicorn restart + POST /eval/run = output `step3-dispatch-cross-check-W28-D3-raw.json`(HTTP 200 / 499s runtime)
 
 ### C. Step 3 analysis
 
-- [ ] Markdown report `step3-dispatch-cross-check-W28-D3.md` — replace vs append at best combo comparison + final default flip recommendation
+- [x] Markdown report `step3-dispatch-cross-check-W28-D3.md` — 6 sections / Two-way comparison / Per-run G1-G5 / Q-W25-I07 8-run flip evidence / D1.35 H4 hypothesis revised / W28 final best combo Run 3.A / F4 closeout recommendation
 
 ### D. Commit
 
-- [ ] Commit F3 Step 3 `docs(eval): W28 F3 Step 3 dispatch_mode cross-check at best combo — replace vs append final delta`
+- [ ] Commit F3 Step 3 `docs(eval): W28 F3 Step 3 dispatch_mode cross-check — Run 3.A (replace + top_k=2 + max_tokens=2000) FINAL BEST G2 超 F1 baseline + G4 full PASS`
 
 ## F4 — Closeout — ADR analysis + W29+ decision tree + cross-doc sync
 

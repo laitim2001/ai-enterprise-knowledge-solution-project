@@ -144,28 +144,45 @@ status: in-progress
 
 ---
 
-## Day 3 — 2026-05-25(planned)
+## Day 3 — 2026-05-25:F3 Step 3 dispatch cross-check 完成 + W28 final best combo revealed
 
 ### Done
 
-- (pending — F3 Step 3 optional dispatch cross-check + F4 closeout + ADR governance + cross-doc sync)
+- F3 A trigger evaluation:Run 2.A best combo 4 of 5 gates PASS → Step 3 TRIGGERED per plan §2 F3
+- F3 B Step 3 active flip — 1 NEW run holding top_k=2 + max_tokens=2000,sweep dispatch_mode replace:
+  - **Run 3.A**(dispatch=replace + top_k=2 + max_tokens=2000)— 499s runtime / faith=**0.9812** / correctness=**0.7577 EXCEEDS F1 baseline +1.61pp** / p95_latency=**1249ms** / **Q-W25-I01 控制 FULL PASS**(out of failed list) / Q-W25-I07 context_recall=0.40 single-metric fail
+- F3 C Step 3 analysis report `step3-dispatch-cross-check-W28-D3.md` ship — 6 sections / Two-way comparison / Per-run G1-G5 / Q-W25-I07 8-run flip evidence / D1.35 H4 hypothesis revised / W28 final best combo Run 3.A / F4 closeout recommendation
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- **W28 FINAL BEST COMBO LOCKED:Run 3.A (dispatch_mode=replace + top_k=2 + max_tokens=2000)** ⭐⭐⭐
+  - G1 faith 0.9812 ✅ PASS within F1 ±2pp(closer to F1 than Run 2.A append)
+  - G2 correctness **0.7577 EXCEEDS F1 baseline +1.61pp** ✅ ⭐(唯一 sweep run 達 above-baseline)
+  - G3 Q-W25-I07 context_recall=0.40 marginal MISS — borderline judge variance per 8-run cross-config flip(3 PASS / 5 FAIL)treat as noise
+  - G4 Q-W25-I01 control **FULL PASS**(out of failed list — beat Run 2.A 嘅 context_recall=0 single-metric fail)
+  - G5 latency 1249ms ✅ PASS < 1500ms ideal(+188ms vs Run 2.A append 但仍 ideal threshold)
+- **W26 F2 G catastrophic 根本原因 reframed**:**唔係 dispatch=replace 本身,而係 wrong Settings combination(top_k=1 + max_tokens=4000)**。At correct Settings(top_k=2 + max_tokens=2000),replace 不單 不 catastrophic,反而 達到 W28 best combo across G1+G2+G4+G5
+- **D1.35 H4 dispatch hypothesis revised**:Settings effect 比 dispatch effect 更 dominant — append + replace at best combo 都 acceptable。W27 ADR-0038「Settings default preserve replace」decision **VALIDATED by W28 evidence**
+- **ADR-0037 amendment proposal**:Settings default 全套 flip:max_tokens=2000 + top_k=2 + dispatch_mode 維持 "replace"(per Karpathy §1.3 surgical)+ enable_parent_doc_retrieval 維持 `False` default per Q4(G3 marginal MISS 仍 not full PASS 不 達 production default flip threshold)
+- **W29+ candidates updated**:(c) RAGAs orchestrator-aware tune 仍 priority but direct demand 降低(W28 close G1+G2+G4+G5)+ (d) F3 query expansion standalone test orthogonal + NEW (e) `make_ragas_evaluator` structlog stage emit per W28 Run 2.B 15+ min silent hung lesson
 
 ### Blockers
 
-- (pending)
+- 無 D3 blocker
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F3 A trigger evaluation | ~0.2 | ~0.1 | -0.1 |
+| F3 B Step 3 1 NEW run | ~10 min eval | ~8 min(499s)| -2 min |
+| F3 C Step 3 analysis writeup | ~0.5-1h | ~1h(加 Q-W25-I07 8-run flip 加 D1.35 H4 hypothesis revision)| 0 |
+
+**D3 actual so far**:~1.2h(F3 only;F4 closeout pending)
 
 ### Commits
 
-- (pending)
+- (pending F3 Step 3 commit + F4 closeout commit)
 
 ---
 
