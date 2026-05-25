@@ -9,6 +9,7 @@ last_updated: 2026-05-25
 
 > Derived from `plan.md §2 Deliverables` + §3 Phase-Level Hard Gates。
 > Per Chris 3-step refinement(2026-05-25):Step 0 RAGAs baseline → Step 1 rerank threshold(ADR-0037)→ Step 2 query expansion(gated on Step 1 + eval delta)。
+> **PIVOTED 2026-05-25 D1**:Step 1 substance changed from rerank threshold to **parent-document retrieval per ADR-0037**(F1 empirical refutation of brief §3 方向 A premise;Chris pivot pick (C) brief §6 step 4)。F2 items rewritten 2026-05-25 D1 cont per ADR-0037 §Implementation Deliverables list。
 
 ## F0 — Kickoff governance
 
@@ -60,33 +61,93 @@ last_updated: 2026-05-25
 ### F1 closeout
 - [x] **F1.8** — Surface F1 result to Chris(AskUserQuestion or chat)— confirm proceed to F2 with derived initial threshold
 
-## F2 — Step 1 rerank score threshold(Chris Step 1,ADR-0037)
+## F2 — Step 1 parent-document retrieval per ADR-0037(PIVOTED 2026-05-25 D1)
 
-### ADR
-- [ ] **F2.1** — `docs/adr/0037-rerank-score-threshold.md` v1.0 draft per CLAUDE.md §6 ADR format
-- [ ] **F2.2** — Chris approval via chat/AskUserQuestion(ADR Status: Proposed → Accepted)
+> Rewritten 2026-05-25 D1 cont post F1 empirical refutation + Chris AskUserQuestion pivot pick (C);items 對齊 ADR-0037 §Implementation Deliverables list 7 categories(A governance + B retriever module + C pipeline integration + D Settings + E observability + F tests + G eval + H gate)。
 
-### Code
-- [ ] **F2.3** — `backend/retrieval/reranker/cohere.py` add score floor cutoff in `rerank()` method(filter response scores < `rerank_score_threshold`)
-- [ ] **F2.4** — Cutoff fallback graceful design Q1(STOP and ask Chris):cutoff 後 < 1 chunk remaining 點處理?fallback to 1 chunk above threshold / fallback to top_n original / return empty
-- [ ] **F2.5** — `backend/storage/settings.py` NEW `rerank_score_threshold: float = X.X`(initial value from F1.7e recommendation)
-- [ ] **F2.6** — Module header + docstring updates(brief §7 navigation references + ADR-0037 cross-ref)
+### A. ADR governance gate(satisfied 2026-05-25 D1 cont)
+- [x] **F2.1** — `docs/adr/0037-parent-document-section-retrieval.md` v1.0 drafted per CLAUDE.md §6 ADR format(~620 lines:Context + 8-section Decision + 5 rejected Alternatives B-F + Consequences + References + Implementation Deliverables + Decision Log)
+- [x] **F2.2** — Chris approval via AskUserQuestion(4 critical Qs Recommended picks:Q4 Default OFF + Q1 top_k=1 + Q2 depth_offset=1 + Q6 Both on)+ Q3/Q5/Q7/Q8 proposed defaults batch-locked;ADR Status flipped Proposed → Accepted
+- [x] **F2.3** — `docs/adr/README.md` index synced(row + footer next-NNNN 0037→0038);atomic governance commit `4cdd1bc` 2026-05-25 D1 cont
 
-### Tests
-- [ ] **F2.7** — NEW `backend/tests/test_rerank_threshold.py`:threshold cutoff filter behavior + empty result fallback + image_weight × threshold interaction(BUG-025 deboost × threshold cutoff combined scenarios)
-- [ ] **F2.8** — `pytest tests/test_rerank_threshold.py -v` pass
-- [ ] **F2.9** — `pytest tests/` full regression pass(1024 baseline preserved + new test count addition)
-- [ ] **F2.10** — `mypy --strict --explicit-package-bases retrieval/reranker/cohere.py` clean
-- [ ] **F2.11** — `ruff check retrieval/reranker/cohere.py tests/test_rerank_threshold.py` clean
+### B. Backend Parent-Document Retriever module
+- [ ] **F2.4** — NEW `backend/generation/parent_doc_retriever.py`(~200-250 lines):
+  - [ ] **F2.4a** — `ParentSectionChunk` dataclass duck-typed `RetrievedChunk` / `ExpandedChunk` compatible(`score` + `fields` with NEW `parent_section_text` key when applied;`prompt_builder` dispatch chain consumes via key check)
+  - [ ] **F2.4b** — `async def aggregate_parent_sections(reranked_chunks, kb_id, searcher, *, section_depth_offset=1, parent_doc_top_k=1, max_tokens_per_parent=4000) -> tuple[list[ParentSectionChunk], ParentDocStats]`
+  - [ ] **F2.4c** — Anchor selection per `parent_doc_top_k`(Q1 Recommended=1 — top-1 only)
+  - [ ] **F2.4d** — Section path deduplication(top-K anchors may share parent → fetch once)
+  - [ ] **F2.4e** — Batch fetch via `HybridSearcher.fetch_chunks_by_section_path()`(single Azure Search call per unique parent)
+  - [ ] **F2.4f** — Token budget truncation(`max_tokens_per_parent` cap;tail-drop preserving narrative start;`chunk_index` ASC order)
+  - [ ] **F2.4g** — Cross-doc boundary respect(`doc_id` filter clause per ADR-0020 precedent)
+  - [ ] **F2.4h** — Shallow `section_path` fallback to doc-level(`parent_doc_fallback_to_doc_on_shallow=True`;`len(section_path) < section_depth_offset + 1` 觸發)
+  - [ ] **F2.4i** — Graceful network error handling(per ADR-0020 precedent — log + return without parent expansion)
+- [ ] **F2.5** — `backend/retrieval/hybrid.py` NEW method `fetch_chunks_by_section_path(parent_path: list[str], doc_id: str, kb_id: str) -> list[HybridSearchHit]`:
+  - [ ] **F2.5a** — OData filter:`kb_id eq '...' and doc_id eq '...' and enabled eq true and section_path/any(s: s eq '<each segment>')` joined `and`
+  - [ ] **F2.5b** — OData escaping(double single quotes for `'`)
+  - [ ] **F2.5c** — Order by `chunk_index ASC`(preserves narrative order)
+  - [ ] **F2.5d** — Hard cap `parent_doc_max_chunks_per_parent=50`(防 pathological doc)
 
-### Re-eval
-- [ ] **F2.12** — Restart uvicorn + `/health` 200(new threshold settings loaded)
-- [ ] **F2.13** — Re-run RAGAs same queries set as F1
-- [ ] **F2.14** — Write `docs/01-planning/W26-eval-driven-retrieval-tuning/step1-metrics-W26-D{N}.md` — F2 → F1 delta + interpretation(precision up / recall down quantified)
-- [ ] **F2.15** — Threshold tuning iteration log(if recall regression > 5pp —降 threshold + re-eval up to 3 iterations per R3 mitigation;若 3 iter 仍 fail → STOP and ask Chris)
+### C. Pipeline integration
+- [ ] **F2.6** — `backend/generation/prompt_builder.py` dispatch chain extension:`parent_section_text > expanded_text > chunk_text` fallback chain(Q6 Both on — coexistence with ADR-0020 Context Expander)
+- [ ] **F2.7** — `backend/generation/crag.py` wire parent-doc step between Context Expander + CRAG grade(flag-gated `enable_parent_doc_retrieval`)
+- [ ] **F2.8** — `backend/api/routes/query.py` `/query` happy path wire(1st site per ADR-0020 precedent pattern)
+- [ ] **F2.9** — `backend/api/routes/query.py` `/query/stream` wire(2nd site per ADR-0020 precedent pattern)
 
-### F2 → F3 gate decision(MUST surface to Chris before F3 active flip)
-- [ ] **F2.16** — AskUserQuestion Chris pick:**gate criteria** precision improvement ≥ TBD pp + recall regression ≤ TBD pp(grounded in F2 D6 delta data);**go/no-go decision** F3 proceed / skip / F2 re-tune
+### D. Settings(6 NEW knobs,defaults per Chris AskUserQuestion picks)
+- [ ] **F2.10** — `backend/storage/settings.py` 6 NEW knobs:
+  ```python
+  enable_parent_doc_retrieval: bool = False              # Q4 Recommended
+  parent_doc_section_depth_offset: int = 1               # Q2 Recommended
+  parent_doc_top_k: int = 1                              # Q1 Recommended
+  parent_doc_max_tokens_per_parent: int = 4000           # Q3 proposed locked
+  parent_doc_max_chunks_per_parent: int = 50             # safety cap
+  parent_doc_fallback_to_doc_on_shallow: bool = True     # shallow section_path handling
+  ```
+
+### E. Observability
+- [ ] **F2.11** — `backend/observability/observe.py` NEW stage name `generation.parent_doc_retrieval`(per ADR-0020 emit pattern — `emit_stage_metadata(stage_name, duration_ms, requested_anchors, parents_fetched, siblings_aggregated, truncated_count, skipped_shallow_count)`)
+- [ ] **F2.12** — `frontend/app/debug/[traceId]/page.tsx` V6 Debug View 9→10 stages(per Q5 Option A — explicit insert「Parent-Document Retriever」stage card between Context Expander + CRAG):
+  - [ ] **F2.12a** — Observation-name prefix add in `STAGE_DEFS` array(`generation.parent_doc_retrieval`)
+  - [ ] **F2.12b** — Per-stage data display key/value list(stats keys:`requested_anchors` / `parents_fetched` / `siblings_aggregated` / `truncated_count` / `skipped_shallow_count`)
+  - [ ] **F2.12c** — H7 self-verify per CLAUDE.md §3.2.1 + §5.7 — open mockup `ekp-page-debug.jsx`(if exists)或 V6 Debug View 既存 stage cards 對住 typography / token / layout align(ADR-0020 precedent reuse)
+
+### F. Tests
+- [ ] **F2.13** — NEW `backend/tests/test_parent_doc_retriever.py` ~15 unit cases:
+  - [ ] **F2.13a** — Happy path:1 anchor(top-1)→ 1 parent section_path → 5 siblings aggregated
+  - [ ] **F2.13b** — Multi-anchor dedupe(if `parent_doc_top_k=2/3` setting sweep):top-N anchors share parent → fetch once
+  - [ ] **F2.13c** — Section depth fallback:shallow `section_path`(len=1)→ doc-level filter via `parent_doc_fallback_to_doc_on_shallow=True`
+  - [ ] **F2.13d** — Token budget truncation:parent section > 4000 tokens → tail-drop preserving narrative order
+  - [ ] **F2.13e** — Cross-doc boundary:parent section bounded to anchor's `doc_id`
+  - [ ] **F2.13f** — Empty input:`reranked_chunks=[]` → empty result + empty stats
+  - [ ] **F2.13g** — Lookup miss:Azure Search returns 0 hits → graceful empty parent
+  - [ ] **F2.13h** — Network error:graceful degradation(per ADR-0020 precedent — log + return without parent expansion)
+  - [ ] **F2.13i** — Feature flag off:`enable_parent_doc_retrieval=False` → no-op pass-through(verify no Azure Search call;observability stage emit skipped)
+  - [ ] **F2.13j** — Interaction with Context Expander(Q6 Both on):anchor's prev/next already in parent section → no double-expand
+  - [ ] **F2.13k** — Citation invariant preservation:`Citation.chunk_text` unchanged(verified via `prompt_builder` dispatch chain test — LLM sees parent section but citation references original anchor)
+- [ ] **F2.14** — `backend/tests/test_hybrid.py` extension — `fetch_chunks_by_section_path` cases:
+  - [ ] **F2.14a** — OData filter syntax correctness(`section_path/any(s: s eq '<segment>')` joined `and`)
+  - [ ] **F2.14b** — OData escaping(`Scenario A's intro` → `Scenario A''s intro` double single quote)
+  - [ ] **F2.14c** — `chunk_index ASC` ordering verified
+  - [ ] **F2.14d** — Hard cap `parent_doc_max_chunks_per_parent=50` enforced
+- [ ] **F2.15** — `pytest tests/test_parent_doc_retriever.py tests/test_hybrid.py -v` pass(NEW ~15 + extension ~5 = ~20 cases)
+- [ ] **F2.16** — `pytest tests/` full regression — count **≥ 1024 baseline + ~20 NEW** = **~1044+**(BUG-025 baseline preserved per G6 hard gate)
+- [ ] **F2.17** — `mypy --strict --explicit-package-bases generation/parent_doc_retriever.py retrieval/hybrid.py` clean(touched code only per Karpathy §1.3 surgical;W25 CO_W25_mypy_strict_debt 11 pre-existing errors out of scope)
+- [ ] **F2.18** — `ruff check generation/parent_doc_retriever.py retrieval/hybrid.py tests/test_parent_doc_retriever.py` clean
+
+### G. Re-eval — W26 F2 → F3 gate evidence
+- [ ] **F2.19** — Restart uvicorn + `/health` 200(6 NEW Settings loaded)+ env var override `ENABLE_PARENT_DOC_RETRIEVAL=true`
+- [ ] **F2.20** — Re-run RAGAs `POST /eval/run` eval_set_id=`eval-set-v0-w25-supplement` same 13 queries as F1 baseline
+- [ ] **F2.21** — Capture per-query metadata:retrieved anchor chunk + parent siblings count + parent_section_text length + truncated flag(for delta diagnostic)
+- [ ] **F2.22** — Write `docs/01-planning/W26-eval-driven-retrieval-tuning/parent-doc-metrics-W26-D{N}.md`:
+  - [ ] **F2.22a** — Per-query metrics delta vs F1 baseline(faithfulness / answer_relevancy / context_precision / context_recall)
+  - [ ] **F2.22b** — Per-query chunk_id list + parent sibling count diagnostic
+  - [ ] **F2.22c** — Aggregated delta + interpretation(recall ↑ expected per parent-doc 解 enumeration scope;faithfulness 觀察是否 holds)
+  - [ ] **F2.22d** — Q-W25-I07「show me all the Integration scenarios」qualitative review:named scenarios count(was 1 post BUG-025;target ≥ 3 — 5 ideal)+ chunk #8 §3.1 leak check(parent-doc 是否 reduce off-topic content)
+  - [ ] **F2.22e** — Q-W25-I02 + Q-W25-I03 + Q-W25-I04 + Q-W25-I05 + Q-W25-T04(5 failed-cohort F1 queries with `context_recall=0`)review:improvement quantified
+- [ ] **F2.23** — Settings tuning iteration log if RAGAs delta inconclusive(per R3 — max 3 iterations of `parent_doc_top_k` 1→2→3 OR `parent_doc_max_tokens_per_parent` 4000→6000→2000 sweep before STOP and ask Chris)
+
+### H. F2 → F3 gate decision(MUST surface to Chris before F3 active flip)
+- [ ] **F2.24** — AskUserQuestion Chris pick — **gate criteria** `context_recall` improvement ≥ TBD pp on 5 failed-cohort queries + `faithfulness` regression ≤ TBD pp(grounded in F2 D{N} parent-doc delta data per Q3 + Q7 eval-driven discipline);**go/no-go decision** F3 proceed query expansion / W26 closeout PASS / iterate Setting values
 
 ## F3 — Step 2 query expansion experiment(conditional on F2 → F3 gate pass)
 
@@ -131,10 +192,12 @@ last_updated: 2026-05-25
 
 ## Verification gates(Phase-Level Hard Gates,per plan §3)
 
-- [ ] **G1** — F1 baseline metrics collected(satisfied via F1.7)
-- [ ] **G2** — F2 ADR-0037 Accepted by Chris(satisfied via F2.2)
-- [ ] **G3** — F2 precision improvement ≥ TBD pp(satisfied via F2.14 + F2.16 gate decision)
-- [ ] **G4** — F2 recall regression ≤ TBD pp(satisfied via F2.14 + F2.16 gate decision)
+> Gate references updated 2026-05-25 D1 cont per F2 PIVOTED rewrite — item numbering shifted F2.* per new parent-doc scope。
+
+- [x] **G1** — F1 baseline metrics collected(satisfied via F1.7 — `baseline-metrics-W26-D1.md` published 2026-05-25 D1)
+- [x] **G2** — F2 ADR-0037 Accepted by Chris(satisfied via F2.2 — AskUserQuestion 4 Recommended picks + 4 batch-lock 2026-05-25 D1 cont)
+- [ ] **G3** — F2 `context_recall` improvement ≥ TBD pp on 5 failed-cohort queries(rescoped from「precision improvement」per parent-doc workload signal — recall is the dominant per F1 evidence;satisfied via F2.22 + F2.24 AskUserQuestion gate decision)
+- [ ] **G4** — F2 `faithfulness` regression ≤ TBD pp(rescoped from「recall regression」per parent-doc safety guard — parent section context may dilute LLM faithfulness if truncated;satisfied via F2.22 + F2.24)
 - [ ] **G5** — F3 conditional execution decision documented(satisfied via F3.1)
-- [ ] **G6** — Backend regression preserved(satisfied via F2.9 pytest count ≥ 1024)
-- [ ] **G7** — mypy + ruff clean(satisfied via F2.10 + F2.11)
+- [ ] **G6** — Backend regression preserved(satisfied via F2.16 pytest count ≥ 1024)
+- [ ] **G7** — mypy + ruff clean(satisfied via F2.17 + F2.18)

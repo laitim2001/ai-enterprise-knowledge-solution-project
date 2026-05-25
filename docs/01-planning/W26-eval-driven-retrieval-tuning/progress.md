@@ -152,3 +152,105 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 entry** — F1 baseline complete + critical empirical refutation surfaced → pivot to parent-doc ADR-0037;F2 architectural design deferred next session per Karpathy §1.2 + token budget。
+
+---
+
+## Day 1 cont — 2026-05-25:F2 ADR-0037 design + draft + Accepted + plan/checklist rewrite
+
+> **Calendar continuity**:Same calendar day as Day 1 — Day 1 cont 標明係 2nd session segment(Day 1 F1 baseline + threshold-probe ran in session 1;ADR design + draft + Accepted + plan rewrite ran in session 2 per user instruction 「直接 F2 ADR-0037 parent-doc 設計 + draft」)。Per W22-W25 multi-session-per-calendar-day precedent pattern(real-calendar collapse ~3-7×)。
+
+### Trigger sequence
+
+1. **User explicit instruction 2026-05-25**:「直接 F2 ADR-0037 parent-doc 設計 + draft」— F2 architectural design scope authorized post Day 1 baseline + probe + pivot decision
+2. **Reading list executed**:`docs/09-analysis/rag_retrieval_quality_investigation_20260525.md`(user brief — §3 方向 E + §6 step 4)+ `backend/retrieval/retrieval_engine.py`(existing structure)+ `backend/generation/context_expander.py`(ADR-0020 precedent structural sibling)+ `backend/retrieval/hybrid.py`(`fetch_by_chunk_ids` batch fetch pattern + `_apply_low_value_post_filter` BUG-025 amendment context)+ `docs/architecture.md` §3.5 + §3.6(`section_path` field schema + Collection(Edm.String) filterable proof)+ `docs/adr/0020-context-expander-tier-1-deliver.md`(full structural model)+ `docs/adr/0035-low-value-image-deboost-not-drop.md`(latest ADR format reference)+ `docs/adr/README.md`(next-NNNN confirmation = 0037)
+3. **8 design questions identified** during reading + context synthesis(Q1 anchor top_k / Q2 section depth offset / Q3 token budget / Q4 default flag state / Q5 V6 stage display / Q6 Context Expander coexist / Q7 anchor scope / Q8 CRAG retune)— proposed defaults derived from ADR-0020 + ADR-0034 precedents + F1 empirical evidence
+
+### Done
+
+**1. ADR-0037 v1.0 full draft**(`docs/adr/0037-parent-document-section-retrieval.md` ~620 lines per CLAUDE.md §6 format):
+- Header(Date 2026-05-25 + Status Accepted + Approver Chris AskUserQuestion + Trigger memo cross-ref)
+- Context(7 subsections):spec promise + W26 F1 empirical refutation evidence(`baseline-metrics-W26-D1.md` + `threshold-probe-W26-D1.json` per-query distribution table)+ architectural root cause(per brief §1 + §3 + F1)+ Tier 1 ceiling rationale(既有 mitigation comparison table)+ Tier 1 vs Tier 2 boundary check + H1 trigger confirmation
+- Decision(7 subsections):pipeline locus(post-Context Expander insertion)+ section-path aggregation algorithm(2.1 anchor / 2.2 depth / 2.3 token budget / 2.4 citation invariant)+ 6 NEW Settings spec + pipeline integration locus(file touch list of 8 files)+ Azure Search OData filter syntax(`section_path/any(s: s eq '...')`)+ interaction policy(6.1 Context Expander coexist Q6 / 6.2 CRAG L2 Q8 / 6.3 citation_image_neighbors Q9)+ observability(NEW Langfuse stage + V6 Debug View 10-stage)
+- Alternatives Considered(5 rejected):Option B query intent routing / Option C re-chunk(Dify Parent-child mode)/ Option D GraphRAG(H4 Tier 2)/ Option E ADR-0034 alone / Option F manual section index — each with Pros/Cons + Rejected because rationale
+- Consequences(Positive 7 / Negative 6 / Neutral 5)
+- References(source docs + spec sections + cross-ref ADRs 8 + behavioral baseline + industry precedent + BUG-025 postmortem PC1/PC3/PC4 application)
+- Implementation Deliverables(6 categories — backend module / observability / tests / RAGAs eval / docs)— **此 list 直接 sourced 落 W26 plan §2 F2 acceptance criteria**
+- Open Design Questions(initial 8 Qs for AskUserQuestion)
+
+**2. Chris AskUserQuestion 4 critical Qs**(per user pick (b) 2026-05-25):
+- **Q4** default flag state → **Default OFF — W26 F2 measurement** (Recommended)
+- **Q1** `parent_doc_top_k` initial → **1 — top-1 reranked anchor only** (Recommended)
+- **Q2** `section_depth_offset` initial → **1 — parent = `section_path[:-1]`** (Recommended)
+- **Q6** Coexistence with Context Expander → **Both on — parent-doc consumes Context Expander output** (Recommended)
+
+**3. Q3+Q5+Q7+Q8 proposed defaults batch-locked**(`max_tokens_per_parent=4000` / V6 Option A 10-stage / anchor scope=top-1 同 Q1 同義 / W26 NOT retune CRAG threshold)— all match ADR draft proposed defaults
+
+**4. ADR Status flip Proposed → Accepted**:
+- Header Status line updated:`**Status**: Accepted` + `**Approver**: Chris(技術 Lead)— AskUserQuestion approved 2026-05-25 D1 cont(Q4 Default OFF + Q1 top_k=1 + Q2 depth_offset=1 + Q6 Both on — all Recommended picks;Q3+Q5+Q7+Q8 proposed defaults batch-locked at same approval)`
+- Open Design Questions section replaced with **Decision Log** section documenting picks + 6 NEW Settings defaults locked summary
+
+**5. ADR + README atomic governance commit `4cdd1bc`**(+631 / -1):
+- `docs/adr/0037-parent-document-section-retrieval.md` NEW(631 insertions)
+- `docs/adr/README.md` row add + footer next-NNNN bump 0037 → 0038
+- Commit message follows Conventional Commits + HEREDOC + Co-Authored-By per CLAUDE.md §4.2
+
+**6. Plan rewrite cascade**(W26 plan.md per R3 binding rule):
+- §1.2 Step 1 row revised(post-pivot scope reflects parent-doc retrieval per ADR-0037 active spec;cross-ref §7 Plan Changelog)
+- §2 F2 deliverable spec full rewrite(PIVOTED placeholder ORIGINAL/superseded removed → 7-category 20-item active acceptance criteria sourced from ADR §Implementation Deliverables list — A governance gate satisfied + B retriever module + C pipeline integration + D 6 NEW Settings + E observability + F tests + G RAGAs eval + H F2 → F3 gate)
+- §3 Hard Gates G3 + G4 rescoped(was「precision improvement」+「recall regression」→ now「`context_recall` improvement on failed-cohort」+「`faithfulness` regression」per parent-doc workload signal — recall is dominant per F1 5/13 finding;faithfulness is safety guard)
+- §4 R3 + R7 risks rescoped(R3 threshold iteration → parent-doc Settings sweep iteration `parent_doc_top_k` 1→2→3 OR `max_tokens_per_parent` 4000→6000→2000;R7 governance scope creep CLOSED 2026-05-25 D1 cont — ADR Accepted gate satisfied)
+- §5 Day-by-Day D1 cont row inserted + D4-D7 rescoped(was「ADR draft + threshold code」→ now「F2 impl + tests + re-eval」since ADR draft+approval already complete)
+- §7 Plan Changelog 2026-05-25 D1 cont entry landed(10 sub-items (a)-(j) cataloged)
+- §8 Locked Design Decisions extended with Q6 + Q7 rows(Q6 = ADR-0037 6 Settings defaults summary;Q7 = F2 → F3 gate criteria scoping TBD per F2 D{N} delta + Q3 eval-driven preserve)
+- §9 Component Impact Map rewrite — C04(`hybrid.py` `fetch_chunks_by_section_path` method + `settings.py` 6 NEW knobs)+ C05(NEW `parent_doc_retriever.py` module + `prompt_builder.py` dispatch chain + `crag.py` + `query.py` wire)+ C07(`observe.py` NEW stage + `debug/[traceId]/page.tsx` V6 10-stage);**partial H7 trigger** per V6 Debug View frontend stage card update
+
+**7. Checklist rewrite**(`W26 checklist.md` F2 items):
+- Header note PIVOTED 2026-05-25 D1 cont
+- F2.1-F2.3 governance gate(已 satisfied — [x] checked ✅ for ADR drafted + AskUserQuestion approved + README synced)
+- F2.4-F2.5 backend B retriever module(F2.4a-i parent_doc_retriever + F2.5a-d hybrid extension)
+- F2.6-F2.9 C pipeline integration(prompt_builder + crag + query routes 2 sites)
+- F2.10 D 6 NEW Settings
+- F2.11-F2.12 E observability(observe stage + V6 frontend 10-stage with H7 self-verify in F2.12c)
+- F2.13-F2.18 F tests(15 cases parent_doc_retriever + 5 cases hybrid extension + regression 1044+ + mypy + ruff)
+- F2.19-F2.23 G RAGAs re-eval(env override + 13-query re-run + per-query diagnostic + Q-W25-I07 qualitative review + Q-W25-I02-I05+T04 5-failed-cohort review + Settings sweep iteration log per R3)
+- F2.24 H F2 → F3 gate AskUserQuestion
+- Verification gates G1+G2 marked [x] DONE(G1 F1.7 satisfied + G2 F2.2 Chris AskUserQuestion satisfied 2026-05-25 D1 cont)+ G3+G4 wording rescoped + G6 + G7 cross-ref updated to new F2.* numbering
+
+### Decisions(Day 1 cont)
+
+- **D1.7** — User pick (c) 分 2 commits per session-end decision tree(ADR governance commit `4cdd1bc` atomic + planning commit pending this Day 1 cont entry)— matches Karpathy §1.3 surgical + W25 single-commit precedent reversed for ADR governance separation;ADR Accepted = immutable artifact while plan rewrite continues phase-evolution
+- **D1.8** — ADR-0037 Q6 「Both on coexistence」 vs 「Mode-switch replace」 picked Both on(Recommended)per top-2..top-5 non-anchor chunks 仍 benefit from ADR-0020 prev/next expansion;Mode-switch would lose those benefits — net regression vs marginal simplicity gain
+- **D1.9** — ADR-0037 Q1 top_k=1 conservative pick(Recommended)per F1 evidence Q-W25-I07 top-5 已含 §3.1 chunk #8 topically off — top-K anchor parent-doc aggressive 化 會 aggregate §3 整 section 入 context = 反效果;Setting 允許 W27+ sweep 至 2/3 if multi-section queries 需要
+- **D1.10** — V6 Debug View frontend touch 細範圍 (~30 LOC observation-name prefix + stage card render)= **partial H7 trigger** per CLAUDE.md §5.7 — H7 self-verify item F2.12c added but mockup `ekp-page-debug.jsx` 可能未存(若 not exist → V6 既存 stage cards 作為 alignment reference per ADR-0020 W17 precedent)— defer to F2 implementation 階段先 trigger;若 mockup exist 即 follow §3.2.1 7-item fidelity checklist
+- **D1.11** — G3 + G4 hard gate criteria rescope(precision↑/recall↓ → `context_recall`↑/`faithfulness`↓)reflects parent-doc workload semantic shift — recall is the dominant signal per F1 5/13 `context_recall=0.00` finding;faithfulness preserves safety net against parent section over-broadening dilution
+
+### Blockers
+
+無 — F2 governance complete(ADR Accepted + plan rewrite landed);F2 implementation gate open per ADR §Implementation Deliverables list as acceptance contract。
+
+### Verify gates results(F2 governance — A category)
+
+| Gate | Result |
+|---|---|
+| F2.1 ADR drafted | ✅ DONE(~620 lines per CLAUDE.md §6 format)|
+| F2.2 Chris AskUserQuestion approval | ✅ DONE(4 Recommended picks + 4 batch-lock 2026-05-25 D1 cont)|
+| F2.3 README index synced | ✅ DONE(row + footer next-NNNN 0038)|
+| G1 F1 baseline metrics | ✅ DONE(F1.7 satisfied — `baseline-metrics-W26-D1.md` 2026-05-25 D1)|
+| G2 ADR-0037 Accepted | ✅ DONE(2026-05-25 D1 cont)|
+| G3-G7 | ⏸ pending F2.4-F2.24 implementation cascade |
+
+### Carry-overs
+
+- 🚧 **F2 implementation cascade**(F2.4-F2.24)next session — backend `parent_doc_retriever.py` module + `hybrid.py` extension + pipeline wire + Settings 6 knobs + observability stage + V6 frontend 10-stage + 15+ tests + RAGAs re-eval + F2 → F3 gate AskUserQuestion
+- 🚧 **session-start.md sync**(F0.10 deferred to F4 closeout per original plan — bundle in F4 closeout commit OR separate `docs(session-start)` commit per W25 precedent)
+- 🚧 **CO_W26_BUG-027_health_reranker_attr**(D1.1 carry-over preserved — `/health._check_cohere:103` `engine.reranker` public name vs `engine._reranker` private attr drift;Sev3/Sev4 cosmetic;W27+ separate BUG-fix scope per Chris pick (a) 2026-05-25 D1)
+- 🚧 **CO_W26_threshold_probe_script**(D1 carry-over — `backend/scripts/w26_threshold_probe.py` measurement artifact)— preserved for F2 implementation 階段可能 reuse as parent-doc Settings sweep iteration tool
+
+### Commits
+
+- `4cdd1bc` `docs(adr): ADR-0037 Accepted — parent-document / section-level retrieval (W26 F2 PIVOTED)` — atomic governance commit(+631 / -1 across 2 files)
+- `docs(planning): W26 F2 PIVOTED scope rewrite + ADR-0037 plan/checklist/progress cascade` — pending this Day 1 cont entry commit(plan §1.2/§2/§3/§4/§5/§7/§8/§9 + checklist F2 + progress Day 1 cont)
+
+---
+
+**End of Day 1 cont entry** — F2 governance complete(A category satisfied G2 hard gate)+ plan rewrite cascade per R3 binding rule + checklist F2 rewrite + progress Day 1 cont entry;F2 implementation gate open per ADR-0037 §Implementation Deliverables list as acceptance contract for next session impl cascade。
