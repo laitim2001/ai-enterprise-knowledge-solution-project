@@ -46,7 +46,7 @@ status: in-progress
 - W26 F2 existing 7 dispatch tests `test_prompt_builder_dispatch.py`(F1 regression-guard)
 - ADR-0037 §229 dispatch chain wording + `prompt_builder.py:55-59` 實作對齊(F0 R6 verified)
 
-**Commit**:[pending — commit `docs(planning): kickoff W27-parent-doc-dispatch-experiment` after Day 0 doc set landed]
+**Commit**:`5a6aab5` — `docs(planning): kickoff W27-parent-doc-dispatch-experiment`(4 files / +541 / -1 — plan.md + checklist.md + progress.md + session-start.md §10 timeline row append)
 
 ---
 

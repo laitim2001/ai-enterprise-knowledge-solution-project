@@ -17,9 +17,9 @@ last_updated: 2026-05-25
 - [x] Draft `plan.md` per W26 closed-phase template — 7-section structure + frontmatter + §2 F0-F3 deliverables + §3 G1-G6 + §4 R1-R5 + §5 D0-D3 + §6 W26 carry-overs + §7 Changelog
 - [x] Draft `checklist.md` per W26 closed-phase template — atomic items derived from plan §2 deliverables
 - [x] Draft `progress.md` Day 0 entry — kickoff action + commit hash placeholder
-- [ ] Commit `docs(planning): kickoff W27-parent-doc-dispatch-experiment` per CLAUDE.md §10 R1 binding before any code
-- [ ] session-start.md §10 timeline row update — W27 active status entry append
-- [ ] session-start.md §11 W27 active context section append(brief 1-paragraph context handoff like W26)
+- [x] Commit `docs(planning): kickoff W27-parent-doc-dispatch-experiment` per CLAUDE.md §10 R1 binding before any code(commit `5a6aab5`)
+- [x] session-start.md §10 timeline row update — W27 active status entry append + W28+ rolling JIT row
+- [N/A] session-start.md §11 W27 active context section append — per W26 active precedent §11 是 CLOSED block 累積區,active state 唔 prepend 新 block(等 W27 closeout 才 prepend per session-start.md §11 pattern)
 
 ## F1 — Implementation:Setting + prompt_builder branch + unit tests
 

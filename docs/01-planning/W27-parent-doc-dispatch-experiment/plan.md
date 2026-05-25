@@ -4,7 +4,7 @@ name: "Parent-doc dispatch chain append-vs-replace experiment — W26 F2 G failu
 sprint_week: W27
 start_date: 2026-05-25
 end_date: 2026-05-25   # same-day collapse expected per W22-W26 AI compression pattern; will extend if R8 Azure-key-bound F2 G eval defers
-status: draft
+status: active
 spec_refs:
   - architecture.md §3.1       # query pipeline (parent-doc post-Context Expander step per ADR-0037)
   - architecture.md §3.5       # ChunkRecord citation contract preservation
