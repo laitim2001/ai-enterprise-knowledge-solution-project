@@ -46,32 +46,56 @@ status: in-progress
 - Bearer `dev-token` mock auth pattern(`FEATURE_AUTH_MOCK=true` 已在 `.env`)
 - `.env` Add-Content append-only pattern(避免 PowerShell `Out-File -NoNewline` per W27 D3 retro lesson)
 
-**Commit**:[pending — commit `docs(planning): kickoff W28-parent-doc-setting-sweep` after Day 0 doc set landed]
+**Commit**:`1fd8806` — `docs(planning): kickoff W28-parent-doc-setting-sweep`(4 files / +564 / -1 — plan.md + checklist.md + progress.md + session-start.md §10 timeline row append + W29+ rolling JIT row)
 
 ---
 
-## Day 1 — 2026-05-25(planned)
+## Day 1 — 2026-05-25:F1 Step 1 max_tokens sweep 完成
 
 ### Done
 
-- (pending — F1 Step 1 max_tokens sweep 3 runs + Step 1 analysis)
+- F1 A R8 prerequisite check — keys present + W27 D2 same-day environment continuity confirmed by Run 1.A baseline duplicate(recall_at_5=0.8936 同 W27 F2 G 一致)
+- F1 B Step 1 三 runs sequential:
+  - **Run 1.A**(max_tokens=4000 baseline duplicate)— 528s runtime / faith=0.9573 / correctness=0.7485 / p95_latency=1037ms / Q-W25-I07 fail (0.60/0.66) / Q-W25-I01 PASS
+  - **Run 1.B**(max_tokens=2000)— 476s runtime / faith=**0.9628** / correctness=0.7167 / p95_latency=1402ms / Q-W25-I07 **PASS** / Q-W25-I01 緊 boundary(0.65)
+  - **Run 1.C**(max_tokens=1500)— 493s runtime / faith=0.9575 / correctness=0.7278 / p95_latency=**853ms** / Q-W25-I07 fail / Q-W25-I01 PASS(answer_rel)
+- F1 C Step 1 analysis report `step1-max-tokens-sweep-W28-D1.md` ship — 6 sections / three-way comparison / per-run G1-G5 / H2 hypothesis PARTIALLY CONFIRMED + counterintuitive results / Step 1 best pick + Step 2 base config
+- Workflow operational:`echo >> .env` POSIX append-only 設定 base block(避免 PowerShell `Out-File -NoNewline` per W27 D3 retro lesson)+ uvicorn restart via `python -m api.server`(SelectorEventLoop fix)+ Bearer `dev-token` mock auth POST per run
 
 ### Decisions / OQ Resolved
 
-- (pending)
+- **Step 1 best pick:Run 1.B(max_tokens=2000)** for Step 2 base — 理由:
+  1. **G3 critical PASS(唯一)** — Q-W25-I07 0.00 → PASS preserved per D1.35 H1 citation invariant validated metric
+  2. **G1 最接近 F1 tolerance**(MISS 0.23pp only — 1.A 0.78pp / 1.C 0.76pp)
+  3. G2 marginal MISS + G4 緊 boundary — 可能 Step 2 top_k 加大 close gap by broader anchor coverage
+  4. G5 PASS(1402ms < 2000ms acceptable + ~52% reduction vs W27 baseline 2897ms)
+- **H2 hypothesis re-evaluation**:**PARTIALLY CONFIRMED + counterintuitive surfaced**:
+  - ✅ max_tokens 降低 提升 faithfulness(2000 most;1500 minimal)
+  - ❌ correctness 反向 — 反而 降低(parent section 切短失 coverage)
+  - ❌ latency 唔係 monotonic — 2000 反而最高(possibly LLM tokens elsewhere)
+  - ✅ Q-W25-I07 critical recovery 喺 2000 唯一(1500 too aggressive,4000 過大)
+  - ⚠️ Total failed queries 數 隨 max_tokens 降低 increases(9→10→11)= broader coverage loss
+- **NEW finding eval-to-eval variance**:RAGAs judge LLM borderline queries(0.60-0.70 區間)±0.05-0.10 fluctuation 正常;W27 + W28 Run 1.A 同 config 之間 Q-W25-I07 + Q-W25-I01 PASS/FAIL flip — signal noise floor 對 G3+G4 結論 影響需 後續 Step 2 confirm
+- **NEW finding p95_latency cold-start**:W27 F2 G 2897ms 包 connection cold-start cost ~1860ms;W28 warm-state 853-1402ms。Latency-optimization conclusion 應 base 喺 W28 warm-state numbers
 
 ### Blockers
 
-- (pending — R8 prerequisite check at F1 D1 may surface here if Azure/Cohere key env not available)
+- 無 D1 blocker
 
 ### Actual vs Planned Effort
 
 | Deliverable | Planned (h) | Actual (h) | Variance |
 |---|---|---|---|
+| F1 A R8 prerequisite check | ~0.5 | ~0.1 | -0.4(keys present + W27 continuity confirmed quickly)|
+| F1 B Step 1 三 runs sequential | ~30 min eval | ~25 min(528+476+493 = 1497s ≈ 25 min)| -5 min |
+| F1 C Step 1 analysis writeup | ~1-1.5h | ~1.5h | 0 |
+| F1 D uvicorn restart × 3(OneDrive disk lag pattern surfaced Run 1.C cold-start)| ~3 min | ~5 min(180s timeout monitor re-arm Run 1.C)| +2 min |
+
+**D1 actual**:~2.5h vs ~2-3h planned(within budget)
 
 ### Commits
 
-- (pending)
+- (pending F1 Step 1 commit `docs(eval): W28 F1 Step 1 max_tokens sweep — 3 RAGAs runs / best pick max_tokens=2000 / H2 PARTIALLY CONFIRMED`)
 
 ---
 

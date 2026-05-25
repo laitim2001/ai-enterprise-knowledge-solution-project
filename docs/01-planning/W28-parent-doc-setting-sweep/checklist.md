@@ -17,30 +17,31 @@ last_updated: 2026-05-25
 - [x] Draft `plan.md` per W27 closed-phase template — 7-section structure + frontmatter + §2 F0-F4 deliverables + §3 G1-G6 + §4 R1-R6 + §5 D0-D3 + §6 W27 carry-overs + §7 Changelog
 - [x] Draft `checklist.md` per W27 closed-phase template — atomic items derived from plan §2 deliverables
 - [x] Draft `progress.md` Day 0 entry — kickoff action + commit hash placeholder
-- [ ] Commit `docs(planning): kickoff W28-parent-doc-setting-sweep` per CLAUDE.md §10 R1 binding before any code
-- [ ] session-start.md §10 timeline row update — W28 active status entry append
+- [x] Commit `docs(planning): kickoff W28-parent-doc-setting-sweep` per CLAUDE.md §10 R1 binding(commit `1fd8806`)
+- [x] session-start.md §10 timeline row update — W28 active status entry append + W29+ rolling JIT row 更新
 
 ## F1 — Step 1 max_tokens sweep(3 RAGAs runs)
 
 ### A. R8 prerequisite gate
 
-- [ ] R8 prerequisite check — keys 已 present 喺 `.env`(W27 F2 G same-session environment continuity 預期 valid)
-- [N/A] STOP and ask Chris 若 blocked — R8 預期 green per W27 D2 same-day precedent
+- [x] R8 prerequisite check — keys 已 present 喺 `.env`(W27 F2 G same-session environment continuity confirmed by Run 1.A baseline duplicate ~match W27 F2 G metrics)
+- [N/A] STOP and ask Chris 若 blocked — R8 green per W27 D2 same-day precedent
 
 ### B. Step 1 active flip — 3 runs sequential
 
-- [ ] **Run 1.A baseline duplicate**:`.env` append-only override `ENABLE_PARENT_DOC_RETRIEVAL=true` + `PARENT_DOC_DISPATCH_MODE=append` + `PARENT_DOC_MAX_TOKENS_PER_PARENT=4000`(實 default,explicit for completeness)+ uvicorn restart via `python -m api.server` + POST /eval/run Bearer dev-token = output `step1-run-1a-metrics-W28-D1-raw.json`
-- [ ] **Run 1.B max_tokens=2000**:`.env` 改 `PARENT_DOC_MAX_TOKENS_PER_PARENT=2000` + uvicorn restart + POST /eval/run = output `step1-run-1b-metrics-W28-D1-raw.json`
-- [ ] **Run 1.C max_tokens=1500**:`.env` 改 `PARENT_DOC_MAX_TOKENS_PER_PARENT=1500` + uvicorn restart + POST /eval/run = output `step1-run-1c-metrics-W28-D1-raw.json`
+- [x] **Run 1.A baseline duplicate**:`.env` append 6-line W28 F1 base block + uvicorn restart via `python -m api.server` + POST /eval/run Bearer dev-token = output `step1-run-1a-metrics-W28-D1-raw.json`(HTTP 200 / 528s runtime)
+- [x] **Run 1.B max_tokens=2000**:`.env` Edit line 116 `PARENT_DOC_MAX_TOKENS_PER_PARENT=2000` + uvicorn restart + POST /eval/run = output `step1-run-1b-metrics-W28-D1-raw.json`(HTTP 200 / 476s runtime)
+- [x] **Run 1.C max_tokens=1500**:`.env` Edit line 116 `PARENT_DOC_MAX_TOKENS_PER_PARENT=1500` + uvicorn restart + POST /eval/run = output `step1-run-1c-metrics-W28-D1-raw.json`(HTTP 200 / 493s runtime)
 
 ### C. Step 1 analysis
 
-- [ ] Markdown report `step1-max-tokens-sweep-W28-D1.md` — 3 runs aggregate metrics + per-query 4-metric + Step 1 best max_tokens pick by G1+G2+G3+G4 aggregate score(faith + correctness + Q-W25-I07 + Q-W25-I01 control)
-- [ ] H2 hypothesis check:max_tokens 降低 是否提升 faithfulness + correctness + 降 latency?
+- [x] Markdown report `step1-max-tokens-sweep-W28-D1.md` — 3 runs aggregate metrics + per-query 4-metric + Step 1 best max_tokens pick(Run 1.B max_tokens=2000)by G3 critical PASS + G1 closest to F1 tolerance + Step 2 base config
+- [x] H2 hypothesis check:**PARTIALLY CONFIRMED + counterintuitive surfaced** — faithfulness 提升 with max_tokens reduction(2000 most)but correctness reverse(coverage truncation)+ latency 唔係 monotonic(1500 lowest,2000 highest)+ failed queries 數 increase with reduction(9→10→11)
+- [x] Eval-to-eval variance documented(W27 vs W28 Run 1.A Q-W25-I07 + Q-W25-I01 borderline judge flip)
 
 ### D. Commit
 
-- [ ] Commit F1 Step 1 `docs(eval): W28 F1 Step 1 max_tokens sweep — 3 RAGAs runs delta + Step 1 best pick`
+- [ ] Commit F1 Step 1 `docs(eval): W28 F1 Step 1 max_tokens sweep — 3 RAGAs runs / best pick max_tokens=2000 / H2 PARTIALLY CONFIRMED`
 
 ## F2 — Step 2 top_k sweep(2 NEW RAGAs runs)
 
