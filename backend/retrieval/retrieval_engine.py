@@ -208,6 +208,45 @@ class RetrievalEngine:
 
         return await expand_context(chunks, kb_id=kb_id, searcher=self._searcher)
 
+    async def aggregate_parent_sections_for_chunks(
+        self,
+        chunks: list[RetrievedChunk],
+        kb_id: str,
+        *,
+        section_depth_offset: int = 1,
+        parent_doc_top_k: int = 1,
+        max_tokens_per_parent: int = 4000,
+        max_chunks_per_parent: int = 50,
+        fallback_to_doc_on_shallow: bool = True,
+    ):
+        """Aggregate parent sections for top-K reranked anchors per ADR-0037 W26 F2.
+
+        Public wrapper preserving searcher encapsulation (caller doesn't reach into
+        `_searcher` directly — matches `expand_context_for_chunks` pattern). Accepts
+        `list[RetrievedChunk]` or `list[ExpandedChunk]` (duck-typed on score+fields)
+        so the step composes after Context Expander upstream (Q6 Both on policy).
+
+        Returns (list[ParentSectionChunk], ParentDocStats) — see
+        `generation.parent_doc_retriever.py` for shape + algorithm.
+
+        Default kwargs reflect Chris AskUserQuestion 2026-05-25 D1 cont picks
+        (Q1 + Q2 + Q3 + fallback) but callers SHOULD pass values from `Settings`
+        so production tuning flows via `.env` not module defaults.
+        """
+        # Local import avoids circular dependency (parallel to expand_context above).
+        from generation.parent_doc_retriever import aggregate_parent_sections  # noqa: PLC0415
+
+        return await aggregate_parent_sections(
+            chunks,
+            kb_id=kb_id,
+            searcher=self._searcher,
+            section_depth_offset=section_depth_offset,
+            parent_doc_top_k=parent_doc_top_k,
+            max_tokens_per_parent=max_tokens_per_parent,
+            max_chunks_per_parent=max_chunks_per_parent,
+            fallback_to_doc_on_shallow=fallback_to_doc_on_shallow,
+        )
+
     async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:
         """W16 F5.1.1 — delegate to searcher.list_documents (encapsulation preserved).
 

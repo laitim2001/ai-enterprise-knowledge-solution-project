@@ -410,3 +410,85 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 cont 3 entry** — F2 core module + observability + tests complete(14/14 + ruff + mypy strict on touched code all green);F2.6-F2.9 pipeline integration next atomic commit consuming retriever module + Settings flag check at caller layer。
+
+---
+
+## Day 1 cont 4 — 2026-05-25:F2.6-F2.9 Pipeline 整合 + dispatch chain 測試
+
+> **日曆連續性**:同日 4th session 段,user instruction「continue F2.6-F2.9 pipeline integration」+ 提醒「中文對答為主」(memory `feedback_chinese_primary_replies.md` 已記第 3 次違反 + 強化紀律)。
+
+### 完成項目
+
+**1. F2.6 `prompt_builder.py` dispatch chain 擴展**:
+- `_format_chunk` 函式內 `text` 計算改為 3 級 fallback 鏈:`parent_section_text > expanded_text > chunk_text`
+- Docstring 更新引用 ADR-0037 + Citation invariant 保留說明(LLM 見 parent_section_text 但 citation 引用原 anchor chunk_id)
+- 對齊 ADR-0020 既有 dispatch 模式 — 純優先級擴展非結構改動
+
+**2. F2.7+ `retrieval_engine.py` NEW `aggregate_parent_sections_for_chunks` wrapper**:
+- 公開 wrapper 封裝 `self._searcher` 訪問(對齊 ADR-0020 `expand_context_for_chunks` precedent)
+- 解 circular import via local `from generation.parent_doc_retriever import aggregate_parent_sections`
+- 簽名:`chunks: list[RetrievedChunk]` + 6 kwargs 對應 ADR-0037 6 NEW Settings + 預設值對齊 Chris AskUserQuestion 2026-05-25 D1 cont 4 Recommended picks
+- Mypy delta = 0(對齊 line 194 `expand_context_for_chunks` 既有風格;return type 省略屬 W25 CO_W25_mypy_strict_debt 一致 — 不引入 new debt per Karpathy §1.3 surgical)
+
+**3. F2.7 `crag.py` re-synthesis path flag-gated 整合**:
+- NEW import `from storage.settings import get_settings`
+- `refine()` 內 re-retrieval + Context Expander 後 + `synthesizer.synthesize()` 前加 `if crag_settings.enable_parent_doc_retrieval:` block
+- 經 `engine.aggregate_parent_sections_for_chunks` wrapper(non breaking encapsulation)
+- Graceful `try/except` errors append + warning log;exception 不 raise 至 outer scope — 維持 expanded_new_chunks 作 fallback(no degradation vs ADR-0020 baseline)
+- 6 settings knobs 由 `crag_settings.parent_doc_*` 傳入
+
+**4. F2.8 `query.py /query` happy path 整合**:
+- Context Expander block(line ~178)之後 + `synthesizer.synthesize()` 之前加 `if settings.enable_parent_doc_retrieval:` block
+- 經 `engine.aggregate_parent_sections_for_chunks` wrapper + graceful try/except
+- `expanded_chunks` 變數 in-place 替換 — duck-typed `prompt_builder` 全部接受(ExpandedChunk OR ParentSectionChunk 兩者都有 `.score + .fields`)
+
+**5. F2.9 `query.py /query/stream` 同 pattern 整合**:
+- `stream_settings = get_settings()` 由 line 299 提前到 line ~295 一次過 lookup;parent-doc gate + 後續 neighbour-image augmentation 兩者 reuse
+- Block 結構完全 mirror `/query` happy path,保持 happy path / stream path 對稱性
+
+**6. F2.13 補充 — NEW `tests/test_prompt_builder_dispatch.py` 7 案例**:
+- baseline 無 expansion → 用 chunk_text
+- ADR-0020 expanded_text > chunk_text
+- ADR-0037 parent_section_text > expanded_text(兩者並存)
+- ADR-0037 parent_section_text > chunk_text(無 expanded_text)
+- Citation invariant 保留 — chunk_id reference 仍 anchor's id 不論 dispatch 結果
+- 空字符串 parent_section_text → fallback 跌落 expanded_text
+- 缺失 parent_section_text 鍵 → fallback 同 ADR-0020 baseline 一致
+- 7/7 pass(1.22s)
+
+**7. 驗證閘**(F2 pipeline 整合 D1 cont 4 範圍):
+- ✅ `pytest tests/test_prompt_builder_dispatch.py` — 7/7 pass(1.22s)
+- ✅ `pytest tests/test_prompt_builder_dispatch.py tests/test_parent_doc_retriever.py tests/test_hybrid_section_path.py` — **32/32 W26 F2 全套 pass**(1.99s)
+- ✅ `pytest tests/` full regression — **1056 passed + 25 skipped + 0 failed**(130.23s;1049 baseline + 7 NEW dispatch = 1056 exact match — G6 backend regression preserved hard gate ✅)
+- ✅ `mypy --strict` on touched files — 我嘅 delta = 0(剩 13 errors 全 pre-existing W25 CO_W25_mypy_strict_debt:observability + retrieval_engine line 51/153/194/250/258 + context_expander line 74 + prompt_builder line 35 — 全部 pre-existing,我嘅整合 0 NEW error)
+- ✅ `ruff check` — All checks passed(test 檔 import order 1 個 ruff auto-fixed during iteration)
+
+### 決定(Day 1 cont 4)
+
+- **D1.23** — `crag.py` settings injection pattern 選 inline `get_settings()` lookup(選項 B)非 constructor injection(選項 A — 改 `CragLoop.__init__` 簽名)— Karpathy §1.3 surgical 最小 blast radius;對齊 query.py `/query/stream` `stream_settings = get_settings()` 既有 pattern;CragLoop wiring(`server.py` lifespan)0 改動
+- **D1.24** — `aggregate_parent_sections_for_chunks` wrapper 簽名對齊 `expand_context_for_chunks` style(param typed + return untyped)— 一致 codebase 樣式;mypy strict delta = 0(對齊 line 194 pre-existing pattern,非加新 W25 mypy debt)
+- **D1.25** — Test fixture `_chunk_with_fields(**overrides: object)` `base: dict[str, object]` explicit annotation 解決 mypy 推斷 `dict[str, Sequence[str]]` 型別衝突(由 `section_path: ["Doc", "§1"]` list[str] 推斷)— 1 行 minimal 修正
+- **D1.26** — Pipeline 整合 4 sites(`/query` + `/query/stream` + `crag.py refine` + `prompt_builder._format_chunk`)全部 graceful fallback policy 統一:**任何 parent-doc exception 都 NOT raise** —— `expanded_chunks`(query paths)OR `expanded_new_chunks`(crag.py)維持 ADR-0020 expansion 結果作 fallback;`synthesize()` 永遠 run 不會因 parent-doc 失敗而中斷整條 pipeline。對齊 ADR-0020 + ADR-0035 graceful 規律
+- **D1.27** — `stream_settings = get_settings()` 由 line 299 提前到 line ~295 一次過 lookup — 避免 parent-doc + neighbour-image two double-call;同一 settings instance 服務兩個 downstream consumer。Minimal rename(stream_settings 變數名保留 — 避免無謂改動下游 reference per Karpathy §1.3)
+
+### 阻塞
+
+無 — pipeline 整合完整 + 32/32 W26 F2 套 tests 全綠;全 regression background 跑緊。
+
+### Carry-over 更新(Day 1 cont 4)
+
+- 🚧 **F2.12 V6 Debug View 10-stage** — `frontend/app/debug/[traceId]/page.tsx` 加 NEW「Parent-Document Retriever」stage card + H7 self-verify(對 mockup `ekp-page-debug.jsx` 若存在,否則跟 V6 既有 stage cards 對齊)
+- 🚧 **F2.19-F2.23 G RAGAs 重跑** — 待完整 F2 implementation cascade 後;R8/Azure-key-bound 仍 prerequisite
+- 🚧 **F2.24 H F2 → F3 gate AskUserQuestion** — 終極步驟 task #212
+
+### Commits
+
+- `4cdd1bc` ADR-0037 Accepted(governance)
+- `f9398ec` Plan + checklist + progress rewrite cascade
+- `ce8e870` Leaf — D Settings + B HybridSearcher extension + 11 tests
+- `48f7460` Core — B parent_doc_retriever module + E observability stage + 14 tests
+- `feat(generation): W26 F2 C pipeline integration — prompt_builder dispatch + crag.py + query.py 2 sites + 7 NEW dispatch tests per ADR-0037` — atomic pipeline 整合 commit pending(本 entry)
+
+---
+
+**End of Day 1 cont 4 entry** — F2 pipeline 整合 4 sites 完成(prompt_builder + crag.py + query.py × 2 + retrieval_engine.py wrapper)+ 7 NEW dispatch tests(32/32 W26 F2 全套 pass)+ mypy 0 delta + ruff clean。F2.12 V6 Debug View 10-stage 為下一個 atomic piece(前端 H7 fidelity 自驗範圍)。

@@ -177,6 +177,30 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
         )
         expanded_chunks = result.chunks  # fallback: no expansion (raw chunks)
 
+    # ADR-0037 W26 F2: parent-document retrieval (flag-gated default OFF per Q4).
+    # Layered over ADR-0020 Context Expander (Q6 Both on coexistence) — top-1 anchor's
+    # parent section text supersedes its expanded_text via prompt_builder dispatch chain
+    # (parent_section_text > expanded_text > chunk_text); top-2..top-K non-anchor chunks
+    # pass through with expanded_text preserved. Graceful fallback on exception keeps
+    # expanded_chunks intact (no degradation vs ADR-0020 baseline).
+    if settings.enable_parent_doc_retrieval:
+        try:
+            expanded_chunks, _parent_stats = await engine.aggregate_parent_sections_for_chunks(
+                expanded_chunks,
+                kb_id=payload.kb_id,
+                section_depth_offset=settings.parent_doc_section_depth_offset,
+                parent_doc_top_k=settings.parent_doc_top_k,
+                max_tokens_per_parent=settings.parent_doc_max_tokens_per_parent,
+                max_chunks_per_parent=settings.parent_doc_max_chunks_per_parent,
+                fallback_to_doc_on_shallow=settings.parent_doc_fallback_to_doc_on_shallow,
+            )
+        except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
+            logger.warning(
+                "parent_doc_aggregation_failed_using_expanded",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            # expanded_chunks unchanged — fallback to Context Expander result
+
     try:
         synth = await synthesizer.synthesize(payload.query, expanded_chunks)
     except Exception as exc:  # noqa: BLE001
@@ -293,10 +317,34 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         )
         expanded_chunks = result.chunks
 
+    # W25 F5 D1 / W26 F2 — settings used both by parent-doc gate below + by the
+    # neighbour-image augmentation callback further down (moved earlier here so
+    # the parent-doc block can read the flag without double-calling get_settings()).
+    stream_settings = get_settings()
+
+    # ADR-0037 W26 F2: parent-document retrieval parallel to /query happy path
+    # (flag-gated default OFF per Q4; graceful fallback on exception keeps
+    # expanded_chunks intact — no degradation vs ADR-0020 baseline).
+    if stream_settings.enable_parent_doc_retrieval:
+        try:
+            expanded_chunks, _parent_stats = await engine.aggregate_parent_sections_for_chunks(
+                expanded_chunks,
+                kb_id=payload.kb_id,
+                section_depth_offset=stream_settings.parent_doc_section_depth_offset,
+                parent_doc_top_k=stream_settings.parent_doc_top_k,
+                max_tokens_per_parent=stream_settings.parent_doc_max_tokens_per_parent,
+                max_chunks_per_parent=stream_settings.parent_doc_max_chunks_per_parent,
+                fallback_to_doc_on_shallow=stream_settings.parent_doc_fallback_to_doc_on_shallow,
+            )
+        except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
+            logger.warning(
+                "parent_doc_aggregation_stream_failed_using_expanded",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
     # W25 F5 D1 — neighbour-image augmentation callback for the stream's
     # citation batch (see compose_query_stream's citation_post_process hook).
     # Graceful fallback to original citations on exception per ADR-0034.
-    stream_settings = get_settings()
 
     async def _augment_stream_citations(citations: list[Citation]) -> list[Citation]:
         if not stream_settings.enable_citation_neighbour_images:

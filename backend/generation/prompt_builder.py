@@ -36,14 +36,27 @@ class PromptMessages:
 
 
 def _format_chunk(chunk: RetrievedChunk) -> str:
-    """Format a chunk for LLM context. Per ADR-0020 prefer 'expanded_text' (prev+orig+next)
-    when present (Context Expander step landed); fallback to 'chunk_text' otherwise.
+    """Format a chunk for LLM context.
+
+    Dispatch chain (ADR-0037 W26 F2 extends ADR-0020):
+    1. `parent_section_text` — siblings aggregated by Parent-Document Retriever
+       (`backend/generation/parent_doc_retriever.py`); supersedes `expanded_text`
+       for the anchor chunk when `enable_parent_doc_retrieval=True`.
+    2. `expanded_text` — prev/next ±1 chunk window per ADR-0020 Context Expander.
+    3. `chunk_text` — raw chunk text (W2 baseline) when neither expansion applied.
+
+    Citation invariant preserved: even when LLM sees parent_section_text, the
+    cited chunk_id references the original anchor (parent section is LLM-input-
+    only enrichment per architecture.md §3.5 Citation contract).
     """
     cid = str(chunk.fields.get("chunk_id", ""))
     title = str(chunk.fields.get("chunk_title", "") or "(untitled)")
     section = " > ".join(chunk.fields.get("section_path") or [])
-    # ADR-0020: expanded_text if Context Expander applied; else original chunk_text
-    text = str(chunk.fields.get("expanded_text") or chunk.fields.get("chunk_text", ""))
+    text = str(
+        chunk.fields.get("parent_section_text")
+        or chunk.fields.get("expanded_text")
+        or chunk.fields.get("chunk_text", "")
+    )
     section_line = f"  Section: {section}\n" if section else ""
     return (
         f"[chunk-{cid}] {title}\n"

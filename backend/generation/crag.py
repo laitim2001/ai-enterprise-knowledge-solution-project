@@ -43,6 +43,7 @@ from tenacity import (
 from generation.synthesizer import SynthesisResult, Synthesizer
 from observability.observe import observe_async, observe_llm_async
 from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult, RetrievedChunk
+from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -383,6 +384,31 @@ class CragLoop:
                 error=f"{type(exc).__name__}: {exc}",
             )
             expanded_new_chunks = new_result.chunks  # raw fallback
+
+        # ADR-0037 W26 F2: parent-document retrieval on the re-retrieved set
+        # (parallel pattern to /query route happy path; flag-gated default OFF
+        # per Q4). Graceful fallback keeps expanded_new_chunks intact on
+        # exception so re-synthesis still runs with ADR-0020 expansion.
+        crag_settings = get_settings()
+        if crag_settings.enable_parent_doc_retrieval:
+            try:
+                expanded_new_chunks, _new_parent_stats = (
+                    await self._engine.aggregate_parent_sections_for_chunks(
+                        expanded_new_chunks,
+                        kb_id=kb_id,
+                        section_depth_offset=crag_settings.parent_doc_section_depth_offset,
+                        parent_doc_top_k=crag_settings.parent_doc_top_k,
+                        max_tokens_per_parent=crag_settings.parent_doc_max_tokens_per_parent,
+                        max_chunks_per_parent=crag_settings.parent_doc_max_chunks_per_parent,
+                        fallback_to_doc_on_shallow=crag_settings.parent_doc_fallback_to_doc_on_shallow,
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001 — graceful per ADR-0037
+                errors.append(f"parent_doc_aggregation: {exc}")
+                logger.warning(
+                    "crag_parent_doc_aggregation_error",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
 
         try:
             new_synth = await self._synthesizer.synthesize(
