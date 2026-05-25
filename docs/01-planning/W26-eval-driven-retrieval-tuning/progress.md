@@ -325,3 +325,88 @@ last_updated: 2026-05-25
 ---
 
 **End of Day 1 cont 2 entry** — F2 leaf atomic piece complete(D + B + tests + verify gates ALL green);F2.4 parent_doc_retriever module next atomic commit consuming these primitives。
+
+---
+
+## Day 1 cont 3 — 2026-05-25:F2.4 parent_doc_retriever core module + tests
+
+> **Calendar continuity**:Same calendar day continuation per user instruction「start F2 implementation」— ce8e870 leaf commit landed, immediately followed by F2.4 core module per atomic-commit pacing。
+
+### Done
+
+**1. F2.4 B Backend Parent-Document Retriever module**(`backend/generation/parent_doc_retriever.py`,~310 lines):
+- Module-level docstring documents the 6-step algorithm + edge cases + Citation invariant + Default Settings cross-ref + ADR-0037 + trigger memo cross-ref
+- `_STAGE_NAME = "generation.parent_doc_retrieval"` constant(Langfuse stage prefix for V6 Debug View 10-stage scaffold per Q5 Option A)
+- `_estimate_tokens(text)` helper — 4-char-per-token heuristic per ADR-0034 P95<5s budget framing
+- `ParentSectionChunk` dataclass — duck-typed `RetrievedChunk` / `ExpandedChunk` compatible(`score: float` + `fields: dict[str, Any]` + `parent_section_text: str | None` + `parent_path: list[str] | None` + `sibling_count: int` + `truncated: bool`)+ `no_aggregation` classmethod for flag-off / shallow / lookup-miss passthrough paths
+- `ParentDocStats` dataclass — 6 observability fields(`requested_anchors` / `parents_fetched` / `siblings_aggregated` / `truncated_count` / `skipped_shallow_count` / `fetch_latency_ms`)
+- `_emit_parent_doc_stage(stats)` helper — invokes `emit_stage_metadata` with all 6 stats fields per ADR-0020 emit pattern
+- `_compute_parent_path` helper — encapsulates Q2 depth_offset + fallback_to_doc_on_shallow logic(`len > offset` → normal drop / `len ≤ offset` + fallback=True → preserve top-1 / else → None skipped)
+- `aggregate_parent_sections` async coroutine — 6-step algorithm:
+  1. Empty input guard
+  2. Anchor selection per `parent_doc_top_k=1` default(top-1 anchor only — Q1 Recommended;passthrough preserves top-2..top-K untouched per Q6 Both on)
+  3. Compute parent paths per anchor + dedupe `(doc_id, parent_path)` tuples
+  4. Batch fetch each unique `(doc_id, parent_path)` via `HybridSearcher.fetch_chunks_by_section_path` — per-parent `except Exception` graceful degradation log + return empty
+  5. Assemble per-anchor `parent_section_text` with token-budget truncation tail-drop(first sibling always included even if alone exceeds budget — degenerate-doc graceful)
+  6. Pass through non-anchor chunks unchanged via `no_aggregation` classmethod(preserves `expanded_text` from ADR-0020 Context Expander upstream)
+
+**2. F2.11 E Observability stage wiring**(no `observe.py` modification needed):
+- `_STAGE_NAME = "generation.parent_doc_retrieval"` constant defined in retriever module
+- `_emit_parent_doc_stage(stats)` helper invokes existing `emit_stage_metadata()` from `observability/observe.py` with stage name + duration_ms + 5 stats fields
+- Matches ADR-0020 `backend/generation/context_expander.py` precedent pattern — `_STAGE_NAME` defined per-module, no central registry needed per Karpathy §1.2 simplicity
+
+**3. F2.13 F Tests**(NEW `backend/tests/test_parent_doc_retriever.py` ~430 LOC,14 cases — 11 of plan baseline a/b/c×2/d×2/f/g/h/j/k + 3 defensive edge cases):
+- **14/14 PASSED**(1.06s wall-clock)
+- Coverage:
+  - F2.13a happy path 6-sibling aggregation
+  - F2.13b multi-anchor dedupe 1-fetch
+  - F2.13c shallow section_path 2-case(fallback on / off)
+  - F2.13d token budget 2-case(tail-drop + degenerate single huge)
+  - F2.13e cross-doc covered implicitly via F2.13b(different `doc_id` → separate parent_lookup keys)+ F2.14a OData filter test at leaf layer
+  - F2.13f empty input → no fetch + zero stats
+  - F2.13g lookup miss → anchor passthrough
+  - F2.13h network error graceful
+  - F2.13j Q6 Both on coexistence(non-anchor `expanded_text` preserved)
+  - F2.13k Citation invariant(anchor `chunk_id` + `chunk_text` intact;new `parent_section_text` added)
+  - Defensive edges:missing `doc_id` + missing `section_path` + `no_aggregation` classmethod
+- F2.13i feature flag deferred to pipeline integration layer per architectural split(retriever module 唔讀 Settings,separation of concerns)
+
+**4. Verify gates**(F2 core module D1 cont 3 scope):
+- ✅ `pytest tests/test_parent_doc_retriever.py -v` — 14/14 pass
+- ✅ `pytest tests/test_parent_doc_retriever.py tests/test_hybrid_section_path.py -v` — 25/25 combined pass
+- ✅ `pytest tests/` full regression — **1049 passed + 25 skipped + 0 failed**(149.52s;W25 baseline 1024 + 11 hybrid_section_path + 14 parent_doc_retriever = 1049 exact match — G6 backend regression preserved hard gate ✅)
+- ✅ `mypy --strict --explicit-package-bases generation/parent_doc_retriever.py tests/test_parent_doc_retriever.py` — 0 errors in 2 source files;**5 pre-existing observability/ errors out of scope per Karpathy §1.3 surgical**(W25 CO_W25_mypy_strict_debt territory)
+- ✅ `ruff check generation/parent_doc_retriever.py tests/test_parent_doc_retriever.py` — All checks passed(2 import-order auto-fixed during iteration)
+
+### Decisions(Day 1 cont 3)
+
+- **D1.16** — Token budget truncation policy:**always include first sibling even if alone exceeds budget**;degenerate single-huge-chunk doc graceful with `truncated=True` flag。Alternative considered:return empty + skipped — rejected because section with even 1 chunk has signal;per Karpathy §1.4 goal-driven「some context > no context」for enumeration queries
+- **D1.17** — `no_aggregation` classmethod added on `ParentSectionChunk` for passthrough paths(flag-off / shallow / lookup-miss / non-anchor)— matches `ExpandedChunk.no_expansion` precedent from ADR-0020;simplifies caller code(no dataclass field bookkeeping)+ ensures fields dict copy semantics(`dict(getattr(chunk, "fields", {}) or {})`)
+- **D1.18** — Generic `object` typing on `_chunk` parameter of `no_aggregation` classmethod(duck-typed)over `Protocol` typing — Karpathy §1.2 simplicity;getattr fallbacks handle the duck-type;Protocol would force every caller to ensure type-hint conformance unnecessarily
+- **D1.19** — `_compute_parent_path` extracted as separate helper from `aggregate_parent_sections` body — Karpathy §1.3 cohesive helper(parent_path computation has 3 branches:normal / shallow fallback / shallow skip);extraction enables clearer test surface + cleaner inline flow + easier future tweaks if Q2 sweep needs adaptive logic
+- **D1.20** — F2.11 observability stage wired via `_STAGE_NAME` constant in retriever module(NOT via `observe.py` modification)— matches ADR-0020 `context_expander.py` precedent;`emit_stage_metadata()` accepts arbitrary stage name string;per Karpathy §1.2 simplicity — no central registry needed
+- **D1.21** — Mypy strict catch — added `from typing import Any` + `fields: dict[str, Any]` annotation + `from retrieval.hybrid import HybridSearchHit` for parent_lookup type;5 pre-existing `observability/` errors documented in progress as out of W26 F2 scope per Karpathy §1.3 surgical(observable signal:scope-bound + no regression introduced)
+- **D1.22** — Ruff auto-fixed 2 import-order errors during iteration(blank line between import groups + import sort)— landed in commit alongside type annotations
+
+### Blockers
+
+無 — F2 core module complete + verified(pending full regression notification)。F2.6-F2.9 pipeline integration next atomic commit。
+
+### Carry-overs(updated Day 1 cont 3)
+
+- 🚧 **F2.6-F2.9 C pipeline integration** next atomic commit — `prompt_builder.py` dispatch chain extension + `crag.py` flag-gated wire + `query.py` 2 sites flag-gated wire
+- 🚧 **F2.12 E V6 Debug View 10-stage** — `frontend/app/debug/[traceId]/page.tsx` stage card insert + H7 self-verify(check mockup `ekp-page-debug.jsx` if exists else V6 既存 cards alignment)
+- 🚧 **F2.19-F2.23 G RAGAs re-eval** — follows full implementation cascade complete
+- 🚧 **F2.24 H F2 → F3 gate AskUserQuestion** — terminal step task #212
+- 🚧 **observability/ mypy strict debt** — 5 pre-existing errors in `observability/langfuse_tracer.py` + `observability/observe.py`(W25 CO_W25_mypy_strict_debt territory;out of W26 F2 scope per Karpathy §1.3 surgical;documented for future W27+ cleanup if scope warrants)
+
+### Commits
+
+- `4cdd1bc` `docs(adr): ADR-0037 Accepted` — atomic governance(+631 / -1)
+- `f9398ec` `docs(planning): W26 F2 PIVOTED scope rewrite + ADR-0037 plan/checklist/progress cascade` — planning cascade(+275 / -73)
+- `ce8e870` `feat(retrieval): W26 F2 D Settings + B HybridSearcher.fetch_chunks_by_section_path per ADR-0037` — atomic leaf(+535 / -17 across 5 files)
+- `feat(generation): W26 F2 B parent_doc_retriever module + observability stage + 14 unit tests per ADR-0037` — atomic core module commit pending this entry
+
+---
+
+**End of Day 1 cont 3 entry** — F2 core module + observability + tests complete(14/14 + ruff + mypy strict on touched code all green);F2.6-F2.9 pipeline integration next atomic commit consuming retriever module + Settings flag check at caller layer。
