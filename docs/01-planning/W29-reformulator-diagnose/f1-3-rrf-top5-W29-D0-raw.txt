@@ -1,0 +1,89 @@
+=== W29 F1.3 — RRF Fusion Top-5 Surface for Q-W25-I07 ===
+
+Captured: 2026-05-26 W29 D0
+Backend state: ENABLE_QUERY_EXPANSION=true + W28 amended Settings(replace + top_k=2 + max_tokens=2000)+ enable_parent_doc_retrieval=False per Q4
+Method: curl POST /query — kb_id=sample-document-with-image-1, top_k=5, query="Show me all the Integration scenarios."
+Response file: backend/w29-f1-q-i07-response.json (8301 bytes)
+
+Top-5 reranked surface (final post-RRF + Cohere rerank):
+
+  [0] kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044
+      chunk_title: "8. Integration scenarios (end-to-end walkthroughs)"
+      section_path: <not surfaced in response>
+      relevance_score: <not surfaced in response>
+      semantic: INTRO chunk for §8 — lists A-E scenarios with brief summaries
+
+  [1] kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0008
+      chunk_title: "3.1 Platform composition over platform construction"
+      semantic: §3.1 architecture rationale — NOT §8.x walkthrough
+
+  [2] kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0036
+      chunk_title: "7. Integration patterns by system"
+      semantic: §7 by-system table — NOT §8.x walkthrough
+
+  [3] kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0020
+      chunk_title: "5.3 Azure Service Bus"
+      semantic: §5.3 Azure component — NOT §8.x walkthrough
+
+  [4] kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0018
+      chunk_title: "5.2.1 Logic Apps usage patterns"
+      semantic: §5.2.1 Azure component — NOT §8.x walkthrough
+
+§8.1-§8.5 individual A-E walkthrough chunks 完全 NOT 喺 top-5 surface:
+- §8.1 Scenario A — Customer service request submission     — NOT in top-5
+- §8.2 Scenario B — Real-time inventory check at checkout   — NOT in top-5
+- §8.3 Scenario C — (per chunk-0044 intro mention)          — NOT in top-5
+- §8.4 Scenario D — (per chunk-0044 intro mention)          — NOT in top-5
+- §8.5 Scenario E — (per chunk-0044 intro mention)          — NOT in top-5
+- §8.6 Coverage summary                                     — NOT in top-5 (was in W25 D4 baseline)
+
+Compare to W25 D4 baseline (2026-05-24 daily log):
+  [0] chunk-0044 — 8. Integration scenarios — score 0.9589    [SAME]
+  [1] chunk-0055 — 8.6 Coverage summary    — score 0.9195    [GONE today]
+  [2] chunk-0008 — 3.1 Platform composition — score 0.9161   [SAME pos 1]
+  [3] chunk-0001 — Contents (TOC)          — score 0.8995    [GONE today]
+  [4] chunk-0036 — 7. Integration patterns by system — 0.8918 [SAME at pos 2]
+
+W29 D0 surface NEW additions:
+  - chunk-0020 (5.3 Azure Service Bus)         — NEW
+  - chunk-0018 (5.2.1 Logic Apps usage patterns) — NEW
+
+W29 D0 surface drops:
+  - chunk-0055 (8.6 Coverage summary)  — was in W25 D4 top-5
+  - chunk-0001 (Contents TOC)          — was in W25 D4 top-5
+
+=== Answer behavior 對比 ===
+
+W25 D4 (2026-05-24):
+  - refused: True
+  - answer: "I cannot find this in the available documentation"
+  - citations: 0
+
+W29 D0 (2026-05-26):
+  - refused: False ✅
+  - answer: 5-scenario enumerate(Customer service / Real-time inventory check / [C/D/E truncated in 800-char preview])
+  - citations: 1 (chunk-0044 intro only — paraphrased A-E summary from intro chunk)
+
+=== G1 PRIMARY gate evaluation (per plan §3) ===
+
+G1 acceptance: Q-W25-I07 user-test ≥ 2 distinct chunk_ids from §8.1-§8.5 walkthrough range
+  (exclude chunk-0044 intro / chunk-0001 TOC / chunk-0008 / chunk-0036 by-system)
+
+W29 D0 result: ❌ FAIL by current standard — only 1 citation = chunk-0044 intro (excluded by definition)
+
+=== Critical observations ===
+
+1. Synthesizer refuse pattern HAS NATURALLY DISAPPEARED — W25.5 BUG-025 symmetric deboost + W26-W28
+   parent-doc Settings cumulative improvements seem to have closed refuse pattern entirely
+   (even without explicit synthesizer prompt tune per W19+ candidate (g) original framing)
+
+2. §8.1-§8.5 individual A-E walkthrough chunks NEVER surface top-5 — neither in W25 D4 baseline
+   nor W29 D0 today — strong evidence vocab gap dominates
+   (chunk-0044 intro provides "Scenario A: X / Scenario B: Y / ..." summary lines that hybrid+rerank
+   easily matches "Integration scenarios" literal query terms; the individual §8.1-§8.5 chunks use
+   scenario-specific vocab "Customer service request submission" / "Saga-style multi-system" that
+   DOES NOT contain the literal "Integration scenarios" token chain)
+
+3. Even with EXAMPLE 3 strengthened reformulator prompt (W25 F3 D4 ship) + ENABLE_QUERY_EXPANSION=true
+   + max_variants=3 + per_variant_overfetch=4, the §8.1-§8.5 individual chunks STILL fail to surface
+   top-5 → H1 RRF surface + H2 vocab-corpus mismatch BOTH at play

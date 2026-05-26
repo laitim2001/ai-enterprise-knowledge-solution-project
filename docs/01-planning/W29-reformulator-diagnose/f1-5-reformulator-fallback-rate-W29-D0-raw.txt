@@ -1,0 +1,76 @@
+=== W29 F1.5 — Langfuse Reformulator Observation Audit ===
+
+Captured: 2026-05-26 W29 D0
+Source: GET http://localhost:3000/api/public/observations?type=GENERATION&name=query_reformulator.reformulate&limit=20
+Auth: pk/sk per .env LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY
+Response: backend/w29-langfuse-reformulator-traces.json (14549 bytes)
+
+=== Aggregate stats ===
+
+Total observations: **15** (out of Langfuse history)
+Fallback rate:
+  - fallback_used=False: 14/15 = **93.3%**
+  - fallback_used=True:   1/15 = **6.7%**
+Latency: min=1507ms / median=2174ms / max=3357ms
+
+=== Per-observation timeline (sorted by startTime) ===
+
+| startTime (UTC)         | fallback | latency_ms | status | session                              |
+|-------------------------|---------:|-----------:|--------|--------------------------------------|
+| 2026-05-24T14:00:23.??Z |     True |       3004 | ok     | W25 D4 first reformulator call       |
+| 2026-05-24T14:07:01.??Z |    False |       2601 | ok     | W25 D4 chat retry                    |
+| 2026-05-24T14:09:01.??Z |    False |       1807 | ok     | W25 D4                               |
+| 2026-05-24T14:11:25.??Z |    False |       2725 | ok     | W25 D4                               |
+| 2026-05-24T14:14:13.??Z |    False |       2661 | ok     | W25 D4                               |
+| 2026-05-24T14:16:11.??Z |    False |       2279 | ok     | W25 D4                               |
+| 2026-05-24T14:17:22.??Z |    False |       1841 | ok     | W25 D4                               |
+| 2026-05-24T14:17:57.??Z |    False |       1663 | ok     | W25 D4                               |
+| 2026-05-24T14:32:42.??Z |    False |       3357 | ok     | W25 D4                               |
+| 2026-05-24T14:33:13.??Z |    False |       1715 | ok     | W25 D4                               |
+| 2026-05-24T14:33:53.??Z |    False |       2521 | ok     | W25 D4                               |
+| 2026-05-24T14:34:07.??Z |    False |       1507 | ok     | W25 D4                               |
+| 2026-05-24T14:34:22.??Z |    False |       1677 | ok     | W25 D4                               |
+| 2026-05-26T01:44:40.??Z |    False |       2174 | ok     | W29 D0 1st curl                      |
+| 2026-05-26T01:46:41.??Z |    False |       1730 | ok     | W29 D0 2nd curl (kb=sample-document) |
+
+=== Timeline gap analysis ===
+
+**ZERO reformulator observations between 2026-05-24T14:34:22 (last W25 D4) and 2026-05-26T01:44:40 (today's curl)**
+
+期間 includes:
+- W25.5 BUG-025 fix (2026-05-25 early)
+- **W26-eval-driven-retrieval-tuning** F2 G RAGAs eval batch (2026-05-25 — ~13 queries)
+- **W27-parent-doc-dispatch-experiment** F2 G RAGAs eval batch (2026-05-25 — ~13 queries)
+- **W28-parent-doc-setting-sweep** F1 Step 1 (3 × 13 queries) + F2 Step 2 (2 × 13 queries) + F3 Step 3 (1 × 13 queries) = ~78 queries
+- TOTAL expected reformulator observations during W26-W28 = ~104 obs if reformulator wired into eval pipeline
+- Langfuse actually has = 0 obs from these batches
+
+**Conclusion**:eval pipeline (`/eval/run` route → `backend/eval/orchestrator.py`)does NOT wire reformulator + fused_retrieve。Confirmed via grep:
+
+  ✗ backend/eval/orchestrator.py:93 → `engine.retrieve(query=question, kb_id=q_kb_id, top_k=5)` direct hybrid retrieve
+  ✗ NO `from generation.query_reformulator` import in backend/eval/*.py or backend/api/routes/eval.py
+  ✗ NO `from retrieval.result_fusion` import in backend/eval/*.py or backend/api/routes/eval.py
+  ✓ ONLY `backend/api/routes/query.py:110-117` wires reformulator + fused_retrieve when settings.enable_query_expansion=True
+
+=== Backend `/query` route reformulator behavior ===
+
+W29 D0 2 curl calls to `/query` route succeeded with reformulator path:
+  - 09:44:40 HKT — kb=drive_user_manuals (404 KB error,but reformulator already called) — fallback=False latency=2174ms
+  - 09:46:41 HKT — kb=sample-document-with-image-1 (success,reformulator called) — fallback=False latency=1730ms
+
+Note:Langfuse observation `input` + `output` fields = null (suppressed by `@observe_llm_async` decorator privacy default per `backend/observability/observe.py`)— variants_text NOT accessible via Langfuse API。Only metadata exposed。
+
+=== Standalone reformulator test (W29 F1.1) ===
+
+3/3 runs APIConnectionError fallback to [original] — but **NOT representative of backend behavior**(corp proxy intercepts new Python processes; backend's lifespan-time cached httpx connection pool survives the proxy boundary)。
+
+=== Verdict ===
+
+| Hypothesis | Status |
+|---|---|
+| **H1 RRF surface** | LIKELY CONFIRMED — even when reformulator generates variants successfully (backend `/query` path),top-5 still dominated by chunk-0044 intro + §3/§5/§7 chunks。§8.1-§8.5 NEVER surface despite EXAMPLE 3 cover |
+| **H2 vocab-corpus mismatch** | REFUTED — EXAMPLE 3 hypothetical variants align directly with corpus chunk_title vocab (60-80% token overlap §8.1/§8.3/§8.4) |
+| **H3 fallback gap (standalone)** | CONFIRMED standalone (100% fallback);PARTIAL backend (1/15 = 6.7%) — NOT dominant |
+| **H4 NEW eval coverage gap** | **CONFIRMED DOMINANT** — eval pipeline完全 bypass reformulator path,W26-W28 eval G3 marginal MISS attributable to single-query baseline retrieve (not reformulator failure) |
+
+→ **F2 dominant root cause = H4 NEW + H1 combined**(H4 explains W26-W28 eval failures;H1 explains backend `/query` continued G1 fail today)

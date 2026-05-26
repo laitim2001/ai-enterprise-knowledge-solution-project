@@ -1,0 +1,47 @@
+=== W29 F1.1 Reformulator Standalone Audit ===
+deployment        = gpt-5.4-mini
+enable_query_exp  = True
+max_variants      = 3
+latency_cap_s     = 8.0
+
+Query: 'Show me all the Integration scenarios.'
+
+--- Run 1/3 ---
+2026-05-26 09:51:20 [warning  ] query_reformulator_failed_using_original error='APIConnectionError: Connection error.' latency_ms=6983
+2026-05-26 09:51:20 [info     ] llm_stage_complete             duration_ms=6985 fallback_used=True input_tokens=0 latency_ms=6983 model=gpt-5.4-mini output_tokens=0 stage=query_reformulator.reformulate status=ok
+  fallback_used  = True
+  latency_ms     = 6983
+  variant_count  = 1
+  input_tokens   = 0
+  output_tokens  = 0
+  error_message  = APIConnectionError: Connection error.
+  variants_text  = [
+    "Show me all the Integration scenarios."
+]
+
+--- Run 2/3 ---
+2026-05-26 09:51:23 [warning  ] query_reformulator_failed_using_original error='APIConnectionError: Connection error.' latency_ms=3137
+2026-05-26 09:51:23 [info     ] llm_stage_complete             duration_ms=3137 fallback_used=True input_tokens=0 latency_ms=3137 model=gpt-5.4-mini output_tokens=0 stage=query_reformulator.reformulate status=ok
+  fallback_used  = True
+  latency_ms     = 3137
+  variant_count  = 1
+  input_tokens   = 0
+  output_tokens  = 0
+  error_message  = APIConnectionError: Connection error.
+  variants_text  = [
+    "Show me all the Integration scenarios."
+]
+
+--- Run 3/3 ---
+2026-05-26 09:51:27 [warning  ] query_reformulator_failed_using_original error='APIConnectionError: Connection error.' latency_ms=3419
+2026-05-26 09:51:27 [info     ] llm_stage_complete             duration_ms=3419 fallback_used=True input_tokens=0 latency_ms=3419 model=gpt-5.4-mini output_tokens=0 stage=query_reformulator.reformulate status=ok
+  fallback_used  = True
+  latency_ms     = 3419
+  variant_count  = 1
+  input_tokens   = 0
+  output_tokens  = 0
+  error_message  = APIConnectionError: Connection error.
+  variants_text  = [
+    "Show me all the Integration scenarios."
+]
+

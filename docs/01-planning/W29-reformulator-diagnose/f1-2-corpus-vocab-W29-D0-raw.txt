@@ -1,0 +1,78 @@
+=== W29 F1.2 — Corpus §8 Chunk Inventory (sample-document-with-image-1) ===
+
+Captured: 2026-05-26 W29 D0
+Source: curl GET /kb/sample-document-with-image-1/documents/dce-integration-platform-implementation-plan/chunks → backend/w29-chunks-list.json (88 total chunks)
+
+§8 section structure — 12 chunks(chunk-0044 to chunk-0055):
+
+| chunk_idx | chunk_id suffix | section_path                                                                  | chunk_title                                                                                  | low_value | img |
+|----------:|-----------------|-------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|-----------|-----|
+| 44 | …chunk-0044 | "8. Integration scenarios (end-to-end walkthroughs)"                          | "8. Integration scenarios (end-to-end walkthroughs)" — INTRO                                 | False     | 0   |
+| 45 | …chunk-0045 | "8. Integration scenarios… / 8.1 Scenario A — Customer service request submission (async transaction)" | "8.1 Scenario A — Customer service request submission (async transaction)"           | False     | 1   |
+| 46 | …chunk-0046 | "8.1 Scenario A… / Pattern characteristics"                                   | "Pattern characteristics"                                                                    | False     | 0   |
+| 47 | …chunk-0047 | "8.2 Scenario B — Real-time inventory check at checkout (sync query)"          | "8.2 Scenario B — Real-time inventory check at checkout (sync query)"                       | False     | 1   |
+| 48 | …chunk-0048 | "8.2 Scenario B… / Pattern characteristics"                                   | "Pattern characteristics"                                                                    | False     | 0   |
+| 49 | …chunk-0049 | "8.3 Scenario C — Order placement with payment (saga orchestration)"           | "8.3 Scenario C — Order placement with payment (saga orchestration)"                        | False     | 1   |
+| 50 | …chunk-0050 | "8.3 Scenario C… / Pattern characteristics"                                   | "Pattern characteristics"                                                                    | False     | 0   |
+| 51 | …chunk-0051 | "8.4 Scenario D — MPS device service alert (inbound event-driven fan-out)"     | "8.4 Scenario D — MPS device service alert (inbound event-driven fan-out)"                  | False     | 1   |
+| 52 | …chunk-0052 | "8.4 Scenario D… / Pattern characteristics"                                   | "Pattern characteristics"                                                                    | False     | 0   |
+| 53 | …chunk-0053 | "8.5 Scenario E — Snowflake daily ETL (batch synchronisation)"                 | "8.5 Scenario E — Snowflake daily ETL (batch synchronisation)"                              | False     | 1   |
+| 54 | …chunk-0054 | "8.5 Scenario E… / Pattern characteristics"                                   | "Pattern characteristics"                                                                    | False     | 0   |
+| 55 | …chunk-0055 | "8. Integration scenarios… / 8.6 Coverage summary"                            | "8.6 Coverage summary"                                                                       | False     | 0   |
+
+Key vocab tokens per scenario chunk (from chunk_title — chunk_text not exposed via /chunks listing endpoint):
+
+  §8.1 Scenario A: "Customer service request submission" + "async transaction"
+  §8.2 Scenario B: "Real-time inventory check at checkout" + "sync query"
+  §8.3 Scenario C: "Order placement with payment" + "saga orchestration"
+  §8.4 Scenario D: "MPS device service alert" + "inbound event-driven fan-out"
+  §8.5 Scenario E: "Snowflake daily ETL" + "batch synchronisation"
+
+ALL §8.1-§8.5 chunks have:
+  - low_value_flag = False (NOT affected by ADR-0035 deboost)
+  - embedded_image_count = 1 (UML diagram per §3.5 spec)
+  - chunk depth = 2-level section_path (§8 → §8.x)
+
+All §8.x "Pattern characteristics" sub-chunks (chunk-0046/48/50/52/54):
+  - low_value_flag = False
+  - img = 0
+  - chunk depth = 3-level section_path
+
+=== Cross-comparison with REFORMULATOR_SYSTEM_PROMPT EXAMPLE 3 hypothetical variants ===
+
+EXAMPLE 3 Good variants (per backend/generation/query_reformulator.py line 80-82):
+
+  Var 1: "customer service request submission API integration"
+    → DIRECT MATCH §8.1 chunk_title「Customer service request submission (async transaction)」
+    → token overlap: "customer service request submission" (4-word literal match)
+    → corpus token "(async transaction)" not in variant; corpus token "API" matches but Var 1 adds "integration"
+
+  Var 2: "Saga-style multi-system orchestration pattern"
+    → HIGH MATCH §8.3 chunk_title「Order placement with payment (saga orchestration)」
+    → token overlap: "saga" + "orchestration"
+    → Var 2 says "multi-system" (corpus says specific systems: D365, payment); Var 2 says "Saga-style" (corpus says "saga")
+
+  Var 3: "inbound event-driven flow Service Bus"
+    → HIGH MATCH §8.4 chunk_title「MPS device service alert (inbound event-driven fan-out)」
+    → token overlap: "inbound" + "event-driven"
+    → Var 3 mentions "Service Bus" specifically (corpus mentions §5.3 Azure Service Bus separately at chunk-0020)
+    → Var 3 generic "flow" vs corpus specific "fan-out"
+
+ALIGNMENT VERDICT: **EXAMPLE 3 hypothetical variants align directly with corpus §8.1/§8.3/§8.4 actual vocab** — token overlap rate ~60-80% per variant. **H2 vocab-corpus mismatch hypothesis SHOULD BE REFUTED** if reformulator successfully generated these variants.
+
+(Note: EXAMPLE 3 does not include explicit variants for §8.2 "inventory check / sync query" or §8.5 "Snowflake / batch synchronisation" — those 2 scenarios may be missed even with reformulator working. But §8.1 + §8.3 + §8.4 should be highly retrievable via EXAMPLE 3-style variants.)
+
+=== Logic implication ===
+
+IF reformulator working backend (variants generated 3 of 3 EXAMPLE 3-aligned):
+  → §8.1 (chunk-0045) + §8.3 (chunk-0049) + §8.4 (chunk-0051) should surface RRF top-5 confidently
+  → G1 user-test ≥ 2 distinct A-E walkthrough citations should PASS naturally
+
+IF reformulator silently failing backend (per standalone APIConnectionError evidence):
+  → Variants = [original] only → single hybrid retrieve baseline → chunk-0044 intro + intro-like neighbors
+  → §8.1-§8.5 individual chunks NEVER surface top-5
+  → G1 user-test ≤ 1 citation (intro only) — consistent with today's W29 D0 actual result
+
+CURRENT W29 D0 observation: top-5 = [chunk-0044 intro / chunk-0008 / chunk-0036 / chunk-0020 / chunk-0018] — exactly what we'd predict if reformulator silently failing.
+
+→ **H3 fallback gap (backend reformulator silently failing) HYPOTHESIS STRONGLY SUPPORTED** (pending F1.5 backend-log verification)
