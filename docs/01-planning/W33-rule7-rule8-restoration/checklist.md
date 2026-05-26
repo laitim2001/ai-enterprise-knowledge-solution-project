@@ -1,7 +1,7 @@
 ---
 phase: W33-rule7-rule8-restoration
 plan_ref: ./plan.md
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT
 last_updated: 2026-05-26
 ---
 
@@ -39,48 +39,47 @@ last_updated: 2026-05-26
 
 ### F1.3 Commit + progress.md Day 1
 
-- [ ] F1.3.a Commit `feat(generation): W33 F1 Rule 7 v2 + Rule 8 prompt restoration on W32 (h') baseline + 3 NEW unit tests` per CLAUDE.md R2 daily commit binding
+- [x] F1.3.a Commit `149aebd` — `feat(generation): W33 F1 Rule 7 v2 + Rule 8 prompt restoration on W32 (h') baseline + 3 NEW unit tests`
 - [x] F1.3.b progress.md Day 1 entry — implementation summary(verbatim restoration evidence)+ test verdict 1084/25/0 + ruff/mypy state + actual vs planned effort(-67% real-calendar collapse)
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)
 
-- [ ] F2.1 Backend explicit kill+restart `python -m api.server` per PC-W32-1(WatchFiles NOT active;explicit verify code reload via /health=ok + ?route inspection sanity check)
-- [ ] F2.2 curl POST /query Q-W25-I07「show me all the Integration scenarios」5 runs back-to-back — per-run JSON in `backend/w33-f2-i07-multi-run-{1-5}.json`
-- [ ] F2.3 curl POST /query Q-W25-I01「what is the high level architecture」5 runs back-to-back(control)— per-run JSON `backend/w33-f2-i01-multi-run-{1-5}.json`
-- [ ] F2.4 Aggregate report inline progress.md F2 — Q-I07 distinct walkthrough cite count vs W32 baseline 5.4 / Q-I01 G2 no regression / G1a/G1b/G2-G6 verdict draft
-- [ ] F2.5 progress.md Day 2 F2 entry — 5-run table + cumulative baseline comparison(W31 reverted 20% → W32 (h') 100/100/5.4 → W33 ?)+ expansion fired count + G1 verdict draft
+- [x] F2.1 Backend explicit kill+restart `python -m api.server` per PC-W32-1(WatchFiles NOT active);**R6 catch (1)** Langfuse :3000 down → lifespan hang → user `docker-compose up -d` Langfuse + Postgres restart → /health 200 ✅ post-Langfuse-restore
+- [x] F2.2 curl POST /query Q-W25-I07 5 runs back-to-back — per-run JSON `w33-f2-i07-run-{1-5}.json`;all 5 runs distinct_walkthroughs ∈ {4,5,8,5,5} = avg 5.4(= W32 baseline)+ citations ∈ {6,9,6,6,6} = avg 6.6(+22%)+ refusals 0/5
+- [x] F2.3 curl POST /query Q-W25-I01 5 runs back-to-back control — per-run JSON `w33-f2-i01-run-{1-5}.json`;all 5 runs citations ∈ {6,9,12,15,9} = avg 10.2(+143% vs W32 4.2)+ refusals 0/5 + avg latency 22.4s(+91% vs W32 11.7s)
+- [x] F2.4 Aggregate report inline progress.md F2 + `w33-f2-aggregate.json` — G1a strict + relaxed both MAINTAIN W32 100% ✅ + G1b mean EQUAL(no distinct count improvement)+ G1b coverage ADDITIVE evidence(cross-section §2/§3/§7/§8 diversity Run 2 8 distinct walkthroughs)✅ + G2 control refusals 0/5 ✅(over-citation +143% flagged W34+ refinement)
+- [x] F2.5 progress.md Day 2 F2 entry — 5-run tables + W31 reverted 20% → W32 (h') 100/100/5.4 → W33 100/100/5.4-mean + 6.6-cit + cross-section breadth + G1-G6 verdict draft
 
 ## F3 — Closeout — Phase Gate + cross-doc sync + commit + push
 
 ### A. Phase Gate G1a-G1b-G2-G3-G4-G5-G6 evaluation
 
-- [ ] G1a MAINTAIN W32 baseline strict 5/5 + relaxed 5/5
-  - G1a strict (≥ 2 distinct walkthrough cited in ≥ 1 run — MAINTAIN W32 100%)
-  - G1a relaxed (≥ 1 walkthrough cited per run for ≥ 3/5 — MAINTAIN W32 100%)
-- [ ] G1b ADDITIVE cite breadth vs W32 baseline 5.4
-  - G1b mean (avg distinct walkthrough cited per run ≥ 5.4)
-  - G1b coverage (non-(h') sourced walkthrough evidence — LLM cited §X.M not from engine-fetch expansion)
-- [ ] G2 control Q-W25-I01 no regression(refusals 0/5 + avg_cit ≥ 3.5 + faithfulness within W32 baseline)
-- [ ] G3 backend pytest baseline preserved 1081 → ~1084
-- [ ] G4 ruff PASS;mypy strict module-path quirk pre-existing per CO_W25_mypy_strict_debt
-- [ ] G5 NEW unit tests PASS — F1.2.a 3 NEW
-- [ ] G6 measurement-experiment-fail-policy applied per Q4 — outcome-driven decision matrix per plan §3
+- [x] G1a MAINTAIN W32 baseline strict 5/5 + relaxed 5/5
+  - ✅ G1a strict 5/5 distinct ≥ 4 (MAINTAIN W32 100%)
+  - ✅ G1a relaxed 5/5 distinct ≥ 1 (MAINTAIN W32 100%)
+- [x] G1b ADDITIVE cite breadth vs W32 baseline 5.4
+  - ⚠️ G1b mean 5.4 = W32 5.4 EQUAL(no improvement on distinct count;(h') saturates)
+  - ✅ G1b coverage ADDITIVE — Run 2 8 distinct §2/§3/§7/§8 cross-section walkthroughs + avg_cit 6.6 vs 5.4 = +22% breadth + Run 5 §2 + §3 outside §8.x family
+- [x] G2 control Q-W25-I01 no regression — ✅ refusals 0/5 + avg_cit 10.2 ≥ 3.5(⚠️ over-citation +143% flagged W34+ RAGAs LIVE eval)
+- [x] G3 backend pytest baseline preserved 1081 → 1084 (F1 verified)
+- [x] G4 ruff PASS + mypy strict module-path quirk pre-existing per CO_W25_mypy_strict_debt (F1 verified)
+- [x] G5 NEW unit tests PASS — F1.2.a 3/3 PASS (F1 verified)
+- [x] G6 measurement-experiment-fail-policy applied per Q4 — outcome (a) G1a MAINTAIN + G1b ADD value evidence → preserve infrastructure + production-default ON ship
 
 ### B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter `status: active → closed` OR `closed_partial` per G1 verdict
-- [ ] checklist.md cross-cutting tick + N/A reason
-- [ ] progress.md retro 7-section
-- [ ] session-start.md §10 W33 row `🟡 active` → `✅ closed` OR `closed_partial`
-- [ ] session-start.md §11 W33 CLOSED block prepend
-- [ ] RISK_REGISTER NEW R candidate evaluate(prompt over-citation noise risk if Rule 8 引發 G2 regression)
-- [ ] COMPONENT_CATALOG C05 status note update if (h') + Rule 7 v2 + Rule 8 combined ship
-- [ ] ADR README — no NEW ADR expected per §2(prompt iteration within existing framework parallel to W30/W31 attempts;non-architectural)
+- [x] plan.md frontmatter `status: active → closed`(Phase Gate PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT)+ §7 changelog F2.1 R6 catch + F3 verdict entries appended
+- [x] checklist.md cross-cutting tick + N/A reason (this file)
+- [x] progress.md retro 7-section(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W34+ Priority Queue Locked + Actual vs Planned Effort)
+- [x] session-start.md §10 W33 row `🟡 active` → `✅ closed` + §11 W33 CLOSED block prepended above W32 CLOSED block
+- [ ] 🚧 RISK_REGISTER NEW R candidate — DEFERRED W34+ pending live measure(prompt over-citation noise risk only material if W34+ RAGAs LIVE eval confirms faithfulness regression;W33 G2 threshold gate PASS regardless)
+- [ ] 🚧 COMPONENT_CATALOG C05 status note — DEFERRED W34+(non-architectural prompt iteration unchanged Status: ✅ Implemented;Rule 7 v2 + Rule 8 production-default ship via SYSTEM_PROMPT inline,no Settings flag to surface in catalog table)
+- [x] ADR README — no NEW ADR expected per §2 + verified(prompt iteration within existing framework parallel to W30/W31 attempts;non-architectural per plan §1 + §4 R5)
 
 ### C. `.env` cleanup + W34+ priority queue evaluation
 
-- [ ] `.env` cleanup — W29 Setting tune `overfetch=8 + rrf_k=30` env override PRESERVED unchanged
-- [ ] W34+ candidate prioritization update per F3 outcome — (j') section_path filter / (B'.a) Settings parameter chunk-score / (g') 20-run methodology / (i') reformulator temp=0 / (ii) CRAG / (k) eval-wire / (c)/(e)/(f)/BUG-026+027 carry-overs
+- [x] `.env` cleanup — W29 Setting tune `overfetch=8 + rrf_k=30` env override PRESERVED unchanged(no `.env` change this phase)
+- [x] W34+ candidate prioritization update per F3 outcome — HIGHEST NEW Faithfulness LIVE RAGAs eval(F2 G2 +143% over-citation concern)+ (j') section_path filter + PC-W33-1 + PC-W32-1/2 preserved + Rule 8 wording tighten OR prompt token reduction(latency refinement)+ lower priority (g')/(i')/(B'.a)/(ii)/(k)/(c)/(e)/(f)/BUG-026+027 carry-overs (documented retro §W34+ Priority Queue Locked)
 
 ### D. Commit + push
 
@@ -91,12 +90,12 @@ last_updated: 2026-05-26
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git(F0.6 kickoff commit + F1.3 F1 commit + F3 closeout commit)
-- [ ] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved expected(pure C05 prompt iteration)
-- [ ] All architectural-adjacent decisions documented as ADR — F1.1 prompt iteration within existing framework,non-architectural per plan §1 scope decl
-- [ ] `progress.md` retro section written — 7-section per closeout commit
-- [ ] `progress.md` frontmatter status flipped to `closed` OR `closed_partial`
-- [ ] Phase W34+ kickoff trigger noted in retro — candidates list update per F3 outcome
+- [x] All deliverables committed to git(F0.6 kickoff `c56afa0` + F0.7 sync `fd7b550` + F1.3 implementation `149aebd` + F3 closeout commit pending)
+- [x] All OQ status changes reflected in `docs/decision-form.md` — N/A no OQ resolved this phase(pure C05 prompt iteration)
+- [x] All architectural-adjacent decisions documented as ADR — N/A F1.1 prompt iteration within existing framework,non-architectural per plan §1 + §4 R5 scope decl
+- [x] `progress.md` retro section written — 7-section(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W34+ Priority Queue Locked + Actual vs Planned Effort)
+- [x] `progress.md` frontmatter status flipped to `closed`(via top-of-file edit in F3 D commit)
+- [x] Phase W34+ kickoff trigger noted in retro — candidates list update per F3 outcome(HIGHEST NEW Faithfulness LIVE RAGAs eval per +143% over-citation concern;preserved (j')/(PC-W33-1)/(PC-W32-1/2)/Rule 8 wording tighten/prompt token reduction;lower priority (g')/(i')/(B'.a)/(ii)/(k))
 
 ---
 

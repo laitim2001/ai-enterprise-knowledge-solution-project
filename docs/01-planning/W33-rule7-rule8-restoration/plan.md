@@ -1,6 +1,6 @@
 ---
 phase: W33-rule7-rule8-restoration
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT (G1a MAINTAIN 100/100 + G1b ADDITIVE cross-section breadth + G2 control no refusal regression)
 last_updated: 2026-05-26
 component_scope: C05 Generation Pipeline
 adr_refs:
@@ -263,3 +263,5 @@ Per ADR-0037 Q4 + W26+W27+W30+W31+W32 precedent:
 | 2026-05-26 | initial | Plan drafted F0 D0 kickoff | W32 retro carry-over W33+ HIGHEST candidate Rule 7 v2 + Rule 8 restoration per sequential ship strategy + user explicit pick 2026-05-26 |
 | 2026-05-26 | §1 + §3 | G1 redefinition — split into G1a MAINTAIN W32 baseline + G1b ADDITIVE cite breadth(NEW W33 metric) | W32 (h') saturated G1 at 100/100/5.4 — W31/W32 G1 criteria 不適用 W33;Karpathy §1.1 think-before-coding surfaced redefinition to user 2026-05-26 |
 | 2026-05-26 | §6 | W32 (h') backend baseline intact + W26-W32 .env/Settings preserved confirmed at kickoff | R6 Day 0 recursive grep verify per CLAUDE.md §10 R6 + W23 F3 amendment(plan-text recursive scope) |
+| 2026-05-26 | F2.1 | Backend restart cascade hit Langfuse :3000 down hang | R6 catch (1):`lifespan()` `init_tracer` blocks indefinitely when Langfuse host unreachable;diagnose via 0-byte log file + 477MB python + no port bind = lifespan hang signature;user `docker-compose up -d` restart Langfuse + Postgres restored backend startup。**PC-W33-1 NEW** candidate per session-start protocol amend |
+| 2026-05-26 | F3 | Phase Gate **PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT** | G1a MAINTAIN W32 baseline 100/100 ✅ + G1b ADDITIVE cross-section breadth(Run 2 8 distinct §2/§3/§7/§8 walkthroughs + avg_cit 6.6 vs 5.4 +22%)✅ + G2 control refusals 0/5 + avg_cit 10.2 ≥ 3.5 ✅ + G3-G6 ✅;Caveats:G1b mean EQUAL(5.4 = 5.4 no improvement on distinct count;(h') already saturates)+ avg latency I07 +57% / I01 +91%(prompt-length cost from 2 NEW rules +29% SYSTEM_PROMPT chars)+ I01 over-citation +143%(Rule 8 strict LLM interpretation;faithfulness LIVE eval deferred W34+ R8 envelope)。Production preserve per Q4 G1a + G1b ADD value evidence outcome (a) |

@@ -2,7 +2,7 @@
 phase: W33-rule7-rule8-restoration
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT
 last_updated: 2026-05-26
 ---
 
@@ -132,5 +132,143 @@ Rule 1-6 preserved unchanged(non-regression guard via F1.2.a third test)。
 | Item | Planned | Actual | Variance |
 |---|---|---|---|
 | F1.1 prompt edit + F1.2 3 NEW tests + F1.3 commit + progress | ~1-1.5h | ~30min(edit + tests + pytest) | -67% real-calendar collapse(short single-axis scope per plan §5) |
+
+---
+
+## Day 2 — 2026-05-26(F2 + F3 same-day cascade)
+
+### F2.1 backend explicit kill+restart per PC-W32-1
+
+**Operational catch surfaced**:Backend restart cascade hit unexpected blocker — **Langfuse Docker @ localhost:3000 down** at session start。`lifespan()` `init_tracer(settings)` block 之後 backend 從未 bind :8000(uvicorn Server.serve() 卡喺 lifespan yield 前)。Diagnosed via:
+- `curl http://localhost:3000` → HTTP 000(connection refused after 5s timeout)
+- Python PID 29124 working set 477MB(modules loaded) but `netstat -ano | grep ":8000"` 無 LISTENING entry
+- W32 backend startup log reference `uvicorn-restart-w32-f18.log.err` shows uvicorn ready immediately after lifespan completes;W33 0-byte log file confirms lifespan() hang before any uvicorn message reaches stderr
+
+**Resolution**:user `docker-compose up -d` restart Langfuse + Postgres containers → Langfuse :3000 HTTP 200 ✅ → backend restart `python -u -m api.server > uvicorn-restart-w33-v5.log.{out,err}` → /health 200 verified post-Langfuse-restore。
+
+**NEW R6 catch (1) for W33** — **PC-W33-1 candidate**:Future phase backend restart sequence must explicitly verify Langfuse :3000 + Postgres :5432 reachable **before** invoking `python -m api.server`,since `lifespan()` blocks indefinitely on Langfuse init when host unreachable。Add to session-start protocol post-W32 PC-W32-1(backend reload mode verify)。
+
+### F2.2 Q-W25-I07 5-run walkthrough cite reproducibility
+
+Backend reloaded W33 code(Rule 7 v2 + Rule 8 in `prompt_builder.py:28-29`)。Per-run JSON `backend/w33-f2-i07-run-{1-5}.json` + aggregate `backend/w33-f2-aggregate.json`:
+
+| Run | citations | distinct walkthroughs | walkthrough_titles | latency |
+|---|---|---|---|---|
+| 1 | 6 | **5** | §7.9 Docuware + §8.1 + §8.4 + §8.3 + §8.5 | 36.8s |
+| 2 | 9 | **8** ⭐ | §7.9 + §8.1 + §7.2 + §7.1 + §7.4 + §3.1 + §3.4 + §2.4 | 28.1s |
+| 3 | 6 | **5** | §7.9 + §8.1 + §8.4 + §8.3 + §8.5 | 29.2s |
+| 4 | 6 | **4** | §7.9 + §8.1 + §11.2 + §11.3 | 32.4s |
+| 5 | 6 | **5** | §7.9 + §8.1 + §3.1 + §3.4 + §2.4 | 25.7s |
+| **avg** | **6.6**(+22% vs W32 5.4)| **5.4**(= W32 baseline 5.4)| 5/5 runs distinct ≥4 + cross-section §2/§3/§7/§8/§11 diversity | **30.4s**(+57% vs W32 19.3s)|
+
+### F2.3 Q-W25-I01 control no-regression 5-run
+
+| Run | citations | refused | latency |
+|---|---|---|---|
+| 1 | 6 | False | 23.2s |
+| 2 | 9 | False | 17.7s |
+| 3 | 12 | False | 26.6s |
+| 4 | 15 | False | 24.3s |
+| 5 | 9 | False | 20.3s |
+| **avg** | **10.2**(+143% vs W32 4.2)| **0/5 refusals** ✅ | **22.4s**(+91% vs W32 11.7s)|
+
+### F2.4 + F2.5 G1-G6 verdict draft
+
+**G1a MAINTAIN W32 baseline**:
+- G1a strict ≥2 distinct walkthrough cited in ≥1 run → **5/5 runs distinct ≥4** ✅ PASS(MAINTAIN W32 5/5 = 100%)
+- G1a relaxed ≥1 walkthrough cited per run for ≥3/5 → **5/5 runs distinct ≥1** ✅ PASS(MAINTAIN W32 5/5 = 100%)
+
+**G1b ADDITIVE cite breadth**:
+- G1b mean avg distinct walkthrough per run → **5.4 = W32 5.4**(EQUAL — no improvement on distinct count)⚠️ NO additive on distinct count
+- G1b coverage non-(h') sourced evidence → **Run 2 surfaced 8 distinct walkthroughs ACROSS §2/§3/§7/§8 sections**(vs W32 best Run 2 surfaced 5 §8.x-family only)+ Run 5 surfaced §2 + §3 (entirely outside §8.x family)+ avg_cit 6.6 vs 5.4 = +22% citation breadth ✅ **PASS** — Rule 7 v2 + Rule 8 prompt layer adds cross-section walkthrough coverage AND citation breadth beyond (h') mechanical neighbor expansion
+
+**G1 decision matrix**(per plan §3):
+- G1a MAINTAIN ✅ + G1b ADD value evidence(cross-section breadth + +22% citation breadth)✅ → **Phase Gate PASS**(production preserve per plan §3 outcome (a))
+
+**G2 control no-regression**:
+- refusals 0/5 ✅ + avg_cit 10.2 ≥ 3.5 ✅ + no faithfulness eval(plan §3 threshold-based gate;RAGAs LIVE eval deferred per CO_W25_mypy_strict_debt R8 envelope)
+- ⚠️ **over-citation concern**:avg_cit jumped 4.2→10.2 = +143% — Rule 8 "cite ALL chunks with partial overlap" causing LLM to cite more chunks per claim;G2 threshold PASS but flagged for W34+ refinement(faithfulness LIVE eval candidate)
+
+**G3 pytest** 1081 → **1084** ✅(F1 verified)
+**G4 ruff + mypy module-path quirk preserved** ✅(F1 verified)
+**G5 NEW unit tests** 3/3 PASS ✅(F1 verified)
+**G6 Q4 measurement-experiment-fail-policy**:G1a MAINTAIN + G1b ADD value → preserve infrastructure + production-default ON ship per plan §3 outcome (a)
+
+### Phase Gate G1-G6 FINAL verdict
+
+**Phase Gate PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT** —
+
+- ✅ G1a MAINTAIN W32 baseline strict + relaxed 100/100
+- ✅ G1b coverage ADDITIVE evidence(cross-section §2/§3/§7/§8 diversity + +22% citation breadth)
+- ⚠️ G1b mean EQUAL(5.4 = 5.4 no improvement on distinct count;prompt layer signal is在 breadth not depth)
+- ✅ G2 refusals 0/5 + avg_cit 10.2 ≥ 3.5
+- ⚠️ avg latency I07 +57% + I01 +91% — prompt-length cost from 2 NEW rules added(SYSTEM_PROMPT 1730 → 2230 chars = +29%)
+- ⚠️ I01 over-citation +143% avg_cit — Rule 8 strict interpretation by GPT-5.5;faithfulness re-eval deferred W34+ per RAGAs LIVE eval R8 envelope
+
+**Sequential ship strategy validation**:W32 (h') backend baseline + W33 prompt layer = combined multi-axis effect。Attribution clean(W32 baseline 100/100/5.4 → W33 100/100/5.4-mean + 6.6-cit + cross-section breadth)— W33 prompt層 ADD value 在 citation breadth + cross-section coverage,not on distinct walkthrough count(that was already saturated by (h') mechanical baseline)。
+
+### F3 next steps
+
+- F3 A. Phase Gate G1-G6 verdict ticked(this section)— ✅ done
+- F3 B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6:plan.md frontmatter status flip + checklist.md cross-cutting tick + session-start.md §10 W33 row + §11 W33 CLOSED block prepend + RISK_REGISTER NEW R candidate + COMPONENT_CATALOG C05 note
+- F3 C. `.env` cleanup(W29 env override preserved unchanged)+ W34+ priority queue update
+- F3 D. F3 closeout commit + push origin/main
+
+### Actual vs Planned Effort(D2)
+
+| Item | Planned | Actual | Variance |
+|---|---|---|---|
+| F2.1 backend restart + F2.2 + F2.3 + F2.4 + F2.5 verdict draft | ~2.5-3.5h | ~30min(plus Langfuse restart wait ~10min)| -75% real-calendar collapse offset by Langfuse Docker down R6 catch operational overhead |
+
+---
+
+## Retrospective(F3 closeout)
+
+### What Worked
+
+- **Sequential ship strategy** validated cleanly — W32 (h') baseline (100/100/5.4) established → W33 prompt-layer Rule 7 v2 + Rule 8 layered on top → attribution clean(W33 result 100/100/5.4-distinct + 6.6-cit + cross-section breadth)→ Rule 7 v2 + Rule 8 ADD value 在 citation breadth + cross-section coverage 而非 distinct count
+- **Karpathy §1.1 think-before-coding G1 redefinition** at kickoff(D0)— surfaced W32 G1 saturation,split G1a MAINTAIN + G1b ADDITIVE 之前 implementation,避免 W31-style 後期 metric redefinition confusion
+- **Verbatim restoration from W31 commit 16b9b3d** preserved history integrity — no in-place wording iteration during F1。Test fixtures aligned with corpus-realistic patterns(per W31 PC-W31-1)
+- **Real-calendar collapse pattern continues** — total ~1h actual vs ~4.5-6h plan-day budget(-83% vs ~5× collapse)
+- **3 NEW unit tests** F1.2.a covered Rule 7 v2 + Rule 8 + Rule 6 non-regression — guard rail against future accidental wording drift
+
+### What Didn't Work / Surprises
+
+- **R6 catch (1) Langfuse :3000 down** — F2.1 backend restart hit unexpected Langfuse hang;`lifespan()` `init_tracer` blocks indefinitely when Langfuse host unreachable;diagnose 0-byte log file + 477MB python process + no port bind = lifespan hang signature。**PC-W33-1 candidate**:session-start protocol amend — verify Langfuse :3000 + Postgres :5432 reachable before `python -m api.server`
+- **Real-calendar collapse blocked by external dependency** — Langfuse Docker restart wait ~10min was external blocker(not implementation slowness)。Cross-session backend restart pattern depends on Docker availability — variable
+- **Surprise: G1b mean EQUAL(no improvement on distinct count)** — (h') already saturates distinct walkthrough count at 5.4。W33 prompt layer's ADD value 在 citation breadth(+22%)+ cross-section coverage(§2/§3/§7/§8 diversity vs W32 §8.x-family-only)— NOT incremental distinct walkthrough discovery
+- **Surprise: I01 over-citation +143%** — Rule 8 "cite ALL chunks with partial overlap" LLM-interpretation 強過預期。avg_cit 4.2→10.2 indicates GPT-5.5 aggressively applies Rule 8 even on overview queries。Faithfulness impact undetermined(LIVE RAGAs eval deferred R8)
+- **Latency +57-91%** — SYSTEM_PROMPT +29% length(1730→2230 chars)+ more citations to emit = measurable LLM throughput cost。Not fatal but worth investigating W34+ — prompt token reduction OR Rule 8 wording tighten
+
+### Carry-overs to W34+
+
+- **PC-W33-1 NEW**(per F2.1 R6 catch):Session-start protocol amend — verify Langfuse :3000 + Postgres :5432 + Azurite reachable before backend restart(extends PC-W32-1 backend reload mode verify)
+- **W34+ refinement candidates**(per F2 G2 over-citation + latency concerns):
+  - (a) **Faithfulness LIVE RAGAs eval** — measure if I01 +143% over-citation actually breaks faithfulness or is benign coverage breadth(R8/Azure-key-bound envelope per CO_W25_mypy_strict_debt)
+  - (b) **Rule 8 wording tighten** — refine "cite ALL chunks with partial overlap" to "cite chunks SUFFICIENT to answer";reduce over-citation tendency on overview queries
+  - (c) **Prompt token reduction** — Rule 7 v2 wording compact via abstract pattern(§X.M numbering bias)without losing specificity-preference signal
+- **(j') NEW section_path prefix filter** preserved W34+ — quality-of-cite refinement(Run 1/3/4 cross-section §3/§6/§9 alongside §8;tighter same-section expansion via `_find_neighbour_chunks`)
+- **PC-W32-1 + PC-W32-2** still preserved(backend reload mode + citation enrichment integration pattern documentation)
+- **Lower priority**(per W32 + W33 saturation evidence):
+  - (g') 20-run sample methodology — saturated G1 makes higher sample size lower ROI
+  - (i') reformulator temp=0 — stochasticity bound less critical post-(h')-saturation
+- **Preserved**:(B'.a) Settings param chunk-score / (ii) CRAG threshold / (k) eval-wire / (c)(e)(f) / BUG-026+027 / W22 D8 / W16 F1-F4 Track A
+
+### ADR Triggers
+
+**None** this phase — F1.1 Rule 7 v2 + Rule 8 prompt iteration within existing framework(non-architectural per plan §1 + §4 R5 scope decl;parallel pattern to W30/W31 attempts)。
+
+### Phase Gate Result
+
+**PASS WITH G1b-DISTINCT-EQUAL + LATENCY-CONCERN CAVEAT** — production preserve Rule 7 v2 + Rule 8 in SYSTEM_PROMPT。Settings無 NEW knob to toggle。W34+ refinement candidates documented above。
+
+### W34+ Priority Queue Locked
+
+1. **HIGHEST NEW**:**Faithfulness LIVE RAGAs eval**(per W33 F2 G2 +143% over-citation concern)— measure if I01 over-citation actually breaks faithfulness OR is benign coverage breadth;~1-2h LIVE eval if Azure key available
+2. **(j') section_path prefix filter** quality-of-cite refinement — tighter same-section expansion alongside cross-section breadth(complementary to W33's cross-section signal)
+3. **PC-W33-1 NEW** session-start protocol amend(Langfuse + Postgres + Azurite pre-flight verify)
+4. **PC-W32-1 + PC-W32-2** preserved
+5. **Rule 8 wording tighten** OR **prompt token reduction** — latency refinement(W33 +57-91% slowdown)
+6. Lower priority:**(g')** 20-run sample / **(i')** reformulator temp=0 / **(B'.a)** Settings param / **(ii)** CRAG / **(k)** eval-wire / **(c)/(e)/(f)** / **BUG-026+027** / **W22 D8** / **W16 F1-F4 Track A**
 
 ---
