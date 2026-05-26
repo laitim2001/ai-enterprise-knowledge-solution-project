@@ -120,8 +120,8 @@ last_updated: 2026-05-26
 
 ### D. Commit + push
 
-- [ ] F3 closeout commit — `feat(generation): W35 F2 latency re-verify + W35 closeout PASS WITH G1-IMPROVED CAVEAT — G1 0.9876 +0.40pp / G2 cit -32% / G3 LLM emit -26.7%`(combined F2 + F3 atomic per W31-W34 pattern)
-- [ ] Push origin/main(per W33-W34 user-instruction precedent)
+- [x] F3 closeout commit `bf1bee4` — `feat(generation): W35 F2 latency re-verify + W35 closeout PASS WITH G1-IMPROVED CAVEAT — G1 0.9876 +0.40pp / G2 cit -32% / G3 LLM emit -26.7%`(combined F2 + F3 atomic per W31-W34 pattern;19 files / 2009 insertions / 33 deletions)
+- [x] Push origin/main `6734161..bf1bee4` ✅(per W33-W34 user-instruction precedent)
 
 ---
 
@@ -131,7 +131,7 @@ last_updated: 2026-05-26
 - [x] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved
 - [x] All architectural-adjacent decisions documented as ADR — N/A F1.0/F1.7 Rule 8 wording tighten + F2 re-use W34 instrumentation both non-architectural per plan §1 + §4 R5
 - [x] `progress.md` retro section written — 7-section per F3 closeout
-- [ ] `progress.md` frontmatter status flipped to `closed`(F3 commit time)
+- [x] `progress.md` frontmatter status flipped to `closed`(F3 commit `bf1bee4`)
 - [x] Phase W36+ kickoff trigger noted in retro — candidates list update per F1.6 + F2.2 intersect (HIGHEST PC-W34-1/2 + NEW PC-W35-1)
 
 ---
