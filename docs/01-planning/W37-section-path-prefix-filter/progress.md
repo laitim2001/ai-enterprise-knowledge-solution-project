@@ -17,8 +17,8 @@ last_updated: 2026-05-27
 - ✅ F0.3 起草 `plan.md` 7 段
 - ✅ F0.4 起草 `checklist.md` 原子化勾選項
 - ✅ F0.5 起草 `progress.md` Day 0(本 entry)
-- ⏳ F0.6 啟動 commit pending
-- ⏳ F0.7 session-start.md §10 W37 row append pending
+- ✅ F0.6 啟動 commit `65694d6` — `docs(planning): kickoff W37-section-path-prefix-filter + R6 Day 0 4 catches surface (j') quality-of-cite refinement scope confirmed`(3 files / +513 insertions)
+- ✅ F0.7 session-start.md §10 W37 row append `🟡 active 2026-05-27` + W37+ → W38+ placeholder rename(commit `6cdece6`,2 files / +4 / -3)
 
 ### R6 Day 0 4 catches 報告
 

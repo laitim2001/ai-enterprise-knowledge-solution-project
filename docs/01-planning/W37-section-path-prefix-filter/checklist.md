@@ -17,7 +17,7 @@ last_updated: 2026-05-27
 - [x] F0.4 起草 `checklist.md` 原子化勾選項(本文件)
 - [x] F0.5 起草 `progress.md` Day 0 — 啟動行動 + R6 4 catches 報告 + W32-W36 (j') preserved 連鎖 + F-phase pre-implementation surface
 - [x] F0.6 啟動 commit `65694d6` — `docs(planning): kickoff W37-section-path-prefix-filter + R6 Day 0 4 catches surface (j') quality-of-cite refinement scope confirmed`
-- [ ] F0.7 session-start.md §10 W37 row append `🟡 active 2026-05-27`(本文件 edit 完成,commit pending)+ W37+ → W38+ placeholder rename + W36 已 closed 維持
+- [x] F0.7 session-start.md §10 W37 row append `🟡 active 2026-05-27` + W37+ → W38+ placeholder rename + W36 已 closed 維持(commit `6cdece6`)
 
 ## F1 — `_find_neighbour_chunks` 加 section_path prefix filter(~1h)
 
