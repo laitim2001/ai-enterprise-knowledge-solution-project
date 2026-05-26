@@ -83,6 +83,54 @@ last_updated: 2026-05-26
 
 | Item | Planned | Actual | Variance |
 |---|---|---|---|
-| F0.1 folder + F0.2 R6 verify + F0.3-F0.5 docs | ~1h | TBD post-commit | TBD |
+| F0.1 folder + F0.2 R6 verify + F0.3-F0.5 docs + F0.6 commit `c56afa0` + F0.7 sync commit `fd7b550` | ~1h | ~30min | -50% real-calendar collapse |
+
+---
+
+## Day 1 — 2026-05-26(F1 implementation same-day collapse)
+
+### F1.1 prompt edit(`backend/generation/prompt_builder.py:28-30`)
+
+**Rule 7 v2 verbatim restored**(from W31 commit `16b9b3d`,reverted via `09805d6`):
+```
+7. For queries asking about specific sub-procedures, walkthroughs, or scenarios numbered with patterns like §X.M (e.g. §8.1, §8.2, §8.3, Scenario A walkthrough, Step 3.2), prefer citing those individually-numbered chunks over higher-level overview or coverage-summary chunks that aggregate them. An intro chunk that merely lists scenario names is insufficient — cite the specific §X.M chunks that describe each scenario's actual procedure.
+```
+Trailing attribution:`(W33 F1.1.a — Rule 7 v2 restored from W31 commit 16b9b3d per sequential ship on W32 (h') baseline)`
+
+**Rule 8 verbatim restored**(from W31 commit `16b9b3d`):
+```
+8. When multiple retrieved chunks each contain partial information relevant to the answer, cite ALL of them (not just the most representative one) — each fact in the answer should be backed by every chunk that supports it. If two chunks describe the same scenario from different angles, both warrant a citation marker.
+```
+Trailing attribution:`(W33 F1.1.b — Rule 8 restored from W31 commit 16b9b3d per sequential ship layered on W32 (h') backend)`
+
+Rule 1-6 preserved unchanged(non-regression guard via F1.2.a third test)。
+
+### F1.2 Unit tests(`backend/tests/test_prompt_builder_dispatch.py:177-256`)
+
+**+3 NEW tests post-W27 baseline 11 → 14**:
+
+- `test_system_prompt_includes_rule_7_v2_specificity_preference` — assert key phrases:「§X.M」+「individually-numbered chunks」+「coverage-summary chunks」+「intro chunk」+「lists scenario names is insufficient」+ examples「§8.1」+「Scenario A walkthrough」+「Step 3.2」
+- `test_system_prompt_includes_rule_8_cite_breadth` — assert key phrases:「cite ALL of them」+「partial information」+「each fact in the answer should be backed by every chunk」+「two chunks describe the same scenario」+「both warrant a citation marker」
+- `test_system_prompt_rule_6_ch005_preserved_non_regression` — assert Rule 6 CH-005 preserved:「Based on available documentation:」+「COMPLETELY off-topic」+ `REFUSAL_PHRASE` interpolated +「(CH-005 — R14 mitigation」attribution
+
+### F1 verify gates state
+
+- **pytest baseline preserved**:W32 1081 passed + 25 skipped + 0 failed → **W33 F1 = 1084 passed + 25 skipped + 0 failed**(+3 NEW exact match plan §F1.2.b expected ~1084)
+  - `tests/test_prompt_builder_dispatch.py` isolated:14 passed in 3.00s(11 pre-existing + 3 NEW)
+  - Full `tests/` run:1084 passed in 760.29s ≈ 12 min(no existing test regression)
+- **ruff PASS**:`ruff check generation/prompt_builder.py tests/test_prompt_builder_dispatch.py` clean
+- **mypy strict module-path quirk preserved**:`mypy --strict --follow-imports=silent generation/prompt_builder.py` reports pre-existing `Source file found twice under different module names: "backend.generation" and "generation"` — same baseline error per CO_W25_mypy_strict_debt unchanged through W26-W32 chain;prompt_builder.py 本身無 NEW mypy violation introduced
+
+### F1 next steps
+
+- **F1.3.a** Commit `feat(generation): W33 F1 Rule 7 v2 + Rule 8 prompt restoration on W32 (h') baseline + 3 NEW unit tests`
+- **F1.3.b** progress.md Day 1 entry(this section)— ✅ done
+- **D2 next**:F2 5-run reproducibility verify — F2.1 explicit kill+restart backend per PC-W32-1(WatchFiles NOT active per `api/server.py:357`)+ F2.2 Q-W25-I07 5 runs + F2.3 Q-W25-I01 control 5 runs + F2.4 aggregate vs W32 baseline 100/100/5.4
+
+### Actual vs Planned Effort(D1)
+
+| Item | Planned | Actual | Variance |
+|---|---|---|---|
+| F1.1 prompt edit + F1.2 3 NEW tests + F1.3 commit + progress | ~1-1.5h | ~30min(edit + tests + pytest) | -67% real-calendar collapse(short single-axis scope per plan §5) |
 
 ---

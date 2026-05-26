@@ -173,3 +173,67 @@ def test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved() -> None
     # Both segments rendered (sanity check)
     assert "raw chunk text fallback" in user_msg  # anchor chunk_text
     assert "full parent section text appended" in user_msg  # parent context
+
+
+# ─── W33 F1.2.a — Rule 7 v2 + Rule 8 prompt restoration tests + Rule 6 non-regression ───
+# Sequential ship on W32 (h') baseline established (engine-fetch citation expansion):
+# Rule 7 v2 = specificity preference (§X.M numbering > overview/coverage-summary chunks).
+# Rule 8   = cite breadth (cite ALL chunks with partial overlap, not just most representative).
+# Verbatim restoration from W31 commit 16b9b3d (reverted via 09805d6 per W31 multi-axis fail).
+
+
+def test_system_prompt_includes_rule_7_v2_specificity_preference() -> None:
+    """W33 F1.2.a — Rule 7 v2 wording present in SYSTEM_PROMPT.
+
+    Restored verbatim from W31 commit 16b9b3d. Key phrases per W31 plan §F1.1.a +
+    F2 v1 corpus-realistic refinement (bare X.M + §X.M coverage + Scenario A walkthrough
+    + Step 3.2 examples + intro-chunk-insufficient framing per F2 v1 Run 1 evidence).
+    """
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    # Core specificity-preference framing
+    assert "§X.M" in SYSTEM_PROMPT
+    assert "individually-numbered chunks" in SYSTEM_PROMPT
+    assert "coverage-summary chunks" in SYSTEM_PROMPT
+    # Intro chunk insufficient framing (per W31 F2 v1 Run 5 §8.6 mis-interpretation evidence)
+    assert "intro chunk" in SYSTEM_PROMPT
+    assert "lists scenario names is insufficient" in SYSTEM_PROMPT
+    # Examples include both §-prefix and Scenario A/Step 3.2 corpus-realistic patterns
+    assert "§8.1" in SYSTEM_PROMPT
+    assert "Scenario A walkthrough" in SYSTEM_PROMPT
+    assert "Step 3.2" in SYSTEM_PROMPT
+
+
+def test_system_prompt_includes_rule_8_cite_breadth() -> None:
+    """W33 F1.2.a — Rule 8 wording present in SYSTEM_PROMPT.
+
+    Restored verbatim from W31 commit 16b9b3d. Key phrases per W31 plan §F1.1.b
+    B'.b prompt instruction layer for cite-confidence threshold relax.
+    """
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    # Core cite-ALL-overlapping-chunks framing
+    assert "cite ALL of them" in SYSTEM_PROMPT
+    assert "partial information" in SYSTEM_PROMPT
+    assert "each fact in the answer should be backed by every chunk" in SYSTEM_PROMPT
+    # Two-chunks-same-scenario explicit example
+    assert "two chunks describe the same scenario" in SYSTEM_PROMPT
+    assert "both warrant a citation marker" in SYSTEM_PROMPT
+
+
+def test_system_prompt_rule_6_ch005_preserved_non_regression() -> None:
+    """W33 F1.2.a — Rule 6 CH-005 R14 mitigation wording 未被 Rule 7/8 邊緣編輯破壞。
+
+    Non-regression guard against accidental Rule 6 wording shift during multi-rule edit。
+    CH-005 R14 mitigation key phrases preserved per W25 D4 + W25.5 BUG-025 fix scope。
+    """
+    from generation.prompt_builder import REFUSAL_PHRASE, SYSTEM_PROMPT
+
+    # CH-005 partial-coverage framing
+    assert "Based on available documentation:" in SYSTEM_PROMPT
+    # COMPLETELY off-topic condition for refusal (Rule 2 reference)
+    assert "COMPLETELY off-topic" in SYSTEM_PROMPT
+    # Refusal phrase still reachable via REFUSAL_PHRASE constant interpolation
+    assert REFUSAL_PHRASE in SYSTEM_PROMPT
+    # CH-005 attribution preserved
+    assert "(CH-005 — R14 mitigation" in SYSTEM_PROMPT

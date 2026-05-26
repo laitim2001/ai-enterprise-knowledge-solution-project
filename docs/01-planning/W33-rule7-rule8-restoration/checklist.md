@@ -23,24 +23,24 @@ last_updated: 2026-05-26
 
 ### F1.1 Prompt layer edit(`backend/generation/prompt_builder.py:20-28` SYSTEM_PROMPT)
 
-- [ ] F1.1.a Append Rule 7 v2 verbatim from W31 commit `16b9b3d` after existing Rule 6 + trailing attribution comment `(W33 F1.1.a — Rule 7 v2 restored from W31 commit 16b9b3d per sequential ship on W32 (h') baseline)`
-- [ ] F1.1.b Append Rule 8 verbatim from W31 commit `16b9b3d` after Rule 7 v2 + trailing attribution comment `(W33 F1.1.b — Rule 8 restored from W31 commit 16b9b3d per sequential ship layered on W32 (h') backend)`
-- [ ] F1.1.c Preserve Rule 1-6 unchanged — no edit;non-regression guard via F1.2.a test
+- [x] F1.1.a Append Rule 7 v2 verbatim from W31 commit `16b9b3d` after existing Rule 6 + trailing attribution comment `(W33 F1.1.a — Rule 7 v2 restored from W31 commit 16b9b3d per sequential ship on W32 (h') baseline)`
+- [x] F1.1.b Append Rule 8 verbatim from W31 commit `16b9b3d` after Rule 7 v2 + trailing attribution comment `(W33 F1.1.b — Rule 8 restored from W31 commit 16b9b3d per sequential ship layered on W32 (h') backend)`
+- [x] F1.1.c Preserve Rule 1-6 unchanged — no edit;non-regression guard via F1.2.a test `test_system_prompt_rule_6_ch005_preserved_non_regression`
 
 ### F1.2 Unit tests + non-regression coverage
 
-- [ ] F1.2.a `test_prompt_builder_dispatch.py` +3 NEW tests:
-  - `test_system_prompt_includes_rule_7_v2_specificity_preference` — assert Rule 7 v2 key phrases 「§X.M」+「individually-numbered chunks」+「coverage-summary chunks」+「intro chunk」
-  - `test_system_prompt_includes_rule_8_cite_breadth` — assert Rule 8 key phrases 「cite ALL of them」+「partial information」+「each fact in the answer」
-  - `test_system_prompt_rule_6_ch005_preserved_non_regression` — assert Rule 6 CH-005 「Based on available documentation:」framing + 「COMPLETELY off-topic」+ refusal phrase reference 仍 present
-- [ ] F1.2.b backend pytest baseline 1081 → expected **~1084 post-W33 F1**(+3 NEW prompt tests);verify via full pytest run `pytest tests/ -q`
-- [ ] F1.2.c ruff PASS on touched files
-- [ ] F1.2.d mypy strict module-path quirk preserved(pre-existing 13 errors per CO_W25_mypy_strict_debt unchanged;prompt_builder.py mypy clean baseline)
+- [x] F1.2.a `test_prompt_builder_dispatch.py` +3 NEW tests ALL PASS:
+  - `test_system_prompt_includes_rule_7_v2_specificity_preference` ✅
+  - `test_system_prompt_includes_rule_8_cite_breadth` ✅
+  - `test_system_prompt_rule_6_ch005_preserved_non_regression` ✅
+- [x] F1.2.b backend pytest baseline 1081 → **1084 passed + 25 skipped + 0 failed**(+3 NEW exact match;full run 760.29s ≈ 12min,no regression)
+- [x] F1.2.c ruff PASS on touched files(`ruff check generation/prompt_builder.py tests/test_prompt_builder_dispatch.py` All checks passed!)
+- [x] F1.2.d mypy strict module-path quirk preserved(pre-existing `Source file found twice` per CO_W25_mypy_strict_debt unchanged;prompt_builder.py 本身無 NEW mypy violation)
 
 ### F1.3 Commit + progress.md Day 1
 
 - [ ] F1.3.a Commit `feat(generation): W33 F1 Rule 7 v2 + Rule 8 prompt restoration on W32 (h') baseline + 3 NEW unit tests` per CLAUDE.md R2 daily commit binding
-- [ ] F1.3.b progress.md Day 1 entry — implementation summary(verbatim restoration evidence)+ test verdict + ruff/mypy state + commit hash backfill
+- [x] F1.3.b progress.md Day 1 entry — implementation summary(verbatim restoration evidence)+ test verdict 1084/25/0 + ruff/mypy state + actual vs planned effort(-67% real-calendar collapse)
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)
 
