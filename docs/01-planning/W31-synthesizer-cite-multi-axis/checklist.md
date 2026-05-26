@@ -57,8 +57,8 @@ last_updated: 2026-05-26
 
 ### F1 commit + progress.md Day 1
 
-- [ ] F1.6 Commit `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion(B'.b + B'.c + Rule 7 v2) + 20 NEW unit tests` per CLAUDE.md R2 daily commit binding
-- [ ] F1.7 progress.md Day 1 entry — implementation summary + test verdict + ruff/mypy state + commit hash backfill
+- [x] F1.6 Commit `16b9b3d` — `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion(B'.b + B'.c + Rule 7 v2) + 20 NEW unit tests` per CLAUDE.md R2 daily commit binding
+- [x] F1.7 progress.md Day 1 entry — implementation summary + test verdict(1080 pass / +20 net)+ ruff PASS + mypy citation_expansion clean + commit hash `16b9b3d` backfilled at this commit(per W30 R2 housekeeping pattern)
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)
 
