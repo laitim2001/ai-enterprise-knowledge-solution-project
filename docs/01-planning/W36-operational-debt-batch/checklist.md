@@ -1,7 +1,7 @@
 ---
 phase: W36-operational-debt-batch
 plan_ref: ./plan.md
-status: active   # F0 啟動 2026-05-26
+status: closed   # F4 收尾 2026-05-26 PASS
 last_updated: 2026-05-26
 ---
 
@@ -79,38 +79,38 @@ last_updated: 2026-05-26
 
 ## F4 — 收尾 + 跨文件同步 + commit + push
 
-### A. 跨文件同步 per CLAUDE.md §10 R3 + R5 + R6
+### A. 跨文件同步 per CLAUDE.md §10 R3 + R5 + R6 — ✅ 完成
 
-- [ ] plan.md frontmatter `status: active → closed`(F4 commit time)
-- [ ] checklist.md cross-cutting tick + N/A reason(本文件)
-- [ ] progress.md retro 7 段(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W37+ Priority Queue Locked + Actual vs Planned Effort)
-- [ ] session-start.md §10 W36 row `🟡 active` → `✅ closed`(F4 commit time)
-- [ ] 🚧 RISK_REGISTER NEW R 候選 — DEFERRED W37+(operational debt cleanup 預期無新 risk material)
-- [ ] ADR README — 無 NEW ADR(F1+F2+F3 全部 non-architectural per plan §1 + §4 R5)
+- [x] plan.md frontmatter `status: active → closed`(F4 commit time)
+- [x] checklist.md cross-cutting tick + N/A reason(本文件)
+- [x] progress.md retro 7 段(What Worked / What Didn't / Carry-overs / ADR Triggers / Phase Gate Result / W37+ Priority Queue Locked / Actual vs Planned Effort)
+- [x] session-start.md §10 W36 row `🟡 active` → `✅ closed`(F4 commit time)
+- [x] 🚧 RISK_REGISTER NEW R 候選 — DEFERRED W37+(無新 risk material per F1+F2+F3 outcome)
+- [x] ADR README — 無 NEW ADR(F1+F2+F3 全部 non-architectural per plan §1 + §4 R5)
 
-### B. W37+ priority queue 評估
+### B. W37+ priority queue 評估 — ✅ 完成
 
-- [ ] B.1 W37+ 候選 promotion per F2 path 選擇 + F1/F3 outcome
-- [ ] B.2 (j') section_path prefix filter 保留 MEDIUM
-- [ ] B.3 PC-W33-1 + PC-W32-1/2 保留低優先級
-- [ ] B.4 W35 DEMOTED LOW 候選 仍 LOW
-- [ ] B.5 長期 carry-over(c)(e)(f)/BUG-026+027/W22 D8/W16 F1-F4 Track A IT cred
+- [x] B.1 W37+ 候選 promotion per F2 path (b)+(d) ship + F1/F3 outcome(documented retro §W37+ Priority Queue Locked)
+- [x] B.2 (j') section_path prefix filter 保留 MEDIUM
+- [x] B.3 PC-W33-1 + PC-W32-1/2 保留低優先級
+- [x] B.4 W35 DEMOTED LOW 候選 仍 LOW + path (a) judge LLM 升級 永久 OUT per memory feedback_judge_llm_cost_policy.md
+- [x] B.5 長期 carry-over(c)(e)(f)/BUG-026+027/W22 D8/W16 F1-F4 Track A IT cred + Q14 SME-validate reference_answer cascade
 
 ### C. commit + push
 
-- [ ] F4 收尾 commit `docs(planning): W36 closeout — PC-W34-1 + PC-W34-2 + PC-W35-1 3 operational debts cleared`(若 F1+F2+F3 已分別 commit,則此純文檔收尾)
+- [ ] F4 收尾 commit `docs(planning): W36 closeout — PC-W34-1 + PC-W34-2 (b)+(d) + PC-W35-1 3 operational debts cleared atomic`(純 docs sync;F1+F2+F3 已分別 commit per W31-W35 atomic pattern)
 - [ ] push origin/main(per W33-W35 user-instruction precedent)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git(F0.6 啟動 + F1.4 + F2.4 + F3.4 + F4 收尾)
-- [ ] All OQ status changes 反映於 `docs/decision-form.md` — 預期無 OQ 變動
-- [ ] All architectural-adjacent decisions documented as ADR — N/A 全部 3 個 candidates non-architectural per plan §1 + §4 R5
-- [ ] `progress.md` retro section 寫好 — 7 段 per closeout commit
-- [ ] `progress.md` frontmatter status flipped to `closed` per outcome
-- [ ] Phase W37+ kickoff trigger 標記於 retro — 候選 list update per F2 path 選擇
+- [x] All deliverables committed to git(`bb15ce0` F0 啟動 + `3f65531` F1 + `576e6c6` F2 + `5520918` F3 + F4 收尾 commit pending)
+- [x] All OQ status changes 反映於 `docs/decision-form.md` — 無 OQ 變動
+- [x] All architectural-adjacent decisions documented as ADR — N/A 全部 3 candidates non-architectural per plan §1 + §4 R5
+- [x] `progress.md` retro section 寫好 — 7 段 per F4 closeout
+- [x] `progress.md` frontmatter status flipped to `closed`
+- [x] Phase W37+ kickoff trigger 標記於 retro — candidates list update per F2 path 選擇 + 新 NEW user policy memory `feedback_judge_llm_cost_policy.md`
 
 ---
 

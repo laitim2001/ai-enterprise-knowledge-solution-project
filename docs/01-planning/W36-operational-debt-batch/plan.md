@@ -1,6 +1,6 @@
 ---
 phase: W36-operational-debt-batch
-status: active   # F0 啟動 2026-05-26 per W35 retro HIGHEST 3 候選打包
+status: closed   # F4 收尾 2026-05-26 — Phase Gate PASS:F1 PC-W34-1 + F2 PC-W34-2 (b)+(d) + F3 PC-W35-1 全部 ship + pytest 1086 + ruff PASS;Karpathy §1.3 surgical 跨 3 candidates atomic
 last_updated: 2026-05-26
 component_scope: C12 DevOps(session-start protocol)+ C06 Eval Framework(RAGAs judge robustness)+ C06+C07(runner cp1252 fix)
 adr_refs:
