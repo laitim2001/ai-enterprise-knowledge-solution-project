@@ -272,6 +272,18 @@ class Settings(BaseSettings):
     # W25 F5 D1 `citation_neighbour_max_aux_images=2` convention. 2 = max 2
     # extra `[chunk-{id}]` markers inserted per original citation marker.
     citation_expansion_max_aux: int = 2
+    # W37 (j') section_path prefix filter for engine-fetch citation expansion —
+    # additive constraint applied inside `_find_neighbour_chunks` after the
+    # existing chunk_title `\b\d+\.\d+\b` regex. When depth>0, a neighbor
+    # candidate must satisfy
+    # `chunk.section_path[:depth] == cited.section_path[:depth]` exactly. Avoids
+    # cross-section drift (W32+W33 Run 1/3/4 mixed §3/§6/§7/§9 alongside §8).
+    # depth=0 = filter disabled (W37 baseline preserve W36); depth=1 = top-level
+    # section match (e.g. shared "Doc" root); depth=2 = top + sub-level match
+    # (e.g. ["Doc","§8"] cite expands within §8 only). Default 0 per W26 PC1
+    # 「一次只郁一個旋鈕」— production flip is a separate W38+ decision based on
+    # W37 F2 outcome.
+    citation_expansion_section_path_prefix_depth: int = 0
 
     # Feature flags
     feature_l3_routing_enabled: bool = False

@@ -60,13 +60,19 @@ def _doc_chunk(
     chunk_id: str,
     chunk_index: int,
     chunk_title: str,
+    section_path: list[str] | None = None,
 ) -> dict:
-    """Build a dict matching `engine.list_chunks` return shape (raw Azure Search row)."""
+    """Build a dict matching `engine.list_chunks` return shape (raw Azure Search row).
+
+    W37 (j') — `section_path` optional kwarg lets per-test fixtures simulate the
+    Azure Search `Collection(Edm.String)` field used by the prefix filter. Default
+    `[]` preserves pre-W37 test behavior (filter is no-op at depth=0 regardless).
+    """
     return {
         "chunk_id": chunk_id,
         "chunk_index": chunk_index,
         "chunk_title": chunk_title,
-        "section_path": [],
+        "section_path": list(section_path) if section_path is not None else [],
         "enabled": True,
     }
 
@@ -76,11 +82,13 @@ def _settings(
     enabled: bool = True,
     window: int = 10,
     max_aux: int = 2,
+    section_path_prefix_depth: int = 0,
 ) -> Settings:
     s = Settings()
     s.enable_citation_post_hoc_expansion = enabled
     s.citation_expansion_window = window
     s.citation_expansion_max_aux = max_aux
+    s.citation_expansion_section_path_prefix_depth = section_path_prefix_depth
     return s
 
 
@@ -404,3 +412,136 @@ async def test_no_walkthrough_neighbors_in_doc_returns_unchanged() -> None:
     )
     assert expanded_text == answer
     assert expanded_ids == ["0044"]
+
+
+# ---------- W37 (j') section_path prefix filter tests -----------------------
+
+
+def test_w37_section_path_prefix_filter_disabled_when_depth_0() -> None:
+    """depth=0 (default) — neighbor selection identical to W32 (h') baseline (filter no-op)."""
+    doc_chunks = [
+        _doc_chunk("0046", 46, "8.1 Scenario A", section_path=["Doc", "§3"]),
+        _doc_chunk("0048", 48, "8.2 Scenario B", section_path=["Doc", "§8"]),
+    ]
+    # depth=0 → both candidates kept regardless of section_path mismatch with cited
+    result = _find_neighbour_chunks(
+        cited_chunk_index=44,
+        cited_doc_id="doc-A",
+        doc_chunks=doc_chunks,
+        already_cited={"0044"},
+        window=10,
+        max_aux=5,
+        cited_section_path=["Doc", "§8"],
+        section_path_prefix_depth=0,
+    )
+    assert result == ["0046", "0048"]
+
+
+def test_w37_section_path_prefix_depth_2_filters_different_subsection_neighbors() -> None:
+    """depth=2 — neighbor in ["Doc","§3",...] filtered out when cited lives in ["Doc","§8",...]."""
+    doc_chunks = [
+        _doc_chunk("0046", 46, "3.5 Cross-section", section_path=["Doc", "§3"]),
+        _doc_chunk("0048", 48, "8.2 Same-section", section_path=["Doc", "§8"]),
+    ]
+    result = _find_neighbour_chunks(
+        cited_chunk_index=44,
+        cited_doc_id="doc-A",
+        doc_chunks=doc_chunks,
+        already_cited={"0044"},
+        window=10,
+        max_aux=5,
+        cited_section_path=["Doc", "§8", "§8.1"],
+        section_path_prefix_depth=2,
+    )
+    assert result == ["0048"]
+
+
+def test_w37_section_path_prefix_depth_2_keeps_same_subsection_neighbors() -> None:
+    """depth=2 — multiple same-subsection siblings under ["Doc","§8"] all kept."""
+    doc_chunks = [
+        _doc_chunk("0046", 46, "8.1 Walkthrough A", section_path=["Doc", "§8", "§8.1"]),
+        _doc_chunk("0048", 48, "8.4 Walkthrough D", section_path=["Doc", "§8", "§8.4"]),
+        _doc_chunk("0050", 50, "8.5 Walkthrough E", section_path=["Doc", "§8", "§8.5"]),
+    ]
+    result = _find_neighbour_chunks(
+        cited_chunk_index=44,
+        cited_doc_id="doc-A",
+        doc_chunks=doc_chunks,
+        already_cited={"0044"},
+        window=10,
+        max_aux=5,
+        cited_section_path=["Doc", "§8", "§8.1"],
+        section_path_prefix_depth=2,
+    )
+    assert result == ["0046", "0048", "0050"]
+
+
+def test_w37_malformed_section_path_field_defensive_skip() -> None:
+    """Non-list `section_path` (None / str / dict) skipped defensive when depth>0."""
+    doc_chunks = [
+        {  # missing section_path entirely
+            "chunk_id": "0046",
+            "chunk_index": 46,
+            "chunk_title": "8.1 A",
+            "enabled": True,
+        },
+        {  # section_path = string (malformed)
+            "chunk_id": "0048",
+            "chunk_index": 48,
+            "chunk_title": "8.2 B",
+            "section_path": "Doc/§8",
+            "enabled": True,
+        },
+        _doc_chunk("0050", 50, "8.5 E", section_path=["Doc", "§8"]),  # well-formed
+    ]
+    result = _find_neighbour_chunks(
+        cited_chunk_index=44,
+        cited_doc_id="doc-A",
+        doc_chunks=doc_chunks,
+        already_cited={"0044"},
+        window=10,
+        max_aux=5,
+        cited_section_path=["Doc", "§8"],
+        section_path_prefix_depth=2,
+    )
+    # 0046 + 0048 dropped (malformed/missing section_path); only 0050 passes prefix filter
+    assert result == ["0050"]
+
+
+@pytest.mark.asyncio
+async def test_w37_expand_citations_propagates_section_path_filter() -> None:
+    """End-to-end — `expand_citations` reads cited.section_path + settings.depth → filter applied."""
+    settings = _settings(window=10, max_aux=5, section_path_prefix_depth=2)
+    answer = "See [chunk-0044] for context."
+    # Cited chunk lives in ["Doc","§8"] subtree
+    chunks = [
+        RetrievedChunk(
+            score=0.5,
+            fields={
+                "chunk_id": "0044",
+                "doc_id": "doc-A",
+                "chunk_index": 44,
+                "chunk_title": "8. Integration intro",
+                "section_path": ["Doc", "§8"],
+            },
+        ),
+    ]
+    # Mixed full-doc: §3 cross-section + §8 same-section + non-numbered
+    full_doc = [
+        _doc_chunk("0046", 46, "3.5 Cross-section", section_path=["Doc", "§3"]),
+        _doc_chunk("0048", 48, "8.2 Same-section", section_path=["Doc", "§8"]),
+        _doc_chunk("0050", 50, "8.4 Same-section", section_path=["Doc", "§8"]),
+    ]
+    engine = _mock_engine(list_chunks_return=full_doc)
+
+    expanded_text, expanded_ids, neighbors = await expand_citations(
+        answer, ["0044"], chunks, engine=engine, kb_id="kb1", settings=settings,
+    )
+
+    # 0046 filtered (cross-section); 0048 + 0050 kept (max_aux=5 fits both)
+    assert "[chunk-0048]" in expanded_text
+    assert "[chunk-0050]" in expanded_text
+    assert "[chunk-0046]" not in expanded_text
+    assert expanded_ids == ["0044", "0048", "0050"]
+    # Materialized neighbor RetrievedChunks restricted to filtered set
+    assert {n.fields["chunk_id"] for n in neighbors} == {"0048", "0050"}

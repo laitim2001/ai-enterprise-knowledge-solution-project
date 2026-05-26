@@ -68,17 +68,29 @@ def _find_neighbour_chunks(
     already_cited: set[str],
     window: int,
     max_aux: int,
+    cited_section_path: list[str] | None = None,
+    section_path_prefix_depth: int = 0,
 ) -> list[str]:
     """Walk full doc chunks within chunk_index ±window of cited,filter §X.M title,cap max_aux。
 
     Pure function;no IO,no async;testable in isolation without engine。Parallel to
     W25 F5 D1 `_find_neighbour_images` line 135-186 pattern。
 
+    W37 (j') extension — when `section_path_prefix_depth > 0`, a neighbor candidate
+    must additionally satisfy
+    `chunk.section_path[:depth] == cited_section_path[:depth]`. Avoids cross-section
+    drift (W32+W33 Run 1/3/4 mixed §3/§6/§7/§9 alongside §8). depth=0 (default) keeps
+    W32 (h') behavior unchanged.
+
     Returns ordered list of neighbor chunk_ids sorted by absolute distance ascending
     (closer chunks preferred when max_aux cap binds)。
     """
     if max_aux <= 0 or window <= 0:
         return []
+
+    cited_prefix: list[str] = []
+    if section_path_prefix_depth > 0 and cited_section_path:
+        cited_prefix = list(cited_section_path[:section_path_prefix_depth])
 
     candidates: list[tuple[int, str]] = []  # (absolute_distance, chunk_id)
     for chunk in doc_chunks:
@@ -99,6 +111,16 @@ def _find_neighbour_chunks(
         cand_title = str(chunk.get("chunk_title", "") or "")
         if not _SECTION_NUMBER_PATTERN.search(cand_title):
             continue
+
+        # W37 (j') section_path prefix filter — additive constraint after §X.M
+        # regex; both filters must pass. Malformed section_path field (non-list)
+        # = skip defensive (we cannot prove same-section so we drop).
+        if section_path_prefix_depth > 0:
+            cand_section_path = chunk.get("section_path")
+            if not isinstance(cand_section_path, list):
+                continue
+            if list(cand_section_path[:section_path_prefix_depth]) != cited_prefix:
+                continue
 
         candidates.append((distance, cand_id))
 
@@ -146,7 +168,10 @@ async def expand_citations(
 
     # Group cited chunks by unique doc_id (one fetch per doc covers all cited chunks
     # from same doc — parallel pattern to W25 F5 D1 line 65-66)
-    cited_by_doc: dict[str, list[tuple[str, int]]] = {}  # doc_id → [(cited_id, cited_idx)]
+    # W37 (j') — also capture cited section_path per cited chunk so prefix filter
+    # can compare against neighbor candidates per-cite (different cites in same
+    # doc may live in different subsections).
+    cited_by_doc: dict[str, list[tuple[str, int, list[str]]]] = {}
     for cited_id in citation_ids:
         cited_chunk = chunk_by_id.get(cited_id)
         if cited_chunk is None:
@@ -163,7 +188,10 @@ async def expand_citations(
         except (TypeError, ValueError):
             continue
 
-        cited_by_doc.setdefault(cited_doc_id, []).append((cited_id, cited_idx))
+        cited_sp_raw = cited_chunk.fields.get("section_path")
+        cited_sp: list[str] = list(cited_sp_raw) if isinstance(cited_sp_raw, list) else []
+
+        cited_by_doc.setdefault(cited_doc_id, []).append((cited_id, cited_idx, cited_sp))
 
     if not cited_by_doc:
         return answer_text, citation_ids, []
@@ -212,7 +240,7 @@ async def expand_citations(
         if not doc_chunks:
             continue
 
-        for cited_id, cited_idx in cited_pairs:
+        for cited_id, cited_idx, cited_sp in cited_pairs:
             chosen = _find_neighbour_chunks(
                 cited_chunk_index=cited_idx,
                 cited_doc_id=doc_id,
@@ -220,6 +248,10 @@ async def expand_citations(
                 already_cited=added_ids,
                 window=settings.citation_expansion_window,
                 max_aux=settings.citation_expansion_max_aux,
+                cited_section_path=cited_sp,
+                section_path_prefix_depth=(
+                    settings.citation_expansion_section_path_prefix_depth
+                ),
             )
 
             logger.info(
@@ -230,6 +262,14 @@ async def expand_citations(
                 chosen=[c[:50] for c in chosen],
                 window=settings.citation_expansion_window,
                 max_aux=settings.citation_expansion_max_aux,
+                section_path_prefix_depth=(
+                    settings.citation_expansion_section_path_prefix_depth
+                ),
+                cited_section_path_prefix=(
+                    cited_sp[:settings.citation_expansion_section_path_prefix_depth]
+                    if settings.citation_expansion_section_path_prefix_depth > 0
+                    else []
+                ),
             )
 
             if chosen:
@@ -279,6 +319,9 @@ async def expand_citations(
         fetch_errors=len(fetch_errors),
         window=settings.citation_expansion_window,
         max_aux=settings.citation_expansion_max_aux,
+        section_path_prefix_depth=(
+            settings.citation_expansion_section_path_prefix_depth
+        ),
     )
 
     return expanded_text, expanded_citation_ids, neighbor_chunks

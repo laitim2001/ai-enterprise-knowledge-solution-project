@@ -156,4 +156,56 @@ Per `memory/feedback_judge_llm_cost_policy.md`(W36 saved 2026-05-26):
 
 ---
 
-**End of W37 progress.md Day 0**
+## Day 1 — 2026-05-27 — F1 implementation
+
+### 完成行動
+
+- ✅ F1.1 Settings NEW knob `citation_expansion_section_path_prefix_depth: int = 0` shipped 加 11 行 comment block(default=0 disabled,depth=1/2 semantics,W26 PC1 一次只郁一個旋鈕 rationale,W38+ separate flip decision)
+- ✅ F1.2 `_find_neighbour_chunks` signature 加 `cited_section_path` + `section_path_prefix_depth` 兩 keyword-only params + 9-行 filter block + `expand_citations` 3-tuple propagation
+- ✅ F1.3 5 NEW unit tests PASS + helper extension(`_doc_chunk` + `_settings`)backward-compat
+- ✅ F1.4 backend pytest 1091 + ruff PASS + mypy strict W37 files clean
+- ⏳ F1.4.b commit pending
+
+### F1 verification snapshot
+
+| Metric | Before W37 | After F1 |
+|---|---|---|
+| Backend pytest | 1086 passed + 25 skipped | **1091 passed + 25 skipped + 0 failed**(+5 NEW W37 tests exact target match)|
+| Ruff(W37 specific edits) | clean | `All checks passed!` |
+| Mypy strict — citation_expansion.py | 0 self-errors | 0 self-errors |
+| Mypy strict — settings.py | 0 self-errors | 0 self-errors |
+| Pre-existing mypy debt(observability/retrieval/context_expander)| 13 errors | 13 errors(unchanged — Karpathy §1.3 surgical 不屬 W37 scope)|
+
+### Karpathy §1.3 surgical edit footprint
+
+3 production files + 1 test file:
+- `backend/storage/settings.py` +12 / -1(NEW knob + comment block)
+- `backend/generation/citation_expansion.py` +30 / -7(signature 2 params + filter block + 3-tuple propagation + 2 observability fields)
+- `backend/tests/test_citation_expansion.py` +130 / -3(5 NEW W37 tests + helper extension `section_path` kwarg + `_settings` kwarg)
+- 無其他文件變動(架構零影響 per H1 non-architectural;vendor/schema/8-view layout 不變)
+
+### Key implementation decisions surfaced(no user clarification needed — Karpathy §1.1 think-before-coding upfront)
+
+1. **`_find_neighbour_chunks` 新 params 用 `None`+`0` defaults**(non-keyword breakage):pre-W37 existing 9+ tests 唔需要更新呼叫,signature backward-compat。
+2. **`cited_by_doc` 由 2-tuple 改 3-tuple**(per-cite section_path capture):同一個 doc 內不同 cited chunk 可以喺不同 subsection — per-cite filter 比 per-doc filter 更 precise。
+3. **Malformed section_path defensive = skip(not keep)**:cited 不能 prove same-section → drop。保守 align「filter active 即過濾」契約。
+4. **Observability surface depth + cited_prefix**:F2 LIVE 5-run + Langfuse trace 直接可 debug 過濾邏輯是否生效。
+
+### Pre-F2 surface
+
+F2.1 pre-flight per CLAUDE.md §10.3 step 5b(W36 PC-W34-1 ship):
+- Langfuse `/api/public/health` 200
+- Postgres `SELECT 1` ready_for_query
+- Backend uvicorn explicit kill + restart 確認 F1 code loaded(per PC-W32-1 no `reload=True`)
+
+F2.2 `.env` temporary override `CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=2`(top + sub-level filter test — F1.3.c+d evidence depth=1 對 single-doc KB 幾乎 no-op,depth=2 真正測試 cross-section drift)。
+
+### W37 progress.md updates pending
+
+- F1.4.b commit hash backfill 入 checklist + progress.md(D1 retro pattern per W36 housekeeping commit)
+- F2.1 pre-flight tick(active flip 之前)
+- F2.3 G1a + G1b + G2 decision tree intersect entry(F2 完成後)
+
+---
+
+**End of W37 progress.md Day 1**

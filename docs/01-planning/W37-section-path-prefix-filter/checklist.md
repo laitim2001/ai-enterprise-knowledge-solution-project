@@ -19,33 +19,34 @@ last_updated: 2026-05-27
 - [x] F0.6 啟動 commit `65694d6` — `docs(planning): kickoff W37-section-path-prefix-filter + R6 Day 0 4 catches surface (j') quality-of-cite refinement scope confirmed`
 - [x] F0.7 session-start.md §10 W37 row append `🟡 active 2026-05-27` + W37+ → W38+ placeholder rename + W36 已 closed 維持(commit `6cdece6`)
 
-## F1 — `_find_neighbour_chunks` 加 section_path prefix filter(~1h)
+## F1 — `_find_neighbour_chunks` 加 section_path prefix filter(~1h)— ✅ 完成
 
-### F1.1 Settings NEW knob
+### F1.1 Settings NEW knob — ✅
 
-- [ ] F1.1.a `backend/storage/settings.py:275` 後加 NEW field `citation_expansion_section_path_prefix_depth: int = 0` + comment block 解釋 depth=0 disabled / depth=1 top-level / depth=2 top+sub-level + 為何 default 0 preserve W36 baseline(per W26 PC1「一次只郁一個旋鈕」)
-- [ ] F1.1.b 確認 default 0 = W37 baseline preserve(W36 → W37 同 production behavior)
-- [ ] F1.1.c 確認 naming convention 對齊 `citation_expansion_window` + `citation_expansion_max_aux` family
+- [x] F1.1.a `backend/storage/settings.py:275-285` 加 NEW field `citation_expansion_section_path_prefix_depth: int = 0` + 11 行 comment block(depth=0 disabled / depth=1 top-level / depth=2 top+sub-level + W26 PC1「一次只郁一個旋鈕」rationale + W38+ separate decision)
+- [x] F1.1.b default=0 確認 = W37 baseline preserve(W36 → W37 同 production behavior)
+- [x] F1.1.c naming convention 對齊 `citation_expansion_window` + `citation_expansion_max_aux` family
 
-### F1.2 `_find_neighbour_chunks` 加 section_path_prefix_depth 參數
+### F1.2 `_find_neighbour_chunks` 加 section_path_prefix_depth 參數 — ✅
 
-- [ ] F1.2.a `backend/generation/citation_expansion.py:_find_neighbour_chunks` (line 63-107) signature 加 `cited_section_path: list[str]` + `section_path_prefix_depth: int` 兩 keyword-only params
-- [ ] F1.2.b 在 chunk_title regex filter(line 99-101)之後加 NEW filter block(per plan §2 F1.2.b 5 行 implementation snippet)
-- [ ] F1.2.c `expand_citations` (line 110-) propagate — 由 cited chunk's `fields.section_path` 取得 cited_section_path + 從 `settings.citation_expansion_section_path_prefix_depth` 取 depth + 傳入 `_find_neighbour_chunks` call site(line 216-)
-- [ ] F1.2.d Defensive — cited chunk 嘅 `section_path` 不是 list(e.g. None / str / dict)→ fall back to `[]`(depth 0 vs N 都會 trivially match empty prefix)
+- [x] F1.2.a `_find_neighbour_chunks` signature 加 `cited_section_path: list[str] | None = None` + `section_path_prefix_depth: int = 0`(backward-compat default,9+ existing tests 無需改)
+- [x] F1.2.b 在 §X.M regex filter 之後加 9-行 filter block:`isinstance` defensive guard + `list(cand[:depth]) != cited_prefix` 比對 + `continue` 跳 cross-section candidate
+- [x] F1.2.c `expand_citations` propagate — `cited_by_doc` 3-tuple extension `(cited_id, cited_idx, cited_sp)` + call site 傳 `cited_section_path=cited_sp` + `section_path_prefix_depth=settings.citation_expansion_section_path_prefix_depth`
+- [x] F1.2.d Defensive — `cited_sp_raw` `isinstance(..., list)` else `[]` fall back(per W37 F1.2 spec)
+- [x] F1.2.e Observability — 兩個 logger event(`citation_expansion_neighbours_found` + `citation_expansion_applied`)加 `section_path_prefix_depth` + `cited_section_path_prefix` fields
 
-### F1.3 NEW unit tests(~5 個 + 1-2 個 expand_citations integration test)
+### F1.3 NEW unit tests — ✅ 5/5 PASS
 
-- [ ] F1.3.a `test_w37_section_path_prefix_filter_disabled_when_depth_0` — depth=0(default)→ 行為 unchanged
-- [ ] F1.3.b `test_w37_section_path_prefix_depth_1_filters_cross_section_neighbors` — top-level "Doc" same but second-level different(實際係 depth=2 case;F1.2 spec 確認 depth=1 對 single-doc KB 幾乎 no-op)— 改寫成 depth=2 case
-- [ ] F1.3.c `test_w37_section_path_prefix_depth_2_keeps_same_subsection_neighbors` — depth=2,cited + neighbor 都喺 ["Doc", "§8"] tree → kept
-- [ ] F1.3.d `test_w37_section_path_prefix_depth_2_filters_different_subsection_neighbors` — depth=2,cited ["Doc", "§8"] vs neighbor ["Doc", "§3"] → filtered
-- [ ] F1.3.e `test_w37_malformed_section_path_field_defensive_skip` — neighbor chunk `section_path` 不是 list → skipped
-- [ ] F1.3.f(optional)`test_w37_expand_citations_integration_passes_cited_section_path` — integration test 驗證 `expand_citations` 正確 propagate cited_section_path + depth 至 `_find_neighbour_chunks`(mock engine.list_chunks)
+- [x] F1.3.a `test_w37_section_path_prefix_filter_disabled_when_depth_0` PASS — depth=0 baseline preserve
+- [x] F1.3.b `test_w37_section_path_prefix_depth_2_filters_different_subsection_neighbors` PASS — cited ["Doc","§8","§8.1"] vs neighbor ["Doc","§3"] → filtered;same-section ["Doc","§8"] → kept
+- [x] F1.3.c `test_w37_section_path_prefix_depth_2_keeps_same_subsection_neighbors` PASS — 3 個 ["Doc","§8",...] siblings 全 kept
+- [x] F1.3.d `test_w37_malformed_section_path_field_defensive_skip` PASS — missing field + non-list `section_path` defensive skip;well-formed 通過
+- [x] F1.3.e `test_w37_expand_citations_propagates_section_path_filter` PASS — end-to-end integration,cited ["Doc","§8"] expand 限 same-section neighbors,materialized neighbor_chunks 對齊 filtered set
+- [x] F1.3.f 同步 update `_doc_chunk` helper 加 optional `section_path` kwarg + `_settings` helper 加 `section_path_prefix_depth` kwarg(backward-compat defaults preserve 既有 9+ tests)
 
-### F1.4 驗證 + commit
+### F1.4 驗證 + commit — ✅
 
-- [ ] F1.4.a pytest 1086 → 1091(+5 minimum)maintained;ruff PASS;mypy strict 維持
+- [x] F1.4.a backend pytest **1091 passed + 25 skipped + 0 failed**(W36 baseline 1086 + 5 NEW W37 = 1091 exact match);ruff `All checks passed!`(W37 specific edits);mypy strict citation_expansion.py + settings.py 自身 0 errors(13 pre-existing 全屬 observability/retrieval/context_expander W22-W34 wave 留底,Karpathy §1.3 surgical 不屬 W37 scope)
 - [ ] F1.4.b commit `feat(generation): W37 F1 (j') section_path prefix filter for _find_neighbour_chunks — additive constraint depth=0 default preserve W36 baseline + Settings NEW knob`
 
 ## F2 — 5-run reproducibility verify(~30-45min)
