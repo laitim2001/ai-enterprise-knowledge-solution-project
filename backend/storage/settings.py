@@ -242,6 +242,34 @@ class Settings(BaseSettings):
     # FAIL → NEW ADR-0038 documents finding + default preserved per Karpathy §1.3.
     parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"
 
+    # W31 F1.3 — post-hoc citation expansion per W30 retro (B') HIGHEST candidate
+    # path (i) Option B「cite-confidence threshold relax」+ Rule 7 v2 wording
+    # refinement combined ship (user explicit AskUserQuestion pick 2026-05-26
+    # accept Karpathy §1.2 一次只郁一個旋鈕 risk trade-off for max G1 marginal
+    # improvement probability). When True, synthesizer post `extract_citation_ids`
+    # calls `expand_citations` to auto-add neighbor chunk citations within ±N
+    # chunk_index window of existing citations (same doc), provided neighbor
+    # rerank score ≥ threshold AND title regex `§\d+\.\d+` matches. Default
+    # True = W31 measurement experiment (per Karpathy §1.4 goal-driven「make
+    # it pass」requires axis enabled to measure); F4 closeout will decide
+    # preserve / revert per Q4 measurement-experiment-fail-policy. Parallel
+    # pattern to W25 F5 D1 `citation_neighbour_*` (images); this block targets
+    # citation chunks not images, pure function on top-K reranked chunks (no
+    # additional Azure Search fetch — surgical scope per Karpathy §1.2).
+    enable_citation_post_hoc_expansion: bool = True
+    # ±N chunk_index window — parallel to W25 F5 D1 `citation_neighbour_window=3`
+    # convention; same physical-corpus locality assumption (adjacent chunks
+    # within ±3 likely same section).
+    citation_expansion_window: int = 3
+    # Rerank score threshold — Cohere v4.0-pro reranked scores typically [0.5,
+    # 1.0] per W26 F1 D1 empirical evidence; 0.5 = top half retain. Tunable
+    # F4 if G2 control regression observed (e.g. 0.6 / 0.7 for stricter filter).
+    citation_expansion_score_threshold: float = 0.5
+    # Safety cap on auto-added neighbors per existing citation — parallel to
+    # W25 F5 D1 `citation_neighbour_max_aux_images=2` convention. 2 = max 2
+    # extra `[chunk-{id}]` markers inserted per original citation marker.
+    citation_expansion_max_aux: int = 2
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

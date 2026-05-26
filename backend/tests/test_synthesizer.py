@@ -293,3 +293,94 @@ async def test_synthesize_stream_closes_underlying_stream_on_finally() -> None:
                 pass
 
     stream_obj.close.assert_awaited()
+
+
+# ---------- W31 F1.5.c citation expansion wire tests ------------------------
+
+
+def _chunk_with_idx(
+    cid: str, doc_id: str, chunk_index: int, chunk_title: str, score: float = 0.9,
+) -> RetrievedChunk:
+    return RetrievedChunk(
+        score=score,
+        fields={
+            "chunk_id": cid,
+            "doc_id": doc_id,
+            "chunk_index": chunk_index,
+            "chunk_title": chunk_title,
+            "chunk_text": f"body for {cid}",
+            "section_path": [],
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_synthesize_invokes_citation_expansion_when_enabled() -> None:
+    """W31 F1.4.a — synthesizer.synthesize wires expand_citations when not refused
+    and `enable_citation_post_hoc_expansion=True` (W31 default)。
+
+    Verifies the expansion module is invoked with (answer_text, citation_ids, chunks)
+    and its return value replaces synthesizer's result fields。
+    """
+    chunks = [
+        _chunk_with_idx("0044", "doc-A", 44, "§8 Integration"),
+        _chunk_with_idx("0046", "doc-A", 46, "§8.1 Walkthrough"),
+    ]
+
+    # Mock OpenAI completion returning a citation of chunk-0044 only
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content="Integration scenarios [chunk-0044]."),
+            ),
+        ],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+    )
+
+    async def _create(**kwargs):
+        return completion
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            result = await s.synthesize("show me all integration scenarios", chunks)
+
+    # 0046 expanded into citation_ids by post-hoc expansion (W31 axis 3 B'.c)
+    assert "0044" in result.citation_ids
+    assert "0046" in result.citation_ids
+    assert "[chunk-0044][chunk-0046]" in result.answer
+
+
+@pytest.mark.asyncio
+async def test_synthesize_skips_citation_expansion_when_refused() -> None:
+    """W31 F1.4.a — refusal path bypasses expand_citations (no citations to expand)。"""
+    chunks = [_chunk_with_idx("0044", "doc-A", 44, "§8.1 Walkthrough")]
+
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(message=SimpleNamespace(content=REFUSAL_PHRASE)),
+        ],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+    )
+
+    async def _create(**kwargs):
+        return completion
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            result = await s.synthesize("unanswerable query", chunks)
+
+    assert result.refused is True
+    assert result.citation_ids == []  # Refusal phrase has no citation markers
+    assert REFUSAL_PHRASE in result.answer

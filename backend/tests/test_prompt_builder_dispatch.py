@@ -173,3 +173,59 @@ def test_format_chunk_dispatch_append_mode_citation_chunk_id_preserved() -> None
     # Both segments rendered (sanity check)
     assert "raw chunk text fallback" in user_msg  # anchor chunk_text
     assert "full parent section text appended" in user_msg  # parent context
+
+
+# ---------- W31 F1.5.a SYSTEM_PROMPT Rule 7 v2 + Rule 8 assertions ----------
+
+
+def test_system_prompt_includes_rule_7_v2_section_numbering_pattern() -> None:
+    """W31 F1.1.a — Rule 7 v2 wording target「§X.M numbering pattern」explicit。
+
+    Replaces W30 Rule 7「specific subsection」abstract wording per Run 5 §8.6
+    Coverage summary mis-interpretation evidence。Must include literal「§X.M」
+    pattern + reference examples + intro chunk insufficiency framing。
+    """
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    # §X.M numbering pattern explicit
+    assert "§X.M" in SYSTEM_PROMPT
+    # Reference examples present (§8.1 / §8.2 / §8.3 or similar)
+    assert "§8.1" in SYSTEM_PROMPT
+    # Prefer specific over overview framing
+    assert "prefer citing" in SYSTEM_PROMPT.lower()
+    assert "individually-numbered chunks" in SYSTEM_PROMPT
+    # Intro chunk insufficiency framing
+    assert "insufficient" in SYSTEM_PROMPT.lower()
+
+
+def test_system_prompt_includes_rule_8_cite_all_overlap() -> None:
+    """W31 F1.1.b — Rule 8 B'.b prompt instruction layer for cite-confidence threshold relax。
+
+    Must include「cite ALL of them」directive + multi-chunk-partial-info framing。
+    """
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    assert "cite ALL of them" in SYSTEM_PROMPT
+    assert "not just the most representative" in SYSTEM_PROMPT
+    # multi-chunk partial information framing
+    assert "partial information" in SYSTEM_PROMPT
+    # every chunk that supports
+    assert "every chunk that supports" in SYSTEM_PROMPT
+
+
+def test_system_prompt_rule_6_ch005_preserved_non_regression() -> None:
+    """W31 F1.1.c non-regression — Rule 6 CH-005 R14 mitigation preserved unchanged。
+
+    W30→W31 transition must NOT break CH-005 Rule 6 framing per W25.5 BUG-025 +
+    W26 R14 mitigation context (overview / aggregate queries synthesize what IS
+    available rather than refusing entirely)。
+    """
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    assert "overview / aggregate queries" in SYSTEM_PROMPT
+    assert "synthesize what IS available" in SYSTEM_PROMPT
+    assert "Based on available documentation:" in SYSTEM_PROMPT
+    assert "CH-005" in SYSTEM_PROMPT
+    # All 8 rules present (1-8)
+    for n in range(1, 9):
+        assert f"\n{n}." in SYSTEM_PROMPT, f"Rule {n} missing from SYSTEM_PROMPT"

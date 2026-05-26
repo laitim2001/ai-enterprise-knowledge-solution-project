@@ -27,6 +27,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from generation.citation_expansion import expand_citations
 from generation.prompt_builder import REFUSAL_PHRASE, build_prompt
 from observability.observe import observe_llm_async
 from retrieval.retrieval_engine import RetrievedChunk
@@ -143,6 +144,15 @@ class Synthesizer:
         citation_ids = extract_citation_ids(answer_text)
         refused = REFUSAL_PHRASE in answer_text
 
+        # W31 F1.4 — post-hoc citation expansion per (B'.c) cite-confidence threshold
+        # relax。Apply only when not refused (refusal phrase has no citations to expand);
+        # backward-compat preserved via `enable_citation_post_hoc_expansion=False` short
+        # circuit inside `expand_citations`(W31 F1.4.c plan §2 acceptance).
+        if not refused:
+            answer_text, citation_ids = expand_citations(
+                answer_text, citation_ids, chunks, settings=get_settings(),
+            )
+
         usage = getattr(completion, "usage", None)
         input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
         output_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
@@ -234,6 +244,14 @@ class Synthesizer:
         latency_ms = int((time.perf_counter() - start) * 1000)
         citation_ids = extract_citation_ids(accumulated)
         refused = REFUSAL_PHRASE in accumulated
+
+        # W31 F1.4 — post-hoc citation expansion applied to accumulated stream result
+        # (text-delta partial frames already yielded before expansion;final `result`
+        # event below carries expanded answer + citation_ids per F1.4.b plan §2).
+        if not refused:
+            accumulated, citation_ids = expand_citations(
+                accumulated, citation_ids, chunks, settings=get_settings(),
+            )
 
         logger.info(
             "synthesizer_stream_complete",

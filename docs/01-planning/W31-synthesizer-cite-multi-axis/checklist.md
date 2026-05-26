@@ -23,41 +23,41 @@ last_updated: 2026-05-26
 
 ### F1.1 Prompt layer edit(`backend/generation/prompt_builder.py:28` SYSTEM_PROMPT)
 
-- [ ] F1.1.a Add NEW Rule 7 v2「For queries asking about specific sub-procedures/walkthroughs/scenarios numbered with patterns like §X.M (e.g. §8.1, §8.2, §8.3), prefer citing those individually-numbered chunks over higher-level overview/coverage-summary chunks that aggregate them.」
-- [ ] F1.1.b Add NEW Rule 8「When multiple retrieved chunks each contain partial information relevant to the answer, cite ALL of them (not just the most representative one) — each fact in the answer should be backed by every chunk that supports it.」
-- [ ] F1.1.c Preserve Rule 6 CH-005 unchanged(W25.5 BUG-025 amendment + W26 R14 mitigation context)
+- [x] F1.1.a NEW Rule 7 v2 `prompt_builder.py:28-30` —「§X.M numbering pattern」+ reference examples(§8.1/§8.2/§8.3, Scenario A walkthrough, Step 3.2)+ intro chunk insufficiency framing
+- [x] F1.1.b NEW Rule 8 `prompt_builder.py:30-31` —「cite ALL of them」+「each fact backed by every chunk」+ two-chunks-same-scenario reference example
+- [x] F1.1.c Rule 6 CH-005 preserved unchanged(non-regression test `test_system_prompt_rule_6_ch005_preserved_non_regression` PASS)
 
 ### F1.2 Backend layer NEW module(`backend/generation/citation_expansion.py`)
 
-- [ ] F1.2.a Define `expand_citations(answer_text: str, citation_ids: list[str], chunks: list[RetrievedChunk], *, settings: Settings) → tuple[str, list[str]]` signature
-- [ ] F1.2.b Implement neighbor inspection logic — for each `[chunk-{id}]` marker,inspect ±N neighbors within same doc(`chunk_index` window),score threshold ≥ `citation_expansion_score_threshold`,title regex `§\d+\.\d+` OR keyword overlap ≥ threshold with cited paragraph
-- [ ] F1.2.c Auto-insert `[chunk-{neighbor_id}]` markers + max_aux cap + dedupe against existing `citation_ids`
-- [ ] F1.2.d Write `backend/tests/test_citation_expansion.py` 5+ unit tests:happy path / no neighbor / window boundary / max_aux cap / dedupe
+- [x] F1.2.a `expand_citations(answer_text, citation_ids, chunks, *, settings) → (expanded_text, expanded_citation_ids)` pure function signature
+- [x] F1.2.b Neighbor inspection logic — same doc constraint + ±window chunk_index + score ≥ threshold + title regex `§\\d+\\.\\d+` filter(keyword overlap deferred Karpathy §1.2 simplicity — title pattern sufficient first cut)
+- [x] F1.2.c Auto-insert `[chunk-{neighbor_id}]` markers + max_aux cap + dedupe against existing citation_ids + sort-by-distance prefer-closer
+- [x] F1.2.d `backend/tests/test_citation_expansion.py` **15 unit tests** PASS — happy path / disabled flag / empty inputs / §X.M filter / score threshold / window boundary / same doc / dedupe / max_aux cap / closer-neighbor-preferred / cited-not-in-chunks defensive / multiple cited / self-at-distance-0 exclude / extract_citation_ids ordering
 
-### F1.3 Settings NEW knobs(`backend/storage/settings.py`)
+### F1.3 Settings NEW knobs(`backend/storage/settings.py:245-272`)
 
-- [ ] F1.3.a Add `enable_citation_post_hoc_expansion: bool = True`(W31 default ON for measurement;F4 will decide preserve/revert per Q4)
-- [ ] F1.3.b Add `citation_expansion_window: int = 3`(parallel to W25 F5 D1 convention)
-- [ ] F1.3.c Add `citation_expansion_score_threshold: float = 0.5`(empirical Cohere v4.0-pro [0.5,1.0] range)
-- [ ] F1.3.d Add `citation_expansion_max_aux: int = 2`(parallel to W25 F5 D1 cap)
+- [x] F1.3.a `enable_citation_post_hoc_expansion: bool = True` — W31 measurement default ON per Karpathy §1.4 goal-driven「make it pass」requires axis enabled
+- [x] F1.3.b `citation_expansion_window: int = 3` — parallel to W25 F5 D1 `citation_neighbour_window=3`
+- [x] F1.3.c `citation_expansion_score_threshold: float = 0.5` — Cohere v4.0-pro reranked range [0.5, 1.0] per W26 F1 D1 empirical
+- [x] F1.3.d `citation_expansion_max_aux: int = 2` — parallel to W25 F5 D1 `citation_neighbour_max_aux_images=2`
 
 ### F1.4 Wire citation expansion into synthesizer pipeline
 
-- [ ] F1.4.a `synthesizer.py` `synthesize` method — post `extract_citation_ids` call `expand_citations` when `settings.enable_citation_post_hoc_expansion=True`
-- [ ] F1.4.b `synthesizer.py` `synthesize_stream` — apply expansion in `result` event payload after stream complete
-- [ ] F1.4.c Verify backward compat `enable_citation_post_hoc_expansion=False` behavior bit-identical to pre-W31
+- [x] F1.4.a `synthesizer.py:135-152` — `synthesize` method wires `expand_citations` after `extract_citation_ids` + `refused` detection,only when not refused;passes `get_settings()` for runtime Settings read
+- [x] F1.4.b `synthesizer.py:233-241` — `synthesize_stream` applies expansion in `result` event payload after stream complete(text-delta partial frames yielded before expansion;final `result` carries expanded answer + citation_ids)
+- [x] F1.4.c Backward compat verified — `enable_citation_post_hoc_expansion=False` short-circuit inside `expand_citations` first 3 lines returns inputs unchanged(test `test_disabled_flag_returns_inputs_unchanged` PASS)
 
 ### F1.5 Unit tests + non-regression coverage
 
-- [ ] F1.5.a `test_prompt_builder_dispatch.py` — NEW Rule 7 v2 + Rule 8 phrases present + Rule 6 non-regression
-- [ ] F1.5.b `test_citation_expansion.py` 5+ tests F1.2.d
-- [ ] F1.5.c `test_synthesizer_*.py` — 2 NEW scenarios citation expansion enabled/disabled
-- [ ] F1.5.d backend pytest baseline 1060 → expected ~1070-1075 post-W31 F1
-- [ ] F1.5.e ruff PASS on touched files;mypy strict module-path quirk preserved per CO_W25_mypy_strict_debt
+- [x] F1.5.a `test_prompt_builder_dispatch.py` +3 NEW tests — Rule 7 v2 + Rule 8 + Rule 6 non-regression PASS
+- [x] F1.5.b `test_citation_expansion.py` 15 NEW tests PASS(see F1.2.d)
+- [x] F1.5.c `test_synthesizer.py` +2 NEW tests — citation expansion wire enabled when not refused + skipped when refused PASS
+- [x] F1.5.d backend pytest **1080 passed + 25 skipped + 0 failed**(W30 baseline 1060 → **+20 NEW W31** = exact)+ no existing test regression
+- [x] F1.5.e ruff PASS(2 errors auto-fixed via `--fix`:unused pytest import in test file + import organization);mypy strict module-path quirk pre-existing per CO_W25_mypy_strict_debt(13 errors in other modules,`citation_expansion.py` 自身 W31 NEW module clean per --follow-imports=silent isolated check)
 
 ### F1 commit + progress.md Day 1
 
-- [ ] F1.6 Commit `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion(B'.b + B'.c + Rule 7 v2)` per CLAUDE.md R2 daily commit binding
+- [ ] F1.6 Commit `feat(generation): W31 F1 multi-axis prompt + post-hoc citation expansion(B'.b + B'.c + Rule 7 v2) + 20 NEW unit tests` per CLAUDE.md R2 daily commit binding
 - [ ] F1.7 progress.md Day 1 entry — implementation summary + test verdict + ruff/mypy state + commit hash backfill
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)
