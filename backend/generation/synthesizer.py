@@ -17,6 +17,7 @@ import re
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from dataclasses import field as dataclasses_field
 
 import structlog
 from openai import APITimeoutError, AsyncAzureOpenAI, RateLimitError
@@ -49,6 +50,11 @@ class SynthesisResult:
     output_tokens: int
     latency_ms: int
     deployment: str
+    # W32 F1.8 integration fix — neighbor chunks materialized by post-hoc
+    # citation expansion (engine-fetched from full doc, NOT in top-K reranked).
+    # Caller extends its retrieved_chunks list with this before build_citations
+    # to avoid Rule 5「hallucinated」filter dropping W32-added citation_ids。
+    expanded_neighbor_chunks: list[RetrievedChunk] = dataclasses_field(default_factory=list)
 
 
 def extract_citation_ids(answer_text: str) -> list[str]:
@@ -152,13 +158,14 @@ class Synthesizer:
         citation_ids = extract_citation_ids(answer_text)
         refused = REFUSAL_PHRASE in answer_text
 
-        # W32 F1.4.a — post-hoc citation expansion via engine-fetch (h')。Apply only
-        # when not refused (refusal phrase has no citations to expand) AND engine + kb_id
-        # provided (backward compat preserved when legacy callers don't plumb them).
-        # `expand_citations` async fetch full doc chunks via `engine.list_chunks` —
-        # escapes W31 window=3 architectural constraint per F2 v3 R6 catch (3).
+        # W32 F1.4.a + F1.8 — post-hoc citation expansion via engine-fetch (h')。
+        # Apply only when not refused AND engine + kb_id provided。`expand_citations`
+        # returns 3-tuple including neighbor_chunks materialized from list_chunks
+        # raw dicts — caller extends retrieved_chunks for build_citations to avoid
+        # Rule 5「hallucinated」filter dropping W32-added citation_ids。
+        expanded_neighbor_chunks: list[RetrievedChunk] = []
         if not refused and engine is not None and kb_id is not None:
-            answer_text, citation_ids = await expand_citations(
+            answer_text, citation_ids, expanded_neighbor_chunks = await expand_citations(
                 answer_text, citation_ids, chunks,
                 engine=engine, kb_id=kb_id, settings=get_settings(),
             )
@@ -186,6 +193,7 @@ class Synthesizer:
             output_tokens=output_tokens,
             latency_ms=latency_ms,
             deployment=self.deployment,
+            expanded_neighbor_chunks=expanded_neighbor_chunks,
         )
 
     async def synthesize_stream(
@@ -258,11 +266,13 @@ class Synthesizer:
         citation_ids = extract_citation_ids(accumulated)
         refused = REFUSAL_PHRASE in accumulated
 
-        # W32 F1.4.b — post-hoc citation expansion via engine-fetch applied to accumulated
-        # stream result. Text-delta partial frames already yielded before expansion;final
-        # `result` event below carries expanded answer + citation_ids per plan §2 F1.1.b.
+        # W32 F1.4.b + F1.8 — post-hoc citation expansion via engine-fetch applied to
+        # accumulated stream result. Text-delta partial frames already yielded before
+        # expansion;final `result` event below carries expanded answer + citation_ids
+        # + neighbor_chunks per plan §2 F1.1.b + F1.8.
+        expanded_neighbor_chunks: list[RetrievedChunk] = []
         if not refused and engine is not None and kb_id is not None:
-            accumulated, citation_ids = await expand_citations(
+            accumulated, citation_ids, expanded_neighbor_chunks = await expand_citations(
                 accumulated, citation_ids, chunks,
                 engine=engine, kb_id=kb_id, settings=get_settings(),
             )
@@ -287,4 +297,5 @@ class Synthesizer:
             "output_tokens": output_tokens,
             "latency_ms": latency_ms,
             "deployment": self.deployment,
+            "expanded_neighbor_chunks": expanded_neighbor_chunks,
         }

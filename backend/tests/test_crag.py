@@ -221,9 +221,13 @@ async def test_refine_triggers_correction_when_confidence_below_threshold() -> N
         kb_id="drive_user_manuals",
         top_k=20,
     )
-    synthesizer.synthesize.assert_awaited_once_with(
-        "rewritten question with more keywords", new_chunks,
-    )
+    # W32 F1.4 — CRAG re-synth path passes engine + kb_id kwargs for engine-fetch
+    # citation expansion (h') per W32 plan §2 F1.4.
+    synthesizer.synthesize.assert_awaited_once()
+    call_args = synthesizer.synthesize.await_args
+    assert call_args.args == ("rewritten question with more keywords", new_chunks)
+    assert "engine" in call_args.kwargs
+    assert call_args.kwargs.get("kb_id") == "drive_user_manuals"
 
 
 # ---------- CragLoop.refine: graceful fallback paths -------------------------

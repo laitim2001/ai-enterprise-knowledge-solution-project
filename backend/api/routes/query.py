@@ -239,7 +239,13 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
                 for c in final_chunks
             ]
 
-    citations = build_citations(final_synth.citation_ids, final_chunks)
+    # W32 F1.8 integration fix — extend final_chunks with W32 engine-fetched neighbor
+    # chunks before build_citations to avoid Rule 5「hallucinated」filter dropping
+    # post-hoc expansion citation_ids (per W32 F2 reload-v1 evidence — answer text
+    # carried 3-6 markers but API response dropped 2-5 added citations per run when
+    # build_citations restricted to top-K reranked set)。
+    final_chunks_with_expanded = final_chunks + list(final_synth.expanded_neighbor_chunks)
+    citations = build_citations(final_synth.citation_ids, final_chunks_with_expanded)
 
     # W25 F5 D1 — attach neighbour-chunk images per ADR-0034 §Implementation
     # Mapping. When the LLM cites an intro / meta chunk (eg. §8 "Integration

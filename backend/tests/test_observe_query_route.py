@@ -13,7 +13,7 @@ from `QueryResponse` fields。
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -51,6 +51,8 @@ class _SynthOutcome:
     deployment: str
     latency_ms: int
     refused: bool
+    # W32 F1.8 mock SynthesisResult.expanded_neighbor_chunks field (default empty list)
+    expanded_neighbor_chunks: list = field(default_factory=list)
 
 
 class _MockEngine:

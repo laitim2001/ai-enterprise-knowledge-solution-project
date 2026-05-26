@@ -1,7 +1,7 @@
 ---
 phase: W32-engine-fetch-citation-expansion
 plan_ref: ./plan.md
-status: active
+status: closed   # per F3 closeout 2026-05-26 — Phase Gate PASS (G1 strict + relaxed + marginal 3/3 PASS at +80pp marginal vs W31 baseline 20%)
 last_updated: 2026-05-26
 ---
 

@@ -251,7 +251,7 @@ async def test_disabled_flag_returns_inputs_unchanged() -> None:
     citation_ids = ["0044"]
     chunks = [_chunk("0044", chunk_index=44, chunk_title="8. Integration")]
     engine = _mock_engine(list_chunks_return=[_doc_chunk("0046", 46, "8.1 Walk")])
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, citation_ids, chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     assert expanded_text == answer
@@ -265,7 +265,7 @@ async def test_empty_citation_ids_returns_inputs_unchanged() -> None:
     settings = _settings()
     chunks = [_chunk("0051", chunk_index=51, chunk_title="8.4 Walk")]
     engine = _mock_engine()
-    text, ids = await expand_citations(
+    text, ids, _neighbors = await expand_citations(
         "text only", [], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     assert text == "text only"
@@ -277,7 +277,7 @@ async def test_empty_citation_ids_returns_inputs_unchanged() -> None:
 async def test_empty_chunks_returns_inputs_unchanged() -> None:
     settings = _settings()
     engine = _mock_engine()
-    text, ids = await expand_citations(
+    text, ids, _neighbors = await expand_citations(
         "Intro [chunk-0044].", ["0044"], [], engine=engine, kb_id="kb1", settings=settings,
     )
     assert text == "Intro [chunk-0044]."
@@ -302,7 +302,7 @@ async def test_happy_path_engine_fetch_finds_section_neighbors() -> None:
     ]
     engine = _mock_engine(list_chunks_return=full_doc_chunks)
 
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, ["0044"], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     # Closer 2 walkthrough neighbors by distance (0046 dist 2 + 0048 dist 4) inserted
@@ -330,7 +330,7 @@ async def test_multiple_cited_chunks_from_different_docs_independent_expansion()
 
     engine = _mock_engine(list_chunks_side_effect=_list_chunks)
 
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, ["0010", "0020"], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     assert "[chunk-0010][chunk-0011]" in expanded_text
@@ -348,7 +348,7 @@ async def test_cited_chunk_not_in_chunks_list_skip_silently() -> None:
     chunks = [_chunk("0044", chunk_index=44, chunk_title="8.1 Walk")]
     engine = _mock_engine()
 
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, ["9999"], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     # No fetch attempted (cited_id not in chunks → no doc_id to fetch)
@@ -376,7 +376,7 @@ async def test_per_doc_fetch_exception_graceful_degradation() -> None:
 
     engine = _mock_engine(list_chunks_side_effect=_list_chunks)
 
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, ["0010", "0020"], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     # doc-A's expansion skipped (fetch failed),doc-B's expansion succeeded
@@ -399,7 +399,7 @@ async def test_no_walkthrough_neighbors_in_doc_returns_unchanged() -> None:
     ]
     engine = _mock_engine(list_chunks_return=full_doc_chunks)
 
-    expanded_text, expanded_ids = await expand_citations(
+    expanded_text, expanded_ids, _neighbors = await expand_citations(
         answer, ["0044"], chunks, engine=engine, kb_id="kb1", settings=settings,
     )
     assert expanded_text == answer

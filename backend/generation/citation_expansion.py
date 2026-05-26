@@ -115,7 +115,7 @@ async def expand_citations(
     engine: RetrievalEngine,
     kb_id: str,
     settings: Settings,
-) -> tuple[str, list[str]]:
+) -> tuple[str, list[str], list[RetrievedChunk]]:
     """Auto-add neighbor chunk citations to answer_text via engine.list_chunks full-doc fetch。
 
     Returns (expanded_answer_text, expanded_citation_ids). When
@@ -132,10 +132,10 @@ async def expand_citations(
     different sections in top-K no longer limits expansion candidates。
     """
     if not settings.enable_citation_post_hoc_expansion:
-        return answer_text, citation_ids
+        return answer_text, citation_ids, []
 
     if not citation_ids or not chunks:
-        return answer_text, citation_ids
+        return answer_text, citation_ids, []
 
     # Build chunk lookup by chunk_id for O(1) doc_id + chunk_index access
     chunk_by_id: dict[str, RetrievedChunk] = {}
@@ -166,7 +166,7 @@ async def expand_citations(
         cited_by_doc.setdefault(cited_doc_id, []).append((cited_id, cited_idx))
 
     if not cited_by_doc:
-        return answer_text, citation_ids
+        return answer_text, citation_ids, []
 
     # Parallel fetch full doc chunk lists per unique doc — W25 F5 D1 line 71-74 pattern
     doc_ids = sorted(cited_by_doc.keys())
@@ -211,6 +211,16 @@ async def expand_citations(
                 max_aux=settings.citation_expansion_max_aux,
             )
 
+            logger.info(
+                "citation_expansion_neighbours_found",
+                cited_id=cited_id[:50],
+                cited_idx=cited_idx,
+                chosen_count=len(chosen),
+                chosen=[c[:50] for c in chosen],
+                window=settings.citation_expansion_window,
+                max_aux=settings.citation_expansion_max_aux,
+            )
+
             if chosen:
                 additions_by_after[cited_id] = chosen
                 added_ids.update(chosen)
@@ -227,12 +237,32 @@ async def expand_citations(
     # Re-extract ordered citation_ids from expanded text
     expanded_citation_ids = _extract_citation_ids(expanded_text)
 
+    # W32 F1.8 integration fix — materialize neighbor RetrievedChunk objects from
+    # the same `engine.list_chunks` raw dicts so caller can extend its retrieved_chunks
+    # list for build_citations downstream(without this, build_citations treats W32-
+    # added citation_ids as「hallucinated」per Rule 5 contract since they're not in
+    # top-K reranked set);per W32 F2 reload-v1 evidence — answer text correctly has
+    # expansion markers but API response dropped 2-5 added citations per run。
+    neighbor_chunks: list[RetrievedChunk] = []
+    added_only = set(expanded_citation_ids) - set(citation_ids)
+    for _doc_id, doc_chunks in chunks_by_doc.items():
+        for chunk_dict in doc_chunks:
+            cid = str(chunk_dict.get("chunk_id", ""))
+            if cid in added_only:
+                neighbor_chunks.append(
+                    RetrievedChunk(
+                        score=0.0,  # No rerank score — list_chunks returns raw chunks
+                        fields=chunk_dict,
+                    ),
+                )
+
     logger.info(
         "citation_expansion_applied",
         kb_id=kb_id,
         original_citation_count=len(citation_ids),
         expanded_citation_count=len(expanded_citation_ids),
         added_count=len(expanded_citation_ids) - len(citation_ids),
+        neighbor_chunks_materialized=len(neighbor_chunks),
         cited_chunks_expanded=len(additions_by_after),
         docs_fetched=len(doc_ids),
         fetch_errors=len(fetch_errors),
@@ -240,4 +270,4 @@ async def expand_citations(
         max_aux=settings.citation_expansion_max_aux,
     )
 
-    return expanded_text, expanded_citation_ids
+    return expanded_text, expanded_citation_ids, neighbor_chunks
