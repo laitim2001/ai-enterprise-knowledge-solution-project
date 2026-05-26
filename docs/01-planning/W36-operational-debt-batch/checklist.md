@@ -98,8 +98,8 @@ last_updated: 2026-05-26
 
 ### C. commit + push
 
-- [ ] F4 收尾 commit `docs(planning): W36 closeout — PC-W34-1 + PC-W34-2 (b)+(d) + PC-W35-1 3 operational debts cleared atomic`(純 docs sync;F1+F2+F3 已分別 commit per W31-W35 atomic pattern)
-- [ ] push origin/main(per W33-W35 user-instruction precedent)
+- [x] F4 收尾 commit `b1f52ec` — `docs(planning): W36 closeout — PC-W34-1 + PC-W34-2 (b)+(d) + PC-W35-1 3 operational debts cleared atomic`(純 docs sync;4 files / 200 insertions / 27 deletions)
+- [x] push origin/main `fe2f30a..b1f52ec` ✅
 
 ---
 
