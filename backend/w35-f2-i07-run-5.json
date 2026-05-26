@@ -1,0 +1,109 @@
+{
+  "answer": "Based on available documentation: Section 8 contains five integration scenarios, but the retrieved chunks only show Scenario A in detail. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044][chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0043][chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0045]\n\n1. **Scenario A — Customer service request submission (async transaction):** A customer raises a service request through the portal, receives immediate acknowledgement, backend processing happens asynchronously, and D365 confirmation triggers a real-time portal update via event push with no polling required. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044]\n\nThe section states that the five scenarios collectively demonstrate synchronous queries, asynchronous transactions, saga-style multi-system orchestrations, inbound event-driven flows, and batch data movement, but the names/details for Scenarios B–E are not included in the retrieved documentation. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044]",
+  "citations": [
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044",
+      "doc_id": "dce-integration-platform-implementation-plan",
+      "doc_title": "DCE_Integration_Platform_Implementation_Plan",
+      "doc_format": "docx",
+      "chunk_title": "8. Integration scenarios (end-to-end walkthroughs)",
+      "chunk_index": 44,
+      "section_path": [
+        "8. Integration scenarios (end-to-end walkthroughs)"
+      ],
+      "relevance_score": 0.08434139784946236,
+      "embedded_images": [
+        {
+          "blob_url": "/api/backend/kb/sample-document-with-image-1/screenshots/d7d95af1a74a7d01879eafc8602e56593f2fd13a7e1b962db459ad942f83ad77.png",
+          "alt_text": "",
+          "checksum_sha256": "d7d95af1a74a7d01879eafc8602e56593f2fd13a7e1b962db459ad942f83ad77",
+          "width": 0,
+          "height": 0
+        },
+        {
+          "blob_url": "/api/backend/kb/sample-document-with-image-1/screenshots/07561dbf0420570ca4051747172e48bde386f2984f2ec1ccf35dc88e229565ee.png",
+          "alt_text": "",
+          "checksum_sha256": "07561dbf0420570ca4051747172e48bde386f2984f2ec1ccf35dc88e229565ee",
+          "width": 0,
+          "height": 0
+        }
+      ]
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0043",
+      "doc_id": "",
+      "doc_title": "",
+      "doc_format": "docx",
+      "chunk_title": "7.9 Docuware",
+      "chunk_index": 43,
+      "section_path": [
+        "7. Integration patterns by system",
+        "7.9 Docuware"
+      ],
+      "relevance_score": 0.0,
+      "embedded_images": []
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0045",
+      "doc_id": "",
+      "doc_title": "",
+      "doc_format": "docx",
+      "chunk_title": "8.1 Scenario A — Customer service request submission (async transaction)",
+      "chunk_index": 45,
+      "section_path": [
+        "8. Integration scenarios (end-to-end walkthroughs)",
+        "8.1 Scenario A — Customer service request submission (async transaction)"
+      ],
+      "relevance_score": 0.0,
+      "embedded_images": [
+        {
+          "blob_url": "/api/backend/kb/sample-document-with-image-1/screenshots/d7d95af1a74a7d01879eafc8602e56593f2fd13a7e1b962db459ad942f83ad77.png",
+          "alt_text": "",
+          "checksum_sha256": "d7d95af1a74a7d01879eafc8602e56593f2fd13a7e1b962db459ad942f83ad77",
+          "width": 0,
+          "height": 0
+        }
+      ]
+    }
+  ],
+  "retrieved_chunks": [
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0044",
+      "chunk_title": "8. Integration scenarios (end-to-end walkthroughs)",
+      "chunk_text": "8. Integration scenarios (end-to-end walkthroughs)\n\nThis section walks through five concrete end-to-end scenarios that exercise the main integration patterns supported by the platform. Each scenario covers a real customer portal use case and illustrates how the components interact in sequence. Together they demonstrate that the architecture handles synchronous queries, asynchronous transactions, saga-style multi-system orchestrations, inbound event-driven flows, and batch data movement — without requiring any custom platform code.\n\nSequence diagram conventions:\n\n•\n\nSolid arrow\n\n— synchronous request / response\n\n•\n\nDashed teal arrow\n\n— asynchronous message (queue, Service Bus)\n\n•\n\nDotted purple arrow\n\n— event publication (Event Grid, CloudEvents)\n\n•\n\nDashed grey arrow with open head\n\n— response / return\n\n•\n\nDot-dash amber arrow\n\n— batch operation",
+      "relevance_score": 0.08434139784946236
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0068",
+      "chunk_title": "Scope",
+      "chunk_text": "Scope\n\n• Spryker → APIM → Service Bus → Logic App → D365 F&O (async submission flow)\n\n• D365 F&O business event → Event Grid → Spryker webhook (event-driven status update, replacing polling)\n\n• AAD B2C integration for customer authentication on the pilot flow\n\n• End-to-end observability: distributed tracing operational\n\n• Tenant 1 (RAP+RNZ) routing demonstrated\n\nMilestones (indicative)\n\n• Week 1-2: Detailed design and API contract finalised\n\n• Week 3-6: APIM API published, Logic Apps workflow developed, D365 connector tested\n\n• Week 7-9: End-to-end integration testing including event-driven flow\n\n• Week 10-11: UAT with selected OpCo users\n\n• Week 12: Production deployment and GO/NO-GO decision",
+      "relevance_score": 0.07905405405405405
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0036",
+      "chunk_title": "7. Integration patterns by system",
+      "chunk_text": "7. Integration patterns by system\n\n**System** | **Primary pattern** | **Logic Apps connector** | **Auth model** | **Notes**\n----\nD365 F&O | Sync + async + event | Native (first-party) | AAD OAuth (App reg) | Sync for queries; async via Service Bus for transactions; Event Grid for business events\nD365 CE | Sync + event | Native (first-party) | AAD OAuth | Sync via Dataverse Web API; events via Event Grid + Dataverse webhooks\nSnowflake | Batch + sync | Native | Key-pair (preferred) | Bulk ETL via Data Factory; ad-hoc queries via Logic Apps\nEmail service | Async fire-and-forget | Native (SendGrid / O365) | API key / OAuth | Template management externalised\nAzure AD B2C | Sync (auth flow) | Native (Graph API) | AAD OAuth | Custom policies for B2C user journeys; Graph for admin operations\nRicoh MPS | Event ingest + sync | Custom HTTP | TBD (likely mTLS / API key) | Proprietary system; custom Logic Apps HTTP integration or IoT Hub for telemetry scale\nServiceNow | Sync + webhook | Native | OAuth | Cases and tickets via REST; status updates via inbound webhooks to Event Grid\nPayment gateway | Sync + webhook | Native (if Stripe/Adyen) or Custom HTTP | Gateway-specific tokenisation | PCI-scope minimised by tokenisation; webhooks for async settlement updates\nDocuware | Sync (upload + retrieve) | Custom HTTP | OAuth / API key | REST API integration; binary upload via multipart",
+      "relevance_score": 0.07868663594470046
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0042",
+      "chunk_title": "7.7 ServiceNow",
+      "chunk_text": "7.7 ServiceNow\n\nServiceNow is the service desk and ITSM system. Integration covers case creation from portal, case status retrieval, and inbound case-update webhooks.\n\n• Case creation: portal raises a request → Logic App ServiceNow connector creates the incident → ServiceNow returns case ID → stored in D365 CE as a related record\n\n• Status retrieval: synchronous read via Logic App on portal request\n\n• Status push: ServiceNow webhook calls APIM endpoint on case status change → APIM publishes to Event Grid → Spryker updates UI\n\n7.8 Payment gateway\n\nPayment processing is delegated to a PCI-compliant payment gateway (specific provider determined per OpCo and region). The integration design minimises Ricoh's PCI scope by using gateway-hosted payment pages or tokenisation.\n\n• Customer payment flow: portal initiates payment session → gateway redirect (hosted page) → customer enters card details directly to gateway → gateway returns payment token to portal\n\n• Charge processing: Logic App calls gateway with token and amount → response captured\n\n• Async settlement: gateway webhook to APIM on settlement → Event Grid → portal records final state\n\n• No card data stored in Ricoh systems; PCI scope limited to integration endpoints and audit logs",
+      "relevance_score": 0.07614607614607614
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0002",
+      "chunk_title": "1. Executive summary",
+      "chunk_text": "1. Executive summary\n\nThis document specifies the implementation plan for the integration layer connecting the Spryker-based DCE customer portal to nine enterprise systems across two Azure tenants. The architecture is built on Azure native iPaaS services — API Management (APIM) as the gateway, Logic Apps and Functions for orchestration, Service Bus for asynchronous messaging, Event Grid for event-driven push, Data Factory for batch synchronisation, Application Insights for observability, and Azure AD B2C for customer identity.\n\nThe approach intentionally avoids building a custom middleware application. Instead, it leverages Microsoft-maintained PaaS services, which already provide the platform capabilities (pluggable connectors, multi-protocol support, identity federation, orchestration, monitoring) that a custom middleware would need to reproduce. This aligns to Ricoh's existing Azure enterprise standard and Microsoft's reference integration architecture, eliminates vendor platform lock-in, and provides a sustainable foundation for future integrations beyond the customer portal scope.\n\nThe plan is structured around a three-phase rollout: a Foundation phase (2–4 weeks) to establish landing-zone and governance; a Pilot phase (3 months, aligned to the Validation SOW) delivering the first end-to-end D365 F&O integration; and Expansion phases (6–12 months) onboarding the remaining systems following the same patterns. The estimated three-year total cost of ownership is materially lower than the custom middleware alternative, primarily because the integration platform itself does not require building or maintaining.\n\nCritical success factors include: (a) securing Azure iPaaS expertise via a Microsoft Gold Partner or internal Azure capability, (b) investing in upfront architecture and governance design before building integrations, and (c) per-system fit validation of pre-built connectors against specific use cases. Risks are surfaced and mitigation strategies are proposed.",
+      "relevance_score": 0.07449506118236768
+    }
+  ],
+  "crag_triggered": false,
+  "crag_iterations": 0,
+  "latency_ms": 17365,
+  "trace_id": "",
+  "model_used": "gpt-5.5",
+  "reranker_used": "cohere-v4.0-pro",
+  "refused": false,
+  "_total_latency_s": 22.414
+}

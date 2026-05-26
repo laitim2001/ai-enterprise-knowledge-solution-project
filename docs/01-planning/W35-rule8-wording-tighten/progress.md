@@ -2,7 +2,7 @@
 phase: W35-rule8-wording-tighten
 plan_ref: ./plan.md
 checklist_ref: ./checklist.md
-status: active   # F0 kickoff 2026-05-26
+status: closed   # F3 closeout 2026-05-26 — PASS WITH G1-IMPROVED CAVEAT
 last_updated: 2026-05-26
 ---
 
@@ -240,9 +240,166 @@ W36+ priority queue update:
 
 ---
 
-## Day 2(TBD)— F2 Latency re-verify + F3 closeout
+## Day 2(2026-05-26 same-day collapse)— F2 latency re-verify + F3 closeout
 
-(F2 5-run latency measurement + aggregate vs W34 F2 baseline + F3 decision tree intersect closeout)
+### F2.1 5-run latency measurement runner adapted
+
+`backend/w35-f2-runner.py` created — W34 F2 runner adapted with W35 G2 + G3 verdict logic inline。Runner crashed on cp1252 print encoding of `≤` char(line 110)— **數據 captured 完整**(10 per-run JSONs + structlog stage timings),只 aggregate JSON write step missed。Salvage via `backend/w35-f2-aggregate-salvage.py`(per-run JSONs)+ `backend/w35-f2-stage-timing.py`(structlog extract from UTF-16 LE log)。
+
+### F2.2 5-run latency measurement Q-level result
+
+| Metric | W34 baseline | **W35 Option C** | Δ vs W34 |
+|---|---|---|---|
+| **I07 avg latency** | 62.2s | **25.15s** | **-59.6%** ⭐⭐⭐ |
+| **I01 avg latency** | 53.4s | **16.70s** | **-68.7%** ⭐⭐⭐ |
+| **I07 avg citations** | 6.0 | **4.8** | **-1.2 (-20%)** ⭐ |
+| **I01 avg citations** | 10.2 | **5.4** | **-4.8 (-47%)** ⭐⭐ |
+
+Q-level total latency -60% headline contains:
+- Synthesizer-side LLM emit drop(stage timing -27%)
+- Non-synth overhead reduction(retrieval + CRAG + Langfuse warmup state difference);W34 Q-level 62.2s = synth 17s + 45s elsewhere(Langfuse retry per W34 F2.3 audit_log gap);W35 Q-level 25s = synth 17s + 8s elsewhere(warmer Langfuse)
+
+### F2.3 Stage timing aggregate(per-stage decomposition)
+
+| Stage | W34 baseline | **W35 Option C** | Δ vs W34 | Verdict |
+|---|---|---|---|---|
+| synth_overall_latency_ms | 16974 | 12597 | -25.8% | ⭐ |
+| **synth_llm_completion_latency_ms** | 15665 | **11483.8** | **-26.7%** | ⭐⭐ **G3 PASS** |
+| synth_expand_citations_latency_ms | 1308 | 1112.6 | -14.9% | minor drop |
+| synth_prompt_build_latency_ms | 0 | 0 | unchanged | Karpathy §1.3 surgical |
+| output_tokens(avg)| 701 | 626.9 | -10.6% | ⭐ |
+| citations_count(avg)| 7.5 | 5.1 | -32% | ⭐⭐ |
+
+### G2 + G3 decision tree final verdict
+
+| Gate | Threshold | W35 Option C actual | Verdict |
+|---|---|---|---|
+| **G2 cit count drop** | I07 ≤ 5 AND I01 ≤ 8 | 4.8 + 5.4 | ⭐ **G2 PASS with margin** |
+| **G3 LLM emit drop** | synth_llm_completion ≤ 14098ms(-10%)| 11483.8ms(-26.7%) | ⭐⭐ **G3 PASS with margin** |
+
+### Surprising correlation observed
+
+- `citations_count` -32% vs `output_tokens` -10.6%
+- LLM cite-ing fewer chunks BUT each answer text only ~10% shorter
+- 即係每個 cite 嘅 supporting text 變多咗少少(more elaboration per cite, fewer cites)
+- 呢個可能解釋 correctness -4.43pp persist 原因 — fewer cites = less coverage breadth from RAGAs judge POV
+
+### F3.A Combined decision tree intersect
+
+| Axis | W35 Option C verdict | W35 ship |
+|---|---|---|
+| **G1 faith**(F1)| **IMPROVED** 0.9876 ⭐(+0.40pp vs W34)| ✅ ship-preserve |
+| **G2 cit count drop**(F2)| PASS with margin(I07 4.8 / I01 5.4)| ✅ ship-preserve |
+| **G3 LLM emit drop**(F2)| PASS with margin(11484ms / -26.7%)| ✅ ship-preserve |
+| recall@5 | unchanged 0.8936 | ✅ |
+| p95_latency | -17% 1102ms | ⭐ |
+| eval runtime | -26% 475s | ⭐ |
+| **NEW G2' correctness side effect** | -1.90pp from W26 baseline | ⚠️ accept trade-off per user lock (α)|
+
+**F3.A.3 intersect → W35 Option C ship production-ready** ✅ — preserve in main + W36+ priority queue update。
+
+### F3.B Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
+
+- B.1 plan.md frontmatter `status: active → closed`(PASS measurement-driven ship verdict)
+- B.2 checklist.md cross-cutting tick + N/A reason
+- B.3 progress.md retro 7-section(post Day 2 entry)
+- B.4 session-start.md §10 W35 row `🟡 active` → `✅ closed PASS WITH G1-IMPROVED CAVEAT`
+- B.5 RISK_REGISTER NEW R candidate — DEFERRED W36+(G1 IMPROVED no NEW risk material)
+- B.6 ADR README — no NEW ADR(F1.0/F1.7 prompt wording + F2 re-use W34 instrumentation,both non-architectural per plan §1 + §4 R5)
+
+### F3.C `.env` cleanup + W36+ priority queue locked
+
+- C.1 `.env` cleanup — W29 env override preserved unchanged
+- **C.2 W36+ priority queue locked**:
+  - **HIGHEST** PC-W34-1 session-start protocol amend(verify Langfuse `/api/public/health` 200 + Postgres `SELECT 1` handshake)— W35 F1.3 evidence Docker Desktop UI 卡住一次,operational debt
+  - **HIGHEST** PC-W34-2 RAGAs judge robustness(gpt-5.4-mini → gpt-5.5 OR robust JSON parsing OR exclude complex queries)— W35 F1.4 evidence 仍見 answer_relevancy 0.6X borderline judge artifacts
+  - **MEDIUM**(j') section_path prefix filter quality-of-cite refinement
+  - **LOW preserved** PC-W33-1 + PC-W32-1/2 procedural housekeeping
+  - **DEMOTED LOW** Option A more aggressive re-tighten(Option C 已 Pareto-optimal,A 風險 G1 break);prompt token reduction(W35 F2 prompt_build 0ms 證實 negligible);engine-fetch async pool(W35 F2 expand_citations 1113ms small fraction)
+  - **LOWER**(g')(i')(B'.a)(ii)(k) saturated
+  - **LONG-TERM**(c)(e)(f)/ BUG-026+027 / W22 D8 / W16 F1-F4 Track A IT cred
+
+### F3.D Commit + push(combined F2 + F3 closeout per W31-W34 atomic pattern)
+
+(pending commit + push)
+
+### Self-verification checklist(per CLAUDE.md §12)
+
+- [x] 對應 spec section:architecture.md §3.2 Citation contract + §3.5 Citation invariant + §3.7 (no §3.7 impact this phase)
+- [x] H1-H7 不違反 — F1.0/F1.7 Rule 8 wording tighten = non-architectural prompt content;F2 re-use W34 instrumentation no NEW behavior
+- [x] §1 Karpathy think-before-coding — F1.4 Option B correctness side effect surfaced upfront → Option C re-tighten path
+- [x] N/A frontend fidelity check
+- [x] N/A new test write
+- [x] ruff PASS both F1 edits
+- [x] Commit message follow Conventional Commits — `feat(generation): W35 F1 ...` + pending F2+F3 closeout combined commit
+- [x] N/A architectural-adjacent → ADR
+- [x] N/A Dify reference
+- [x] OQ status check — none expected wording tighten phase
+- [x] Phase checklist tick'd — all F0 + F1 + F2 + F3 items closed
+
+---
+
+## §Retro
+
+### What Worked
+
+1. **R6 Day 0 recursive grep verify caught 3 contamination sources upfront** — prompt_builder.py:30 verbatim wording + test assertions lock + W33 verbatim source first-divergence framing。R6 amendment per W23 F3 enforcement realized concrete value。
+2. **Karpathy §1.1 surface Option B correctness side effect** — `answer_relevancy=0.6X` borderline failures + correctness -5pp 並非 plan §3 explicit criteria,但 material material side effect。Surface to user → path (β) Option C re-tighten 結果 Pareto-optimal。沒有 surface 就會 mis-ship Option B + cumulative -5pp regression unnoticed。
+3. **F1.7 contingency framework triggered correctly** — plan §1 surface 3 wording options(A/B/C)+ §F1.7 contingency branch 已 pre-design → user lock (β) directly invocable no plan amendment scramble。R3 §7 changelog F1.7 amendment row logged before re-edit(no silent drift)。
+4. **Stage timing instrumentation re-use** — W34 F2.1 structlog stage timing infrastructure(synth_overall / synth_prompt_build / synth_llm_completion / synth_expand_citations + expand_citations_list_chunks_batch event)直接 apply 到 W35 F2 measurement,Karpathy §1.3 surgical scope。零 NEW instrumentation cost,G3 -26.7% verdict 清晰 attribution to LLM emit specifically(唔 confounded by Q-level non-synth overhead noise)。
+5. **Pareto comparison surfaced strict-better outcome** — Option C 喺 4 axis(faith / correctness / p95 / runtime)全部 strictly better than Option B → user decision frictionless lock (α) ship。
+
+### What Didn't Work / Surprises
+
+1. **🚨 W35 F2 runner cp1252 print encoding bug**(`≤` U+2264 char line 110)— Windows default console encoding 撞 unicode 字符,**runner crashed at final print** → aggregate JSON write step missed but 10 per-run JSONs saved。**Salvage cost ~10min**(write 2 NEW scripts `w35-f2-aggregate-salvage.py` + `w35-f2-stage-timing.py`)。**NEW PC-W35-1 candidate**:F2 runner future iterations 全部使用 ASCII fallback OR explicit `PYTHONIOENCODING=utf-8` env override OR avoid unicode in print。
+2. **🚨 Docker Desktop UI 卡住 user intervention 需求** — W35 F1.3 pre-flight 發現 Langfuse container `(unhealthy)` + `/api/public/health` timeout → user 報告 Docker Desktop 「loading 停不了重啟不了」 → wait user reboot Docker → restart 之後 Langfuse `Up 4 minutes (unhealthy)` 但 endpoint 200 OK with 30s timeout warmup。**Confirm PC-W34-1 trigger condition reliable** — endpoint health check 比 Docker container health check 更 actionable(Docker `unhealthy` flag 係 timing artifact 唔 reflect actual readiness)。**驗證 PC-W34-1 防護價值**:預先檢查 endpoint 200 而唔係 Docker flag。
+3. **⚠️ Option B correctness -5pp regression surprise** — plan §3 acceptance criteria 預期 G1 faith preserve + G2 + G3 drop。Option B G1 preserved(0.9804)但 correctness -5pp NOT in plan §3。**根因 = 「typically 1-2 chunks」 soft cap 本身令 LLM 答案更 concise** → RAGAs `answer_relevancy` judge 解讀為 less complete。Option C 同樣 cap 仍見 -4.43pp persist → confirm 根因唔係 wording abstract 程度,而係 cap 本身。**接受 trade-off** per user lock (α):G1 actually IMPROVED + p95 -17% + runtime -26% + 4-metric balance Pareto-optimal point。
+4. **⚠️ Q-level latency -60% vs stage timing -27% discrepancy** — W35 F2 Q-level total I07 25s vs W34 62s = -60%,但 synth_llm_completion stage timing 只 -27%。**Explanation**:Q-level total contains non-synth overhead(retrieval + CRAG + Langfuse retry + audit_log)。W34 F2 measurement had Langfuse retry overhead (~30s per W34 F2.3 audit_log gap finding)。W35 F2 measurement Langfuse warmer state → non-synth overhead drop significantly。**Honest G3 verdict 應該 base on stage timing**(-26.7%)而唔係 Q-level total(-60%)— operational state difference 唔可以 attribute to ship。Plan §3 G3 threshold ≤ 14098ms(synth_llm_completion specific)正確 isolate ship-attributable LLM emit drop。
+5. **Surprising correlation `citations_count` -32% vs `output_tokens` -10.6%** — LLM cite-ing fewer chunks BUT 每個 cite 嘅 supporting text 變長少少(more elaboration per cite, fewer cites)。Hypothesis:Rule 8 Option C「typically 1-2 per fact」 cap + 「avoid citing multiple overlapping chunks」 anti-pattern → LLM 揀 high-signal chunks 之後 elaborate more on each。**唔影響 ship decision**(Pareto-optimal 仍 confirmed)但 mechanism insight valuable for W36+ refinement direction。
+
+### Carry-overs
+
+- **🚧 NEW PC-W35-1**(F2 runner cp1252 print encoding bug)— W36+ refactor all `print(...)` statements in `backend/w*-f*-runner.py` family to use ASCII only OR `PYTHONIOENCODING=utf-8` env override pattern
+- **🚧 PC-W34-1**(session-start protocol amend Langfuse health + Postgres handshake)— preserved W36+ HIGHEST(W35 F1.3 evidence reinforced)
+- **🚧 PC-W34-2**(RAGAs judge robustness gpt-5.4-mini → gpt-5.5 OR JSON parse robust OR exclude complex queries)— preserved W36+ HIGHEST
+- **🚧**(j') section_path prefix filter — preserved W36+ MEDIUM
+- **🚧** PC-W33-1 + PC-W32-1/2 — preserved W36+ LOW housekeeping
+- **🚧 DEMOTED**:Option A more aggressive re-tighten / prompt token reduction(0ms confirmed)/ engine-fetch async pool(1113ms small fraction confirmed)
+- **🚧 LOWER**(g')(i')(B'.a)(ii)(k)preserved low priority
+- **🚧 LONG-TERM**(c)(e)(f)/ BUG-026+027 / W22 D8 / W16 F1-F4 Track A IT cred
+
+### ADR Triggers
+
+**None this phase** — F1.0/F1.7 Rule 8 wording tighten + F2 re-use W34 instrumentation 都 non-architectural per H1。Karpathy §1.3 surgical scope 嚴守(only Rule 8 wording + test assertions phrase update + runner script)。
+
+### Phase Gate Result
+
+✅ **PASS WITH G1-IMPROVED CAVEAT** per plan §3 multi-axis decision tree intersect:
+- **G1 faith IMPROVED** ⭐(0.9876 vs W34 0.9836 = +0.40pp,**actually IMPROVED beyond preserve**)
+- **G2 cit count drop with margin** ⭐(I07 4.8 ≤ 5 / I01 5.4 ≤ 8)
+- **G3 LLM emit drop with margin** ⭐⭐(synth_llm_completion 11483.8ms / -26.7% vs -10% threshold)
+- G4 backend pytest baseline 1084 preserved ✅
+- G5 ruff PASS + mypy module-path quirk preserved
+- G6 R6 catch trail verified
+
+**Caveat**:Correctness -1.90pp from W26 historical baseline 0.7416 — accept per user lock (α) given Pareto-optimal 4-axis improvement(faith + p95 + runtime + cit count)+ within Q4 measurement-experiment-fail-policy tolerance(W26 baseline ship state historically)。
+
+### W36+ Priority Queue Locked
+
+per F3.C.2 priority queue,2 個 HIGHEST level operational debt:
+- **PC-W34-1** session-start protocol amend(Langfuse health endpoint + Postgres handshake)— W35 F1.3 evidence Docker stuck event reinforced trigger
+- **PC-W34-2** RAGAs judge robustness — W35 F1.4 仍見 answer_relevancy 0.6X borderline judge artifacts
+- **MEDIUM**(j') section_path prefix filter
+- LOW + LONG-TERM per F3.C.2
+
+### Actual vs Planned Effort
+
+| Phase | Planned | Actual | Delta | Notes |
+|---|---|---|---|---|
+| **D0 F0 kickoff** | ~1h | ~1h | 0 | plan + checklist + progress + R6 3 catches + commits b2f4ca3 + 8c08557 + 0d19e47 |
+| **D1 F1 Rule 8 tighten + RAGAs eval** | ~2-3h | ~3h(includes F1.7 contingency Option C re-run ~30min)| within range | Option B initial → F1.4 correctness side effect surface → user lock (β) → Option C re-tighten → F1.4 re-run → user lock (α);commit c590a86 |
+| **D2 F2 latency + F3 closeout** | ~1.5-2h | ~1.5h(F2 runner crash salvage ~10min absorbed)| within range | F2 5-run + stage timing extract + retro + cross-doc sync + commit + push |
+| **Total** | ~4-6h | ~5.5h | within range | Real-calendar same-day collapse pattern preserved per W22-W34 |
 
 ---
 

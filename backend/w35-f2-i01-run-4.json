@@ -1,0 +1,95 @@
+{
+  "answer": "The high-level architecture connects the Spryker customer portal to downstream enterprise systems through an Azure-native iPaaS integration platform, organized into Spryker, Azure integration services, and downstream enterprise-system zones. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012][chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0013][chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0010]\n\nKey components are:\n\n1. **Azure APIM** as the single API gateway facing Spryker, handling authentication, throttling, tenant routing, schema validation, monitoring, and developer portal capabilities. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012]\n2. **Logic Apps + Functions** for orchestration, transformation, connector-based workflows, custom HTTP integrations, and durable orchestrations. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012]\n3. **Service Bus** for asynchronous messaging, queues, topics, retries, dead-letter queues, long-running transactions, and decoupling. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012]\n4. **Event Grid** for event distribution from systems such as D365 to Spryker webhook receivers. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012]\n5. **Data Factory**, **Application Insights**, and **Azure AD B2C** support batch synchronisation, observability, and customer identity respectively. [chunk-kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012]",
+  "citations": [
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012",
+      "doc_id": "dce-integration-platform-implementation-plan",
+      "doc_title": "DCE_Integration_Platform_Implementation_Plan",
+      "doc_format": "docx",
+      "chunk_title": "4.1 Component overview",
+      "chunk_index": 12,
+      "section_path": [
+        "4. High-level architecture",
+        "4.1 Component overview"
+      ],
+      "relevance_score": 0.08078379953379954,
+      "embedded_images": [
+        {
+          "blob_url": "/api/backend/kb/sample-document-with-image-1/screenshots/9e9b28abcb5286ab86875f02edc049e3b953295707cd770c15ba8a35dde1c150.png",
+          "alt_text": "",
+          "checksum_sha256": "9e9b28abcb5286ab86875f02edc049e3b953295707cd770c15ba8a35dde1c150",
+          "width": 0,
+          "height": 0
+        }
+      ]
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0013",
+      "doc_id": "",
+      "doc_title": "",
+      "doc_format": "docx",
+      "chunk_title": "4.1 Component overview",
+      "chunk_index": 13,
+      "section_path": [
+        "4. High-level architecture",
+        "4.1 Component overview"
+      ],
+      "relevance_score": 0.0,
+      "embedded_images": []
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0010",
+      "doc_id": "",
+      "doc_title": "",
+      "doc_format": "docx",
+      "chunk_title": "3.7 Idempotency and retry safety",
+      "chunk_index": 10,
+      "section_path": [
+        "3. Architectural principles",
+        "3.7 Idempotency and retry safety"
+      ],
+      "relevance_score": 0.0,
+      "embedded_images": []
+    }
+  ],
+  "retrieved_chunks": [
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0002",
+      "chunk_title": "1. Executive summary",
+      "chunk_text": "1. Executive summary\n\nThis document specifies the implementation plan for the integration layer connecting the Spryker-based DCE customer portal to nine enterprise systems across two Azure tenants. The architecture is built on Azure native iPaaS services — API Management (APIM) as the gateway, Logic Apps and Functions for orchestration, Service Bus for asynchronous messaging, Event Grid for event-driven push, Data Factory for batch synchronisation, Application Insights for observability, and Azure AD B2C for customer identity.\n\nThe approach intentionally avoids building a custom middleware application. Instead, it leverages Microsoft-maintained PaaS services, which already provide the platform capabilities (pluggable connectors, multi-protocol support, identity federation, orchestration, monitoring) that a custom middleware would need to reproduce. This aligns to Ricoh's existing Azure enterprise standard and Microsoft's reference integration architecture, eliminates vendor platform lock-in, and provides a sustainable foundation for future integrations beyond the customer portal scope.\n\nThe plan is structured around a three-phase rollout: a Foundation phase (2–4 weeks) to establish landing-zone and governance; a Pilot phase (3 months, aligned to the Validation SOW) delivering the first end-to-end D365 F&O integration; and Expansion phases (6–12 months) onboarding the remaining systems following the same patterns. The estimated three-year total cost of ownership is materially lower than the custom middleware alternative, primarily because the integration platform itself does not require building or maintaining.\n\nCritical success factors include: (a) securing Azure iPaaS expertise via a Microsoft Gold Partner or internal Azure capability, (b) investing in upfront architecture and governance design before building integrations, and (c) per-system fit validation of pre-built connectors against specific use cases. Risks are surfaced and mitigation strategies are proposed.",
+      "relevance_score": 0.08933080808080808
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0011",
+      "chunk_title": "4. High-level architecture",
+      "chunk_text": "4. High-level architecture\n\nThe diagram below presents the high-level architecture. Components are organised into four logical zones: the Spryker customer portal (left), the Azure integration services that constitute the platform (centre), and the downstream enterprise systems organised by category (right).\n\nFigure 1: High-level integration architecture",
+      "relevance_score": 0.08832565284178187
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0012",
+      "chunk_title": "4.1 Component overview",
+      "chunk_text": "4.1 Component overview\n\n**Component** | **Role** | **Service tier (initial)**\n----\nAzure APIM | Single API gateway facing Spryker. Handles authentication, throttling, policy-based routing (including tenant routing), schema validation, monitoring, and developer portal. | Developer or Standard (Premium if VNet integration is required)\nLogic Apps + Functions | Orchestration and transformation. Logic Apps for connector-based workflows (400+ pre-built connectors); Functions for custom HTTP integrations and durable orchestrations. | Logic Apps Standard plan; Functions Consumption plan\nAzure Service Bus | Asynchronous message broker with queues, topics, retry policies, and dead-letter queues. Used for long-running transactions and decoupling. | Standard tier\nAzure Event Grid | Event distribution. Receives business events from D365 and other systems and pushes them to Spryker webhook receivers, eliminating the need for polling. | Basic\nAzure Data Factory | Batch and scheduled data movement, primarily for Snowflake data warehouse synchronisation. | Standard\nApplication Insights | End-to-end observability: distributed tracing, performance metrics, dependency mapping, alerting. | Per-GB ingestion\nAzure AD B2C | Customer identity provider. Handles authentication, registration, and federation. Cross-tenant identity service. | MAU-based pricing",
+      "relevance_score": 0.08078379953379954
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0001",
+      "chunk_title": "Contents",
+      "chunk_text": "Contents\n\n1.  Executive summary\n\n2.  Background and objectives\n\n3.  Architectural principles\n\n4.  High-level architecture\n\n5.  Component detailed design\n\n6.  Multi-tenant strategy\n\n7.  Integration patterns by system\n\n8.  Integration scenarios (end-to-end walkthroughs)\n\n9.  Cross-cutting concerns\n\n10. Resource and skills requirements\n\n11. Execution plan and phases\n\n12. Development workflow\n\n13. Risk and mitigation\n\n14. Success metrics\n\n15. Appendix",
+      "relevance_score": 0.07884358288770053
+    },
+    {
+      "chunk_id": "kb-sample-document-with-image-1_doc-dce-integration-platform-implementation-plan_chunk-0008",
+      "chunk_title": "3.1 Platform composition over platform construction",
+      "chunk_text": "3.1 Platform composition over platform construction\n\nUse Microsoft-maintained PaaS services to compose the integration layer. Do not build platform capabilities (gateway, orchestration engine, connector framework, monitoring stack) that already exist as production Azure services. Custom code is only written for integration-specific business logic, not platform infrastructure.\n\n3.2 Reference model by default, deviation by exception\n\nAll integrations follow Microsoft's reference architecture pattern (APIM front, Logic Apps / Service Bus / Event Grid behind) unless there is a documented, approved exception. Deviations require architecture review and explicit justification.\n\n3.3 Pattern-fit per integration scenario\n\nNot every integration is the same. Synchronous queries (e.g., inventory check at checkout), asynchronous transactions (e.g., order placement), event-driven push (e.g., D365 order status change), and batch synchronisation (e.g., Snowflake DW load) each require different patterns. No single pattern is imposed across the board; each scenario is matched to the right pattern.",
+      "relevance_score": 0.07869674185463658
+    }
+  ],
+  "crag_triggered": false,
+  "crag_iterations": 0,
+  "latency_ms": 10591,
+  "trace_id": "",
+  "model_used": "gpt-5.5",
+  "reranker_used": "cohere-v4.0-pro",
+  "refused": false,
+  "_total_latency_s": 15.836
+}

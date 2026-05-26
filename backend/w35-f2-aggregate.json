@@ -1,0 +1,81 @@
+{
+  "runs": [
+    {
+      "query": "i07",
+      "run": 1,
+      "total_latency_s": 23.54,
+      "citation_count": 3
+    },
+    {
+      "query": "i07",
+      "run": 2,
+      "total_latency_s": 19.518,
+      "citation_count": 3
+    },
+    {
+      "query": "i07",
+      "run": 3,
+      "total_latency_s": 25.611,
+      "citation_count": 6
+    },
+    {
+      "query": "i07",
+      "run": 4,
+      "total_latency_s": 34.682,
+      "citation_count": 9
+    },
+    {
+      "query": "i07",
+      "run": 5,
+      "total_latency_s": 22.414,
+      "citation_count": 3
+    },
+    {
+      "query": "i01",
+      "run": 1,
+      "total_latency_s": 16.847,
+      "citation_count": 6
+    },
+    {
+      "query": "i01",
+      "run": 2,
+      "total_latency_s": 16.963,
+      "citation_count": 6
+    },
+    {
+      "query": "i01",
+      "run": 3,
+      "total_latency_s": 16.848,
+      "citation_count": 6
+    },
+    {
+      "query": "i01",
+      "run": 4,
+      "total_latency_s": 15.836,
+      "citation_count": 3
+    },
+    {
+      "query": "i01",
+      "run": 5,
+      "total_latency_s": 16.999,
+      "citation_count": 6
+    }
+  ],
+  "i07_avg_latency_s": 25.15,
+  "i01_avg_latency_s": 16.7,
+  "i07_avg_cit": 4.8,
+  "i01_avg_cit": 5.4,
+  "g2_cit_count_pass": true,
+  "vs_w34_baseline": {
+    "w34_i07_latency_s": 62.2,
+    "w34_i01_latency_s": 53.4,
+    "w34_i07_avg_cit": 6.0,
+    "w34_i01_avg_cit": 10.2,
+    "i07_latency_delta_pct": -59.6,
+    "i01_latency_delta_pct": -68.7,
+    "i07_cit_delta": -1.2,
+    "i01_cit_delta": -4.8
+  },
+  "note": "salvaged from per-run JSONs after w35-f2-runner.py crashed on cp1252 print encoding of U+2264",
+  "timestamp": "2026-05-26"
+}

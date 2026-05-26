@@ -1,0 +1,42 @@
+{
+  "all10_avg": {
+    "synth_overall_ms": 12597.0,
+    "synth_llm_completion_ms": 11483.8,
+    "synth_expand_citations_ms": 1112.6,
+    "synth_prompt_build_ms": 0.0,
+    "output_tokens": 626.9,
+    "input_tokens": 3131.9,
+    "citations_count": 5.1
+  },
+  "i07_avg": {
+    "synth_overall_ms": 16937.6,
+    "synth_llm_completion_ms": 15810.0,
+    "synth_expand_citations_ms": 1126.8,
+    "output_tokens": 822.8,
+    "citations_count": 4.8
+  },
+  "i01_avg": {
+    "synth_overall_ms": 8256.4,
+    "synth_llm_completion_ms": 7157.6,
+    "synth_expand_citations_ms": 1098.4,
+    "output_tokens": 431.0,
+    "citations_count": 5.4
+  },
+  "w34_baseline": {
+    "synth_overall_ms": 16974,
+    "synth_llm_completion_ms": 15665,
+    "synth_expand_citations_ms": 1308,
+    "synth_prompt_build_ms": 0,
+    "output_tokens": 701,
+    "citations_count": 7.5
+  },
+  "vs_w34_baseline_pct": {
+    "synth_overall": "-25.8%",
+    "synth_llm_completion": "-26.7%",
+    "synth_expand_citations": "-14.9%",
+    "output_tokens": "-10.6%",
+    "citations_count": "-32.0%"
+  },
+  "g3_llm_emit_pass": true,
+  "g3_threshold_ms": 14098
+}

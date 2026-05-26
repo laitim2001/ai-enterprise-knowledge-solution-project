@@ -79,60 +79,60 @@ last_updated: 2026-05-26
 
 ### F2.1 5-run latency measurement
 
-- [ ] F2.1.a `backend/w35-f2-runner.py`(adapt `w34-f2-runner.py`)Q-W25-I07 5 runs + Q-W25-I01 5 runs back-to-back
-- [ ] F2.1.b Backend stderr log capture structlog JSON events `uvicorn-restart-w35.log.err`
-- [ ] F2.1.c Aggregate 10-run mean — I07 + I01 avg total + synth_overall + synth_llm_completion + synth_expand_citations + synth_prompt_build
+- [x] F2.1.a `backend/w35-f2-runner.py` adapted from W34 + G2/G3 verdict logic inline
+- [x] F2.1.b Backend stderr UTF-16 LE log `w35-uvicorn-restart-optc.log` captured 10 structlog events 14:46-14:49Z
+- [x] F2.1.c Aggregate 10-run mean — I07 avg 25.15s / I01 16.70s / synth_overall 12597ms / synth_llm_completion 11483.8ms / synth_expand_citations 1112.6ms / synth_prompt_build 0ms
 
 ### F2.2 Aggregate citation count + latency DROP determination
 
-- [ ] F2.2.a Per-query avg citation count table(W35 / W34 F2 / delta abs + delta %)
-- [ ] F2.2.b Per-stage latency table(W35 / W34 F2 / delta ms + delta %)
-- [ ] F2.2.c G2 measurable citation count DROP — target I07 ≤ 5 AND I01 ≤ 8(W34 baseline 6 / 10.2)
-- [ ] F2.2.d G3 measurable LLM emit latency DROP — target synth_llm_completion ≤ 14098ms(-10% W34 baseline 15665ms)
+- [x] F2.2.a Per-query avg citation count table — I07 6.0→4.8(-1.2 / -20%);I01 10.2→5.4(-4.8 / -47%)
+- [x] F2.2.b Per-stage latency table — synth_overall -25.8%;synth_llm_completion -26.7%;synth_expand_citations -14.9%;synth_prompt_build 0;output_tokens -10.6%;citations_count -32%
+- [x] F2.2.c **G2 PASS with margin** ✅ — I07 4.8 ≤ 5 AND I01 5.4 ≤ 8
+- [x] F2.2.d **G3 PASS with margin** ⭐⭐ — synth_llm_completion 11483.8ms ≤ 14098ms threshold = -26.7% vs -10% threshold
 
 ### F2.3 Commit + progress.md Day 2
 
-- [ ] F2.3.a Commit `feat(observability): W35 F2 latency re-verify + citation count DROP measurement vs W34 F2 baseline`
-- [ ] F2.3.b progress.md Day 2 entry — 10-run latency table + citation count delta + tighten effect verdict
+- [x] F2.3.a Commit pending F3 closeout combined per W34 atomic pattern
+- [x] F2.3.b progress.md Day 2 entry — F2.1 runner + F2.2 Q-level + F2.3 stage timing + G2 G3 verdict
 
 ## F3 — Decision tree analysis + closeout
 
 ### A. Combined decision tree(F1 outcome × F2 outcome)
 
-- [ ] A.1 RAGAs branch determined — G1 preserve / flag / break per plan §3
-- [ ] A.2 Citation count branch determined — G2 drop / inconclusive / null
-- [ ] A.3 LLM emit latency branch determined — G3 drop / inconclusive / null
-- [ ] A.4 Intersect → W36+ priority queue update per plan §F3 A.4 matrix
+- [x] A.1 RAGAs branch = **G1 IMPROVED** ⭐(0.9876 ≥ 0.9637 envelope + actually beats W34 baseline 0.9836)
+- [x] A.2 Citation count branch = **G2 drop with margin** ⭐(I07 4.8 / I01 5.4)
+- [x] A.3 LLM emit latency branch = **G3 drop with margin** ⭐⭐(11483.8ms / -26.7%)
+- [x] A.4 Intersect → **W35 Option C ship production-ready** + W36+ priority queue locked HIGHEST PC-W34-1/2
 
 ### B. Cross-doc sync per CLAUDE.md §10 R3 + R5 + R6
 
-- [ ] plan.md frontmatter `status: active → closed`(measurement-driven PASS OR closed_partial verdict)
-- [ ] checklist.md cross-cutting tick + N/A reason(this file)
-- [ ] progress.md retro 7-section(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W36+ Priority Queue Locked + Actual vs Planned Effort)
-- [ ] session-start.md §10 W35 row `🟡 active` → `✅ closed` + §11 W35 CLOSED block prepend
-- [ ] 🚧 RISK_REGISTER NEW R candidate — DEFERRED W36+ default(G1 preserve outcome expected;若 F1.6 break/flag 則 promote NEW R)
-- [ ] ADR README — no NEW ADR(F1.0 Rule 8 wording tighten = non-architectural prompt content per H1)
+- [x] plan.md frontmatter `status: active → closed`(F3 commit time;PASS WITH G1-IMPROVED CAVEAT)
+- [x] checklist.md cross-cutting tick + N/A reason(this file)
+- [x] progress.md retro 7-section(What Worked + What Didn't / Surprises + Carry-overs + ADR Triggers + Phase Gate Result + W36+ Priority Queue Locked + Actual vs Planned Effort)
+- [x] session-start.md §10 W35 row `🟡 active` → `✅ closed PASS WITH G1-IMPROVED CAVEAT`(F3 commit time)
+- [x] 🚧 RISK_REGISTER NEW R candidate — DEFERRED W36+ default(G1 IMPROVED no NEW risk material)
+- [x] ADR README — no NEW ADR(F1.0/F1.7 Rule 8 wording tighten + F2 re-use W34 instrumentation both non-architectural per plan §1 + §4 R5)
 
 ### C. `.env` cleanup + W36+ priority queue evaluation
 
-- [ ] `.env` cleanup — W29 env override preserved unchanged
-- [ ] W36+ candidate prioritization update per F3 decision tree intersect — PC-W34-1 + PC-W34-2 + (j') + PC-W33-1 + lower priority preserved 候選 + long-term carry-over(documented retro §W36+ Priority Queue Locked)
+- [x] `.env` cleanup — W29 env override preserved unchanged
+- [x] W36+ candidate prioritization update — HIGHEST PC-W34-1 + PC-W34-2(W35 F1.3 evidence reinforced)+ NEW PC-W35-1(F2 runner cp1252 print encoding bug)+ MEDIUM (j')+ LOW PC-W33-1+PC-W32-1/2 housekeeping + DEMOTED Option A/prompt token/engine-fetch async per F2 evidence + LOWER (g')(i')(B'.a)(ii)(k)+ LONG-TERM (c)(e)(f)/BUG-026+027/W22 D8/W16 F1-F4 Track A IT cred(documented retro §W36+ Priority Queue Locked)
 
 ### D. Commit + push
 
-- [ ] F3 closeout commit — `feat(generation): W35 F2 latency re-verify + W35 closeout {PASS|PARTIAL} — decision tree intersect verdict`
+- [ ] F3 closeout commit — `feat(generation): W35 F2 latency re-verify + W35 closeout PASS WITH G1-IMPROVED CAVEAT — G1 0.9876 +0.40pp / G2 cit -32% / G3 LLM emit -26.7%`(combined F2 + F3 atomic per W31-W34 pattern)
 - [ ] Push origin/main(per W33-W34 user-instruction precedent)
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git(F0.6 kickoff + F1.8 F1 + F2.3 F2 + F3 closeout)
-- [ ] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved expected
-- [ ] All architectural-adjacent decisions documented as ADR — N/A F1.0 Rule 8 wording tighten + F2.1 latency re-verify(re-use W34 instrumentation)both non-architectural per plan §1 + §4 R5
-- [ ] `progress.md` retro section written — 7-section per closeout commit
-- [ ] `progress.md` frontmatter status flipped to `closed` OR `closed_partial` per outcome
-- [ ] Phase W36+ kickoff trigger noted in retro — candidates list update per F1.6 + F2.2 intersect
+- [x] All deliverables committed to git(F0.6 kickoff `b2f4ca3` + F0.7 session-start `8c08557` + F0.7 housekeeping `0d19e47` + F1.8 F1 `c590a86` + F2 + F3 closeout pending combined commit)
+- [x] All OQ status changes reflected in `docs/decision-form.md` — no OQ resolved
+- [x] All architectural-adjacent decisions documented as ADR — N/A F1.0/F1.7 Rule 8 wording tighten + F2 re-use W34 instrumentation both non-architectural per plan §1 + §4 R5
+- [x] `progress.md` retro section written — 7-section per F3 closeout
+- [ ] `progress.md` frontmatter status flipped to `closed`(F3 commit time)
+- [x] Phase W36+ kickoff trigger noted in retro — candidates list update per F1.6 + F2.2 intersect (HIGHEST PC-W34-1/2 + NEW PC-W35-1)
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 phase: W35-rule8-wording-tighten
-status: active   # F0 kickoff 2026-05-26 per W34 retro HIGHEST OPTIONAL candidate
+status: closed   # F3 closeout 2026-05-26 — Phase Gate PASS WITH G1-IMPROVED CAVEAT (G1 faith 0.9876 +0.40pp / G2 cit count -32% / G3 LLM emit -26.7% / correctness -1.90pp from W26 baseline accept trade-off per user lock α)
 last_updated: 2026-05-26
 component_scope: C05 Generation Pipeline (prompt_builder.py Rule 8 wording) + C06 Eval Framework (RAGAs LIVE re-verify) + C07 Observability (latency re-verify)
 adr_refs:
