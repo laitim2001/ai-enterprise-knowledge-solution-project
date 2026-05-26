@@ -75,7 +75,14 @@ class _MockSynth:
         self._refused = refused
         self._raise = raise_exc
 
-    async def synthesize(self, query: str, chunks: list[_Chunk]) -> _SynthOutcome:
+    async def synthesize(
+        self,
+        query: str,
+        chunks: list[_Chunk],
+        *,
+        engine: object = None,  # W32 F1.1.a mock signature accept new kwargs (unused)
+        kb_id: str | None = None,
+    ) -> _SynthOutcome:
         if self._raise is not None:
             raise self._raise
         return _SynthOutcome(

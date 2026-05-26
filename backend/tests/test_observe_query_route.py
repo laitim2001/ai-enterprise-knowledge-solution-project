@@ -66,7 +66,14 @@ class _MockSynth:
         self._answer = answer
         self._refused = refused
 
-    async def synthesize(self, query: str, chunks: list[_Chunk]) -> _SynthOutcome:
+    async def synthesize(
+        self,
+        query: str,
+        chunks: list[_Chunk],
+        *,
+        engine: object = None,  # W32 F1.1.a mock signature accept new kwargs (unused)
+        kb_id: str | None = None,
+    ) -> _SynthOutcome:
         return _SynthOutcome(
             answer=self._answer,
             citation_ids=[],

@@ -411,8 +411,11 @@ class CragLoop:
                 )
 
         try:
+            # W32 F1.4 — CRAG re-synth path: pass engine + kb_id to enable engine-fetch
+            # citation expansion per (h'). Backward compat: defaults None → expansion no-op.
             new_synth = await self._synthesizer.synthesize(
                 rewrite.rewritten_query, expanded_new_chunks,
+                engine=self._engine, kb_id=kb_id,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")

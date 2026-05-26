@@ -202,7 +202,12 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
             # expanded_chunks unchanged — fallback to Context Expander result
 
     try:
-        synth = await synthesizer.synthesize(payload.query, expanded_chunks)
+        # W32 F1.4.a — pass engine + kb_id to enable engine-fetch citation expansion
+        # per (h') single-axis ship. Backward compat: synthesize() defaults engine=None,
+        # kb_id=None → expansion no-op.
+        synth = await synthesizer.synthesize(
+            payload.query, expanded_chunks, engine=engine, kb_id=payload.kb_id,
+        )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -371,7 +376,11 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
         # Cancellation mid-stream still emits a generation event with
         # status=cancelled so partial-spend cost attribution stays accurate。
         try:
-            synth_stream = synthesizer.synthesize_stream(payload.query, expanded_chunks)
+            # W32 F1.4.b — pass engine + kb_id to enable engine-fetch citation expansion
+            # in stream path (final `result` event carries expanded values).
+            synth_stream = synthesizer.synthesize_stream(
+                payload.query, expanded_chunks, engine=engine, kb_id=payload.kb_id,
+            )
             observed = observe_streaming(
                 compose_query_stream(
                     result,

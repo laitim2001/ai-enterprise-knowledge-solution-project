@@ -242,6 +242,37 @@ class Settings(BaseSettings):
     # FAIL → NEW ADR-0038 documents finding + default preserved per Karpathy §1.3.
     parent_doc_dispatch_mode: Literal["replace", "append"] = "replace"
 
+    # W32 F1.3 — engine-fetch citation expansion per W31 retro HIGHEST (h')
+    # candidate post-W31 multi-axis fully FAIL (G1 strict 0/15 + G1 marginal
+    # +0pp net across v1+v2+v3 batches). Single-axis ship per W31 multi-axis
+    # trap lesson + Karpathy §1.2 一次只郁一個旋鈕. When True, synthesizer
+    # post `extract_citation_ids` calls async `expand_citations` which uses
+    # `engine.list_chunks(kb_id, doc_id)` to fetch FULL doc chunks (not top-K
+    # reranked subset) and finds ±N chunk_index neighbors of cited chunks
+    # within same doc, filtering on title regex `\\b\\d+\\.\\d+\\b` (corpus-
+    # validated bare X.M + §X.M pattern per W31 F2 v2 evidence). Escapes
+    # W31 F2 v3 R6 catch (3) window=3 architectural constraint — top-5
+    # reranked chunks need NOT contain §X.M walkthroughs of cited intro doc
+    # for expansion to fire. Mirror W25 F5 D1 `citation_image_neighbors.py`
+    # `attach_neighbour_images` async pattern (batch by doc + parallel
+    # asyncio.gather list_chunks + per-doc graceful failure + dedupe + cap).
+    # Default True = W32 measurement experiment (per Karpathy §1.4 goal-driven
+    # 「make it pass」requires axis enabled); F3 closeout will decide
+    # preserve / revert per Q4 measurement-experiment-fail-policy. **NO
+    # score_threshold field** per W31 PC-W31-2 lesson — `list_chunks` returns
+    # raw Azure Search chunks without rerank score (no filter possible).
+    enable_citation_post_hoc_expansion: bool = True
+    # ±N chunk_index window — W31 F2 v3 evidence corpus §X.1-§X.5 walkthroughs
+    # at idx 46/48/50/51/53 within ±10 of intro idx 44. W31 default 3 too
+    # restrictive (§8.4 distance 7 from intro 44 excluded). W32 default 10
+    # corpus-empirical; tunable F3 per evidence (smaller if over-expansion
+    # crosses sections, larger if §X.M walkthroughs span longer doc).
+    citation_expansion_window: int = 10
+    # Safety cap on auto-added neighbors per existing citation — parallel to
+    # W25 F5 D1 `citation_neighbour_max_aux_images=2` convention. 2 = max 2
+    # extra `[chunk-{id}]` markers inserted per original citation marker.
+    citation_expansion_max_aux: int = 2
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

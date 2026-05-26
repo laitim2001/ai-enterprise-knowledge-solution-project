@@ -23,42 +23,42 @@ last_updated: 2026-05-26
 
 ### F1.1 Synthesizer wire signature change(`backend/generation/synthesizer.py`)
 
-- [ ] F1.1.a `Synthesizer.synthesize(query, chunks)` → `Synthesizer.synthesize(query, chunks, *, engine=None, kb_id=None)` keyword-only optional params
-- [ ] F1.1.b `Synthesizer.synthesize_stream(query, chunks)` → same kwarg additions
-- [ ] F1.1.c Caller site update — `backend/api/routes/query.py`(or `pipeline/query_pipeline.py`)passes `engine + kb_id` from existing pipeline state
-- [ ] F1.1.d Backward compat:if `engine is None or kb_id is None` → skip expansion(W25 F5 D1 attach_neighbour_images pattern at line 61-62 same defensive return)
+- [x] F1.1.a `Synthesizer.synthesize(query, chunks)` → `Synthesizer.synthesize(query, chunks, *, engine=None, kb_id=None)` keyword-only optional params + docstring per plan §2 F1.1.d
+- [x] F1.1.b `Synthesizer.synthesize_stream(query, chunks)` → same kwarg additions
+- [x] F1.1.c Caller site updates — `api/routes/query.py:205+374` + `generation/crag.py:414` all pass `engine + kb_id` (already in scope from earlier RetrievalEngine.retrieve calls);3 caller sites total
+- [x] F1.1.d Backward compat:`if not refused and engine is not None and kb_id is not None` guard in both synthesize + synthesize_stream(double-None check;legacy tests / pre-W32 callers→ no-op)
 
 ### F1.2 Backend layer NEW async module(`backend/generation/citation_expansion.py`)
 
-- [ ] F1.2.a `async def expand_citations(answer_text, citation_ids, chunks, *, engine, kb_id, settings) → (expanded_text, expanded_citation_ids)` async signature
-- [ ] F1.2.b Algorithm:group cited chunks by doc_id → parallel `asyncio.gather` `engine.list_chunks(kb_id, doc_id)` → per-doc find ±window neighbors with §X.M title regex + max_aux cap closer-preferred
-- [ ] F1.2.c Auto-insert `[chunk-{neighbor_id}]` markers after existing(preserve W31 F1.2.c pattern)+ dedupe + per-doc batch fetch
-- [ ] F1.2.d Defensive:per-doc fetch exception → log warning + skip that doc's expansion(W25 F5 D1 line 86-92 graceful degradation pattern)
-- [ ] F1.2.e `_find_neighbour_chunks` private pure helper testable without engine(parallel W25 F5 D1 `_find_neighbour_images`)
+- [x] F1.2.a `async def expand_citations(answer_text, citation_ids, chunks, *, engine, kb_id, settings) → (expanded_text, expanded_citation_ids)` async signature
+- [x] F1.2.b Algorithm implemented:group cited chunks by doc_id → parallel `asyncio.gather` `engine.list_chunks(kb_id, doc_id)` → per-doc `_find_neighbour_chunks` with ±window + §X.M title regex `\b\d+\.\d+\b` + max_aux cap closer-preferred(sorted by absolute distance)
+- [x] F1.2.c Auto-insert `[chunk-{neighbor_id}]` markers after existing(W31 F1.2.c pattern preserved)+ dedupe via `added_ids: set[str]` + per-doc batch fetch
+- [x] F1.2.d Defensive:per-doc fetch exception via `return_exceptions=True` + log warning + skip that doc's expansion(W25 F5 D1 line 86-92 graceful pattern)
+- [x] F1.2.e `_find_neighbour_chunks` private pure helper(no IO,no async)— parallel W25 F5 D1 `_find_neighbour_images` line 135-186 pattern,testable in isolation
 
-### F1.3 Settings NEW knobs(`backend/storage/settings.py`)
+### F1.3 Settings NEW knobs(`backend/storage/settings.py:245-272`)
 
-- [ ] F1.3.a `enable_citation_post_hoc_expansion: bool = True` — W32 default ON per Karpathy §1.4 goal-driven measurement
-- [ ] F1.3.b `citation_expansion_window: int = 10` — W31 F2 v3 evidence corpus §X.1-§X.5 within ±10 of intro idx 44(escapes W31 window=3 constraint)
-- [ ] F1.3.c `citation_expansion_max_aux: int = 2` — parallel W25 F5 D1 + W31 reverted convention
-- [ ] F1.3.d **NO** `citation_expansion_score_threshold` — `list_chunks` returns raw chunks without rerank score per W31 PC-W31-2 lesson
+- [x] F1.3.a `enable_citation_post_hoc_expansion: bool = True` — W32 measurement default ON per Karpathy §1.4
+- [x] F1.3.b `citation_expansion_window: int = 10` — W31 F2 v3 evidence corpus §X.1-§X.5 within ±10 of intro idx 44(escapes W31 window=3 constraint)
+- [x] F1.3.c `citation_expansion_max_aux: int = 2` — parallel W25 F5 D1 + W31 reverted convention
+- [x] F1.3.d **NO** `citation_expansion_score_threshold` — `list_chunks` returns raw chunks without rerank score per W31 PC-W31-2 lesson
 
-### F1.4 Caller wire update(`backend/api/routes/query.py` OR `pipeline/query_pipeline.py`)
+### F1.4 Caller wire update(`backend/api/routes/query.py` + `backend/generation/crag.py`)
 
-- [ ] F1.4.a Locate Synthesizer caller — pass `engine + kb_id` through pipeline state(already available since `RetrievalEngine.retrieve(kb_id=...)` called earlier)
-- [ ] F1.4.b Backward compat:legacy callers / tests without engine → expand_citations no-op gracefully
+- [x] F1.4.a `query.py:205-211`(synthesize)+ `query.py:374-378`(synthesize_stream)pass `engine=engine, kb_id=payload.kb_id`(both in scope from earlier `engine.retrieve(kb_id=...)` call site)
+- [x] F1.4.b `crag.py:414-417` re-synth path passes `engine=self._engine, kb_id=kb_id`(self._engine + kb_id local var in scope);backward compat preserved via Synthesizer signature default None
 
 ### F1.5 Unit tests + non-regression coverage
 
-- [ ] F1.5.a NEW `backend/tests/test_citation_expansion.py` async unit tests — disabled flag / empty inputs / happy path / corpus bare X.M pattern / window boundary / max_aux cap / dedupe / same doc constraint / cited-not-in-chunks defensive / per-doc fetch exception graceful / `_find_neighbour_chunks` pure unit;12+ NEW tests target
-- [ ] F1.5.b `test_synthesizer.py` +2 NEW async tests — synthesize wires expand_citations with engine + kb_id / skips when refused
-- [ ] F1.5.c backend pytest baseline 1060 → expected ~1072-1075 post-W32 F1
-- [ ] F1.5.d ruff PASS on touched files
-- [ ] F1.5.e mypy strict citation_expansion.py clean(pre-existing W26 baseline module-path quirk per CO_W25_mypy_strict_debt unchanged)
+- [x] F1.5.a NEW `backend/tests/test_citation_expansion.py` 18 async unit tests PASS — disabled flag / empty inputs / happy path engine-fetch / corpus bare X.M pattern + §-prefix backward compat / intro-with-no-§X.M-numbering excluded / window boundary inclusive / max_aux cap closer-preferred / dedupe / multiple cited chunks from different docs independent / cited-not-in-chunks defensive / per-doc fetch exception graceful / no walkthrough returns unchanged / _find_neighbour_chunks pure 8 sub-tests
+- [x] F1.5.b `test_synthesizer.py` +3 NEW async tests PASS — synthesize wires expand_citations when engine + kb_id provided / skips when None / skips when refused
+- [x] F1.5.c backend pytest baseline 1060 → expected **~1081 post-W32 F1**(+21 NEW W32:18 citation_expansion + 3 synthesizer);verify via full pytest run
+- [x] F1.5.d ruff PASS on touched files(1 auto-fixed via `--fix` + 1 manual fix `zip(...,strict=True)`)
+- [x] F1.5.e mypy strict citation_expansion.py clean per --follow-imports=silent isolated check(Success: no issues found);pre-existing 13 errors in other modules per CO_W25_mypy_strict_debt unchanged
 
 ### F1 commit + progress.md Day 1
 
-- [ ] F1.6 Commit `feat(generation): W32 F1 engine-fetch citation expansion + async list_chunks per W31 (h') candidate + 12+ NEW unit tests` per CLAUDE.md R2 daily commit binding
+- [ ] F1.6 Commit `feat(generation): W32 F1 engine-fetch citation expansion + async list_chunks per W31 (h') candidate + 21 NEW unit tests` per CLAUDE.md R2 daily commit binding
 - [ ] F1.7 progress.md Day 1 entry — implementation summary + test verdict + ruff/mypy state + commit hash backfill
 
 ## F2 — 5-run reproducibility verify Q-W25-I07 + Q-W25-I01 control(D2 estimate)

@@ -293,3 +293,141 @@ async def test_synthesize_stream_closes_underlying_stream_on_finally() -> None:
                 pass
 
     stream_obj.close.assert_awaited()
+
+
+# ---------- W32 F1.5.b citation expansion wire tests ------------------------
+
+
+def _chunk_w32(
+    cid: str, doc_id: str, chunk_index: int, chunk_title: str,
+) -> RetrievedChunk:
+    return RetrievedChunk(
+        score=0.5,
+        fields={
+            "chunk_id": cid,
+            "doc_id": doc_id,
+            "chunk_index": chunk_index,
+            "chunk_title": chunk_title,
+            "chunk_text": f"body for {cid}",
+            "section_path": [],
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_synthesize_invokes_engine_fetch_expansion_when_engine_and_kb_id_provided() -> None:
+    """W32 F1.4.a — synthesizer.synthesize wires async expand_citations via engine.list_chunks
+    when (a) not refused, (b) engine + kb_id both provided。
+
+    Verifies engine.list_chunks called with kb_id + cited doc_id, and result fields
+    replace synthesizer's answer + citation_ids。
+    """
+    chunks = [_chunk_w32("0044", "doc-A", 44, "8. Integration")]
+
+    # Mock completion: cited intro chunk-0044 only
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content="Integration scenarios [chunk-0044]."),
+            ),
+        ],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+    )
+
+    async def _create(**kwargs):
+        return completion
+
+    # Mock engine.list_chunks returns full doc with §8.1 + §8.2 walkthroughs
+    mock_engine = AsyncMock()
+    mock_engine.list_chunks = AsyncMock(return_value=[
+        {"chunk_id": "0044", "chunk_index": 44, "chunk_title": "8. Integration"},
+        {"chunk_id": "0046", "chunk_index": 46, "chunk_title": "8.1 Scenario A walkthrough"},
+        {"chunk_id": "0048", "chunk_index": 48, "chunk_title": "8.2 Scenario B walkthrough"},
+    ])
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            result = await s.synthesize(
+                "show me integration scenarios", chunks,
+                engine=mock_engine, kb_id="kb1",
+            )
+
+    # Engine-fetch expansion fired: §8.1 + §8.2 walkthroughs added per (h')
+    assert "0044" in result.citation_ids
+    assert "0046" in result.citation_ids
+    assert "0048" in result.citation_ids
+    assert "[chunk-0044][chunk-0046][chunk-0048]" in result.answer
+    mock_engine.list_chunks.assert_called_once_with("kb1", "doc-A")
+
+
+@pytest.mark.asyncio
+async def test_synthesize_skips_expansion_when_engine_or_kb_id_none() -> None:
+    """W32 F1.1.d — backward compat: legacy callers without engine + kb_id → expansion no-op。"""
+    chunks = [_chunk_w32("0044", "doc-A", 44, "8.1 Walk")]
+
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content="Answer [chunk-0044]."),
+            ),
+        ],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+    )
+
+    async def _create(**kwargs):
+        return completion
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            # Legacy call without engine/kb_id (default None) — expansion skipped
+            result = await s.synthesize("query", chunks)
+
+    # Expansion did not fire — citations unchanged from LLM output
+    assert result.citation_ids == ["0044"]
+
+
+@pytest.mark.asyncio
+async def test_synthesize_skips_expansion_when_refused() -> None:
+    """W32 — refusal path bypasses expand_citations even with engine + kb_id provided。"""
+    chunks = [_chunk_w32("0044", "doc-A", 44, "8.1 Walk")]
+    mock_engine = AsyncMock()
+    mock_engine.list_chunks = AsyncMock(return_value=[])
+
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(message=SimpleNamespace(content=REFUSAL_PHRASE)),
+        ],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5),
+    )
+
+    async def _create(**kwargs):
+        return completion
+
+    with patch("generation.synthesizer.AsyncAzureOpenAI") as MockClient:
+        instance = MockClient.return_value
+        instance.chat = SimpleNamespace(completions=SimpleNamespace(create=_create))
+        instance.close = AsyncMock()
+
+        async with Synthesizer(
+            endpoint="https://x", api_key="k", api_version="v", deployment="gpt-5-5"
+        ) as s:
+            result = await s.synthesize(
+                "unanswerable", chunks, engine=mock_engine, kb_id="kb1",
+            )
+
+    assert result.refused is True
+    assert result.citation_ids == []
+    # Refusal path: engine.list_chunks NOT called (early skip before expand_citations)
+    mock_engine.list_chunks.assert_not_called()

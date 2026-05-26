@@ -27,9 +27,10 @@ from tenacity import (
     wait_exponential,
 )
 
+from generation.citation_expansion import expand_citations
 from generation.prompt_builder import REFUSAL_PHRASE, build_prompt
 from observability.observe import observe_llm_async
-from retrieval.retrieval_engine import RetrievedChunk
+from retrieval.retrieval_engine import RetrievalEngine, RetrievedChunk
 from storage.settings import get_settings
 
 logger = structlog.get_logger(__name__)
@@ -121,7 +122,15 @@ class Synthesizer:
         self,
         query: str,
         chunks: list[RetrievedChunk],
+        *,
+        engine: RetrievalEngine | None = None,
+        kb_id: str | None = None,
     ) -> SynthesisResult:
+        """W32 F1.1.a — `engine + kb_id` keyword-only optional params enable post-hoc
+        citation expansion via async `engine.list_chunks` full-doc fetch (mirror W25 F5 D1
+        attach_neighbour_images pattern); when either is None, expansion skipped (backward
+        compat for legacy callers / tests per plan §2 F1.1.d).
+        """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
         prompt = build_prompt(
@@ -142,6 +151,17 @@ class Synthesizer:
         answer_text = (choice.message.content if choice and choice.message else "") or ""
         citation_ids = extract_citation_ids(answer_text)
         refused = REFUSAL_PHRASE in answer_text
+
+        # W32 F1.4.a — post-hoc citation expansion via engine-fetch (h')。Apply only
+        # when not refused (refusal phrase has no citations to expand) AND engine + kb_id
+        # provided (backward compat preserved when legacy callers don't plumb them).
+        # `expand_citations` async fetch full doc chunks via `engine.list_chunks` —
+        # escapes W31 window=3 architectural constraint per F2 v3 R6 catch (3).
+        if not refused and engine is not None and kb_id is not None:
+            answer_text, citation_ids = await expand_citations(
+                answer_text, citation_ids, chunks,
+                engine=engine, kb_id=kb_id, settings=get_settings(),
+            )
 
         usage = getattr(completion, "usage", None)
         input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
@@ -172,6 +192,9 @@ class Synthesizer:
         self,
         query: str,
         chunks: list[RetrievedChunk],
+        *,
+        engine: RetrievalEngine | None = None,
+        kb_id: str | None = None,
     ) -> AsyncIterator[dict]:
         """Stream chat.completions tokens; yield SSE events for stream_composer.
 
@@ -234,6 +257,15 @@ class Synthesizer:
         latency_ms = int((time.perf_counter() - start) * 1000)
         citation_ids = extract_citation_ids(accumulated)
         refused = REFUSAL_PHRASE in accumulated
+
+        # W32 F1.4.b — post-hoc citation expansion via engine-fetch applied to accumulated
+        # stream result. Text-delta partial frames already yielded before expansion;final
+        # `result` event below carries expanded answer + citation_ids per plan §2 F1.1.b.
+        if not refused and engine is not None and kb_id is not None:
+            accumulated, citation_ids = await expand_citations(
+                accumulated, citation_ids, chunks,
+                engine=engine, kb_id=kb_id, settings=get_settings(),
+            )
 
         logger.info(
             "synthesizer_stream_complete",
