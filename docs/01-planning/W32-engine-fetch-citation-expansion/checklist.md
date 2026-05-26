@@ -15,8 +15,8 @@ last_updated: 2026-05-26
 - [x] F0.2 R6 Day 0 recursive grep verify — `prompt_builder.py` Rule 1-6 only(W31 Rule 7+8 REVERTED per `09805d6`)+ `synthesizer.py` NO expand_citations import/wire(W31 reverted)+ `Settings.py` NO citation_expansion_* fields(W31 reverted)+ `citation_image_neighbors.py` W25 F5 D1 attach_neighbour_images reference pattern verified at line 41-132 + `retrieval_engine.py:258` `list_chunks(kb_id, doc_id, top=1000)` API verified → **no shipped-pattern conflict for engine-fetch B'.c path 3**
 - [x] F0.3 Draft `plan.md` 7-section per W30+W31 closed-phase template
 - [x] F0.4 Draft `checklist.md` atomic items derived from plan §2 deliverables(this file)
-- [ ] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + W31 lessons applied(PC-W31-1/2/3)
-- [ ] F0.6 Commit kickoff `docs(planning): kickoff W32-engine-fetch-citation-expansion + (h') single-axis ship per W31 multi-axis lesson + R6 Day 0 net 0 contamination`
+- [x] F0.5 Draft `progress.md` Day 0 entry — kickoff action + R6 catch report + W31 lessons applied(PC-W31-1/2/3)
+- [x] F0.6 Commit kickoff `8628fbb` — `docs(planning): kickoff W32-engine-fetch-citation-expansion + (h') single-axis ship per W31 multi-axis lesson + R6 Day 0 net 0 contamination`
 - [ ] F0.7 session-start.md §10 W32 row append `🟡 active 2026-05-26` + W33+ rolling JIT row defer + W31 row 維持 closed_partial
 
 ## F1 — Implementation(D1 estimate)
