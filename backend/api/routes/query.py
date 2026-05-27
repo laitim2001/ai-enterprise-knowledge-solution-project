@@ -130,6 +130,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
                 query=payload.query,
                 kb_id=payload.kb_id,
                 top_k=payload.top_k_rerank,
+                mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
             )
     except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
         raise HTTPException(
@@ -309,6 +310,7 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
             query=payload.query,
             kb_id=payload.kb_id,
             top_k=payload.top_k_rerank,
+            mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(

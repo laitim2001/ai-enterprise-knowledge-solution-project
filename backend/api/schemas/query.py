@@ -52,6 +52,11 @@ class QueryRequest(BaseModel):
         "azure-semantic",
         "off",
     ] = "cohere-v4.0-pro"  # ADR-0012 production lock; v3.5 retained for backwards-compat
+    # W39 F2 — Path A additive enhancement (對齊 ADR-0021 /retrieval_test schema symmetry).
+    # Default "hybrid" preserves W38- production behavior (semantic ranker for full quality).
+    # "vector" / "fulltext" exposed for Free tier workaround when Azure semantic ranker
+    # monthly quota exhausted (W38 F3 + W39 F1 evidence) — also useful for debug + A/B test.
+    mode: Literal["hybrid", "vector", "fulltext"] = "hybrid"
     enable_crag: bool = True
     enable_intent_routing: bool = False
 

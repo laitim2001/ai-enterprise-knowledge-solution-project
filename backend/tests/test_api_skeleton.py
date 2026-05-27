@@ -142,3 +142,28 @@ def test_query_request_schema_rejects_empty_query(client: TestClient) -> None:
         json={"query": "", "kb_id": "drive"},
     )
     assert response.status_code == 422
+
+
+def test_w39_query_request_mode_field_default_hybrid() -> None:
+    """W39 F2 Path A — QueryRequest.mode defaults to 'hybrid' (backward-compat)."""
+    from api.schemas.query import QueryRequest
+    payload = QueryRequest(query="test query", kb_id="drive")
+    assert payload.mode == "hybrid"
+
+
+def test_w39_query_request_mode_field_accepts_vector_and_fulltext() -> None:
+    """W39 F2 Path A — QueryRequest.mode accepts hybrid/vector/fulltext per ADR-0021."""
+    from api.schemas.query import QueryRequest
+    for mode in ("hybrid", "vector", "fulltext"):
+        payload = QueryRequest(query="q", kb_id="drive", mode=mode)
+        assert payload.mode == mode
+
+
+def test_w39_query_request_mode_field_rejects_invalid_value() -> None:
+    """W39 F2 Path A — Literal["hybrid", "vector", "fulltext"] rejects others."""
+    import pytest
+    from pydantic import ValidationError
+
+    from api.schemas.query import QueryRequest
+    with pytest.raises(ValidationError):
+        QueryRequest(query="q", kb_id="drive", mode="semantic")  # type: ignore[arg-type]
