@@ -158,6 +158,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             searcher=searcher,
             reranker=reranker,
             hybrid_overfetch_for_rerank=settings.hybrid_top_k_retrieval,
+            reranker_cross_section_deboost=settings.reranker_cross_section_deboost,
+            reranker_section_path_prefix_depth=settings.reranker_section_path_prefix_depth,
         )
 
         # Synthesizer reuses the same Azure OpenAI endpoint+key but a different

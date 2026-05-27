@@ -285,6 +285,23 @@ class Settings(BaseSettings):
     # W37 F2 outcome.
     citation_expansion_section_path_prefix_depth: int = 0
 
+    # W38 — Reranker cross-section deboost (per ADR-0035 W25 F5 D2 symmetric
+    # pattern reference; post-rerank client-side score multiply, non-architectural
+    # per H1). 1.0 = disabled (W38 baseline preserve W37 production behavior);
+    # 0.85 = typical 15% rank penalty for cross-section candidates per W25 ADR-0035
+    # deboost magnitude; 0.5+ aggressive for strong cross-section drift cases.
+    # 真正 root cause per W37 F2 evidence — I07 Run 2 cited §11 Execution plan +
+    # §11.2 Phase 1 chunks (cross-section §8 → §11) 由 reranker top-K 直接 surface,
+    # unfiltered by W32 (h') citation_expansion layer (scope-out by design).
+    # Production flip 屬 W39+ separate decision per W26 PC1 一次只郁一個旋鈕。
+    reranker_cross_section_deboost: float = 1.0
+    # Section_path prefix depth match required when deboost active. 1 = top-level
+    # only (single-doc KB 幾乎 no-op);2 = top + sub-level required (e.g.
+    # ["Doc","§8"] vs ["Doc","§11"] = different,deboost triggered);3 = strict
+    # subsection (rarely needed)。Default 2 per W37 F2 evidence — single-doc KB
+    # top-level「Doc」shared,只有 depth>=2 先有實質區分效果。
+    reranker_section_path_prefix_depth: int = 2
+
     # Feature flags
     feature_l3_routing_enabled: bool = False
     feature_auth_enabled: bool = False

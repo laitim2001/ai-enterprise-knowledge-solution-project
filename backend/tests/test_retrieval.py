@@ -370,3 +370,183 @@ async def test_retrieval_engine_no_rerank_call_when_hits_empty() -> None:
     reranker.rerank.assert_not_awaited()
     assert result.reranked is False
     assert result.chunks == []
+
+
+# ---------- W38 reranker cross-section deboost tests ----------
+# Per ADR-0035 W25 F5 D2 symmetric pattern reference;non-architectural per H1
+# (post-rerank client-side score multiply,Cohere v4.0-pro contract unchanged)。
+
+
+from retrieval.reranker.base import RerankedChunk  # noqa: E402
+
+
+def _reranked(chunk_id: str, score: float, section_path: list[str] | None = None,
+              extra: dict | None = None, *, original_index: int = 0,
+              hybrid_score: float | None = None) -> RerankedChunk:
+    """Build a RerankedChunk mock with explicit section_path for deboost testing.
+
+    RerankedChunk is frozen=True (slots=True) with required fields:
+    fields + rerank_score + hybrid_score + original_index.
+    """
+    fields = {"chunk_id": chunk_id, "chunk_text": chunk_id}
+    if section_path is not None:
+        fields["section_path"] = section_path
+    if extra:
+        fields.update(extra)
+    return RerankedChunk(
+        fields=fields,
+        rerank_score=score,
+        hybrid_score=hybrid_score if hybrid_score is not None else score,
+        original_index=original_index,
+    )
+
+
+@pytest.mark.asyncio
+async def test_w38_reranker_deboost_disabled_default_no_op() -> None:
+    """deboost=1.0 (default) → reranked order untouched (W37 baseline preserve)."""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(
+        return_value=[HybridSearchHit(score=0.9, fields={"chunk_id": "c1"})],
+    )
+    reranker = MagicMock()
+    # Cross-section candidates — but deboost=1.0 = no-op
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("a", 0.9, section_path=["Doc", "§8"]),
+            _reranked("b", 0.8, section_path=["Doc", "§11"]),  # cross-section,但 deboost disabled
+            _reranked("c", 0.7, section_path=["Doc", "§8", "§8.4"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=1.0,  # disabled
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # Order unchanged — `b` keeps original rerank_score 0.8
+    assert [c.fields["chunk_id"] for c in result.chunks] == ["a", "b", "c"]
+    assert result.chunks[1].score == 0.8
+
+
+@pytest.mark.asyncio
+async def test_w38_reranker_deboost_cross_section_score_reduced() -> None:
+    """anchor §8 + 候選 §11 → rerank_score *= 0.85;re-sort 後 cross-section 排尾。"""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("a", 0.90, section_path=["Doc", "§8"]),                         # anchor
+            _reranked("b", 0.88, section_path=["Doc", "§11", "§11.2 Phase 1"]),       # cross → × 0.85 = 0.748
+            _reranked("c", 0.80, section_path=["Doc", "§8", "§8.4 Scenario D"]),      # same-section preserved
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # Post-deboost order:a (0.90) > c (0.80) > b (0.748 deboosted)
+    assert [c.fields["chunk_id"] for c in result.chunks] == ["a", "c", "b"]
+    # b's score reduced by deboost factor
+    assert result.chunks[2].score == pytest.approx(0.88 * 0.85, abs=1e-6)
+
+
+@pytest.mark.asyncio
+async def test_w38_reranker_deboost_same_section_hierarchical_zoom_preserved() -> None:
+    """anchor §8 + 候選 §8.4 (hierarchical zoom-in) → score preserved,NOT deboosted。"""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor", 0.90, section_path=["Doc", "§8"]),                    # anchor depth=1
+            _reranked("sub_a", 0.85, section_path=["Doc", "§8", "§8.4"]),             # depth=2,prefix[:2]=["Doc","§8"] match anchor[:2]=["Doc","§8"]
+            _reranked("sub_b", 0.80, section_path=["Doc", "§8", "§8.5"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    # 全部 preserve(anchor prefix [:2] = ["Doc","§8"] partial,sub_a+sub_b [:2] = ["Doc","§8"] match)
+    # Note:anchor sp 只有 1 級「Doc","§8"」,prefix[:2] = ["Doc","§8"]
+    # sub_a sp 有 3 級,prefix[:2] = ["Doc","§8"] = anchor 同 → preserved
+    assert all(c.score == orig for c, orig in zip(
+        result.chunks, [0.90, 0.85, 0.80], strict=True,
+    ))
+
+
+@pytest.mark.asyncio
+async def test_w38_reranker_deboost_re_sort_invariant() -> None:
+    """Deboost 觸發後 rerank_score 必須 descending sorted。"""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    # Set up case where deboost shuffles ordering:
+    # original [a 0.90, b 0.88, c 0.80] → after deboost [a 0.90, b 0.528, c 0.80]
+    # → re-sort [a 0.90, c 0.80, b 0.528]
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("a", 0.90, section_path=["Doc", "§8"]),
+            _reranked("b", 0.88, section_path=["Doc", "§11"]),
+            _reranked("c", 0.80, section_path=["Doc", "§8"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.6,  # aggressive: 0.88 * 0.6 = 0.528 < 0.80
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    scores = [c.score for c in result.chunks]
+    assert scores == sorted(scores, reverse=True), f"Not descending: {scores}"
+
+
+@pytest.mark.asyncio
+async def test_w38_reranker_deboost_malformed_section_path_defensive_skip() -> None:
+    """候選 section_path 不是 list (None / str / missing) → 跳過 deboost preserve rank。"""
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor", 0.90, section_path=["Doc", "§8"]),
+            # malformed cases — defensive skip,score preserved
+            RerankedChunk(fields={"chunk_id": "missing_sp"}, rerank_score=0.85, hybrid_score=0.85, original_index=1),
+            RerankedChunk(fields={"chunk_id": "str_sp", "section_path": "Doc/§11"}, rerank_score=0.80, hybrid_score=0.80, original_index=2),
+            # well-formed cross-section — gets deboosted
+            _reranked("xs_well_formed", 0.75, section_path=["Doc", "§11"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.5,
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=4)
+
+    by_id = {c.fields["chunk_id"]: c.score for c in result.chunks}
+    # malformed candidates preserve original score (defensive skip)
+    assert by_id["missing_sp"] == 0.85
+    assert by_id["str_sp"] == 0.80
+    # well-formed cross-section deboosted
+    assert by_id["xs_well_formed"] == pytest.approx(0.75 * 0.5, abs=1e-6)
+    # anchor preserved (no self-deboost)
+    assert by_id["anchor"] == 0.90

@@ -29,7 +29,7 @@ import structlog
 from ingestion.embedding.base import Embedder
 from observability.observe import observe_async
 from retrieval.hybrid import HybridSearcher
-from retrieval.reranker.base import Reranker
+from retrieval.reranker.base import RerankedChunk, Reranker
 
 logger = structlog.get_logger(__name__)
 
@@ -75,11 +75,18 @@ class RetrievalEngine:
         searcher: HybridSearcher,
         reranker: Reranker | None = None,
         hybrid_overfetch_for_rerank: int = 50,
+        reranker_cross_section_deboost: float = 1.0,
+        reranker_section_path_prefix_depth: int = 2,
     ) -> None:
         self._embedder = embedder
         self._searcher = searcher
         self._reranker = reranker
         self._hybrid_overfetch = hybrid_overfetch_for_rerank
+        # W38 — post-rerank cross-section deboost (per ADR-0035 W25 symmetric pattern;
+        # non-architectural per H1, post-rerank client-side score multiply only).
+        # deboost=1.0 disabled (W38 baseline preserve W37); 0.85 = typical 15% penalty.
+        self._reranker_cross_section_deboost = reranker_cross_section_deboost
+        self._reranker_section_path_prefix_depth = reranker_section_path_prefix_depth
 
     @observe_async(
         name="retrieval.retrieve",
@@ -153,6 +160,50 @@ class RetrievalEngine:
             reranked_chunks = await self._reranker.rerank(
                 query=query, candidates=hits, top_k=top_k,
             )
+            # W38 — post-rerank cross-section deboost (H1 non-architectural;
+            # symmetric pattern per ADR-0035 W25 F5 D2; preserves Cohere v4.0-pro
+            # API contract). When deboost<1.0, candidates whose section_path[:depth]
+            # ≠ anchor's section_path[:depth] get rerank_score *= deboost; then
+            # re-sort by rerank_score descending. Default disabled (deboost=1.0).
+            #
+            # NOTE: `RerankedChunk` is frozen=True (per base.py:18), so deboost is
+            # implemented via rebuild — new RerankedChunk instances replace deboosted
+            # candidates, unchanged candidates pass through by reference.
+            if self._reranker_cross_section_deboost < 1.0 and reranked_chunks:
+                anchor_sp_raw = reranked_chunks[0].fields.get("section_path")
+                anchor_sp = anchor_sp_raw if isinstance(anchor_sp_raw, list) else []
+                depth = self._reranker_section_path_prefix_depth
+                anchor_prefix = list(anchor_sp[:depth])
+                deboost_count = 0
+                new_reranked: list[RerankedChunk] = []
+                for r in reranked_chunks:
+                    cand_sp_raw = r.fields.get("section_path")
+                    if not isinstance(cand_sp_raw, list):
+                        # malformed → defensive skip (preserve rank by passing through)
+                        new_reranked.append(r)
+                        continue
+                    cand_prefix = list(cand_sp_raw[:depth])
+                    if cand_prefix and cand_prefix != anchor_prefix:
+                        new_reranked.append(RerankedChunk(
+                            fields=r.fields,
+                            rerank_score=r.rerank_score * self._reranker_cross_section_deboost,
+                            hybrid_score=r.hybrid_score,
+                            original_index=r.original_index,
+                        ))
+                        deboost_count += 1
+                    else:
+                        new_reranked.append(r)
+                # Re-sort post-deboost — rerank_score descending invariant preserved
+                new_reranked.sort(key=lambda r: r.rerank_score, reverse=True)
+                reranked_chunks = new_reranked
+                logger.info(
+                    "reranker_cross_section_deboost_applied",
+                    anchor_prefix=anchor_prefix,
+                    depth=depth,
+                    deboost_factor=self._reranker_cross_section_deboost,
+                    deboost_count=deboost_count,
+                    total_candidates=len(reranked_chunks),
+                )
             rerank_latency_ms = int((time.perf_counter() - rerank_start) * 1000)
             chunks = [
                 RetrievedChunk(score=r.rerank_score, fields=r.fields)
