@@ -59,7 +59,10 @@ class _MockEngine:
     def __init__(self, chunks: list[_Chunk]):
         self._chunks = chunks
 
-    async def retrieve(self, *, query: str, kb_id: str, top_k: int) -> _RetrievalResult:
+    async def retrieve(self, *, query: str, kb_id: str, top_k: int,
+                       **_kwargs: object) -> _RetrievalResult:
+        # **_kwargs swallows production retrieve() signature additions
+        # (W39 F2 mode, filter_clause, rerank — propagated from /query route).
         return _RetrievalResult(chunks=self._chunks, reranked=True, total_latency_ms=42)
 
 
@@ -234,7 +237,8 @@ def test_query_route_traceback_not_leaked_on_engine_failure() -> None:
     langfuse_tracer._set_langfuse_client_for_tests(fake_client)
 
     class _FailingEngine:
-        async def retrieve(self, *, query: str, kb_id: str, top_k: int) -> Any:
+        async def retrieve(self, *, query: str, kb_id: str, top_k: int,
+                           **_kwargs: object) -> Any:
             raise ConnectionError("upstream Azure Search down")
 
     app = _build_app([], None)

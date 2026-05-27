@@ -550,3 +550,96 @@ async def test_w38_reranker_deboost_malformed_section_path_defensive_skip() -> N
     assert by_id["xs_well_formed"] == pytest.approx(0.75 * 0.5, abs=1e-6)
     # anchor preserved (no self-deboost)
     assert by_id["anchor"] == 0.90
+
+
+# ---------- W40 F1 anchor-prefix length-mismatch fix tests ----------
+# Per W39 insight 2 (architectural surface via Path A LIVE evidence).
+# Bug:當 anchor_sp 短於 depth (corpus chapter intro chunk shape),
+# `anchor_sp[:depth]` silent truncates,然後 cand_sp[:depth] 可能 longer →
+# 必然 not-equal → over-deboost zoom-ins。Fix:effective_depth = min(depth, len(anchor_sp))
+
+
+@pytest.mark.asyncio
+async def test_w40_f1_anchor_shorter_than_depth_hierarchical_zoom_preserved() -> None:
+    """W40 F1 — anchor sp length < depth (corpus chapter intro shape from W39 evidence)。
+
+    Real corpus shape per W39 F2 Path A 5+5 LIVE runner output:
+    - anchor `['8. Integration scenarios (end-to-end walkthroughs)']` length 1
+    - cand_a same-chapter zoom-in `['8. Integration scenarios...', '8.1 Scenario A...']` length 2
+    - cand_b cross-chapter `['7. Integration patterns by system', '7.9 Docuware']` length 2
+
+    Pre-W40 F1 bug (depth=2 silent truncate):
+    - anchor_prefix = anchor_sp[:2] = `['8. Integration scenarios...']` length 1
+    - cand_a_prefix = cand_a[:2] = full list length 2
+    - cand_a_prefix != anchor_prefix → over-DEBOOST (錯誤 — 明明 same-chapter zoom-in)
+
+    Post-W40 F1 fix (effective_depth = min(2, 1) = 1):
+    - anchor_prefix = `['8. Integration scenarios...']`
+    - cand_a_prefix = cand_a[:1] = `['8. Integration scenarios...']` = anchor → preserved ✓
+    - cand_b_prefix = cand_b[:1] = `['7. Integration patterns by system']` != anchor → DEBOOSTED ✓
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor", 0.90,
+                      section_path=["8. Integration scenarios (end-to-end walkthroughs)"]),
+            _reranked("cand_a_zoom_in", 0.85,
+                      section_path=["8. Integration scenarios (end-to-end walkthroughs)",
+                                    "8.1 Scenario A — Customer service request submission"]),
+            _reranked("cand_b_cross_chapter", 0.80,
+                      section_path=["7. Integration patterns by system", "7.9 Docuware"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    by_id = {c.fields["chunk_id"]: c.score for c in result.chunks}
+    # Anchor preserved (always)
+    assert by_id["anchor"] == 0.90
+    # Same-chapter zoom-in PRESERVED (W40 F1 fix — pre-fix would deboost to 0.85 * 0.85 = 0.7225)
+    assert by_id["cand_a_zoom_in"] == 0.85
+    # Cross-chapter DEBOOSTED (still correct behavior)
+    assert by_id["cand_b_cross_chapter"] == pytest.approx(0.80 * 0.85, abs=1e-6)
+
+
+@pytest.mark.asyncio
+async def test_w40_f1_anchor_empty_section_path_no_deboost_defensive() -> None:
+    """W40 F1 — anchor section_path empty (defensive: 不能 classify cross-section)。
+
+    When anchor has empty section_path (effective_depth=0), no deboost should
+    apply — we can't compute cross-section relationship without anchor reference.
+    All candidates preserved at original scores. Defensive symmetric to W38
+    malformed-cand-skip behavior.
+    """
+    embedder = _FakeEmbedder()
+    searcher = MagicMock()
+    searcher.search = AsyncMock(return_value=[HybridSearchHit(score=0.9, fields={})])
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(
+        return_value=[
+            _reranked("anchor", 0.90, section_path=[]),  # empty anchor
+            _reranked("cand_a", 0.85, section_path=["§8", "§8.1"]),
+            _reranked("cand_b", 0.80, section_path=["§7", "§7.9"]),
+        ],
+    )
+
+    engine = RetrievalEngine(
+        embedder=embedder, searcher=searcher, reranker=reranker,
+        reranker_cross_section_deboost=0.85,
+        reranker_section_path_prefix_depth=2,
+    )
+    result = await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=3)
+
+    by_id = {c.fields["chunk_id"]: c.score for c in result.chunks}
+    # All preserved — empty anchor → effective_depth=0 → no deboost applies
+    assert by_id["anchor"] == 0.90
+    assert by_id["cand_a"] == 0.85
+    assert by_id["cand_b"] == 0.80

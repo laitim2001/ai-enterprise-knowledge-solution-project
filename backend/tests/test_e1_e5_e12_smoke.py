@@ -67,7 +67,10 @@ class _MockEngine:
     def __init__(self, chunks: list[_Chunk]):
         self._chunks = chunks
 
-    async def retrieve(self, *, query: str, kb_id: str, top_k: int) -> _RetrievalResult:
+    async def retrieve(self, *, query: str, kb_id: str, top_k: int,
+                       **_kwargs: object) -> _RetrievalResult:
+        # **_kwargs swallows production retrieve() signature additions
+        # (W39 F2 mode, filter_clause, rerank — propagated from /query route).
         return _RetrievalResult(chunks=self._chunks, reranked=True, total_latency_ms=42)
 
 

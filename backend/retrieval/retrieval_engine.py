@@ -173,7 +173,16 @@ class RetrievalEngine:
                 anchor_sp_raw = reranked_chunks[0].fields.get("section_path")
                 anchor_sp = anchor_sp_raw if isinstance(anchor_sp_raw, list) else []
                 depth = self._reranker_section_path_prefix_depth
-                anchor_prefix = list(anchor_sp[:depth])
+                # W40 F1 — anchor-prefix length-mismatch fix (W39 insight 2). When
+                # anchor_sp shorter than depth (e.g. corpus chapter intro chunk
+                # section_path=['8. Integration scenarios...'] length 1 with depth=2),
+                # cap effective_depth to anchor length to avoid silently comparing
+                # length-1 anchor_prefix against length-2 cand_prefix (which always
+                # not-equal → over-deboost zoom-ins like ['§8','§8.1'] incorrectly).
+                # When anchor_sp empty (effective_depth=0), anchor_prefix=[] and all
+                # cand_prefix=[] → no deboost (defensive — can't classify w/o anchor).
+                effective_depth = min(depth, len(anchor_sp))
+                anchor_prefix = list(anchor_sp[:effective_depth])
                 deboost_count = 0
                 new_reranked: list[RerankedChunk] = []
                 for r in reranked_chunks:
@@ -182,7 +191,7 @@ class RetrievalEngine:
                         # malformed → defensive skip (preserve rank by passing through)
                         new_reranked.append(r)
                         continue
-                    cand_prefix = list(cand_sp_raw[:depth])
+                    cand_prefix = list(cand_sp_raw[:effective_depth])
                     if cand_prefix and cand_prefix != anchor_prefix:
                         new_reranked.append(RerankedChunk(
                             fields=r.fields,
@@ -200,6 +209,7 @@ class RetrievalEngine:
                     "reranker_cross_section_deboost_applied",
                     anchor_prefix=anchor_prefix,
                     depth=depth,
+                    effective_depth=effective_depth,
                     deboost_factor=self._reranker_cross_section_deboost,
                     deboost_count=deboost_count,
                     total_candidates=len(reranked_chunks),
