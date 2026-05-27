@@ -1,6 +1,6 @@
 ---
 phase: W38-reranker-cross-section-deboost
-status: active   # F0 啟動 2026-05-27
+status: closed_partial   # F4 收尾 2026-05-27 — F1 LOW housekeeping ship + F2 reranker deboost infrastructure ship + F3 LIVE BLOCKED by Azure AI Search 402 Payment Required environmental issue(per ADR-0017 R8 pattern,W17 F1.5b+F3.5b precedent)— deferred W39+ separate phase trigger after Azure billing resolved
 last_updated: 2026-05-27
 component_scope: C04 Retrieval Engine(F2 reranker post-rerank cross-section deboost — symmetric pattern per ADR-0035)+ C07 Observability + C12 DevOps(F1 housekeeping ruff cleanup + PC-W32-1/2 documentation + PC-W33-1 reconcile)
 adr_refs:
@@ -288,7 +288,32 @@ if do_rerank and hits:
 ### 2026-05-27 D0 — F0 啟動
 - Plan + checklist + progress 起草
 - R6 Day 0 6 catches surfaced
-- F0.6 commit pending
+- F0.6 commit `693d463`
+- F0.7 session-start.md §10 W38 row append `🟡 active 2026-05-27` commit `d853dbc`
+
+### 2026-05-27 D1 — F1 LOW housekeeping batch ship
+- F1.1 Ruff `--fix --unsafe-fixes` apply — 13 errors → 0 fixed clean(9 W33-W35 留底 + 4 W37 F2 runner)
+- F1.2 `api/server.py:343-360` PC-W32-1 documentation 加 W38 amendment note(preserve no `reload=True` rationale + WatchFiles subprocess vs BUG-008 SelectorEventLoop tradeoff)
+- F1.3 `citation_expansion.py` PC-W32-2 integration pattern note 加入 module docstring(W32 F1.8 lesson)
+- F1.4 PC-W33-1 status reconcile RESOLVED via W36 PC-W34-1 ship(per CLAUDE.md §10.3 line 533 cite evidence)
+- F1.5 backend pytest 1091 preserve PASS + ruff clean
+- F1.6 commit `74ad872`
+
+### 2026-05-27 D1 cont — F2 Reranker deboost infrastructure ship
+- F2.1 Settings 2 NEW knobs ship — `reranker_cross_section_deboost: float = 1.0`(disabled default)+ `reranker_section_path_prefix_depth: int = 2`
+- F2.2 `retrieval_engine.py:158-200` post-rerank deboost loop ship — RerankedChunk frozen rebuild pattern + re-sort + defensive malformed skip + observability log
+- F2.3 5 NEW unit tests PASS — disabled no-op / cross-section reduced / same-section preserved / re-sort invariant / malformed defensive
+- F2.4 backend pytest 1091 → 1096 + ruff PASS + mypy strict W38 self-clean
+- F2 commit `cea024f`
+
+### 2026-05-27 D1 cont — F3 LIVE BLOCKED by Azure AI Search 402 Payment Required
+- F3.1 pre-flight PASS — Langfuse 200 + Postgres SELECT 1 ready_for_query
+- F3.2 `.env` temp override `RERANKER_CROSS_SECTION_DEBOOST=0.85` + `RERANKER_SECTION_PATH_PREFIX_DEPTH=2`(112 → 116 lines)
+- F3.3 Backend explicit kill (PID 7512 via WMI CommandLine filter) + restart PID 7512 — backend `/health` 200 OK
+- F3.4 W38 F3 runner 5+5 LIVE runs — **全 10 runs HTTP 502** — direct curl test 揭示 root cause:`pipeline.retrieval_failed` 由 Azure AI Search `402 Payment Required` 引發(retrieval layer 直接 fail at Azure Search call,根本未到 reranker / W38 F2 deboost logic)
+- **Phase Gate INCONCLUSIVE per ADR-0017 R8 environmental block precedent** — W17 F1.5b Postgres-path runtime smoke + F3.5b RAGAs live-verify 同樣 R8-blocked 留 W18+/CO17 pattern reused
+- F4 closeout PARTIAL per Chris pick:`.env` marker block removed,production preserve default 1.0 disabled;F2 infrastructure preserved as W39+ enabler trigger after Azure billing resolved
+- F4 commit pending
 
 ---
 
