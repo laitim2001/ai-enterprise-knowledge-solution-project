@@ -16,8 +16,8 @@ last_updated: 2026-05-27
 - [x] F0.3 起草 `plan.md` 7 段
 - [x] F0.4 起草 `checklist.md`(本文件)
 - [x] F0.5 起草 `progress.md` Day 0
-- [ ] F0.6 啟動 commit
-- [ ] F0.7 session-start.md §10 W39 row append + W39+ → W40+ rename
+- [x] F0.6 啟動 commit `7289149`
+- [x] F0.7 session-start.md §10 W39 row append + W39+ → W40+ rename(commit pending)
 
 ## F1 — Path B `/retrieval_test` mode=vector LIVE 5+5(~30min)
 
