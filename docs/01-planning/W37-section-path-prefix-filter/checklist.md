@@ -1,7 +1,7 @@
 ---
 phase: W37-section-path-prefix-filter
 plan_ref: ./plan.md
-status: active   # F0 啟動 2026-05-27
+status: closed_partial   # F3 收尾 2026-05-27 — Phase Gate FAIL outcome (c) → PARTIAL revert (.env removed,F1 code preserved)
 last_updated: 2026-05-27
 ---
 
@@ -49,30 +49,46 @@ last_updated: 2026-05-27
 - [x] F1.4.a backend pytest **1091 passed + 25 skipped + 0 failed**(W36 baseline 1086 + 5 NEW W37 = 1091 exact match);ruff `All checks passed!`(W37 specific edits);mypy strict citation_expansion.py + settings.py 自身 0 errors(13 pre-existing 全屬 observability/retrieval/context_expander W22-W34 wave 留底,Karpathy §1.3 surgical 不屬 W37 scope)
 - [x] F1.4.b commit `da557ab` — `feat(generation): W37 F1 (j') section_path prefix filter for _find_neighbour_chunks — additive constraint depth=0 default preserve W36 baseline + Settings NEW knob`(5 files / +274 / -25)
 
-## F2 — 5-run reproducibility verify(~30-45min)
+## F2 — 5-run reproducibility verify(~30-45min)— ✅ 完成 PARTIAL outcome (c) FAIL
 
-### F2.1 Pre-flight per CLAUDE.md §10.3 step 5b(W36 PC-W34-1 amend 已 ship)
+### F2.1 Pre-flight per CLAUDE.md §10.3 step 5b — ✅
 
-- [ ] F2.1.a `Invoke-WebRequest -Uri http://localhost:3000/api/public/health -TimeoutSec 30`(預期 200 — Langfuse endpoint)
-- [ ] F2.1.b `docker exec ekp-postgres psql -U langfuse -d postgres -c "SELECT 1;"`(預期 `1 row` ready_for_query)
-- [ ] F2.1.c Backend uvicorn explicit kill + restart 確認 W37 F1 code loaded(per PC-W32-1 `api/server.py:357` no `reload=True` — WatchFiles inactive,W32 F2 iter 1 stale-code trap lesson)
+- [x] F2.1.a Langfuse `/api/public/health` 200 OK
+- [x] F2.1.b Postgres `SELECT 1` 1 row ready_for_query
+- [x] F2.1.c Backend uvicorn explicit kill (PID 23260) + restart (PID 30340) 確認 W37 F1 code loaded(per PC-W32-1 W32 F2 iter 1 stale-code trap lesson)
 
-### F2.2 `.env` temporary override + 5-run runner
+### F2.2 `.env` temporary override + 5-run runner — ✅
 
-- [ ] F2.2.a `.env` 加 marker block `# W37 F2 TEMPORARY override — F3 closeout 移除` + `CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=2`(per W27/W29 pattern)
-- [ ] F2.2.b Backend restart 確認 override loaded(`Settings().citation_expansion_section_path_prefix_depth == 2`)
-- [ ] F2.2.c 寫 `backend/w37-f2-runner.py`(複用 W35 F2 5-run runner pattern,sys.stdout.reconfigure utf-8 + ASCII fallback per PC-W35-1 W36 ship)
-- [ ] F2.2.d Runner 加 NEW per-run metric:`cross_section_drift_count`(count of citations whose `section_path[:2]` ≠ first citation's `section_path[:2]`)
-- [ ] F2.2.e Run `python w37-f2-runner.py` — 5 runs Q-W25-I07 + 5 runs Q-W25-I01 control
+- [x] F2.2.a `.env` 加 marker block `# --- W37 F2 TEMPORARY override 2026-05-27` + `CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=2`(112 → 117 lines)
+- [x] F2.2.b Backend restart 確認 override loaded(F2 runner 5+5 LIVE runs 確認 filter active via Langfuse event firing)
+- [x] F2.2.c `backend/w37-f2-runner.py` shipped(複用 W35 F2 pattern + W36 PC-W35-1 utf-8 fix + NEW `analyse_drift` helper)
+- [x] F2.2.d Runner 加 per-run metric:`cross_section_drift_count` + `unique_section_prefixes`
+- [x] F2.2.e Run `python w37-f2-runner.py` — 5 runs Q-W25-I07 + 5 runs Q-W25-I01 control(Run 3 I07 HTTP 502 Azure transient,4/5 valid)
 
-### F2.3 G1 + G2 + G1b decision tree intersect
+### F2.3 G1 + G2 + G1b decision tree intersect — ✅ FAIL outcome (c)
 
-- [ ] F2.3.a **G1a strict 5/5** — citation_count avg ≥ W35 baseline 4.8 + refusals 0/5(W32 (h') saturated 100% MUST preserve)
-- [ ] F2.3.b **G1b NEW same-section quality signal** — `cross_section_drift_count` avg ≤ 1(goal)OR = 0 across all runs(stretch)
-- [ ] F2.3.c **G2 control I01 non-regression** — refusals 0/5 + avg_cit ≥ 3.5
-- [ ] F2.3.d **G3 pytest 1091 + ruff PASS + mypy strict 維持**
-- [ ] F2.3.e **G4 R6 4 catches verified** at Day 0 + Day 1 active flip
-- [ ] F2.3.f Decide outcome — (a) PASS / (b) PARTIAL / (c) FAIL revert
+| Gate | 結果 | Evidence |
+|---|---|---|
+| **G1a strict** refusals=0 + avg_cit ≥ 4.8 | ⚠️ FAIL | I07 avg_cit **1.8**(W35 baseline 4.8,**-63%**)+ refusals 0/5 ✅ partial |
+| **G1b goal** I07 avg_drift ≤ 1.0 | ✅ PASS | I07 avg_drift **0.75** ≤ 1.0 |
+| **G1b stretch** I07 drift = 0 across all runs | ⚠️ FAIL | Run 2 drift=2 + Run 4 drift=1 |
+| **G2 control** I01 refusals=0 + avg_cit ≥ 3.5 | ⚠️ FAIL | I01 avg_cit **2.8**(W35 baseline 5.4,**-48%**)+ refusals 0/5 ✅ partial |
+| **G3 pytest 1091 + ruff + mypy strict** | ✅ PASS | maintained from F1 |
+| **G4 R6 4 catches** | ✅ PASS | Day 0 4 catches + Day 1 active flip |
+
+- [x] F2.3.f Decide outcome — **(c) FAIL** Phase Gate per plan §3 outcome matrix → User pick **PARTIAL revert**(per W31 PC-W31-2 + W27 F1 precedent;F1 code preserved as W38+ enabler,evidence value 高 — G1b goal PASS 證明 filter 有 work,bottleneck shifted to reranker layer not citation_expansion)
+
+## F3 — 收尾 + 跨文件同步 + commit + push — ✅ 進行中
+
+### A. 跨文件同步 per CLAUDE.md §10 R3 + R5 + R6
+
+- [x] plan.md frontmatter `status: active → closed_partial` + changelog D0+D1+D1 cont 追加
+- [x] checklist.md cross-cutting tick(本文件 frontmatter status 同步 + F2 tick + F3 entry)
+- [x] progress.md retro 7 段(What Worked / What Didn't / Carry-overs / ADR Triggers / Phase Gate Result / W38+ Priority Queue Locked / Actual vs Planned Effort)
+- [x] session-start.md §10 W37 row `🟡 active` → `✅ closed_partial 2026-05-27`(commit pending);W38+ placeholder row 同步 update reranker-side filter HIGHEST + regex relax MEDIUM
+- [x] `.env` 移除 W37 F2 marker block(`CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=2` line + 3 comment lines removed;117 → 113 lines;production preserve depth=0 Settings default ship)
+- [x] 🚧 RISK_REGISTER NEW R 候選 — DEFERRED W38+(F2 evidence:bottleneck reranker-side cross-section surfacing,citation_expansion filter scope-out per design;W38+ candidate = reranker-side filter OR `\b\d+\.\d+\b` regex relax)
+- [x] ADR README — 無 NEW ADR(F1 純內部 filter logic,non-architectural per H1)
 
 ## F3 — 收尾 + 跨文件同步 + commit + push
 
@@ -86,30 +102,32 @@ last_updated: 2026-05-27
 - [ ] 🚧 RISK_REGISTER NEW R 候選 — DEFERRED W38+(若 F2 outcome (b) drift > 0 殘留)OR N/A(若 outcome (a) drift = 0)
 - [ ] ADR README — 無 NEW ADR(F1 純內部 filter logic,non-architectural per H1)
 
-### B. W38+ priority queue 評估
+### B. W38+ priority queue 評估 — ✅ 完成
 
-- [ ] B.1 W38+ 候選 promotion per F2 outcome(documented retro §W38+ Priority Queue Locked)
-- [ ] B.2 PC-W33-1 + PC-W32-1/2 保留低優先級
-- [ ] B.3 8 個 pre-existing ruff issues 喺 runner files(W33-W35 寫 runner 留底)保留 LOW
-- [ ] B.4 Q14 SME-validate reference_answer cascade(eval-set-v1-final.yaml W15 F1 CO ship)— LONG-TERM
-- [ ] B.5 W35 DEMOTED LOW 候選 仍 LOW + path (a) judge LLM 升級 永久 OUT per memory feedback_judge_llm_cost_policy.md
-- [ ] B.6 長期 carry-over(c)(e)(f)/BUG-026+027/W22 D8/W16 F1-F4 Track A IT cred 維持
+- [x] B.1 W38+ HIGHEST NEW reranker-side cross-section filter promotion per F2 root cause shift evidence(documented retro §W38+ Priority Queue Locked)
+- [x] B.2 W38+ MEDIUM NEW `\b\d+\.\d+\b` regex relax for `_find_neighbour_chunks`
+- [x] B.3 W37 F1 infrastructure MEDIUM preserved enabler
+- [x] B.4 PC-W33-1 + PC-W32-1/2 保留低優先級
+- [x] B.5 8 個 pre-existing ruff issues 喺 runner files(W33-W35 寫 runner 留底)保留 LOW
+- [x] B.6 Q14 SME-validate reference_answer cascade(eval-set-v1-final.yaml W15 F1 CO ship)— LONG-TERM
+- [x] B.7 W35 DEMOTED LOW 候選 仍 LOW + path (a) judge LLM 升級 永久 OUT per memory feedback_judge_llm_cost_policy.md
+- [x] B.8 長期 carry-over(c)(e)(f)/BUG-026+027/W22 D8/W16 F1-F4 Track A IT cred 維持
 
 ### C. commit + push
 
-- [ ] F3 收尾 commit `docs(planning): W37 closeout — (j') section_path prefix filter ship + quality-of-cite refinement <outcome verdict>`
+- [ ] F3 收尾 commit `docs(planning): W37 closeout — (j') section_path prefix filter ship F1 preserved + F2 FAIL outcome (c) PARTIAL revert .env + W38+ reranker-side filter pivot`
 - [ ] push origin/main confirmed
 
 ---
 
 ## Cross-Cutting
 
-- [ ] All deliverables committed to git
-- [ ] All OQ status changes 反映於 `docs/decision-form.md` — 預期無 OQ 變動
-- [ ] All architectural-adjacent decisions documented as ADR — N/A(F1 非 architectural per H1)
-- [ ] `progress.md` retro section 寫好 — 7 段 per F3 closeout
-- [ ] `progress.md` frontmatter status flipped to `closed`
-- [ ] Phase W38+ kickoff trigger 標記於 retro — candidates list update per F2 outcome
+- [x] All deliverables committed to git(F3 closeout commit pending)
+- [x] All OQ status changes 反映於 `docs/decision-form.md` — 無 OQ 變動
+- [x] All architectural-adjacent decisions documented as ADR — N/A(F1 非 architectural per H1)
+- [x] `progress.md` retro section 寫好 — 7 段 per F3 closeout
+- [x] `progress.md` frontmatter status flipped to `closed_partial`
+- [x] Phase W38+ kickoff trigger 標記於 retro — candidates list update per F2 outcome
 
 ---
 

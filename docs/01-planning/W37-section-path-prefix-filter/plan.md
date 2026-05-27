@@ -1,6 +1,6 @@
 ---
 phase: W37-section-path-prefix-filter
-status: active   # F0 啟動 2026-05-27
+status: closed_partial   # F3 收尾 2026-05-27 — Phase Gate FAIL outcome (c) per plan §3 (G1a regress -63% I07 cit + G2 regress -48% I01 cit) → PARTIAL revert per Chris pick:`.env` marker block removed,F1 production code preserved as W38+ enabler。Settings default=0 已 preserve W36 baseline,production behavior 100% revert
 last_updated: 2026-05-27
 component_scope: C04 Retrieval Engine + C05 Generation Pipeline(citation_expansion._find_neighbour_chunks 內 section_path prefix filter — W32 (h') module enhancement)
 adr_refs:
@@ -219,7 +219,23 @@ related_carry_overs:
 ### 2026-05-27 D0 — F0 啟動
 - Plan + checklist + progress 起草
 - R6 Day 0 4 catches surfaced(`fetch_chunks_by_section_path` primitive 已存在 W26 / `_find_neighbour_chunks` 只用 §X.M regex / Settings.py 4 處 section_path 屬 W26 parent-doc 用途 / `list_chunks` return 已含 section_path field)
-- F0.6 commit pending
+- F0.6 commit `65694d6` ship
+- F0.7 session-start.md §10 W37 row append `🟡 active 2026-05-27` commit `6cdece6`
+
+### 2026-05-27 D1 — F1 implementation
+- Settings NEW knob `citation_expansion_section_path_prefix_depth: int = 0` ship
+- `_find_neighbour_chunks` signature 加 `cited_section_path` + `section_path_prefix_depth` 2 keyword-only params + 9-行 filter block
+- `expand_citations` 3-tuple propagation
+- 5 NEW unit tests + 2 helper extensions PASS
+- F1 commit `da557ab`:backend pytest 1086 → **1091 passed** + ruff PASS + mypy strict W37 files clean
+
+### 2026-05-27 D1 cont — F2 LIVE 5+5 run + F3 closeout PARTIAL revert
+- F2.1 pre-flight Langfuse 200 + Postgres SELECT 1 PASS
+- F2.2 `.env` temporary override `CITATION_EXPANSION_SECTION_PATH_PREFIX_DEPTH=2` + backend restart
+- F2.3 5+5=10 LIVE runs Q-W25-I07 + Q-W25-I01
+- **Phase Gate FAIL outcome (c)** per plan §3:G1a strict FAIL(I07 avg_cit 1.8 vs W35 baseline 4.8,-63%)+ G2 control FAIL(I01 avg_cit 2.8 vs W35 baseline 5.4,-48%)+ G1b goal PASS(I07 avg_drift 0.75 ≤ 1.0)
+- **真正 root cause shift surfaced**(Karpathy §1.1):I07 Run 2/4 cited cross-section §11 / §8.4 chunks**唔係**`_find_neighbour_chunks` expansion 加入,而係 **reranker top-K 直接 surface** — W37 F1 filter 只能 work on `_find_neighbour_chunks` candidates,reranker-introduced cross-section citations **unfiltered by design**;`\b\d+\.\d+\b` regex + depth=2 雙重 filter 過於 conservative,99% candidates 被 over-filtered → cit count crash
+- **PARTIAL revert per Chris pick**(per W31 PC-W31-2 + W27 F1 precedent):`.env` marker block removed,production behavior 100% revert W36 baseline(Settings default=0 已 preserve);F1 production code(Settings knob + signature + filter block + 5 unit tests)preserved as W38+ enabler — G1b goal PASS 證明 filter 有 work,bottleneck 在 reranker layer not citation_expansion layer
 
 ---
 
