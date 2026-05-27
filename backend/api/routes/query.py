@@ -116,6 +116,7 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
                 engine=engine,
                 rrf_k=settings.query_expansion_rrf_k,
                 per_variant_overfetch=settings.query_expansion_per_variant_overfetch,
+                mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
             )
             result: RetrievalResult = fused.as_retrieval_result()
             logger.info(

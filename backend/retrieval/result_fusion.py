@@ -86,6 +86,7 @@ async def fused_retrieve(
     engine: RetrievalEngine,
     rrf_k: int = RRF_K_DEFAULT,
     per_variant_overfetch: int = 2,
+    mode: str = "hybrid",
 ) -> FusedRetrievalResult:
     """Run hybrid retrieve per variant in parallel, fuse via RRF, return top-K.
 
@@ -124,6 +125,7 @@ async def fused_retrieve(
                 query=variant,
                 kb_id=kb_id,
                 top_k=fetch_k_per_variant,
+                mode=mode,  # W39 F2 — propagate mode from /query route per request
             )
             for variant in variants
         ),

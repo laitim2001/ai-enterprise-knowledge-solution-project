@@ -1,6 +1,6 @@
 ---
 phase: W39-f2-live-evidence-free-tier-workaround
-status: active   # F0 啟動 2026-05-27
+status: closed_partial   # F3 收尾 2026-05-27 — F1 Path B PASS (deboost mechanism verified working post-rerank top-K re-order)+ F2 Path A PARTIAL outcome(G1b goal PASS reduce real cross-section drift to 1.0;G1a FAIL avg_cit -25% likely mode=vector tradeoff conflate;G3 latency FAIL +37% reformulator overhead with vector mode)→ Chris pick PARTIAL revert per W37/W38 precedent;.env reverted production preserve default 1.0 disabled;F2 QueryRequest.mode + fused_retrieve mode propagation preserved permanent enhancement(對齊 ADR-0021 /retrieval_test);W40+ HIGHEST NEW hybrid mode billing-resolved re-verify(isolate true deboost effect without mode conflate)
 last_updated: 2026-05-27
 component_scope: C04 Retrieval Engine(F1 LIVE verify W38 F2 deboost)+ C08 API Gateway(F2 `/query` schema mode param additive enhancement,backward-compat default hybrid)
 adr_refs:
@@ -222,7 +222,46 @@ related_carry_overs:
 ### 2026-05-27 D0 — F0 啟動
 - Plan + checklist + progress 起草
 - R6 Day 0 5 catches surfaced(/retrieval_test mode ready / /query schema additive / W38 F2 mode-independent / Free tier 402 semantic quota / W38 cea024f infrastructure ready)
-- F0.6 commit pending
+- F0.6 commit `7289149`
+- F0.7 session-start.md §10 W39 row append `🟡 active 2026-05-27` commit `83aafce`
+
+### 2026-05-27 D1 — F1 Path B `/retrieval_test` mode=vector LIVE 5+5
+- F1.1 pre-flight Langfuse 200 + Postgres SELECT 1 PASS
+- F1.2 `.env` temp override `RERANKER_CROSS_SECTION_DEBOOST=0.85 + RERANKER_SECTION_PATH_PREFIX_DEPTH=2`(112 → 119 lines)
+- F1.3 Backend explicit kill + restart(W37/W38 ghost-Python issue 重現 PID 47544 hang + 10388 ghost → kill both + bash & spawn pattern recovered)— /health 200 ready
+- F1.4 `backend/w39-f1-pathb-runner.py` ship + 5+5 LIVE runs
+- F1.5 Decision tree(Path B retrieval-only):G1a PASS chunks 5.0 + G1b FAIL real_drift 3.00 + G2 PASS + G3 PASS wall 4.59s
+- **重要發現**:W38 F2 deboost LOG **正確 firing**(`reranker_cross_section_deboost_applied event` 10/10 runs,deboost_count=4 of 5 total_candidates)
+- **2 個架構洞察 surfaced**:
+  - 洞察 1:Deboost scope-limited 唔 reduce cross-section drift — `reranker.rerank(top_k=5)` 返 fixed top-5,deboost 只 re-order top-5(唔 pull in same-section candidates from position 6-50)
+  - 洞察 2:Anchor-prefix length-mismatch — anchor sp `['§8']` 長度 1,depth=2 anchor_prefix[:2]=`['§8']` vs §8.6 cand_prefix[:2]=`['§8', '§8.6']` 唔同 → §8.6 valid zoom-in 反被 deboosted
+- F1 commit not separately(included in F2 commit cea024f baseline + Path B 0-code-change per ADR-0021)
+
+### 2026-05-27 D1 cont — F2 Path A `/query` mode=vector full pipeline LIVE 5+5
+- F2.1 `QueryRequest.mode: Literal["hybrid", "vector", "fulltext"] = "hybrid"` field 加入(對齊 ADR-0021 `/retrieval_test`)+ `routes/query.py` 2 call sites propagate
+- F2.1 cont **R3 plan amend** — 增 `fused_retrieve()` mode param propagation(原 plan 漏算 query reformulator + RAG fusion internal retrieve() call sites,F2 iter 1 全 10 runs HTTP 502 揭示 root cause)
+- F2.2 3 NEW unit tests PASS + ruff PASS
+- F2 commit `dadcb44`(QueryRequest.mode + retrieve propagation + 3 unit tests + F1 runner backfill)
+- F2.3 Backend restart with fused_retrieve mode patch — direct curl /query mode=vector → HTTP 200 + valid citations(成功 bypass Azure 402)
+- F2.4 `backend/w39-f2-patha-runner.py` ship + 5+5 LIVE runs
+- F2.5 Decision tree(Path A full pipeline):
+  - **G1a strict FAIL** — I07 avg_cit 3.6 vs W35 baseline 4.8 = **-25%**(可能 mode=vector less diverse top-K conflate,non-deboost-isolated)
+  - **G1b goal PASS ⭐** — I07 avg_real_drift **1.0**(比 W37 F2 hard filter -63% 顯著改善;§7.9 Docuware 唯一 cross-section,§8 family dominate)
+  - G1b stretch FAIL — drift=1 across all 5 runs
+  - **G2 control PASS ⭐** — I01 avg_cit 6.6 + refusals 0/5
+  - G3 latency FAIL — I07 avg_lat 19.12s vs 14s budget = +37%(reformulator + RAG fusion overhead with vector mode)
+- **W37 vs W38 vs W39 對比**:W37 hard filter I07 1.8 (-63%) → W39 symmetric deboost I07 3.6 (-25%) → W35 baseline 4.8(W38 F2 symmetric pattern 明顯比 W37 hard filter approach 好,證明 ADR-0035 W25 pattern reference correct)
+- Chris pick **PARTIAL revert** per W37/W38 precedent(per ADR-0017 R8 environmental block pattern + W26 PC1 一次只郁一個旋鈕 + Karpathy §1.3 surgical)
+
+### 2026-05-27 D1 cont — F3 closeout PARTIAL revert
+- `.env` marker block + RERANKER_* lines removed(119 → 115 lines)— production preserve default deboost=1.0 disabled
+- Backend explicit kill(PID 46240 via WMI CommandLine filter)
+- F2 production code preserved:
+  - W38 F2 deboost infrastructure(Settings + retrieval_engine + 5 unit tests + observability)
+  - W39 F2 QueryRequest.mode field(permanent enhancement,對齊 ADR-0021 /retrieval_test)
+  - W39 F2 fused_retrieve mode propagation(permanent enhancement)
+- 4 artifact sync(plan.md / checklist.md / progress.md / session-start.md)
+- F3 closeout commit pending
 
 ---
 
