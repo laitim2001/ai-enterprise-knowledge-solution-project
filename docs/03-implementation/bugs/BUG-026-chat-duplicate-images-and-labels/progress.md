@@ -2,7 +2,7 @@
 bug_id: BUG-026
 report_ref: ./report.md
 checklist_ref: ./checklist.md
-status: in-progress
+status: closed
 ---
 
 # BUG-026 — Progress
@@ -81,10 +81,48 @@ status: in-progress
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(pending)_ | fix(retrieval): BUG-026 C-ii propagate image source_section for accurate chat labels |
+| `d66f5a5` | fix(ingestion): BUG-026 C-ii propagate image source_section for accurate chat labels |
+
+### Live verify(user pick「即刻做」)—— API 層 PASS
+- Pre-flight(§10.3 5b):backend :8000 = 200 / Langfuse `/api/public/health` = 200(docker unhealthy flag = timing artifact)/ Postgres healthy
+- 起 azurite native(`--skipApiVersionCheck`,blob upload)+ **重啟 backend**(kill PID 43916 舊 code → 載 C-ii code,READY 25s)
+- Fresh KB `bug026-cii-verify-1`(`extract_embedded_images=true`+`return_images_in_chat=true`)ingest sample docx → **88 chunks + 8 images uploaded**
+- `/query`(mode=vector)dump 證據:
+  - citing chunk 44(**§8 intro**,neighbour-attach)2 圖:d7d95af1 → `source_section`=**8.1 Scenario A** / 07561dbf → **8.2 Scenario B**(各帶**自己** section,非 citing §8 intro)✅
+  - citing chunk 45(§8.1,direct)d7d95af1 → **8.1 Scenario A** ✅
+- **結論**:ingest stamp → index → query parse → API ImageRef `source_section` 全鏈 PASS;neighbour-attach 圖帶自己 section 已證 → C-ii 解「3 figures all tagged §X」確認 work
+
+### 視覺 UI verify —— PASS（browser automation）
+- 起 frontend :3001(mock auth 自動登入 dev-user),KB selector 已選 `BUG-026 C-ii verify`,Show images ON
+- 第一次 query hybrid 預設 → **402 Payment Required**(`ekp-kb-bug026-cii-verify-1-v1/docs/search`)= Azure Free-tier semantic ranker quota 用盡(memory `project_azure_search_tier_semantic_billing`,**同 C-ii 無關**)
+- 加 `.env` `HYBRID_USE_SEMANTIC_RANKER=false`(W42 deliverable Free-tier workaround,暫時 UI-test override)+ 重啟 → 全 pipeline 無 semantic ranker
+- 重問「show me all the Integration scenarios」→ gpt-5.5 · **2 citations · 2 with screenshots** · 19.62s:
+  - **Dedup(Finding A)PASS**:gallery「REFERENCED SCREENSHOTS · **3**」3 張獨特圖無重覆
+  - **C-ii label PASS**:inline card figure 2 = 「**8.2 Scenario B** — Real-time inventory...」/ figure 3 = 「**8.5 Scenario E** — Snowflake daily ETL...」;caption「Citation [N] · ... > 8.x Scenario X」;gallery thumbnail 各標 **8.1 Scenario A** / **8.2 Scenario B** / **8.5 Scenario E** —— 每圖**自己** section,**唔再** tag citing chunk「§8 intro」
+- 完後 revert `.env`(HYBRID override 移除 = production-preserve default True)+ 重啟 backend 回 production config
 
 ---
 
-## Closeout(填於 status=closed)
+## Closeout(status=closed)
 
-_(待 C-ii commit + live re-ingest UI verify 決策)_
+### Root Cause(final)
+Chat answer 渲染重覆圖 + 圖標題不準,兩個獨立 root cause:**(A)** `attach_neighbour_images` 把同一張鄰圖 attach 落多個 citation,frontend inline cards + gallery 攤平時無跨 citation dedup → 同 checksum 圖 render 多次;**(C)** 圖無 DOCX caption(8/8 alt_text 空)+ 圖嘅正確 section 喺 ingest 知道但冇 propagate 落 `ImageRef` → label fallback 落 citing chunk section,neighbour-attach 圖顯示錯 section。
+
+### Fix Summary
+**Finding A**(`cb5ed75`):frontend `dedupeCitationImages` helper —— 跨 citation 以 `checksum_sha256`(fallback `blob_url`)dedup,首現 citation attribute;inline cards + gallery + count 統一由 deduped 列表 drive。**Finding C-ii**(`d66f5a5`):`source_section` 加落 storage + API `ImageRef`,ingest 填 owning chunk section_path(parser-correct post-BUG-017),`parse_embedded_images` 解析,frontend `imageSectionPath`/`imageTitle` helpers + page 用之。**Finding B** mockup-faithful 不動。
+
+### Regression Test
+`frontend/tests/unit/citation-images.test.ts`(12 cases:dedup ×6 + imageSectionPath ×3 + imageTitle ×3)+ `backend/tests/test_citation_enrichment.py`(+4:source_section parse + default + coerce + storage→query round-trip)。Fails before / passes after。
+
+### Lessons
+- 既有診斷 script(`diagnose_image_doc_order.py`)第 70 行已印 alt_text → 驗 Finding C 無需 re-ingest,純本地 parse 即知 8/8 alt_text 空(`PYTHONIOENCODING=utf-8` 繞 Windows cp1252 console crash)
+- C-ii 機制優雅:neighbour-attach 複製整個 ImageRef → `source_section` 自然帶住圖自己 section,無需改 neighbour-attach 邏輯
+- Chat UI hybrid 預設撞 Free-tier 402 與本 bug 無關;W42 `HYBRID_USE_SEMANTIC_RANKER=false` flag 正為此場景而設
+
+### Component design note status updates
+- C10 Chat UI:image render 由 per-citation flat → unique-image deduped + 圖自己 section label(presentation enrich)
+- C01 Ingestion / C03 Indexing:`embedded_images_json` 加 `source_section` key(additive,需 re-ingest populate)
+
+---
+
+**End of BUG-026 progress**

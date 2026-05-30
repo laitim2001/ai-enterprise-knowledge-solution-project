@@ -1,7 +1,7 @@
 ---
 bug_id: BUG-026
 report_ref: ./report.md
-status: in-progress
+status: done
 last_updated: 2026-05-30
 ---
 
@@ -35,7 +35,7 @@ last_updated: 2026-05-30
 
 - [x] Re-run `report.md §2` 邏輯 —— deduped 列表每張獨特圖一次(unit test 覆蓋跨 citation dedup + 首現 attribution + blob_url fallback + 無 identity skip)
 - [x] 確認無 regression —— 既有 `chat-meta-row` 4-img / 2-img 斷言維持(測試資料每 citation 不同 checksum → dedup 不改其 count);badge `citationIdx` 仍 anchor full-citations position(BUG-024 不變)
-- [ ] 🚧 (user-facing)Manual UI verify —— **deferred**:需 demo KB 重新 ingest(blobs 隨 demo 清理已刪);code + Vitest + build 層已驗,UI 層待有 live KB 時 user 確認
+- [x] (user-facing)Manual UI verify —— **DONE**(2026-05-30 live):fresh KB `bug026-cii-verify-1` re-ingest + chat UI render「REFERENCED SCREENSHOTS · 3」3 張獨特圖無重覆(dedup PASS)
 
 ## Finding B / C(非主修)
 
@@ -64,14 +64,14 @@ last_updated: 2026-05-30
 ## Verification(C-ii)
 
 - [x] Storage→query round-trip unit test 證 `source_section` 過 `embedded_images_json` JSON contract
-- [ ] 🚧 **Live re-ingest + UI verify deferred** —— C-ii 對既有 index 嘅 chunk 係 latent(`source_section` 空 → frontend fallback citing section);要 **re-ingest** 一個 KB 先 populate + UI 睇到圖標自己 section;需 backend+azurite+Azure Search infra(user accepted re-ingest)
+- [x] **Live re-ingest + UI verify DONE**(2026-05-30):fresh KB ingest(88 chunks + 8 images）→ `/query` API 證 source_section=8.1/8.2(neighbour-attach 帶圖自己 section）→ chat UI inline card「8.2 Scenario B」「8.5 Scenario E」+ gallery 標 8.1/8.2/8.5(每圖自己 section,非 citing §8 intro);需 `HYBRID_USE_SEMANTIC_RANKER=false` 繞 Free-tier 402(完後 revert）
 
 ## Closeout
 
-- [ ] `progress.md` closeout summary(timeline + root cause + lessons)
-- [ ] (Sev3 → postmortem 非強制,pattern recurring 先寫)
-- [ ] `report.md` status 翻 `done`
-- [ ] `progress.md` status 翻 `closed`
+- [x] `progress.md` closeout summary(timeline + root cause + lessons)
+- [x] (Sev3 → postmortem 非強制,pattern recurring 先寫 —— 無 postmortem)
+- [x] `report.md` status 翻 `done`
+- [x] `progress.md` status 翻 `closed`
 
 ---
 

@@ -2,7 +2,7 @@
 bug_id: BUG-026
 title: "Chat answer renders the SAME embedded image multiple times (no cross-citation dedup) + per-image labels fall back to citing-chunk section when figure caption absent"
 severity: Sev3
-status: investigating
+status: done
 reported: 2026-05-30
 reporter: "Chris(W42 post-closeout UI demo session 2026-05-29/30 — real chat UI 對 KB `dce-integration-demo-1` 測試,見到同一張圖重覆出現 + 圖片標題唔對應實際圖內容)"
 affects_components: [C10, C01]    # C10 Chat Interface UI(primary render bug)+ C01 Ingestion(Finding C per-image caption depth)
@@ -151,6 +151,7 @@ InlineImageCard `title = image.alt_text || citation.chunk_title`(`page.tsx:1660`
 | 2026-05-30 | Finding A dedup 實作 + commit `cb5ed75`(commit 落 main per user) | dedup 主問題,contained frontend fix | Chris(chat AskUserQuestion)|
 | 2026-05-30 | Finding C 驗證(user pick (a))—— 8/8 圖 alt_text 全空 + section 8/8 正確;結論 Finding C 真需 ingest 工作 | 「先驗證 alt_text 實際內容」 | Chris(chat)|
 | 2026-05-30 | Finding C fix = **C-ii** propagate `source_section` 落 ImageRef;backend+frontend cross-layer 實作 + 10 NEW tests;H1 邊界評估無 trigger | user pick C-ii;label fallback 落圖自己 section 而非 citing chunk | Chris(chat AskUserQuestion)|
+| 2026-05-30 | C-ii commit `d66f5a5`;**live re-ingest + UI verify PASS**(API source_section=8.1/8.2 + chat UI inline card/gallery 標圖自己 section + dedup 3 unique imgs);status → **done** | user pick「即刻做 live re-ingest + UI verify」 | Chris(chat)|
 
 ---
 
