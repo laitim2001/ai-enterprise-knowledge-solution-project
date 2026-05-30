@@ -108,17 +108,10 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { useQuery } from '@tanstack/react-query';
 
-import {
-  conversationsApi,
-  type Conversation,
-} from '@/lib/api/conversations';
+import { conversationsApi, type Conversation } from '@/lib/api/conversations';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
-import {
-  streamQuery,
-  type Citation,
-  type ImageRef,
-  type SseEvent,
-} from '@/lib/api/query';
+import { streamQuery, type Citation, type ImageRef, type SseEvent } from '@/lib/api/query';
+import { dedupeCitationImages, type DedupedCitationImage } from '@/lib/chat/citation-images';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Local types + state
@@ -163,10 +156,26 @@ function formatTime(ms: number): string {
 // `unknown` entry is dead today (Literal excludes it) but retained as a
 // defensive fallback should the schema ever broaden.
 const FILE_TYPE_COLORS: Record<string, { fg: string; bg: string; border: string }> = {
-  docx: { fg: 'oklch(0.55 0.13 240)', bg: 'oklch(0.55 0.13 240 / 0.12)', border: 'oklch(0.55 0.13 240 / 0.25)' },
-  pdf: { fg: 'oklch(0.58 0.18 25)', bg: 'oklch(0.58 0.18 25 / 0.12)', border: 'oklch(0.58 0.18 25 / 0.25)' },
-  pptx: { fg: 'oklch(0.55 0.16 25)', bg: 'oklch(0.55 0.16 25 / 0.12)', border: 'oklch(0.55 0.16 25 / 0.25)' },
-  unknown: { fg: 'oklch(var(--muted-foreground))', bg: 'oklch(var(--muted))', border: 'oklch(var(--border))' },
+  docx: {
+    fg: 'oklch(0.55 0.13 240)',
+    bg: 'oklch(0.55 0.13 240 / 0.12)',
+    border: 'oklch(0.55 0.13 240 / 0.25)',
+  },
+  pdf: {
+    fg: 'oklch(0.58 0.18 25)',
+    bg: 'oklch(0.58 0.18 25 / 0.12)',
+    border: 'oklch(0.58 0.18 25 / 0.25)',
+  },
+  pptx: {
+    fg: 'oklch(0.55 0.16 25)',
+    bg: 'oklch(0.55 0.16 25 / 0.12)',
+    border: 'oklch(0.55 0.16 25 / 0.25)',
+  },
+  unknown: {
+    fg: 'oklch(var(--muted-foreground))',
+    bg: 'oklch(var(--muted))',
+    border: 'oklch(var(--border))',
+  },
 };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -241,9 +250,7 @@ export default function ChatPage() {
   }, []);
 
   function patchAssistant(id: string, mut: (m: Message) => Message) {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === id && m.role === 'assistant' ? mut(m) : m)),
-    );
+    setMessages((prev) => prev.map((m) => (m.id === id && m.role === 'assistant' ? mut(m) : m)));
   }
 
   function persist(key: string, value: string) {
@@ -488,9 +495,7 @@ export default function ChatPage() {
         <ChatThread
           messages={messages}
           citationMode={citationMode}
-          onOpenScreenshot={(citation, image) =>
-            setModalImage({ citation, image })
-          }
+          onOpenScreenshot={(citation, image) => setModalImage({ citation, image })}
         />
 
         <ChatComposer
@@ -558,10 +563,7 @@ function ConversationHistoryPanel({
     queryKey: ['conversations'],
     queryFn: () => conversationsApi.list(50, 0),
   });
-  const conversations = useMemo(
-    () => listQuery.data?.items ?? [],
-    [listQuery.data],
-  );
+  const conversations = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
 
   async function handleNewChat() {
     try {
@@ -633,10 +635,7 @@ function ConversationHistoryPanel({
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 600 }}>Conversations</span>
-          <span
-            className="badge badge-accent"
-            style={{ fontSize: 10, fontWeight: 600 }}
-          >
+          <span className="badge badge-accent" style={{ fontSize: 10, fontWeight: 600 }}>
             BETA+
           </span>
           <div className="spacer" />
@@ -686,25 +685,17 @@ function ConversationHistoryPanel({
         }}
       >
         <Shield size={11} />
-        <span>
-          Server-side per ADR-0031 · scoped to user · Postgres backing
-        </span>
+        <span>Server-side per ADR-0031 · scoped to user · Postgres backing</span>
       </div>
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
         {listQuery.isPending ? (
-          <div
-            className="text-xs muted"
-            style={{ padding: '24px 8px', textAlign: 'center' }}
-          >
+          <div className="muted text-xs" style={{ padding: '24px 8px', textAlign: 'center' }}>
             Loading…
           </div>
         ) : conversations.length === 0 ? (
-          <div
-            className="text-xs muted"
-            style={{ padding: '24px 8px', textAlign: 'center' }}
-          >
+          <div className="muted text-xs" style={{ padding: '24px 8px', textAlign: 'center' }}>
             No conversations yet.
           </div>
         ) : (
@@ -712,10 +703,7 @@ function ConversationHistoryPanel({
             if (g.items.length === 0) return null;
             return (
               <div key={g.id}>
-                <div
-                  className="nav-section-label"
-                  style={{ padding: '10px 8px 4px' }}
-                >
+                <div className="nav-section-label" style={{ padding: '10px 8px 4px' }}>
                   {g.label}
                 </div>
                 {g.items.map((c) => (
@@ -789,9 +777,7 @@ function ConversationItem({
           : hover
             ? 'oklch(var(--muted) / 0.5)'
             : 'transparent',
-        borderLeft: active
-          ? '2px solid oklch(var(--accent))'
-          : '2px solid transparent',
+        borderLeft: active ? '2px solid oklch(var(--accent))' : '2px solid transparent',
         transition: 'background var(--duration-fast)',
         marginBottom: 1,
         position: 'relative',
@@ -914,7 +900,7 @@ function ChatHeader({
         </button>
       )}
       <div className="row">
-        <span className="text-xs muted mono">KB</span>
+        <span className="muted mono text-xs">KB</span>
         <select
           className="select"
           value={activeKb?.kb_id ?? ''}
@@ -933,19 +919,19 @@ function ChatHeader({
         </select>
         {activeKb && (
           <>
-            <span className="text-xs muted">·</span>
-            <span className="text-xs muted mono">
-              {activeKb.total_chunks.toLocaleString()} chunks ·{' '}
-              {activeKb.total_screenshots} screenshots
+            <span className="muted text-xs">·</span>
+            <span className="muted mono text-xs">
+              {activeKb.total_chunks.toLocaleString()} chunks · {activeKb.total_screenshots}{' '}
+              screenshots
             </span>
           </>
         )}
       </div>
       <div className="spacer" />
       <div className="row">
-        <span className="text-xs muted">CRAG</span>
+        <span className="muted text-xs">CRAG</span>
         <span className="switch" data-on="true" />
-        <span className="text-xs muted" style={{ marginLeft: 12 }}>
+        <span className="muted text-xs" style={{ marginLeft: 12 }}>
           Show images
         </span>
         <span className="switch" data-on="true" />
@@ -1000,10 +986,7 @@ function ChatThread({
   }, [messages]);
 
   return (
-    <div
-      ref={threadRef}
-      style={{ flex: 1, overflowY: 'auto', padding: '20px 32px 32px' }}
-    >
+    <div ref={threadRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 32px 32px' }}>
       <div style={{ maxWidth: 860, margin: '0 auto' }}>
         {messages.length === 0 ? (
           <EmptyState />
@@ -1056,7 +1039,8 @@ function EmptyState() {
         Ask about Ricoh financial software
       </div>
       <div style={{ fontSize: 13, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
-        AR / AP / FA / CB / GL / BM · D365 F&O ERP corpus · Cohere v4.0-pro rerank · Image-grounded citations.
+        AR / AP / FA / CB / GL / BM · D365 F&O ERP corpus · Cohere v4.0-pro rerank · Image-grounded
+        citations.
       </div>
     </div>
   );
@@ -1076,7 +1060,7 @@ function MessageRow({
       <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
         <div className="avatar avatar-sm">You</div>
         <div style={{ flex: 1 }}>
-          <div className="text-xs muted mono" style={{ marginBottom: 4 }}>
+          <div className="muted mono text-xs" style={{ marginBottom: 4 }}>
             you · {formatTime(message.at)}
           </div>
           <div
@@ -1094,9 +1078,12 @@ function MessageRow({
   }
 
   // Assistant
-  const imageCitations = message.citations.filter(
-    (c) => c.embedded_images.length > 0,
-  );
+  const imageCitations = message.citations.filter((c) => c.embedded_images.length > 0);
+  // BUG-026 Finding A — unique images across citations (deduped by checksum /
+  // blob_url). Drives inline cards + gallery + image count so the same image
+  // (a §X.1 figure that's both the §X.1 chunk's direct image AND the §X intro
+  // chunk's neighbour-attached image) renders once, not once per citation.
+  const dedupedImages = dedupeCitationImages(message.citations);
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
@@ -1122,15 +1109,15 @@ function MessageRow({
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 600 }}>EKP</span>
-          <span className="text-xs muted mono">
+          <span className="muted mono text-xs">
             {message.model && `${message.model} · `}
-            {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length}{' '}
-            citation{message.citations.length === 1 ? '' : 's'}
+            {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length} citation
+            {message.citations.length === 1 ? '' : 's'}
             {imageCitations.length > 0 && ` · ${imageCitations.length} with screenshots`}
           </span>
           <span className="spacer" style={{ flex: 1 }} />
           {message.latencyMs !== null && (
-            <span className="text-xs muted mono">
+            <span className="muted mono text-xs">
               {(message.latencyMs / 1000).toFixed(2)}s
               {message.costUsd !== null && ` · $${message.costUsd.toFixed(3)}`}
             </span>
@@ -1152,10 +1139,7 @@ function MessageRow({
               fontSize: 12.5,
             }}
           >
-            <RefreshCw
-              size={12}
-              style={{ color: 'oklch(var(--accent))', flexShrink: 0 }}
-            />
+            <RefreshCw size={12} style={{ color: 'oklch(var(--accent))', flexShrink: 0 }} />
             <span>
               <b>CRAG L2 re-retrieve</b> · {message.cragIterations} iteration
               {message.cragIterations === 1 ? '' : 's'}
@@ -1187,14 +1171,9 @@ function MessageRow({
             }}
           >
             {message.content ? (
-              <AnswerBodyMarkdown
-                content={message.content}
-                citations={message.citations}
-              />
+              <AnswerBodyMarkdown content={message.content} citations={message.citations} />
             ) : (
-              <span className="muted">
-                {message.isStreaming ? 'Thinking…' : '(no content)'}
-              </span>
+              <span className="muted">{message.isStreaming ? 'Thinking…' : '(no content)'}</span>
             )}
           </div>
         )}
@@ -1212,35 +1191,26 @@ function MessageRow({
 
         {/* Footnote citation list */}
         {citationMode === 'footnote' && message.citations.length > 0 && (
-          <FootnoteList
-            citations={message.citations}
-            onOpenScreenshot={onOpenScreenshot}
-          />
+          <FootnoteList citations={message.citations} onOpenScreenshot={onOpenScreenshot} />
         )}
 
         {/* Inline image cards — mockup ekp-page-chat.jsx:470-498 (per imageCitation
             inline rendering in answer body). Restored by BUG-019 — W22 F4 rebuild
             wrongly dropped these as "custom abstraction" but mockup line 581-617
             defines the InlineImageCard function and uses it inline in AnswerBody.
-            Render flat — every image of every imageCitation becomes one card,
-            sequentially numbered. ImageGallery (>=2 gate, mockup 354-357) below
-            stays as the collective fallback. */}
+            BUG-026 Finding A — render the deduped unique-image list (one card per
+            distinct image, not one per (citation, image) pair) so a neighbour-
+            attached image shared by 2+ citations renders once. ImageGallery
+            below draws from the same deduped list as the collective fallback. */}
         {!message.isStreaming &&
-          imageCitations.flatMap((c, citationIdx) =>
-            c.embedded_images.map((image, imageIdx) => ({
-              c,
-              image,
-              citationIdx,
-              imageIdx,
-            })),
-          ).map(({ c, image, citationIdx, imageIdx }, flatIdx) => (
+          dedupedImages.map(({ citation, image, citationIdx }, flatIdx) => (
             <InlineImageCard
-              key={`${c.chunk_id}-${imageIdx}`}
-              citation={c}
+              key={`${citation.chunk_id}-${image.checksum_sha256 || image.blob_url}`}
+              citation={citation}
               image={image}
-              citationIdx={citationIdx + 1}
+              citationIdx={citationIdx}
               figureIdx={flatIdx + 1}
-              onOpen={() => onOpenScreenshot(c, image)}
+              onOpen={() => onOpenScreenshot(citation, image)}
             />
           ))}
 
@@ -1252,30 +1222,21 @@ function MessageRow({
             so the same ImageGallery now handles the 1-image case too. Mockup
             line 354-357 `>=2` gate intent (1-image = inline only) is the
             documented deviation per user UX expectation. */}
-        {!message.isStreaming && imageCitations.length >= 1 && (
-          <ImageGallery
-            citations={imageCitations}
-            allCitations={message.citations}
-            onOpenScreenshot={onOpenScreenshot}
-          />
+        {!message.isStreaming && dedupedImages.length >= 1 && (
+          <ImageGallery images={dedupedImages} onOpenScreenshot={onOpenScreenshot} />
         )}
 
         {/* Sources strip (default — non-sidebar modes show it inline) */}
-        {citationMode !== 'sidebar' &&
-          !message.isStreaming &&
-          message.citations.length > 0 && (
-            <SourcesStrip
-              citations={message.citations}
-              onOpenScreenshot={onOpenScreenshot}
-            />
-          )}
+        {citationMode !== 'sidebar' && !message.isStreaming && message.citations.length > 0 && (
+          <SourcesStrip citations={message.citations} onOpenScreenshot={onOpenScreenshot} />
+        )}
 
         {/* Feedback bar */}
         {!message.isStreaming && message.content && (
           <FeedbackBar
             traceId={message.id}
             citations={message.citations}
-            imageCount={imageCitations.length}
+            imageCount={dedupedImages.length}
           />
         )}
       </div>
@@ -1306,10 +1267,7 @@ function MessageRow({
 
 const CITATION_PLACEHOLDER_PATTERN = /⟦CIT(\d+)⟧/g;
 
-function preprocessAnswerContent(
-  content: string,
-  citations: Citation[],
-): string {
+function preprocessAnswerContent(content: string, citations: Citation[]): string {
   return content.replace(/\[chunk-([^\]]+)\]/g, (raw, id) => {
     const idx = citations.findIndex((c) => c.chunk_id === id);
     // Hallucinated chunk_id → keep raw marker (defensive — backend already
@@ -1318,11 +1276,7 @@ function preprocessAnswerContent(
   });
 }
 
-function splitStringForPills(
-  text: string,
-  citations: Citation[],
-  keyPrefix: string,
-): ReactNode[] {
+function splitStringForPills(text: string, citations: Citation[], keyPrefix: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let lastIdx = 0;
   let match: RegExpExecArray | null;
@@ -1335,11 +1289,7 @@ function splitStringForPills(
     const citation = citations[citIdx];
     if (citation) {
       parts.push(
-        <CitationPill
-          key={`${keyPrefix}-${match.index}`}
-          citation={citation}
-          idx={citIdx + 1}
-        />,
+        <CitationPill key={`${keyPrefix}-${match.index}`} citation={citation} idx={citIdx + 1} />,
       );
     } else {
       parts.push(match[0]);
@@ -1375,13 +1325,7 @@ function injectPillsIntoChildren(
   return children;
 }
 
-function AnswerBodyMarkdown({
-  content,
-  citations,
-}: {
-  content: string;
-  citations: Citation[];
-}) {
+function AnswerBodyMarkdown({ content, citations }: { content: string; citations: Citation[] }) {
   const processed = useMemo(
     () => preprocessAnswerContent(content, citations),
     [content, citations],
@@ -1390,28 +1334,16 @@ function AnswerBodyMarkdown({
   const components = useMemo(
     () => ({
       p: ({ children }: { children?: ReactNode }) => (
-        <p style={{ margin: '0 0 10px 0' }}>
-          {injectPillsIntoChildren(children, citations, 'p')}
-        </p>
+        <p style={{ margin: '0 0 10px 0' }}>{injectPillsIntoChildren(children, citations, 'p')}</p>
       ),
       ol: ({ children }: { children?: ReactNode }) => (
-        <ol
-          style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
-        >
-          {children}
-        </ol>
+        <ol style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}>{children}</ol>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
-        <ul
-          style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}
-        >
-          {children}
-        </ul>
+        <ul style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}>{children}</ul>
       ),
       li: ({ children }: { children?: ReactNode }) => (
-        <li style={{ marginBottom: 2 }}>
-          {injectPillsIntoChildren(children, citations, 'li')}
-        </li>
+        <li style={{ marginBottom: 2 }}>{injectPillsIntoChildren(children, citations, 'li')}</li>
       ),
       strong: ({ children }: { children?: ReactNode }) => (
         <strong style={{ fontWeight: 600 }}>
@@ -1489,9 +1421,7 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
         padding: '0 5px',
         fontSize: 11,
         fontWeight: 600,
-        background: hovered
-          ? 'oklch(var(--accent) / 0.22)'
-          : 'oklch(var(--accent) / 0.1)',
+        background: hovered ? 'oklch(var(--accent) / 0.22)' : 'oklch(var(--accent) / 0.1)',
         color: 'oklch(var(--accent))',
         border: '1px solid oklch(var(--accent) / 0.28)',
         borderRadius: 4,
@@ -1553,15 +1483,10 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
             >
               {citation.doc_title}
             </span>
-            <span className="mono text-xs muted">
-              {citation.relevance_score.toFixed(3)}
-            </span>
+            <span className="mono muted text-xs">{citation.relevance_score.toFixed(3)}</span>
           </span>
           {citation.section_path.length > 0 && (
-            <span
-              className="section-path text-xs"
-              style={{ display: 'block', marginBottom: 6 }}
-            >
+            <span className="section-path text-xs" style={{ display: 'block', marginBottom: 6 }}>
               {citation.section_path.map((s, j) => (
                 <span key={j}>{s}</span>
               ))}
@@ -1610,9 +1535,7 @@ function FootnoteList({
     >
       {citations.map((c) => (
         <li key={c.chunk_id} style={{ marginBottom: 4 }}>
-          <span style={{ color: 'oklch(var(--foreground))', fontWeight: 500 }}>
-            {c.doc_title}
-          </span>
+          <span style={{ color: 'oklch(var(--foreground))', fontWeight: 500 }}>{c.doc_title}</span>
           {c.chunk_title && (
             <>
               {' — '}
@@ -1715,7 +1638,7 @@ function InlineImageCard({
           gap: 10,
         }}
       >
-        <span className="mono text-xs muted">figure {figureIdx}</span>
+        <span className="mono muted text-xs">figure {figureIdx}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -1729,7 +1652,7 @@ function InlineImageCard({
           >
             {title}
           </div>
-          <div className="text-xs muted" style={{ marginTop: 1 }}>
+          <div className="muted text-xs" style={{ marginTop: 1 }}>
             {caption}
           </div>
         </div>
@@ -1745,19 +1668,16 @@ function InlineImageCard({
 // ──────────────────────────────────────────────────────────────────────────
 
 function ImageGallery({
-  citations,
-  allCitations,
+  images,
   onOpenScreenshot,
 }: {
-  citations: Citation[];
-  // BUG-024 — `allCitations` is the full message.citations list, used to
-  // compute each thumbnail's numeric badge via findIndex(chunk_id)+1 so the
-  // badge matches CitationPill / SourcesStrip / PanelSourceCard /
-  // ScreenshotModal numbering (all anchor on full-citations position).
-  // Pre-fix we used `i+1` over the imageCitations subset which diverged
-  // when an image-bearing chunk wasn't first in the full citations array
-  // (e.g. subset position 0 -> badge 1, but full position 1 -> modal 2).
-  allCitations: Citation[];
+  // BUG-026 Finding A — render the deduped unique-image list (one thumbnail per
+  // distinct image), not one-per-citation. Each entry carries its owning
+  // citation + the full-citations badge index. The badge stays anchored on the
+  // full-citations position (per BUG-024) — `dedupeCitationImages` computes
+  // `citationIdx` as `idx+1` over `message.citations`, matching CitationPill /
+  // SourcesStrip / ScreenshotModal numbering.
+  images: DedupedCitationImage[];
   onOpenScreenshot: (citation: Citation, image: ImageRef) => void;
 }) {
   return (
@@ -1771,7 +1691,7 @@ function ImageGallery({
         }}
       >
         <span
-          className="text-xs muted mono"
+          className="muted mono text-xs"
           style={{
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
@@ -1780,7 +1700,7 @@ function ImageGallery({
         >
           Referenced screenshots
         </span>
-        <span className="badge badge-muted">{citations.length}</span>
+        <span className="badge badge-muted">{images.length}</span>
         <div className="spacer" style={{ flex: 1 }} />
         <button type="button" className="btn btn-ghost btn-xs">
           View all in Image Library →
@@ -1793,96 +1713,85 @@ function ImageGallery({
           gap: 8,
         }}
       >
-        {citations.map((c) => {
-          const img = c.embedded_images[0]!;
-          // BUG-024 — badge idx anchored on full-citations position so it
-          // matches CitationPill / ScreenshotModal / etc. Fallback to a
-          // safe `?` if lookup misses (defensive: should never happen when
-          // citations is a subset of allCitations).
-          const fullIdx = allCitations.findIndex(
-            (a) => a.chunk_id === c.chunk_id,
-          );
-          const badge = fullIdx >= 0 ? fullIdx + 1 : '?';
-          return (
-            <button
-              key={c.chunk_id}
-              type="button"
-              onClick={() => onOpenScreenshot(c, img)}
-              className="btn btn-secondary"
+        {images.map(({ citation, image, citationIdx }) => (
+          <button
+            key={`${citation.chunk_id}-${image.checksum_sha256 || image.blob_url}`}
+            type="button"
+            onClick={() => onOpenScreenshot(citation, image)}
+            className="btn btn-secondary"
+            style={{
+              padding: 0,
+              height: 'auto',
+              flexDirection: 'column',
+              background: 'oklch(var(--card))',
+              overflow: 'hidden',
+              textAlign: 'left',
+              borderColor: 'oklch(var(--border))',
+            }}
+          >
+            <div
               style={{
-                padding: 0,
-                height: 'auto',
-                flexDirection: 'column',
-                background: 'oklch(var(--card))',
+                width: '100%',
+                aspectRatio: '16/9',
                 overflow: 'hidden',
-                textAlign: 'left',
-                borderColor: 'oklch(var(--border))',
+                position: 'relative',
               }}
             >
-              <div
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image.blob_url}
+                alt={image.alt_text}
                 style={{
                   width: '100%',
-                  aspectRatio: '16/9',
-                  overflow: 'hidden',
-                  position: 'relative',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  left: 4,
+                  background: 'oklch(var(--accent))',
+                  color: 'oklch(var(--accent-foreground))',
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  fontWeight: 600,
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.blob_url}
-                  alt={img.alt_text}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    left: 4,
-                    background: 'oklch(var(--accent))',
-                    color: 'oklch(var(--accent-foreground))',
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    fontWeight: 600,
-                  }}
-                >
-                  {badge}
-                </span>
+                {citationIdx}
+              </span>
+            </div>
+            <div style={{ width: '100%', padding: '8px 10px' }}>
+              <div
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  lineHeight: 1.3,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {citation.chunk_title}
               </div>
-              <div style={{ width: '100%', padding: '8px 10px' }}>
-                <div
-                  style={{
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    lineHeight: 1.3,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {c.chunk_title}
-                </div>
-                <div
-                  className="text-xs muted mono"
-                  style={{
-                    marginTop: 2,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {c.doc_title}
-                </div>
+              <div
+                className="muted mono text-xs"
+                style={{
+                  marginTop: 2,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {citation.doc_title}
               </div>
-            </button>
-          );
-        })}
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -1920,7 +1829,7 @@ function SourcesStrip({
       >
         <BookOpen size={13} className="muted" />
         <span
-          className="text-xs mono"
+          className="mono text-xs"
           style={{
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
@@ -1930,7 +1839,7 @@ function SourcesStrip({
         >
           Sources
         </span>
-        <span className="text-xs muted">
+        <span className="muted text-xs">
           · {citations.length} chunks across {docCount} document
           {docCount === 1 ? '' : 's'}
         </span>
@@ -1951,8 +1860,7 @@ function SourcesStrip({
             citation={c}
             idx={i + 1}
             onOpenScreenshot={() =>
-              c.embedded_images[0] &&
-              onOpenScreenshot(c, c.embedded_images[0])
+              c.embedded_images[0] && onOpenScreenshot(c, c.embedded_images[0])
             }
           />
         ))}
@@ -2037,7 +1945,7 @@ function SourceDocCard({
             marginTop: 6,
           }}
         >
-          <span className="text-xs mono muted">chunk #{citation.chunk_index}</span>
+          <span className="mono muted text-xs">chunk #{citation.chunk_index}</span>
           <div
             style={{
               flex: 1,
@@ -2067,11 +1975,7 @@ function SourceDocCard({
         </div>
         <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
           {hasImage && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs"
-              onClick={onOpenScreenshot}
-            >
+            <button type="button" className="btn btn-ghost btn-xs" onClick={onOpenScreenshot}>
               <Layers size={10} /> Screenshot
             </button>
           )}
@@ -2144,18 +2048,13 @@ function CitationPanel({
       >
         <div>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>Sources</div>
-          <div className="text-xs muted">
-            {citations.length} chunk{citations.length === 1 ? '' : 's'} ·{' '}
-            {imageCount} with screenshot{imageCount === 1 ? '' : 's'} · sorted by
-            relevance
+          <div className="muted text-xs">
+            {citations.length} chunk{citations.length === 1 ? '' : 's'} · {imageCount} with
+            screenshot{imageCount === 1 ? '' : 's'} · sorted by relevance
           </div>
         </div>
         <div className="spacer" style={{ flex: 1 }} />
-        <button
-          type="button"
-          className="btn btn-ghost btn-icon btn-sm"
-          onClick={onClose}
-        >
+        <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
           <XIcon size={14} />
         </button>
       </div>
@@ -2175,8 +2074,7 @@ function CitationPanel({
             citation={c}
             idx={i + 1}
             onOpenScreenshot={() =>
-              c.embedded_images[0] &&
-              onOpenScreenshot(c, c.embedded_images[0])
+              c.embedded_images[0] && onOpenScreenshot(c, c.embedded_images[0])
             }
           />
         ))}
@@ -2265,10 +2163,7 @@ function PanelSourceCard({
         </div>
       )}
       {citation.chunk_title && (
-        <div
-          className="text-xs muted"
-          style={{ marginBottom: 6, lineHeight: 1.45 }}
-        >
+        <div className="muted text-xs" style={{ marginBottom: 6, lineHeight: 1.45 }}>
           {citation.chunk_title}
         </div>
       )}
@@ -2281,13 +2176,9 @@ function PanelSourceCard({
           marginTop: 6,
         }}
       >
-        <span className="text-xs mono muted">chunk #{citation.chunk_index}</span>
+        <span className="mono muted text-xs">chunk #{citation.chunk_index}</span>
         {hasImage && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
-            onClick={onOpenScreenshot}
-          >
+          <button type="button" className="btn btn-ghost btn-xs" onClick={onOpenScreenshot}>
             <Layers size={10} /> Screenshot
           </button>
         )}
@@ -2330,18 +2221,10 @@ function FeedbackBar({
           flexWrap: 'wrap',
         }}
       >
-        <button
-          type="button"
-          className="btn btn-ghost btn-icon btn-xs"
-          title="Copy answer"
-        >
+        <button type="button" className="btn btn-ghost btn-icon btn-xs" title="Copy answer">
           <Copy size={12} />
         </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-icon btn-xs"
-          title="Regenerate"
-        >
+        <button type="button" className="btn btn-ghost btn-icon btn-xs" title="Regenerate">
           <RefreshCw size={12} />
         </button>
         <div
@@ -2352,7 +2235,7 @@ function FeedbackBar({
             margin: '0 4px',
           }}
         />
-        <span className="text-xs muted" style={{ marginRight: 2 }}>
+        <span className="muted text-xs" style={{ marginRight: 2 }}>
           Was this helpful?
         </span>
         <button
@@ -2393,7 +2276,7 @@ function FeedbackBar({
         </button>
         <span className="spacer" style={{ flex: 1 }} />
         <span
-          className="text-xs muted mono"
+          className="muted mono text-xs"
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         >
           <Layers size={10} /> {citations.length} citation
@@ -2452,11 +2335,8 @@ function FeedbackBar({
               marginTop: 6,
             }}
           >
-            <span className="text-xs muted mono">
-              ref{' '}
-              <span style={{ color: 'oklch(var(--accent))' }}>
-                {traceId.slice(-12)}
-              </span>
+            <span className="muted mono text-xs">
+              ref <span style={{ color: 'oklch(var(--accent))' }}>{traceId.slice(-12)}</span>
             </span>
             <div className="spacer" style={{ flex: 1 }} />
             <button
@@ -2523,266 +2403,266 @@ function ScreenshotModal({
   }, [isZoomed]);
   return (
     <>
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'oklch(var(--background) / 0.85)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-      }}
-    >
       <div
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose}
         style={{
-          width: 1040,
-          maxWidth: '92vw',
-          maxHeight: '90vh',
-          background: 'oklch(var(--card))',
-          border: '1px solid oklch(var(--border))',
-          borderRadius: 'var(--radius-md)',
-          overflow: 'hidden',
+          position: 'fixed',
+          inset: 0,
+          background: 'oklch(var(--background) / 0.85)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 100,
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 32,
         }}
       >
-        {/* Header — idx badge + chunk_title + doc_title + relevance_score + close */}
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
+            width: 1040,
+            maxWidth: '92vw',
+            maxHeight: '90vh',
+            background: 'oklch(var(--card))',
+            border: '1px solid oklch(var(--border))',
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
             display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 16px',
-            borderBottom: '1px solid oklch(var(--border))',
+            flexDirection: 'column',
           }}
         >
-          <span
-            style={{
-              flexShrink: 0,
-              width: 22,
-              height: 22,
-              background: 'oklch(var(--accent))',
-              color: 'oklch(var(--accent-foreground))',
-              borderRadius: 4,
-              display: 'grid',
-              placeItems: 'center',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-              fontSize: 12,
-            }}
-          >
-            {idx}
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 600 }}>
-              {citation.chunk_title || 'Screenshot'}
-            </div>
-            <div
-              className="text-xs muted mono"
-              style={{
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {citation.doc_title} · chunk #{citation.chunk_index}
-            </div>
-          </div>
-          <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
-            {citation.relevance_score.toFixed(3)}
-          </span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={onClose}
-            aria-label="Close screenshot"
-          >
-            <XIcon size={14} />
-          </button>
-        </div>
-
-        {/* Body — 2-column grid (image left ~1.6fr, side panel right ~1fr) */}
-        <div
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            display: 'grid',
-            gridTemplateColumns: '1.6fr 1fr',
-            gap: 16,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              border: '1px solid oklch(var(--border))',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-              background: 'oklch(var(--muted) / 0.2)',
-              display: 'grid',
-              placeItems: 'center',
-              minHeight: 280,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image.blob_url}
-              alt={image.alt_text || citation.chunk_title || 'Screenshot'}
-              onClick={(e) => {
-                // CH-004 — escalate to full-viewport zoom overlay; stop
-                // propagation so the click does not bubble to the dialog
-                // backdrop (which calls onClose).
-                e.stopPropagation();
-                setIsZoomed(true);
-              }}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '70vh',
-                display: 'block',
-                objectFit: 'contain',
-                cursor: 'zoom-in',
-              }}
-            />
-          </div>
-
-          {/* Side panel — section_path / chunk_id / chunk_title preview / actions */}
+          {/* Header — idx badge + chunk_title + doc_title + relevance_score + close */}
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              minWidth: 0,
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 16px',
+              borderBottom: '1px solid oklch(var(--border))',
             }}
           >
-            <div>
-              <div
-                className="text-xs muted mono"
-                style={{
-                  marginBottom: 4,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                section_path
-              </div>
-              <div className="section-path text-xs">
-                {citation.section_path.length > 0 ? (
-                  citation.section_path.map((s, j) => <span key={j}>{s}</span>)
-                ) : (
-                  <span className="muted">(root)</span>
-                )}
-              </div>
-            </div>
-            <div>
-              <div
-                className="text-xs muted mono"
-                style={{
-                  marginBottom: 4,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                chunk_id
-              </div>
-              <div
-                className="mono text-xs"
-                style={{
-                  wordBreak: 'break-all',
-                  color: 'oklch(var(--foreground))',
-                }}
-              >
-                {citation.chunk_id}
-              </div>
-            </div>
-            <div>
-              <div
-                className="text-xs muted mono"
-                style={{
-                  marginBottom: 4,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Section preview
-              </div>
-              <div
-                style={{
-                  padding: '10px 12px',
-                  background: 'oklch(var(--muted) / 0.4)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 12.5,
-                  lineHeight: 1.55,
-                  border: '1px solid oklch(var(--border))',
-                }}
-              >
-                {citation.chunk_title || image.alt_text || '(no preview)'}
-              </div>
-            </div>
-            <div className="spacer" style={{ flex: 1 }} />
-            <Link
-              href={`/kb/${kbId}/docs/${citation.doc_id}`}
-              className="btn btn-accent"
+            <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                justifyContent: 'center',
+                flexShrink: 0,
+                width: 22,
+                height: 22,
+                background: 'oklch(var(--accent))',
+                color: 'oklch(var(--accent-foreground))',
+                borderRadius: 4,
+                display: 'grid',
+                placeItems: 'center',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                fontSize: 12,
               }}
-              onClick={onClose}
             >
-              <FileText size={14} /> Open in Document Detail
-            </Link>
+              {idx}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>
+                {citation.chunk_title || 'Screenshot'}
+              </div>
+              <div
+                className="muted mono text-xs"
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {citation.doc_title} · chunk #{citation.chunk_index}
+              </div>
+            </div>
+            <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+              {citation.relevance_score.toFixed(3)}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={onClose}
+              aria-label="Close screenshot"
+            >
+              <XIcon size={14} />
+            </button>
+          </div>
+
+          {/* Body — 2-column grid (image left ~1.6fr, side panel right ~1fr) */}
+          <div
+            style={{
+              flex: 1,
+              overflow: 'auto',
+              display: 'grid',
+              gridTemplateColumns: '1.6fr 1fr',
+              gap: 16,
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                border: '1px solid oklch(var(--border))',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                background: 'oklch(var(--muted) / 0.2)',
+                display: 'grid',
+                placeItems: 'center',
+                minHeight: 280,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image.blob_url}
+                alt={image.alt_text || citation.chunk_title || 'Screenshot'}
+                onClick={(e) => {
+                  // CH-004 — escalate to full-viewport zoom overlay; stop
+                  // propagation so the click does not bubble to the dialog
+                  // backdrop (which calls onClose).
+                  e.stopPropagation();
+                  setIsZoomed(true);
+                }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '70vh',
+                  display: 'block',
+                  objectFit: 'contain',
+                  cursor: 'zoom-in',
+                }}
+              />
+            </div>
+
+            {/* Side panel — section_path / chunk_id / chunk_title preview / actions */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                minWidth: 0,
+              }}
+            >
+              <div>
+                <div
+                  className="muted mono text-xs"
+                  style={{
+                    marginBottom: 4,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  section_path
+                </div>
+                <div className="section-path text-xs">
+                  {citation.section_path.length > 0 ? (
+                    citation.section_path.map((s, j) => <span key={j}>{s}</span>)
+                  ) : (
+                    <span className="muted">(root)</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div
+                  className="muted mono text-xs"
+                  style={{
+                    marginBottom: 4,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  chunk_id
+                </div>
+                <div
+                  className="mono text-xs"
+                  style={{
+                    wordBreak: 'break-all',
+                    color: 'oklch(var(--foreground))',
+                  }}
+                >
+                  {citation.chunk_id}
+                </div>
+              </div>
+              <div>
+                <div
+                  className="muted mono text-xs"
+                  style={{
+                    marginBottom: 4,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Section preview
+                </div>
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    background: 'oklch(var(--muted) / 0.4)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 12.5,
+                    lineHeight: 1.55,
+                    border: '1px solid oklch(var(--border))',
+                  }}
+                >
+                  {citation.chunk_title || image.alt_text || '(no preview)'}
+                </div>
+              </div>
+              <div className="spacer" style={{ flex: 1 }} />
+              <Link
+                href={`/kb/${kbId}/docs/${citation.doc_id}`}
+                className="btn btn-accent"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  justifyContent: 'center',
+                }}
+                onClick={onClose}
+              >
+                <FileText size={14} /> Open in Document Detail
+              </Link>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    {/* CH-004 — full-viewport zoom overlay layer (z-index 200 > modal 100).
+      {/* CH-004 — full-viewport zoom overlay layer (z-index 200 > modal 100).
         Conditional mount on isZoomed=true; dismissed via backdrop click,
         image click, or ESC (window-scoped via useEffect above). objectFit
         contain caps over-large images at viewport per spec §4.1 — strict
         1:1 pixel + scroll behaviour deferred per spec §2.2 out-of-scope. */}
-    {isZoomed && (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Full-resolution screenshot"
-        onClick={() => setIsZoomed(false)}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'oklch(0 0 0 / 0.92)',
-          zIndex: 200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'zoom-out',
-          padding: 16,
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={image.blob_url}
-          alt={image.alt_text || citation.chunk_title || 'Screenshot full-resolution'}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsZoomed(false);
-          }}
+      {isZoomed && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full-resolution screenshot"
+          onClick={() => setIsZoomed(false)}
           style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
+            position: 'fixed',
+            inset: 0,
+            background: 'oklch(0 0 0 / 0.92)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             cursor: 'zoom-out',
-            display: 'block',
+            padding: 16,
           }}
-        />
-      </div>
-    )}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={image.blob_url}
+            alt={image.alt_text || citation.chunk_title || 'Screenshot full-resolution'}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsZoomed(false);
+            }}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              cursor: 'zoom-out',
+              display: 'block',
+            }}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -2873,10 +2753,7 @@ function ChatComposer({
           </button>
         )}
       </div>
-      <div
-        className="text-xs muted mono"
-        style={{ marginTop: 8, textAlign: 'center' }}
-      >
+      <div className="muted mono text-xs" style={{ marginTop: 8, textAlign: 'center' }}>
         Hybrid retrieval · Cohere v4.0-pro rerank · GPT-5.5 synthesis · CRAG L2 self-correction
       </div>
     </form>
