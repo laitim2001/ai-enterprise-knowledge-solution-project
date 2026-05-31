@@ -152,6 +152,24 @@ reports/reranker_shootout_*.json
 /traces/
 *.langfuse-export.json
 
+# Diagnostic throwaway — W25-W42 RAG-quality investigation artifacts.
+# Per-run eval payload dumps + multi-run aggregates + standalone diagnostic
+# runner scripts, named `w{week}-*.{json,py}` (BUG-024/025/026/027 +
+# memory project-chat-demo-rag-quality-followups). Kept on disk for reference,
+# never committed (would permanently bloat history). Promote a genuinely useful
+# artifact with `git add -f` (e.g. docs/eval-set-w42diag-testkb.yaml was).
+backend/w[0-9]*.json
+backend/w[0-9]*.py
+# Background-launch uvicorn stdout+stderr capture (.log.out / .log.err / .log) —
+# the bare `*.log` rule above does NOT match the `.log.out`/`.log.err` suffixes.
+backend/uvicorn-*.log.out
+backend/uvicorn-*.log.err
+backend/uvicorn-*.log
+# Background-launch frontend dev-server capture (npm run dev stdout+stderr).
+frontend/*-frontend-dev.log.out
+frontend/*-frontend-dev.log.err
+frontend/*-frontend-dev.log
+
 # Daily session conversation logs — local only, never push to GitHub
 docs/10-development-log/
 

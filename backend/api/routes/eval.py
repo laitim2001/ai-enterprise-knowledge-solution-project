@@ -97,6 +97,11 @@ def _resolve_eval_set_path(eval_set_id: str) -> Path:
         # post-W25 chunker comparison on real dev KB. See docs/eval-set-
         # v0-w25-supplement.yaml header.
         "eval-set-v0-w25-supplement": _PROJECT_ROOT / "docs" / "eval-set-v0-w25-supplement.yaml",
+        # W42 diag (2026-05-30) — w25-supplement's 13 queries re-pointed to the
+        # only live index `test-kb-20260530-1` (same DCE doc; old
+        # sample-doc-with-image-1 KB deleted) for parent_doc + citation_expansion
+        # before/after regression eval.
+        "eval-set-w42diag-testkb": _PROJECT_ROOT / "docs" / "eval-set-w42diag-testkb.yaml",
     }
     path = mapping.get(eval_set_id)
     if path is None or not path.exists():
