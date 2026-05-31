@@ -12,11 +12,14 @@ Per W25 plan §2 F5 D1 acceptance criteria:
 - Dedup against citation's own embedded_images via `checksum_sha256`
 - Returns NEW Citation list (Pydantic immutable model_copy pattern)
 
-Per Karpathy §1.2 simplicity-first: section_path matching is NOT implemented
-in this first cut — `chunk_index ±N` range covers the immediate neighbour
-case (eg. §8 intro chunk_index 44 → §8.1 chunk_index 45 within window=1).
-section_path-based matching can be added later if F4/F6 verify shows the
-range-only approach misses some cases.
+Per Karpathy §1.2 simplicity-first: the first cut matched only `chunk_index ±N`
+range (covers the immediate neighbour case). BUG-027 (W42 follow-up) adds the
+predicted section-aware mode: when `section_path_prefix_depth > 0`, section
+membership (`section_path[:depth]`) REPLACES window proximity, so a §8 intro
+citation surfaces ALL §8.* scenario figures (chunk 45/47/49/51/53) instead of
+only the two inside ±window. Gated off by default (depth=0) — production flip
+is a separate user decision (see settings.citation_neighbour_section_path
+_prefix_depth).
 
 Per ADR-0034 §Implementation Mapping: this module complements the F3 D4
 query expansion path (which improves chunk retrieval recall) — D1 ensures
@@ -45,6 +48,7 @@ async def attach_neighbour_images(
     *,
     max_aux_per_citation: int = 2,
     neighbour_window: int = 3,
+    section_path_prefix_depth: int = 0,
 ) -> list[Citation]:
     """For each citation, attach embedded_images from neighbour chunks in the
     same document (matched by chunk_index ±neighbour_window range).
@@ -106,6 +110,7 @@ async def attach_neighbour_images(
             doc_chunks=doc_chunks,
             max_aux=max_aux_per_citation,
             window=neighbour_window,
+            section_path_prefix_depth=section_path_prefix_depth,
         )
 
         if new_images:
@@ -138,13 +143,30 @@ def _find_neighbour_images(
     *,
     max_aux: int,
     window: int,
+    section_path_prefix_depth: int = 0,
 ) -> list[ImageRef]:
     """Walk doc_chunks within chunk_index ±window of citation, extract distinct
     new images (deduped against citation's own + each other), cap at max_aux.
 
+    BUG-027 — when `section_path_prefix_depth > 0` (and the citation carries a
+    section_path), section membership REPLACES window proximity: same-section
+    sibling figures attach regardless of chunk distance (nearest-first, still
+    capped at max_aux), so a §8 intro citation surfaces ALL §8.* scenario
+    figures, not just the two inside ±window. depth=0 (default) keeps the
+    window±N first-cut behavior bit-identical. See `_find_section_neighbour_images`.
+
     Pure function; no IO; testable in isolation without mocks.
     """
-    if max_aux <= 0 or window <= 0:
+    if max_aux <= 0:
+        return []
+    if section_path_prefix_depth > 0 and citation.section_path:
+        return _find_section_neighbour_images(
+            citation,
+            doc_chunks,
+            max_aux=max_aux,
+            section_path_prefix_depth=section_path_prefix_depth,
+        )
+    if window <= 0:
         return []
 
     # Dedup checksums — start with citation's own images
@@ -174,6 +196,74 @@ def _find_neighbour_images(
         )
         for img in images:
             # Skip empty checksum (defensive — pre-BUG-009 chunks may lack it)
+            if not img.checksum_sha256:
+                continue
+            if img.checksum_sha256 in own_checksums:
+                continue
+            own_checksums.add(img.checksum_sha256)
+            new_images.append(img)
+            if len(new_images) >= max_aux:
+                return new_images
+
+    return new_images
+
+
+def _find_section_neighbour_images(
+    citation: Citation,
+    doc_chunks: list[dict],
+    *,
+    max_aux: int,
+    section_path_prefix_depth: int,
+) -> list[ImageRef]:
+    """BUG-027 — section-aware variant of `_find_neighbour_images`.
+
+    Attaches images from chunks in the SAME section as the citation (matched by
+    `section_path[:section_path_prefix_depth]`), ignoring chunk-index window
+    proximity — so ALL §8.* scenario figures surface under a §8 intro citation,
+    not only the two inside ±window. Candidates are ordered nearest-first by
+    chunk-index distance for a deterministic cap (closest siblings win when
+    capped); images are deduped against the citation's own images + each other;
+    capped at max_aux. Returns [] when the citation's section_path is shorter
+    than the requested prefix depth (no stable section key to match on).
+
+    Pure function; no IO; testable in isolation without mocks.
+    """
+    cited_prefix = list(citation.section_path[:section_path_prefix_depth])
+    if len(cited_prefix) < section_path_prefix_depth:
+        return []
+
+    own_checksums: set[str] = {
+        img.checksum_sha256
+        for img in citation.embedded_images
+        if img.checksum_sha256
+    }
+
+    # Collect same-section candidates with chunk-index distance so the cap takes
+    # the nearest sibling figures first (deterministic ordering, no IO).
+    candidates: list[tuple[int, dict]] = []
+    for chunk in doc_chunks:
+        chunk_idx_raw = chunk.get("chunk_index", 0)
+        try:
+            chunk_idx = int(chunk_idx_raw) if chunk_idx_raw is not None else 0
+        except (TypeError, ValueError):
+            continue
+        if chunk_idx == citation.chunk_index:
+            continue
+        cand_section_path = chunk.get("section_path")
+        if not isinstance(cand_section_path, list):
+            continue
+        if list(cand_section_path[:section_path_prefix_depth]) != cited_prefix:
+            continue
+        candidates.append((abs(chunk_idx - citation.chunk_index), chunk))
+
+    candidates.sort(key=lambda pair: pair[0])
+
+    new_images: list[ImageRef] = []
+    for _distance, chunk in candidates:
+        images = parse_embedded_images(
+            str(chunk.get("embedded_images_json", "") or ""),
+        )
+        for img in images:
             if not img.checksum_sha256:
                 continue
             if img.checksum_sha256 in own_checksums:

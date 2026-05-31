@@ -191,6 +191,22 @@ class Settings(BaseSettings):
     enable_citation_neighbour_images: bool = True
     citation_neighbour_window: int = 3
     citation_neighbour_max_aux_images: int = 2
+    # BUG-027 — section-aware neighbour-image attach (W42 follow-up). The
+    # first-cut window±N range (citation_image_neighbors.py docstring "section
+    # _path matching NOT implemented in this first cut") misses sibling figures
+    # beyond the window: a §8 intro citation (chunk_index 44, window=3) reaches
+    # §8.1/§8.2 (chunk 45/47) but NOT §8.3/§8.4/§8.5 (chunk 49/51/53) → text
+    # lists 5 scenarios but only 2 images attach. When depth>0, `_find_neighbour
+    # _images` matches by `chunk.section_path[:depth] == citation.section_path
+    # [:depth]` (section membership REPLACES window proximity — same-section
+    # figures attach regardless of chunk distance, nearest-first, capped at
+    # citation_neighbour_max_aux_images). Mirrors W37 citation_expansion_section
+    # _path_prefix_depth convention. depth=0 (default) keeps window±N behavior
+    # bit-identical (measurement-first per memory #1; production flip is a
+    # separate user decision needing eval backing). depth=1 = top-level section
+    # (e.g. all §8.* under §8); raise max_aux alongside (window cap=2 is too low
+    # for a 5-scenario section).
+    citation_neighbour_section_path_prefix_depth: int = 0
 
     # W25 F5 D2 — retrieval low_value soft-relax per ADR-0035. W2 baseline
     # used Azure Search server-side OData filter `low_value_flag eq false`

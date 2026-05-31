@@ -348,3 +348,129 @@ async def test_attach_respects_neighbour_window_setting() -> None:
     )
     checksums = [img.checksum_sha256 for img in result[0].embedded_images]
     assert checksums == ["within-window"]
+
+
+# ---------- BUG-027 section-aware mode (section_path_prefix_depth > 0) -------
+
+
+def _section_chunk(
+    chunk_index: int,
+    section_path: list[str],
+    images: list[dict] | None = None,
+    chunk_id: str | None = None,
+) -> dict:
+    """A doc-chunk dict with an explicit section_path (default helper uses [])."""
+    d = _doc_chunk_dict(chunk_index, images=images, chunk_id=chunk_id)
+    d["section_path"] = section_path
+    return d
+
+
+def test_section_mode_attaches_all_same_section_beyond_window() -> None:
+    """BUG-027 — §8 intro (chunk 44) surfaces ALL §8.* scenario figures (chunk
+    45/47/49/51/53) even though 49/51/53 sit outside the ±3 window. Section
+    membership replaces window proximity; nearest-first ordering."""
+    intro = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
+    sp = ["8. Integration scenarios", "8.x Scenario"]
+    doc_chunks = [
+        _section_chunk(45, sp, images=[_img_dict("A")]),
+        _section_chunk(47, sp, images=[_img_dict("B")]),
+        _section_chunk(49, sp, images=[_img_dict("C")]),  # outside window=3
+        _section_chunk(51, sp, images=[_img_dict("D")]),  # outside window=3
+        _section_chunk(53, sp, images=[_img_dict("E")]),  # outside window=3
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result] == ["A", "B", "C", "D", "E"]
+
+
+def test_section_mode_excludes_other_sections() -> None:
+    """A §3 figure within the window must NOT attach to a §8 citation."""
+    intro = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
+    doc_chunks = [
+        _section_chunk(45, ["8. Integration scenarios", "8.1"], images=[_img_dict("in-8")]),
+        # chunk 43 is within ±3 window but a DIFFERENT top-level section:
+        _section_chunk(43, ["3. Architecture"], images=[_img_dict("in-3")]),
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result] == ["in-8"]
+
+
+def test_section_mode_caps_at_max_aux_nearest_first() -> None:
+    """Cap takes the closest siblings by chunk-index distance."""
+    intro = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
+    sp = ["8. Integration scenarios", "8.x"]
+    doc_chunks = [
+        _section_chunk(53, sp, images=[_img_dict("far")]),    # distance 9
+        _section_chunk(45, sp, images=[_img_dict("near")]),   # distance 1
+        _section_chunk(49, sp, images=[_img_dict("mid")]),    # distance 5
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=2, window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result] == ["near", "mid"]
+
+
+def test_section_mode_requires_citation_section_path_else_window() -> None:
+    """depth>0 but the citation has NO section_path → falls through to the
+    window-mode path (chunk within ±window still attaches)."""
+    cit = _citation(chunk_index=44, section_path=[])
+    doc_chunks = [_section_chunk(45, ["8. Integration scenarios"], images=[_img_dict("x")])]
+    result = _find_neighbour_images(
+        cit, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result] == ["x"]
+
+
+def test_section_mode_citation_shallower_than_depth_returns_empty() -> None:
+    """depth=2 but the citation has only a 1-level section_path → no stable
+    section key → [] (does NOT silently fall back to window)."""
+    cit = _citation(chunk_index=44, section_path=["8. Integration scenarios"])
+    doc_chunks = [
+        _section_chunk(45, ["8. Integration scenarios", "8.1"], images=[_img_dict("x")]),
+    ]
+    result = _find_neighbour_images(
+        cit, doc_chunks, max_aux=8, window=99, section_path_prefix_depth=2,
+    )
+    assert result == []
+
+
+def test_section_mode_dedup_against_own() -> None:
+    own = _img(checksum="own")
+    intro = _citation(
+        chunk_index=44, section_path=["8. Integration scenarios"], embedded_images=[own],
+    )
+    doc_chunks = [
+        _section_chunk(
+            45, ["8. Integration scenarios", "8.1"],
+            images=[_img_dict("own"), _img_dict("new")],
+        ),
+    ]
+    result = _find_neighbour_images(
+        intro, doc_chunks, max_aux=8, window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result] == ["new"]
+
+
+@pytest.mark.asyncio
+async def test_attach_section_mode_surfaces_all_section_figures() -> None:
+    """End-to-end: attach_neighbour_images(section_path_prefix_depth=1) surfaces
+    same-section figures across the whole doc, not just within ±window."""
+    intro = _citation(
+        chunk_id="ch-44", doc_id="doc-A", chunk_index=44,
+        section_path=["8. Integration scenarios"],
+    )
+    sp = ["8. Integration scenarios", "8.x"]
+    doc_chunks = [
+        _section_chunk(45, sp, images=[_img_dict("A")]),
+        _section_chunk(49, sp, images=[_img_dict("C")]),  # outside window=3
+        _section_chunk(53, sp, images=[_img_dict("E")]),  # outside window=3
+    ]
+    engine = _mock_engine({"doc-A": doc_chunks})
+    result = await attach_neighbour_images(
+        [intro], kb_id="kb1", engine=engine,
+        max_aux_per_citation=8, neighbour_window=3, section_path_prefix_depth=1,
+    )
+    assert [img.checksum_sha256 for img in result[0].embedded_images] == ["A", "C", "E"]

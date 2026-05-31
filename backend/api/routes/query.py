@@ -263,6 +263,9 @@ async def query(payload: QueryRequest, request: Request) -> QueryResponse:
                 engine=engine,
                 max_aux_per_citation=settings.citation_neighbour_max_aux_images,
                 neighbour_window=settings.citation_neighbour_window,
+                section_path_prefix_depth=(
+                    settings.citation_neighbour_section_path_prefix_depth
+                ),
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0034 §Consequences
             logger.warning(
@@ -370,6 +373,9 @@ async def query_stream(payload: QueryRequest, request: Request) -> StreamingResp
                 engine=engine,
                 max_aux_per_citation=stream_settings.citation_neighbour_max_aux_images,
                 neighbour_window=stream_settings.citation_neighbour_window,
+                section_path_prefix_depth=(
+                    stream_settings.citation_neighbour_section_path_prefix_depth
+                ),
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
