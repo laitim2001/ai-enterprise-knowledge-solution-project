@@ -1083,9 +1083,9 @@ function MessageRow({
   }
 
   // Assistant
-  const imageCitations = message.citations.filter((c) => c.embedded_images.length > 0);
   // BUG-026 Finding A — unique images across citations (deduped by checksum /
-  // blob_url). Drives inline cards + gallery + image count so the same image
+  // blob_url). Drives inline cards + gallery + the meta-row screenshot count so
+  // the same image
   // (a §X.1 figure that's both the §X.1 chunk's direct image AND the §X intro
   // chunk's neighbour-attached image) renders once, not once per citation.
   const dedupedImages = dedupeCitationImages(message.citations);
@@ -1118,7 +1118,8 @@ function MessageRow({
             {message.model && `${message.model} · `}
             {message.rerankerUsed || 'cohere-v4.0-pro'} · {message.citations.length} citation
             {message.citations.length === 1 ? '' : 's'}
-            {imageCitations.length > 0 && ` · ${imageCitations.length} with screenshots`}
+            {dedupedImages.length > 0 &&
+              ` · ${dedupedImages.length} with screenshot${dedupedImages.length === 1 ? '' : 's'}`}
           </span>
           <span className="spacer" style={{ flex: 1 }} />
           {message.latencyMs !== null && (

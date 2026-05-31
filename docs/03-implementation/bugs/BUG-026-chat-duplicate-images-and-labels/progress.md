@@ -103,6 +103,40 @@ status: closed
 
 ---
 
+## Day 3 — 2026-05-31(stale bundle 復現 + meta count 補完)
+
+### Symptom
+User 喺 live UI(KB `test-kb-20260530-1`)問「what is Component overview?」→ 見**兩張一模一樣**嘅 §4.1 架構圖(figure 1 + figure 2,Citation [1]/[2])。即 Day 2 已 verify PASS 嘅 dedup 喺呢個 session 失效。
+
+### Diagnosis(5 層 ground-truth 證據,無一步靠推斷)
+1. backend `/query/stream` payload:§4.1 兩個 chunk(0012+0013)各帶**同一張圖**(checksum `9e9b28...` + blob_url 完全相同)— 設計如此(`attach_neighbour_images` 跨 citation 重複,靠 frontend dedup 解)
+2. frontend source `dedupeCitationImages` + 12 Vitest 全綠 → dedup 邏輯正確
+3. Playwright 全新 context 實測:render 2 張(figure src 完全相同)
+4. **載入嘅 chat bundle grep**:含 `InlineImageCard` ✅ 但**唔含** `dedupeCitationImages` / `imageTitle` ❌ → **運行 bundle 係 cb5ed75/d66f5a5 之前嘅 stale 編譯**
+5. source mtime(5/30 16:26-16:28,已含 fix)vs dev server(16:45 啟動仍 serve stale)→ `.next` cache stale,重啟唔 invalidate
+
+### Root Cause
+**運行嘅 frontend bundle 係 BUG-026 fix 之前嘅 stale 編譯產物**(非 code bug — fix code 完全正確)。Day 2 browser-automation verify(2026-05-30)當時 bundle 係新 → PASS;但 bundle 喺 2026-05-30 → 05-31 之間 regressed 返 stale。**最可能機制 = 專案喺 OneDrive 路徑,OneDrive 同步干擾 Next.js `.next` 編譯產物 / file-watcher**(未 100% 證實,但 `.next` regress 係事實)。
+
+### Fix
+- **stale bundle**:停 frontend dev server → 清 `frontend/.next` → 重啟 `npm run dev`(clean 重編 5.6s)→ bundle 確認含 dedup + imageTitle → Playwright re-verify render **1 張圖** + label「4. High-level architecture」(圖自己 section,C-ii)
+- **meta count 補完(Finding A 殘留)**:`chat/page.tsx:1121` meta row「N with screenshots」原用未去重嘅 `imageCitations.length`(cb5ed75 漏咗呢處)→ 改用 `dedupedImages.length` + 單複數;刪 orphan `imageCitations`(Karpathy §1.3)。Playwright verify「2 citations · **1 with screenshot**」一致
+
+### Verify
+- tsc --noEmit 0 / Vitest citation-images 12 passed / ESLint 0 errors(1 pre-existing `<img>` warning 無關)
+- Playwright fresh context end-to-end:inlineFigures **2→1**,meta「2 with screenshots」→「1 with screenshot」
+
+### Lessons
+- **OneDrive 路徑 + Next.js dev = stale `.next` 風險**:改 frontend 後若 UI 冇生效,**唔好假設 code bug** — 先 grep 載入 bundle 確認 fix 喺唔喺度;修法 = 清 `.next` 重啟(單純重啟唔夠)。建議考慮 OneDrive exclude `frontend/.next`
+- **AI 自我教訓(誠實記錄)**:診斷初基於 cb5ed75/d66f5a5 commit message「UI verify deferred」推斷「BUG-026 一直冇 live verify」,但**冇讀 progress.md Day 2** 嘅 browser-automation verify 記錄 → 對 user 講錯「claim 不準」。commit message ≠ 完整 verify 記錄,要查 progress.md
+
+### Commits
+| Hash | Subject |
+|---|---|
+| _(pending — meta count fix,待 user 決定 commit)_ | fix(frontend): BUG-026 align meta-row screenshot count with dedup |
+
+---
+
 ## Closeout(status=closed)
 
 ### Root Cause(final)
