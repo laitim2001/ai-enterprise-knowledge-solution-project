@@ -159,7 +159,7 @@ related_carry_overs:
 ### F0 啟動(本 doc)
 - [x] 0.1 `docs/01-planning/W43-per-kb-tunable-retrieval-config/plan.md`(本文件)
 - [x] 0.3 `docs/adr/0040-per-kb-tunable-retrieval-config-scope.md` DRAFT(Proposed)
-- [ ] 0.4 `checklist.md` + `progress.md` Day 0
+- [x] 0.4 `checklist.md` + `progress.md` Day 0
 - [ ] 0.2 **stakeholder scope 確認**(architecture 擴張)
 - [ ] **0.5 STOP+ask user confirm H1 boundary + ADR-0040 Accept + scope(F1 GATE)**
 
