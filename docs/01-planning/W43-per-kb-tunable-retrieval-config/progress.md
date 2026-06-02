@@ -81,8 +81,40 @@ status: active      # draft | active | closed — flipped active 2026-06-01 (0.5
 
 ### Commits
 - `6c0ec73` — `feat(api): W43 F1 per-KB tunable retrieval/citation config (ADR-0040)`(code + 3 新 test file + 2 mock 更新)
-- `<docs commit>` — `docs(planning): W43 0.5 gate PASS + F1 closeout (ADR-0040 Accepted)`(本文件 + plan + checklist + ADR-0040 Accept + README）
+- `ef4bc3a` — `docs(planning): W43 0.5 gate PASS + F1 closeout (ADR-0040 Accepted)`(本文件 + plan + checklist + ADR-0040 Accept + README)
 
 ---
 
-**End of W43 progress(Day 1 — F1 done,F2 next)**
+## Day 1 — addendum 2026-06-02: F1 live A/B 驗證(`test-kb-20260531-v1`)
+
+F1 落 code 後做嘅 live 驗證(非 phase deliverable,屬 post-F1 manual confirm;記錄供 F2/F4 引用)。
+
+### 過程
+- 發現 running backend 係**系統 Python + F1 之前嘅舊 code**(`python -m api.server` 無 reload,F1 前已啟動)→ `PATCH /kb/{id}/settings` 嘅 `max_images_per_answer` 被舊 `KbConfig`(pydantic `extra=ignore`)靜靜 drop。**決定性 check = `GET /openapi.json` → `KbConfig.properties` 有冇 `max_images_per_answer`**。
+- kill port-8000 python → 用 `backend\.venv\Scripts\python.exe -m api.server` 重啟(venv 冷啟動 ~51s)→ 12 個 W43 旋鈕入 schema,F1 code live。
+
+### A/B 結果(`POST /query`,`enable_crag=false`,zero variance)
+| per-KB config | citations | total images | 解讀 |
+|---|---|---|---|
+| 全 `None` → 全域激進 | 11 | 36 | 洪水基線 |
+| `max_images_per_answer=6` | 11 | **6** | ✅ 圖洪水收斂(cap 只 trim 圖,citation 不變) |
+| `enable_parent_doc_retrieval=false` | 11 | 36 | ⚪ 無變化 — 此 KB 洪水由 citation_expansion 來,非 parent_doc |
+| `enable_citation_post_hoc_expansion=false` | **1** | 35 | citation 洪水收斂 11→1,但單 chunk 自帶 35 圖 = ingestion-bound |
+
+### 結論(3 點)
+1. **per-KB 配置確認生效** —— 3 個旋鈕都 honor per-KB 值並雙向覆蓋全域(同 F1.8 整合測試一致)。
+2. **圖洪水 = 兩個獨立來源**:citation-數驅動(post-hoc 展開拉 10 鄰居 chunk)= runtime 控到;**單 mega-chunk 自帶 35 圖 = ingestion-bound,runtime 解唔到**(Test C 留 1 citation 仍 35 圖)→ 正是 W44+ ADR-0041,ADR-0040 R6 catch 5 命中。
+3. runtime 層唯一能 cap 總圖數嘅 lever = **`max_images_per_answer`**;`enable_parent_doc_retrieval` 對此 KB 無效。
+4. **背書 eval-blindness keystone**:「36 vs 6 圖」對答案文字 RAGAs 隱形 → presentation counters 係必須第二軸 → 直接支撐 F2.3 / F2.6 雙軸 harness 設計。
+
+### 收尾
+- `PATCH /kb/{id}/settings` 係**全量替換**(略去欄位 reset 為 default)→ A/B 時 GET 現有 config + 先 null 全部 12 W43 旋鈕隔離,再設一個。
+- KB config 已**還原全 None**(Postgres 持久,故必須還原);`return_images_in_chat=True` 保留;backend 留喺 venv F1 code。
+- memory `project_chat_demo_rag_quality_followups` Finding #8 已記。
+
+### Commits
+- `<addendum commit>` — `docs(planning): W43 F1 live A/B verification addendum (per-KB config effective)`
+
+---
+
+**End of W43 progress(Day 1 + live-verify addendum — F1 done,F2 next)**
