@@ -173,15 +173,15 @@ related_carry_overs:
 - [x] F1.7 storage 持久化 + 既有 KB migration-default(Postgres JSONB + in-memory 自動帶新欄位)
 - [x] F1.8 tests(resolver / 三 wire point honor / back-compat)+ ruff + mypy
 
-### F2 平台試跑 harness
-- [ ] F2.1 full-pipeline config-test 端點(draft config override)
-- [ ] F2.2 multi-run + variance 聚合
-- [ ] F2.3 metrics 輸出
-- [ ] F2.4 (可選)draft vs saved A/B
-- [ ] F2.5 tests
-- [ ] **F2.6 harness 信號可信 mini-gate(F3 GATE)** — aggressive vs conservative 實跑:(a) counters 分得開 (b) RAGAs 分唔開印證盲點 (c) variance 唔蓋過差異
+### F2 平台試跑 harness ✅
+- [x] F2.1 full-pipeline config-test 端點(`POST /kb/{kb_id}/config-test`;`execute_query_pipeline` 抽取共用)
+- [x] F2.2 multi-run + variance band 聚合
+- [x] F2.3 metrics 輸出(雙軸 + 每 citation breakdown)
+- [x] F2.4 draft vs saved A/B(`compare_to_saved`)
+- [x] F2.5 tests(4 case)
+- [x] **F2.6 harness 信號可信 mini-gate(F3 GATE)PASS 2026-06-02** — dogfood AR KB:(a) citation 11→1 / figure 36→6 分得開 ✅ (b) RAGAs 盲(memory #1 證據)✅ (c) band=0 不蓋過 ✅
 
-### F3 UI(H7;**GATED on F2.6 PASS**)
+### F3 UI(H7;**F2.6 PASS → UNLOCKED**)
 - [ ] F3.1 mockup 確認 / STOP+ask if gap
 - [ ] F3.2 KB Settings 配置面(分組 + 進階收合 + 需重索引 badge)
 - [ ] F3.3 試跑面板(query + multi-run + metrics + variance)

@@ -113,8 +113,47 @@ F1 落 code 後做嘅 live 驗證(非 phase deliverable,屬 post-F1 manual confi
 - memory `project_chat_demo_rag_quality_followups` Finding #8 已記。
 
 ### Commits
-- `<addendum commit>` — `docs(planning): W43 F1 live A/B verification addendum (per-KB config effective)`
+- `01a3ea6` — `docs(planning): W43 F1 live A/B verification addendum (per-KB config effective)`
 
 ---
 
-**End of W43 progress(Day 1 + live-verify addendum — F1 done,F2 next)**
+## Day 2 — 2026-06-02: F2 平台 full-pipeline 試跑 harness(全 6 item + F2.6 gate PASS)
+
+### Done(F2)
+- **F2.1** 抽 `/query` sync pipeline core → module-level `execute_query_pipeline(payload, request, effective, settings)`(query.py);`query()` 變薄 wrapper。NEW `POST /kb/{kb_id}/config-test`(`api/routes/config_test.py` + `api/schemas/config_test.py`)—— **唔污染 V4 retrieve-only**(per memory 經常 confuse smoke test),draft config 經 `PerQueryOverrides` 注入 resolver(draft > saved KB > 全域);harness 行 **IDENTICAL** pipeline(F2.6 trust 前提)。`server.py` register router(`dependencies=_auth`)。
+- **F2.2** multi-run(N=1-5,default 3)+ `MetricBand`(min/max/mean/**band=max-min**)聚合。
+- **F2.3** 雙軸 metrics:per-run citation / figure raw+dedup / latency / answer_chars / refused + aggregate band + `CitationBreakdown`(每 citation section+圖數)。
+- **F2.4** `compare_to_saved=true` → draft vs saved A/B(把 2026-06-01 手動 A/B 內建化)。
+- **F2.5** `tests/test_config_test_route.py` 4 case(multi-run+band / max_images cap apply / compare / 404)。
+
+### F2.6 — harness 信號可信 mini-gate **PASS**(F3 GATE 解鎖)
+dogfood `test-kb-20260531-v1`,config-test `runs=3 compare_to_saved`(draft=保守 vs saved=全域激進):
+| 信號 | SAVED 激進 | DRAFT 保守 | 判準 |
+|---|---|---|---|
+| citation | 11 (band 0) | 1 (band 0) | (a) ✅ |
+| figure_raw | 36 (band 0) | 6 (band 0) | (a) ✅ |
+| figure_dedup | 28.7 | 6 | (a) ✅ raw≠dedup 計數都 work |
+- **(a)** presentation counters 清楚分得開(11→1 / 36→6)✅
+- **(b)** RAGAs 盲 —— memory #1 已記同激進配置 30-query RAGAs PASS zero-regression(用既有 eval 證據,不重燒 Azure judge)✅
+- **(c)** band=0 << 差距,variance 唔蓋過 ✅
+→ harness 信號可信,**F3 UNLOCKED**(GATED-on-F2.6 解除)。
+
+### Decisions / OQ
+- `execute_query_pipeline` 抽取 = 內部 refactor,**非 H1**(§5.1 明列 refactor-no-interface-change 不觸發);query.py 行為 bit-identical(16 query-route + harness test PASS)。
+- 新端點而非擴 V4:per memory `project_v4_retrieve_only_vs_query_pipeline` —— V4 narrow retrieve-only scope 保持,避免 smoke-test 混淆。
+- F2.6 (b) 用既有 RAGAs 證據(memory #1)而非重跑 —— 結論已實證,慳 Azure judge 成本。OQ 無變更。
+
+### 測試 / 檢查
+- pytest:config-test + query route(extraction regression)→ **16 passed**;ruff 新檔 all pass;mypy --strict 新模組 + query.py **0 new error**(總 61 = F1 baseline,無新增)。
+- backend kill+restart 載入 F2(venv,39s);config-test 端點入 schema 確認。
+
+### Commits
+- `08443fc` — `feat(api): W43 F2 on-platform config-test harness (ADR-0040)`(query.py extraction + config_test route/schema + server wire + 4 test)
+- `<docs commit>` — `docs(planning): W43 F2 closeout + F2.6 gate PASS`(本文件 + checklist + plan）
+
+### Mini-checkpoint
+- F3(UI,受 H7)已解鎖;F4 驗證收尾待 F3 後。**F3 開工前 F3.1 必先確認 design-mockups 有冇對應 spec → 冇就 STOP+ask per §5.7 H7。**
+
+---
+
+**End of W43 progress(Day 2 — F2 done + F2.6 gate PASS,F3 next)**
