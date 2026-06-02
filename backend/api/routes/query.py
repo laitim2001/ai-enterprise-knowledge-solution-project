@@ -122,13 +122,31 @@ async def query(
     hierarchical Langfuse trace per request when client wired (W11+).
 
     W43 F1.3 (ADR-0040) — per-KB tunable config is resolved at entry
-    (`effective`) and threaded through the parent-doc / citation-expansion /
-    neighbour-image / image-cap wire points so different KBs run different configs.
+    (`effective`) and threaded through the pipeline. The pipeline body lives in
+    `execute_query_pipeline` (shared with the W43 F2 config-test harness so the
+    harness runs the IDENTICAL pipeline).
+    """
+    settings = get_settings()
+    effective = await _resolve_effective_config(service, settings, payload.kb_id)
+    return await execute_query_pipeline(payload, request, effective, settings)
+
+
+async def execute_query_pipeline(
+    payload: QueryRequest,
+    request: Request,
+    effective: EffectiveConfig,
+    settings: Settings,
+) -> QueryResponse:
+    """W43 F2 — the shared `/query` full pipeline (retrieve → context-expand →
+    parent-doc → synth → CRAG → citations → neighbour-images → image-cap),
+    parameterised by a resolved `EffectiveConfig`.
+
+    Both `/query` (saved per-KB config) and the config-test harness
+    (`POST /kb/{kb_id}/config-test`, draft config) call this — so the harness
+    measures the IDENTICAL pipeline a real query runs (F2.6 trust requirement).
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
-    settings = get_settings()
-    effective = await _resolve_effective_config(service, settings, payload.kb_id)
     reformulator: QueryReformulator | None = getattr(
         request.app.state, "query_reformulator", None,
     )

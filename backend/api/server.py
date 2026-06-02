@@ -25,6 +25,7 @@ from api.routes import (
 from api.routes import (
     chunking,
     chunks,
+    config_test,
     conversations,
     debug,
     documents,
@@ -319,6 +320,7 @@ app.include_router(chunks.router, tags=["chunks"], dependencies=_auth)
 # W20 F5.3 — POST /chunking-preview per ADR-0025 KB Detail Tab 4 Chunking Lab.
 app.include_router(chunking.router, tags=["chunking"], dependencies=_auth)
 app.include_router(retrieval_test.router, tags=["retrieval-test"], dependencies=_auth)
+app.include_router(config_test.router, tags=["config-test"], dependencies=_auth)
 app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)
 app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)
