@@ -126,4 +126,27 @@ gold RAGAs no-regression 需:(1) SME-validated GT(Q14,Chris pick) + (2) before-b
 - F4.6 完成後我做 F4.7(cap=None reindex + eval)/ F4.8(cap=8 + eval)/ F4.9(隔離對比 + gate verdict)。
 
 ### Commits
-- (F4.5 commit 見下)
+- `d2e1b36` chore(eval): W44 F4.5 GT discovery rework + run(content-based GT pivot)
+- `f8ff53a` docs(planning): F4.6 handoff note(報告 gitignored/local + regenerable)
+
+---
+
+## Day 1 cont — F4.6a AI 草擬 GT proposal(分工:AI 草擬→Chris 複核)
+
+### 做咗乜
+- User 困惑「F4.6 具體做咩」→ 用 Q001 真實例子拆解 + 提出更輕分工 **AI 草擬→Chris 複核**(取代「Chris 由零寫 50 條」)。User pick 此分工。
+- 讀晒 `reports/eval-set-v1-draft_gt_candidates.yaml` 50 query × top-3 chunk(用 throwaway condenser 壓成 600 行精華,已刪)。逐條 propose 收緊嘅 `expected_answer_keywords`(3-4 個同一正確 section 內共現嘅具體詞:function 名/選單路徑/section code 如 AR01/FA06,避免 generic「AR」「customer」零分辨力)+ 1 句 `reference_answer`。
+- 輸出 `docs/01-planning/W44-chunker-image-density-deep-fix/F4.6-gt-proposal.md`(由 gitignored reports/ 移入 phase folder = tracked,hand-off 跨 session durable)。
+- **Flag 分佈 🟢30 / 🟡11 / 🔴9**:
+  - 🟢 語料有清晰對應 section,信心高。
+  - 🟡 query 模糊/跨模組但有合理 section。
+  - 🔴(Q042/Q043/Q045/Q046/Q047/Q048/Q049/Q050/Q054)troubleshooting/跨模組 synthesis,語料覆蓋弱 → **正正係 F4 eval below-threshold 嗰批**,證明係 **eval-set query 設計問題(W4 synthetic user-collected query 問語料無答嘅嘢)非 chunker regression** —— 呼應 F4 finding。
+
+### 誠實邊界
+- AI 唔係 Ricoh D365 財務 SME;proposal keyword 由 retrieved 文字+section 結構推導,反映「邊段答到」但「咩係*正確*答案」需 Chris domain 把關。`validated:true` 仍由 Chris 確認 → gold 成立。
+
+### Blockers / 下一步
+- **F4.6b = 🚧 Chris 複核**(對 proposal ✅剔/✏️改/❌剔,🔴 嗰 9 條決定 keyword vs `expected_refusal`)→ 我 apply 入 eval-set + flip validated → 接 F4.7。
+
+### Commits
+- (F4.6a commit 見下)
