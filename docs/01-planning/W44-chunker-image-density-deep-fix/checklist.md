@@ -28,10 +28,18 @@
 - [x] F3.3 **G1 PASS**:max single-chunk 圖數 **57 → 8**(cap 嚴格守)
 - [x] F3.4 **G2 PASS**:分佈 baseline(57/27/25/23/18/16/14/12/12/11 多 mega)→ 重切後 0 個 >8、22 chunks at cap;223 unique 全保留(無丟失)
 
-## F4 — Eval no-regression gate(top risk)
-- [ ] F4.1 重切前 baseline eval(R@5 + RAGAs 4-metric)snapshot
-- [ ] F4.2 重切後 eval 對比(G3 R@5 / G4 faithfulness·correctness 唔跌)
-- [ ] F4.3 Gate verdict(PASS / PARTIAL / FAIL per §3 policy)→ Chris 拍板
+## F4 — Eval no-regression gate(top risk) — 🔄 擴展為 gold-eval rigor track(2026-06-03 user pick)
+> 原 F4.1-F4.3 單次 eval 方案被 eval-harness decay 揭示不足(Cohere 連打 rate-limit 401 + eval-set-v1-draft Q14 SME-validation pending empty-GT + before-baseline reindex 走)。User pick 全 rigor 重建。原 items superseded(唔刪,per sacred rule):
+- [~] F4.1 重切前 baseline eval — 🚧 superseded:單次 eval 撞 harness decay,改 cap=None before 重建(F4.7)
+- [~] F4.2 重切後 eval — 🚧 superseded:改 cap=8 after(F4.8)+ 隔離對比(F4.9)
+- [ ] F4.3 Gate verdict → Chris 拍板(待 rigor track 完成;切法 D core no-regression 已三源證實:G1/G2 硬證 + pytest text bit-identical + sanity query healthy)
+### Rigor sub-track(gold no-regression,跨 session)
+- [ ] F4.4 Cohere 401 rate-limit throttle/retry(eval code)— 我做,所有後續 eval 依賴
+- [ ] F4.5 跑 `scripts/discover_chunk_ids.py` 生成 30 main candidate chunk_ids — 我做
+- [ ] F4.6 SME GT cascade:Chris pick `acceptable_chunk_ids` + `validated:true`(Q14)— 🚧 BLOCK,需 Chris 人手(AI 做唔到 gold GT)
+- [ ] F4.7 cap=None reindex drive(舊 chunker before baseline)+ eval(SME GT)
+- [ ] F4.8 cap=8 reindex drive(after)+ eval(SME GT)
+- [ ] F4.9 隔離對比 G3/G4(同 GT 同條件,唯一變 cap)→ `scripts/validate_eval_set.py` + Chris gate verdict
 
 ## F5 — Closeout
 - [ ] F5.1 architecture.md §3.3 amend(inline-tag image-distribution + cap,沿 §3.4/§3.7 precedent)
