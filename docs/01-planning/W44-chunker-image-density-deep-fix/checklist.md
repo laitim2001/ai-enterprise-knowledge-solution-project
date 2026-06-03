@@ -22,11 +22,11 @@
 - [x] F2.3 default(`None`/0)= 今日行為 bit-identical regression test — `test_w44_cap_none_preserves_whole_section_pile_on` + `test_w44_under_cap_doc_identical_to_no_cap`
 - [x] F2.4 既有 ADR-0033 merge + BUG-017 sibling-guard 無 regression(24 既有全綠)+ `test_w44_merge_image_guard_*` + `test_w44_residual_images_flushed_*`
 
-## F3 — Re-index + presentation 驗證
-- [ ] F3.1 pre-flight(Langfuse 200 / Postgres / backend venv restart 載新 code)
-- [ ] F3.2 doc-level reindex 圖密文件(AR `test-kb-*`)重切
-- [ ] F3.3 讀重切後 index 確認最大 single-chunk 圖數 ≤ cap(G1)
-- [ ] F3.4 圖數分佈前後對比(G2)
+## F3 — Re-index + presentation 驗證 ✅ 2026-06-03 (G1/G2 PASS)
+- [x] F3.1 pre-flight(Langfuse 200 / Postgres / backend venv restart 載新 code — ready ~100s,全 component ok)
+- [x] F3.2 doc-level reindex 圖密文件(AR `test-kb-20260531-v1` doc `drive-user-manual-0601-ar-...`)重切 → 68→90 chunks,223 img uploaded
+- [x] F3.3 **G1 PASS**:max single-chunk 圖數 **57 → 8**(cap 嚴格守)
+- [x] F3.4 **G2 PASS**:分佈 baseline(57/27/25/23/18/16/14/12/12/11 多 mega)→ 重切後 0 個 >8、22 chunks at cap;223 unique 全保留(無丟失)
 
 ## F4 — Eval no-regression gate(top risk)
 - [ ] F4.1 重切前 baseline eval(R@5 + RAGAs 4-metric)snapshot
