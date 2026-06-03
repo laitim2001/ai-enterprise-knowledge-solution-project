@@ -26,7 +26,7 @@ last_updated: 2026-06-03
 ## Regression Test
 
 - [x] Manual repro re-run:`/login` full-load console hydration error **11 → 0**(Playwright)
-- [ ] Add automated test(see progress closeout §「Regression Test」— 既有 `visual-baseline.spec.ts` v8-login 覆蓋 visual;hydration-error assertion 未自動化,記為 follow-up)
+- [x] Add automated test:`frontend/tests/e2e/hydration-integrity.spec.ts`(3 SSR routes /login /register /dashboard,`colorScheme:'dark'` 觸發 mismatch 條件)— **fail-before-fix 驗證**:暫 revert mounted guard → 3/3 fail 捕捉 `Prop d did not match`;restore → 3/3 pass(2026-06-03)
 - [x] Manual smoke test:SSO 登錄修復後仍跳 `/dashboard`(zero regression)
 
 ## Verification

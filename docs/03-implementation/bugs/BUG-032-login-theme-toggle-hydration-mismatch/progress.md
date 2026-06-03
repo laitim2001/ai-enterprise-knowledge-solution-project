@@ -54,7 +54,13 @@ status: closed
 兩個 client component 加 mounted guard:`const [mounted,setMounted]=useState(false); useEffect(()=>setMounted(true),[]); const isDark = mounted && resolvedTheme==='dark';`。首次 client render `mounted=false` → `<Layers>`,與 server byte-identical,消除 mismatch;mounted 後 `useEffect` 觸發 re-render 切換正確 icon。視覺最終輸出不變。影響檔案:`frontend/components/auth/auth-frame.tsx`、`frontend/components/nav/theme-toggle.tsx`。
 
 ### Regression Test
-未自動化 hydration-error assertion(記為 follow-up)。手動 regression:Playwright full-load `/login` → console error 11→0;SSO 登錄→`/dashboard` 成功。既有 `frontend/tests/e2e/visual-baseline.spec.ts` v8-login snapshot 覆蓋 visual 不變。若日後要自動化,可喺 e2e 加「load /login 後 console 無 error」assertion — 原本即能捕捉本 bug。
+**已自動化**:`frontend/tests/e2e/hydration-integrity.spec.ts`(2026-06-03 follow-up)。3 個 SSR route(/login + /register = auth-frame;/dashboard = nav/theme-toggle)各 attach console + pageerror listener,full-load 後 assert 零 hydration-signature error(narrow filter:`hydration failed` / `did not match` / `error while hydrating` / `cannot be a descendant of` — 避開 backend-unreachable network noise false-positive)。`test.use({ colorScheme: 'dark' })` emulate 系統 dark 偏好,令 client `resolvedTheme='dark'` 與 SSR 預設(undefined→light icon)不一致 —— 呢個係 mismatch 唯一觸發條件(light 兩邊同 icon,無 mismatch 可測)。
+
+**Fail-before / pass-after 驗證(2026-06-03)**:
+- 暫 revert 兩個 component 嘅 mounted guard(`isDark = resolvedTheme === 'dark'`)→ 跑 test → **3/3 FAIL**,精確捕捉 `Prop d did not match`(server `<Layers>` vs client `<Sparkles>`)— 證明 test 非 vacuous,原本即能捕捉本 bug
+- `git checkout HEAD` restore fix → 跑 test → **3/3 PASS**
+
+執行:`PW_CHANNEL=chrome pnpm test:e2e`(per `tests/e2e/README.md`,ADR-0017 Plan B 用 system Chrome)。既有 `visual-baseline.spec.ts` v8-login snapshot 另覆蓋 visual 不變。
 
 ### Lessons
 - **有效**:從基礎設施往上排查 + Playwright 直接 reproduce console + 逐條讀 hydration error stack → 精確定位單一根因,避免盲改
