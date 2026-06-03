@@ -16,10 +16,17 @@
 
 import { Layers, Sparkles } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  // `resolvedTheme` is undefined during SSR (next-themes resolves it client-side
+  // from localStorage / system pref), so gate the icon on a mounted flag to keep
+  // the first client render identical to the server HTML. Same hydration guard
+  // as auth-frame.tsx (BUG-032) and notifications-menu.tsx.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === 'dark';
 
   return (
     <button

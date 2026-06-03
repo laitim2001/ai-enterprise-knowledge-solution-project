@@ -25,6 +25,7 @@
 
 import { Globe, Layers, Sparkles } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 
 interface AuthFrameProps {
   children: React.ReactNode;
@@ -32,7 +33,15 @@ interface AuthFrameProps {
 
 export function AuthFrame({ children }: AuthFrameProps) {
   const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  // `next-themes` resolves the theme only on the client (it reads localStorage
+  // / the system preference), so `resolvedTheme` is undefined during SSR. We
+  // gate the theme-dependent icon on a mounted flag so the first client render
+  // is byte-identical to the server HTML — otherwise the toggle icon hydrates
+  // to a different lucide path and React discards the entire server tree
+  // (the /login hydration mismatch — BUG-032). Same guard as notifications-menu.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === 'dark';
 
   return (
     <div
