@@ -32,7 +32,7 @@
 ```
 
 memory 嘅 3 正交層對應:
-- **Layer A — per-document profile** → 本 roadmap 決策點 1 + W46
+- **Layer A — per-document profile** → 本 roadmap 決策點 1 + W46。**自動 seed 機制深化**（用 multimodal LLM 讀文件 → 自動產出建議 config + bootstrap 評測）見 **[addendum:LLM Document-Profiler](./ROADMAP-per-kb-tunable-config-addendum-llm-profiler.md)**（design-proposal,Tier 2 定位,未 ADR;2026-06-03 brainstorm 完整留底）
 - **Layer B — query-intent gate**(列舉 vs 具體)→ 條件觸發期
 - **Layer C — image relevance**(揀啱嗰幾張圖)→ **章節語意揀圖 = Tier 1 可達**(W44 metadata + 既有 section-aware attach)/ **視覺內容語意揀圖 = Tier 2 閘**(見 §3 [AUDIT-E] 重畫)
 
@@ -148,6 +148,7 @@ per-document(W46)等決策點 1 拍板先排;production 化 reindex(原子切換
 ---
 
 ## §7 Cross-ref
+- **[addendum:LLM Document-Profiler](./ROADMAP-per-kb-tunable-config-addendum-llm-profiler.md)** — Layer A 自動 seed 機制（multimodal LLM 讀文件 → 建議 config + bootstrap 評測 + 循環論證防禦 + probe 質素 + Gate D + 兩集 governance）;design-proposal,Tier 2,未 ADR（2026-06-03 brainstorm 完整留底）
 - ADR-0040 — per-KB config-scope(Accepted;W43 validated STRONG PASS)
 - W43 phase folder `docs/01-planning/W43-per-kb-tunable-retrieval-config/`(plan / checklist / progress)
 - memory `project_per_kb_tunable_config_vision`(foundational vision + 證偽實驗)
@@ -160,5 +161,6 @@ per-document(W46)等決策點 1 拍板先排;production 化 reindex(原子切換
 **狀態**:living roadmap。每期 kickoff 正式建 phase folder 時,回頭 update 本表對應行(done / 決策已拍板)。
 
 **修訂史**:
+- **2026-06-03 addendum 連結** —— 新增 [addendum:LLM Document-Profiler](./ROADMAP-per-kb-tunable-config-addendum-llm-profiler.md)（§1 Layer A bullet + §7 Cross-ref 加 pointer）。完整捕捉 2026-06-03 brainstorm:multimodal LLM 文件畫像自動 seed config + bootstrap 評測;schema 三層 / 閉環 7 步 / 循環論證五槓桿 / probe 五閘 + config-aware + genre-constrain / Gate D 判別預檢 / config-tuning vs production 兩集 governance / KbConfig 對接 + granularity 結論（切塊可 per-doc / 檢索停 per-KB）。Tier 2 定位,未 ADR,不觸發實作。
 - **2026-06-02** 建立(W43 closeout 後)。
 - **2026-06-03 三-session code-grounded audit 校準(A–E)**:(A) 事實修正圖數 20–57(峰值 `ci=15=57`,原「33/20」低估);(B) 標明 doc-level reindex 現成驗證路徑,W44 不懸空;(C) Track A 兩層化(dev/demo 不卡 / production 原子切換才卡)+ 決策 4 重定義為 production 化投資時機;(D) 自助 loop 質素軸缺口明文 + 補分兩步 NEW item(reference-free faithfulness 先行)+ 決策 6;(E) W46 retrieval 旋鈕 per-doc 解析語意 + Layer C Tier 線重畫「章節語意 T1 / 視覺內容 T2」+ presets 提前。**核心結論(可行 / 診斷準 / 邊界誠實)不變。**
