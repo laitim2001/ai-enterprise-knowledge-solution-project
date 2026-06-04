@@ -24,6 +24,7 @@ import logging
 import re
 import shutil
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,7 +34,7 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
-from api.schemas.kb import FailureRecord
+from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
     DocumentDetail,
     DocumentSummary,
@@ -75,11 +76,17 @@ class _IngestionDeps:
     lifetime); Chunker is stateless. Parser is constructed per-request via
     select_parser(file_extension) inside the route handlers (depends on input
     file type, can't be lifespan-bound).
+
+    `chunker` is the global-cap singleton (inherit path); `make_chunker` (W45 /
+    ADR-0042) is the per-KB factory used when a KB sets `chunker_max_images_per_chunk`.
+    `make_chunker=None` (e.g. a test that wires only the singleton) falls back to
+    the singleton — safe because such a KB carries no per-KB cap to honour.
     """
 
     embedder: Embedder
     populator: IndexPopulator
     chunker: Chunker
+    make_chunker: Callable[[int | None], Chunker] | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -106,6 +113,9 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     embedder = getattr(request.app.state, "embedder", None)
     populator = getattr(request.app.state, "index_populator", None)
     chunker = getattr(request.app.state, "ingestion_chunker", None)
+    # W45 / ADR-0042 — per-KB chunker factory (lifespan-wired in server.py).
+    # Absent in tests that only set the singleton → make_chunker=None → inherit path.
+    make_chunker = getattr(request.app.state, "make_ingestion_chunker", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -114,7 +124,28 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
                 ".env config (AZURE_OPENAI_API_KEY + AZURE_SEARCH_ADMIN_KEY)."
             ),
         )
-    return _IngestionDeps(embedder=embedder, populator=populator, chunker=chunker)
+    return _IngestionDeps(
+        embedder=embedder,
+        populator=populator,
+        chunker=chunker,
+        make_chunker=make_chunker,
+    )
+
+
+def _select_chunker(deps: _IngestionDeps, kb_config: KbConfig | None) -> Chunker:
+    """Pick the chunker for this ingest run (W45 / ADR-0042).
+
+    `kb_config.chunker_max_images_per_chunk`:
+      * None (or no kb_config / no factory) → the global-cap singleton
+        (`deps.chunker`) — zero construct cost + bit-identical to pre-W45.
+      * positive int → a per-ingest chunker with that per-KB cap, built via the
+        `deps.make_chunker` factory (keeps this route decoupled from the concrete
+        chunker class). Re-index is what makes a cap change take effect.
+    """
+    cap_override = kb_config.chunker_max_images_per_chunk if kb_config else None
+    if cap_override is None or deps.make_chunker is None:
+        return deps.chunker
+    return deps.make_chunker(cap_override)
 
 
 async def _verify_kb_or_404(kb_id: str, service: KBService) -> None:
@@ -151,7 +182,9 @@ async def _refuse_if_archived(kb_id: str, service: KBService) -> None:
 
 @router.get("/kb/{kb_id}/documents", response_model=list[DocumentSummary])
 async def list_documents(
-    kb_id: str, request: Request, service: KbServiceDep,
+    kb_id: str,
+    request: Request,
+    service: KbServiceDep,
 ) -> list[DocumentSummary]:
     """W16 F5.1.1 — list docs in KB via Azure AI Search aggregation.
 
@@ -306,11 +339,14 @@ async def get_kb_screenshot(
         )
     settings = get_settings()
     container = kb_id_to_screenshot_container(
-        kb_id, legacy_default_container=settings.azure_blob_container_screenshots,
+        kb_id,
+        legacy_default_container=settings.azure_blob_container_screenshots,
     )
     try:
         data, content_type = await download_screenshot(
-            settings.azure_blob_connection_string, container, blob_name,
+            settings.azure_blob_connection_string,
+            container,
+            blob_name,
         )
     except ResourceNotFoundError as exc:
         raise _api_error(
@@ -485,7 +521,9 @@ def _api_error(code: str, message: str, hint: str, http_status: int) -> HTTPExce
 
 
 async def _doc_exists_in_kb(
-    engine: RetrievalEngine, kb_id: str, doc_id: str,
+    engine: RetrievalEngine,
+    kb_id: str,
+    doc_id: str,
 ) -> bool:
     """Check whether `doc_id` already has chunks in `kb_id`'s Azure index.
 
@@ -570,7 +608,9 @@ async def _run_ingest_pipeline(
         ) as uploader:
             orchestrator = IngestionOrchestrator(
                 parser=parser,
-                chunker=deps.chunker,
+                # W45 / ADR-0042 — per-KB image cap: use the KB's cap when set,
+                # else the global-cap singleton (inherit).
+                chunker=_select_chunker(deps, kb_config),
                 embedder=deps.embedder,
                 uploader=uploader,
             )
@@ -593,10 +633,14 @@ async def _run_ingest_pipeline(
             )
             try:
                 await service.record_doc_event(
-                    kb_id, append_failure=failure_record, last_indexed_at=now,
+                    kb_id,
+                    append_failure=failure_record,
+                    last_indexed_at=now,
                 )
             except Exception:  # noqa: BLE001 — counter sync is non-fatal
-                _stdlib_logger.exception("record_doc_event_failed_on_ingest_failure kb_id=%s", kb_id)
+                _stdlib_logger.exception(
+                    "record_doc_event_failed_on_ingest_failure kb_id=%s", kb_id
+                )
             stage_code = f"ingestion.{result.failure.stage}_failed"
             raise _api_error(
                 stage_code,
@@ -626,10 +670,14 @@ async def _run_ingest_pipeline(
             )
             try:
                 await service.record_doc_event(
-                    kb_id, append_failure=failure_record, last_indexed_at=now,
+                    kb_id,
+                    append_failure=failure_record,
+                    last_indexed_at=now,
                 )
             except Exception:  # noqa: BLE001
-                _stdlib_logger.exception("record_doc_event_failed_on_partial_index_failure kb_id=%s", kb_id)
+                _stdlib_logger.exception(
+                    "record_doc_event_failed_on_partial_index_failure kb_id=%s", kb_id
+                )
             raise _api_error(
                 "ingestion.index_failed",
                 f"Azure AI Search partial-upload: {upload_result.failed} of "
@@ -648,7 +696,9 @@ async def _run_ingest_pipeline(
                 last_indexed_at=now,
             )
         except Exception:  # noqa: BLE001 — counter drift is recoverable
-            _stdlib_logger.exception("record_doc_event_failed_on_success kb_id=%s doc_id=%s", kb_id, doc_id)
+            _stdlib_logger.exception(
+                "record_doc_event_failed_on_success kb_id=%s doc_id=%s", kb_id, doc_id
+            )
 
         logger.info(
             "doc_uploaded",
@@ -727,14 +777,21 @@ async def upload_document(
         )
 
     body = await _run_ingest_pipeline(
-        upload_file=file, kb_id=kb_id, doc_id=doc_id, deps=deps, service=service,
+        upload_file=file,
+        kb_id=kb_id,
+        doc_id=doc_id,
+        deps=deps,
+        service=service,
     )
     return {"status": "indexed", **body}
 
 
 @router.delete("/kb/{kb_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
-    kb_id: str, doc_id: str, request: Request, service: KbServiceDep,
+    kb_id: str,
+    doc_id: str,
+    request: Request,
+    service: KbServiceDep,
 ) -> None:
     """Delete a doc's chunks from the per-KB Azure AI Search index.
 
@@ -778,7 +835,9 @@ async def delete_document(
             last_indexed_at=datetime.now(UTC),
         )
     except Exception:  # noqa: BLE001 — counter drift is recoverable
-        _stdlib_logger.exception("record_doc_event_failed_on_delete kb_id=%s doc_id=%s", kb_id, doc_id)
+        _stdlib_logger.exception(
+            "record_doc_event_failed_on_delete kb_id=%s doc_id=%s", kb_id, doc_id
+        )
 
     logger.info("doc_deleted", kb_id=kb_id, doc_id=doc_id, chunks_deleted=deleted_count)
 
@@ -855,11 +914,15 @@ async def reindex_document(
     # Counter sync for the delete half (the re-ingest will increment counters back).
     try:
         await service.record_doc_event(
-            kb_id, documents_delta=-1, chunks_delta=-deleted_count,
+            kb_id,
+            documents_delta=-1,
+            chunks_delta=-deleted_count,
             last_indexed_at=datetime.now(UTC),
         )
     except Exception:  # noqa: BLE001 — counter drift recoverable
-        _stdlib_logger.exception("reindex_delete_counter_sync_failed kb_id=%s doc_id=%s", kb_id, doc_id)
+        _stdlib_logger.exception(
+            "reindex_delete_counter_sync_failed kb_id=%s doc_id=%s", kb_id, doc_id
+        )
 
     # Step 4 — run the ingest pipeline under the same doc_id (no dup check —
     # we just deleted it). The pipeline handles its own counter sync on success/failure;
@@ -867,7 +930,11 @@ async def reindex_document(
     # state — the 502 below surfaces that with an actionable hint.
     try:
         body = await _run_ingest_pipeline(
-            upload_file=file, kb_id=kb_id, doc_id=doc_id, deps=deps, service=service,
+            upload_file=file,
+            kb_id=kb_id,
+            doc_id=doc_id,
+            deps=deps,
+            service=service,
         )
     except HTTPException as exc:
         # Re-wrap the pipeline error to flag the "partial failure" (mid-replace).

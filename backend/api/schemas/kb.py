@@ -72,6 +72,24 @@ class KbConfig(BaseModel):
     citation_neighbour_section_path_prefix_depth: int | None = None
     max_images_per_answer: int | None = None
 
+    # W45 — per-KB ingest-time chunker image cap (per ADR-0042; extends the
+    # ADR-0040 config-scope model from query-time to INGEST-time). Mirrors the
+    # global `Settings.chunker_max_images_per_chunk` (W44 / ADR-0041, default 8)
+    # that drives the LayoutAwareChunker force-split. Semantics differ from the
+    # W43 retrieval knobs by ONE deliberate choice (Chris pick 2026-06-04):
+    #   * None        → inherit the global `Settings` cap (default 8).
+    #   * positive int→ this KB's per-chunk image cap (force-split at N).
+    # A per-KB KB CANNOT express "no cap" (the pre-W44 whole-section pile-on):
+    # `None` is the inherit sentinel here, but the chunker's own
+    # `max_images_per_chunk=None` already means "no cap" — the two `None`s
+    # collide, so the no-cap escape stays GLOBAL-only (`CHUNKER_MAX_IMAGES_PER_CHUNK=null`).
+    # Resolved at INGEST time in `documents.py:_run_ingest_pipeline` (NOT via the
+    # query-time `EffectiveConfig`); `None` reuses the global chunker singleton so
+    # an existing KB persisted before W45 reconstructs bit-identical (G7
+    # production-preserve, ADR-0028/0040 migration-default precedent). Re-index
+    # required for a change to take effect (cap is consumed at chunk time).
+    chunker_max_images_per_chunk: int | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

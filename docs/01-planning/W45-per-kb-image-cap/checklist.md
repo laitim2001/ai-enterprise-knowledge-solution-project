@@ -7,22 +7,22 @@
 - [x] F0.2 ADR README index 加 0042 row + next available → 0043
 
 ## F1 — KbConfig 加 per-KB cap 欄位
-- [ ] F1.1 `KbConfig`(`backend/api/schemas/kb.py`)加 `chunker_max_images_per_chunk: int | None = None`
-- [ ] F1.2 Docstring 解語意(None=inherit 全域 / 正整數=per-KB cap / per-KB 不能設無 cap)
-- [ ] F1.3 確認經既有 `PATCH /kb/{kb_id}/settings` 可設(無新 endpoint)
+- [x] F1.1 `KbConfig`(`backend/api/schemas/kb.py`)加 `chunker_max_images_per_chunk: int | None = None`
+- [x] F1.2 Docstring 解語意(None=inherit 全域 / 正整數=per-KB cap / per-KB 不能設無 cap)
+- [x] F1.3 確認經既有 `PATCH /kb/{kb_id}/settings` 可設(無新 endpoint)— `kb.py:219` `update_kb_settings(config: KbConfig)` full-replacement,新欄自動接受
 
 ## F2 — Ingest-time wiring
-- [ ] F2.1 `server.py` expose `app.state.make_ingestion_chunker`(callable `int | None -> Chunker`);保留全域 singleton
-- [ ] F2.2 `documents.py` `_run_ingest_pipeline` 解析 `cap_override` + None→singleton / 設值→factory
-- [ ] F2.3 `_IngestionDeps` thread factory(route 同 concrete class 解耦)
-- [ ] F2.4 mypy --strict clean(新 wiring)
+- [x] F2.1 `server.py` expose `app.state.make_ingestion_chunker`(callable `int | None -> Chunker`);保留全域 singleton
+- [x] F2.2 `documents.py` `_run_ingest_pipeline` 解析 `cap_override` + None→singleton / 設值→factory(`_select_chunker` helper)
+- [x] F2.3 `_IngestionDeps` thread factory(route 同 concrete `LayoutAwareChunker` class 解耦)
+- [x] F2.4 mypy --strict clean(新 wiring)— 全解析 grep 我改動行零 new error
 
 ## F3 — Tests(H6)
-- [ ] F3.1 cap 解析 test:None→singleton / N→per-ingest cap=N force-split
-- [ ] F3.2 back-compat test:無 key 嘅 KbConfig → None → inherit(G7)
-- [ ] F3.3 factory test:`make_ingestion_chunker(N)` cap=N / `(None)` 無 cap
-- [ ] F3.4 既有 `test_chunker` / `test_orchestrator` / `test_documents_*` 0 regression
-- [ ] F3.5 ruff clean
+- [x] F3.1 cap 解析 test:None→singleton / N→per-ingest cap=N(`test_per_kb_image_cap.py`,5 test)
+- [x] F3.2 back-compat test:無 key 嘅 KbConfig → None → inherit(G7)
+- [x] F3.3 factory test:per-KB cap → factory 砌 chunker `max_images_per_chunk == N`
+- [x] F3.4 既有 `test_chunker`(48)/ `test_orchestrator` / `test_documents_*` 等 129 test 0 regression
+- [x] F3.5 ruff clean(check + format)
 
 ## F4 — Doc-sync
 - [ ] F4.1 `architecture.md §3.3` inline ADR-0042 amendment(per-KB cap resolution)
