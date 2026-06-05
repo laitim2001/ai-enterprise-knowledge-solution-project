@@ -744,6 +744,11 @@ function TabPipeline({ kb, onNavigate }) {
 // ── Tab: KB Settings ────────────────────────────────────────────────────────
 function TabKbSettings({ kb }) {
   const [showReindexExplainer, setShowReindexExplainer] = useState(false);
+  // W46 (ADR-0042 + ADR-0043) — chunk_strategy + per-KB image cap are now editable.
+  // Both are INGEST-time params, so a change only takes effect after a re-index.
+  const [chunkStrategy, setChunkStrategy] = useState(kb.config.chunk_strategy);
+  const [maxImages, setMaxImages] = useState(""); // "" = 繼承全域 (8); else per-KB cap
+  const [showReindexModal, setShowReindexModal] = useState(false);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <div className="card">
@@ -792,14 +797,21 @@ function TabKbSettings({ kb }) {
             </div>
           </div>
           <div className="field">
-            <label className="label">Chunk strategy <IcShield size={11} style={{ verticalAlign: "-2px", marginLeft: 4, color: "oklch(var(--warning))" }} /></label>
-            <div className="seg" style={{ width: "100%", opacity: 0.7 }}>
+            <label className="label">Chunk strategy <IcRefresh size={11} style={{ verticalAlign: "-2px", marginLeft: 4, color: "oklch(var(--warning))" }} /></label>
+            <div className="seg" style={{ width: "100%" }}>
               {["heading_aware", "layout_aware", "slide_based", "auto"].map((s) => (
-                <button key={s} className="seg-btn" data-active={kb.config.chunk_strategy === s} style={{ flex: 1, padding: "5px 6px", fontSize: 11.5 }} disabled>{s}</button>
+                <button key={s} className="seg-btn" data-active={chunkStrategy === s} onClick={() => setChunkStrategy(s)} style={{ flex: 1, padding: "5px 6px", fontSize: 11.5 }}>{s}</button>
               ))}
             </div>
             <div className="hint">
-              <b style={{ color: "oklch(var(--warning))" }}>Locked.</b> Changing affects chunk boundaries → requires re-index.
+              <b style={{ color: "oklch(var(--warning))" }}>需重新索引。</b> 改變切分策略 → 影響 chunk 邊界,儲存後須 re-index 全部文件先生效。
+            </div>
+          </div>
+          <div className="field">
+            <label className="label">Max images / chunk <IcRefresh size={11} style={{ verticalAlign: "-2px", marginLeft: 4, color: "oklch(var(--warning))" }} /></label>
+            <input className="input mono" value={maxImages} placeholder="繼承全域 (8)" onChange={(e) => setMaxImages(e.target.value)} />
+            <div className="hint">
+              <b style={{ color: "oklch(var(--warning))" }}>需重新索引。</b> 留空 = 沿用全域上限(8)。每 chunk 圖片數上限,超過即 force-split(ADR-0042)。
             </div>
           </div>
           <div className="field">
@@ -933,12 +945,12 @@ function TabKbSettings({ kb }) {
         </div>
       </div>
 
-      {/* Re-index card — explainer */}
+      {/* Re-index card — explainer (W46 / ADR-0043: in-place per-doc re-ingest) */}
       <div className="card" style={{ gridColumn: "1 / -1" }}>
         <div className="card-header">
           <div>
             <h3 className="card-title">Re-indexing</h3>
-            <div className="card-desc">Rebuild the Azure AI Search index from scratch. Required when locked config changes or after a major doc update.</div>
+            <div className="card-desc">Re-parse every document from its stored original source under the current config. Needed after a chunk_strategy or image-cap change.</div>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowReindexExplainer(!showReindexExplainer)}>
             {showReindexExplainer ? "Hide details" : "What is this?"} <IcChevRight size={11} style={{ transform: showReindexExplainer ? "rotate(90deg)" : "none" }} />
@@ -951,29 +963,42 @@ function TabKbSettings({ kb }) {
                 <b>What happens during a re-index:</b>
               </p>
               <ol style={{ paddingLeft: 22, marginBottom: 10, lineHeight: 1.8 }}>
-                <li>A new index <span className="mono">{kb.index_name.replace("-v1", "-v2")}</span> is provisioned alongside the current one.</li>
-                <li>Every source document is re-parsed via the configured chunker.</li>
-                <li>Each chunk is re-embedded with the chosen embedding model.</li>
-                <li>The new index is populated; eval suite runs against it (gate: R@5 must be ≥ current).</li>
-                <li>If gate passes, traffic atomically switches v1 → v2. v1 retained 7 days for rollback.</li>
+                <li>Each document is re-fetched from its stored original source (Word / PDF / PPT).</li>
+                <li>Its existing chunks are removed, then it's re-parsed via the <b>current</b> chunker config (chunk_strategy + max images / chunk).</li>
+                <li>Each chunk is re-embedded and upserted into <span className="mono">{kb.index_name}</span>.</li>
+                <li>Repeats per document — synchronous, in-place (Tier 1: no task queue).</li>
               </ol>
-              <p style={{ marginBottom: 0 }}>
+              <p style={{ marginBottom: 8 }}>
                 <b>When you need to re-index:</b>
-                <span className="muted"> chunk_strategy change · embedding_model change · &gt;30% of docs replaced/added · Docling parser upgrade · index schema migration.</span>
+                <span className="muted"> chunk_strategy change · max-images-per-chunk change · Docling parser upgrade.</span>
+              </p>
+              <p style={{ marginBottom: 0 }} className="text-xs muted">
+                Docs ingested before W46 (no stored source) are skipped + reported — re-upload them to make them reindexable.
+                Zero-downtime v1→v2 atomic switch + eval gate stays a Track A enhancement.
               </p>
               <div style={{ display: "flex", gap: 14, marginTop: 14, fontSize: 12, color: "oklch(var(--muted-foreground))", fontFamily: "var(--font-mono)", padding: 10, background: "oklch(var(--background))", borderRadius: "var(--radius-sm)" }}>
                 <div><b style={{ color: "oklch(var(--foreground))" }}>{kb.total_documents}</b> docs to re-parse</div>
-                <div><b style={{ color: "oklch(var(--foreground))" }}>{kb.total_chunks.toLocaleString()}</b> chunks to re-embed</div>
-                <div>est. <b style={{ color: "oklch(var(--foreground))" }}>~28 min</b> · est. cost <b style={{ color: "oklch(var(--foreground))" }}>$3.42</b></div>
+                <div><b style={{ color: "oklch(var(--foreground))" }}>{kb.total_chunks.toLocaleString()}</b> chunks to rebuild</div>
+                <div>in-place · <b style={{ color: "oklch(var(--foreground))" }}>brief</b> inconsistency window</div>
               </div>
             </div>
           </div>
         )}
+        {/* Last re-index summary (presentational example of the POST /kb/{id}/reindex shape) */}
+        <div style={{ padding: "0 18px 14px" }}>
+          <div className="banner banner-success" style={{ marginBottom: 0 }}>
+            <IcCheck size={15} style={{ color: "oklch(var(--success))" }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>Re-indexed {kb.total_documents} / {kb.total_documents} documents · {kb.total_chunks.toLocaleString()} chunks rebuilt</div>
+              <div className="text-xs muted mono">skipped (no source): 0 · failed: 0</div>
+            </div>
+          </div>
+        </div>
         <div className="card-footer">
           <div className="text-xs muted">Last re-index: <span className="mono">{window.formatRelative(kb.last_indexed_at)}</span> · current version <span className="mono">v1</span></div>
           <div className="row">
-            <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> Export config (YAML)</button>
-            <button className="btn btn-secondary btn-sm"><IcRefresh size={13} /> Trigger re-index now</button>
+            <button className="btn btn-secondary btn-sm" disabled><IcDownload size={13} /> Export config (YAML)</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowReindexModal(true)}><IcRefresh size={13} /> Trigger re-index now</button>
           </div>
         </div>
       </div>
@@ -992,6 +1017,37 @@ function TabKbSettings({ kb }) {
           <button className="btn btn-destructive"><IcTrash size={14} /> Delete KB</button>
         </div>
       </div>
+
+      {/* W46 — re-index confirm modal (.modal-overlay + .modal per DESIGN_SYSTEM §4.5) */}
+      {showReindexModal && (
+        <div className="modal-overlay" onClick={() => setShowReindexModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Re-index this knowledge base?</h2>
+              <p className="modal-desc">Re-parses every document from its stored original source under the current config. Each document is briefly unavailable while it rebuilds.</p>
+            </div>
+            <div className="modal-body">
+              <div className="banner banner-warning" style={{ marginBottom: 14 }}>
+                <IcAlert size={15} style={{ color: "oklch(var(--warning))" }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500 }}>Save config changes first</div>
+                  <div className="text-xs muted">Re-index uses the saved config. Unsaved chunk_strategy / image-cap edits won't apply until saved.</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 14, fontSize: 12.5, color: "oklch(var(--muted-foreground))", fontFamily: "var(--font-mono)", padding: 12, background: "oklch(var(--muted) / 0.4)", borderRadius: "var(--radius-sm)" }}>
+                <div><b style={{ color: "oklch(var(--foreground))" }}>{kb.total_documents}</b> docs</div>
+                <div><b style={{ color: "oklch(var(--foreground))" }}>{kb.total_chunks.toLocaleString()}</b> chunks</div>
+                <div>strategy <b style={{ color: "oklch(var(--foreground))" }}>{chunkStrategy}</b></div>
+                <div>max img <b style={{ color: "oklch(var(--foreground))" }}>{maxImages || "8 (全域)"}</b></div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowReindexModal(false)}>Cancel</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowReindexModal(false)}><IcRefresh size={13} /> Re-index {kb.total_documents} documents</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

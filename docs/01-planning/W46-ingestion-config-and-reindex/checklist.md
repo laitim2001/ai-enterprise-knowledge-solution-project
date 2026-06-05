@@ -22,17 +22,17 @@
 - [x] F2.5 mypy --strict clean(2 type fix:`int(object)` → isinstance guard;`-> dict` → `dict[str, object]`)
 
 ## F3 — Frontend:Settings unlock + Reindex UX(GATED on F0.3)
-- [ ] F3.1 mockup `ekp-page-kb.jsx` Settings tab 更新:unlock `chunk_strategy` + 圖數 cap + Reindex KB 按鈕 + warning modal
-- [ ] F3.2 frontend `kb/[id]/page.tsx` SettingsTab 100% match 更新後 mockup(H7 fidelity)
-- [ ] F3.3 wire `POST /kb/{kb_id}/reindex` + reindex summary 顯示
-- [ ] F3.4 `embedding_model` 維持 locked
-- [ ] F3.5 tsc + lint clean + `[oklch`=0 preserved
+- [x] F3.1 mockup `ekp-page-kb.jsx` Settings tab 更新:unlock `chunk_strategy`(seg 移除 disabled/opacity)+ NEW Max images / chunk 欄位 + Re-indexing 卡 explainer align W46 in-place 現實 + warning modal(`.modal-overlay` per DESIGN_SYSTEM §4.5)+ summary banner
+- [x] F3.2 frontend `kb/[id]/page.tsx` SettingsTab 100% match 更新後 mockup(H7 fidelity):chunkStrategy/maxImages state + configDirty + buildConfigBody + Cancel reset + header Re-index 按鈕 enabled→導去 settings tab
+- [x] F3.3 wire `POST /kb/{kb_id}/reindex`(`kbApi.reindex` + `KbReindexSummary` type)+ NEW `<ReindexCard>` 元件(modal confirm → mutation → summary banner;failed→banner-warning)
+- [x] F3.4 `embedding_model` 維持 locked(disabled select 不動)
+- [x] F3.5 tsc --noEmit clean + next lint clean(唯一 pre-existing chat `<img>` warning 無關)+ `[oklch`=0 preserved
 
 ## F4 — Tests(H6)
 - [x] F4.1 source-storage test(`test_source_store.py` +6:naming / upload success+fail-best-effort / download present+absent+filename-fallback)
 - [x] F4.2 KB-reindex test(`test_kb_reindex.py` 更新 stub→503 + 3 個 `run_kb_reindex` unit:skip-no-source / reingest / failed-doc report)
 - [x] F4.3 既有 106 test(test_kb_reindex / test_documents_route / test_documents_detail / test_orchestrator / test_screenshots / test_kb_management)0 regression
-- [ ] F4.4 frontend Vitest(SettingsTab unlock + reindex trigger)— 隨 F3
+- [x] F4.4 frontend Vitest(`kb-settings-reindex.test.tsx` +3:chunk_strategy 解鎖+圖數cap欄位 / Save 送完整 config 含 chunk_strategy+chunker_max_images_per_chunk / Re-index modal→confirm→summary;kb-settings-tuning 3 regression 0 fail = 6 pass)
 - [x] F4.5 ruff clean(check + format)
 
 ## F5 — Doc-sync

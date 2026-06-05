@@ -37,6 +37,13 @@ export interface KbConfig {
   citation_neighbour_max_aux_images?: number | null;
   citation_neighbour_section_path_prefix_depth?: number | null;
   max_images_per_answer?: number | null;
+  // W45 F1 — per-KB ingest-time chunker image cap (per ADR-0042; extends the
+  // ADR-0040 config-scope model from query-time to INGEST-time). `null`/absent =
+  // inherit the global Settings cap (default 8); a positive int caps images per
+  // chunk (force-split). A per-KB KB cannot express "no cap" — that escape stays
+  // global-only. Consumed at INGEST time, so a change only takes effect on
+  // re-index (KB Detail Settings → Re-indexing card, F3).
+  chunker_max_images_per_chunk?: number | null;
 }
 
 export const DEFAULT_KB_CONFIG: KbConfig = {
@@ -148,6 +155,26 @@ export interface KbAclListResponse {
   total: number;
 }
 
+// W46 F2 — real KB-level reindex summary (per ADR-0043; backend
+// `documents.py:run_kb_reindex`). Synchronous in-place per-doc delete+reingest
+// from each document's stored original source. Docs ingested before W46 (no
+// stored source) land in `skipped_no_source`; mid-pipeline failures in `failed`.
+export interface KbReindexFailure {
+  doc_id: string;
+  error: string;
+}
+
+export interface KbReindexSummary {
+  status: string; // "reindexed"
+  kb_id: string;
+  documents_total: number;
+  documents_reindexed: number;
+  reindexed: string[]; // doc_ids successfully rebuilt
+  skipped_no_source: string[]; // doc_ids with no stored source — re-upload to fix
+  failed: KbReindexFailure[];
+  chunks_total: number;
+}
+
 export const kbApi = {
   list: (): Promise<KbStatus[]> => client.get<KbStatus[]>('/kb'),
 
@@ -170,6 +197,11 @@ export const kbApi = {
   // W20 F5.1 — archive a KB (soft delete; index + blobs preserved per ADR-0025).
   archive: (kbId: string): Promise<KbStatus> =>
     client.post<KbStatus>(`/kb/${kbId}/archive`, {}),
+
+  // W46 F2 — real KB-level reindex (ADR-0043). Synchronous; returns a summary of
+  // per-doc outcomes. 403 if the KB is archived; 503 if Azure deps unconfigured.
+  reindex: (kbId: string): Promise<KbReindexSummary> =>
+    client.post<KbReindexSummary>(`/kb/${kbId}/reindex`, {}),
 
   // W20 F5.2 — KB images aggregation (Tab 3 Images).
   listImages: (kbId: string, limit = 50, offset = 0): Promise<KbImagesResponse> =>

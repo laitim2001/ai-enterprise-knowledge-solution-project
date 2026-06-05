@@ -47,3 +47,49 @@ Chris AskUserQuestion 批准 unlock scope:**unlock `chunk_strategy` + per-KB 圖
 
 ### Blockers / carry-over
 - 無 blocker(H7 gate 已過,backend 綠燈)。R4 live reindex verify 需 Azure + backend(pytest 覆蓋 resolution 邏輯;live 可後評,可能 🚧 deferred)。
+
+---
+
+## Day 2 — 2026-06-05
+
+### Context
+F3 frontend(H7 解鎖已批准,F0.3)。Design-first per ADR-0024 precedent:先改 mockup `ekp-page-kb.jsx` → 再令 `page.tsx` 100% match。
+
+### Done — F3.1 mockup(design-first)
+`references/design-mockups/ekp-page-kb.jsx` `TabKbSettings`:
+- **Unlock chunk_strategy**:seg 移除 `disabled` + `opacity: 0.7`,改 interactive(`data-active={chunkStrategy} onClick={setChunkStrategy}`);label icon `IcShield`(locked)→ `IcRefresh`(warning,需重索引);hint「Locked」→「需重新索引。改變切分策略 → 影響 chunk 邊界…」
+- **NEW Max images / chunk 欄位**(ADR-0042):`<input className="input mono" placeholder="繼承全域 (8)">`;hint「留空 = 沿用全域上限(8)…超過即 force-split」
+- **Re-indexing 卡 align W46 現實**:explainer ol 由 *v1→v2 原子切換 + eval gate + $3.42 cost*(Track A 願景)改為 *in-place per-doc re-ingest from stored source · synchronous*;補「pre-W46 無 source doc skipped + reported」+「v1→v2 zero-downtime stays Track A」;counts row 去除 fake cost 改「in-place · brief inconsistency window」
+- **NEW warning modal**(`.modal-overlay` + `.modal` per DESIGN_SYSTEM §4.5):confirm 前提示「Save config changes first」+ docs/chunks/strategy/maximg 摘要
+- **NEW summary banner**(presentational):reindex 後顯示「Re-indexed N/N · M chunks · skipped/failed」shape
+- **R6 catch**:mockup explainer 係 pre-W46 aspirational plan-text(v1→v2/eval-gate/cost)與 ADR-0043 in-place 實作衝突 → align 至實作現實(design-first authorship,非單方改架構;v1→v2 仍標 Track A future,符 Tier 1/2 邊界慣例)
+
+### Done — F3.2/F3.3/F3.4 page.tsx + API client
+- `frontend/lib/api/kb.ts`:`KbConfig` 加 `chunker_max_images_per_chunk?: number|null`;NEW `KbReindexFailure` + `KbReindexSummary` interface;`kbApi.reindex(kbId)` → `POST /kb/{id}/reindex`
+- `frontend/app/(app)/kb/[id]/page.tsx`:
+  - header「Re-index」按鈕 `disabled` → enabled + `onClick={handleTabChange('settings')}`(對齊 Retrieval test 按鈕 pattern;mockup header 顯示 enabled)
+  - `SettingsTab`:加 `chunkStrategy`/`maxImages` state + `maxImagesValue`(空→null)+ `configDirty` memo(fold topK/rerankK/chunkStrategy/maxImages/knobs);`buildConfigBody` 加 `chunk_strategy`+`chunker_max_images_per_chunk`;`handleSave` config 條件用 `configDirty`;Cancel reset 補 chunkStrategy/maxImages
+  - chunk_strategy seg unlock(Shield→RefreshCw,interactive)+ Max images / chunk 欄位(`type="number" min={1}`,跟 page.tsx W43 KbTuneKnob type=number 慣例)
+  - NEW `<ReindexCard kb chunkStrategy maxImages>` 元件(置 `<DangerZone>` 前,對齊 mockup「Re-indexing → Danger zone」相鄰):explainer 摺疊 + reindex mutation(success→invalidate kb query + toast summary;failed→banner-warning)+ summary banner + `.modal-overlay` confirm(target-check close per DESIGN_SYSTEM §4.5 canonical)
+  - `embedding_model` disabled select 不動(F3.4)
+
+### Done — F4.4 test
+`frontend/tests/unit/kb-settings-reindex.test.tsx` +3:(1) chunk_strategy seg not-disabled + Max images 欄位 render;(2) Save PATCH 完整 config 含 `chunk_strategy: 'layout_aware'` + `chunker_max_images_per_chunk: 5`;(3) Re-index modal → confirm → `kbApi.reindex('test-kb')` → summary banner
+
+### 驗證(F3.5,四軸)
+- vitest `kb-settings`:**6 passed**(reindex 3 + tuning 3 regression)0 fail
+- tsc --noEmit:clean
+- next lint:clean(唯一 pre-existing `chat/page.tsx` `<img>` warning 無關)
+- `[oklch`=0 preserved(用 inline style oklch,無 Tailwind arbitrary class)
+
+### H7 design fidelity 自檢
+Design-first → page.tsx by-construction match mockup。逐項對齊:label icon(RefreshCw)/ seg interactive / hint 文案 / Max images 欄位 / Re-indexing 卡 explainer+counts / modal markup+文案 / summary banner shape。Live-app 差異(summary 條件渲染 vs mockup static example;type=number vs mockup plain input)= 既有 codebase 慣例(empty-state / W43 KbTuneKnob),非新 drift。
+
+### Commits
+- _(pending — F3 frontend + checklist/progress tick)_
+
+### Next
+- F5 doc-sync(architecture.md §3.5/§4.4/§4.6 + roadmap + session-start)→ F6 closeout
+
+### Blockers / carry-over
+- 🚧 R4 live reindex UI verify(需 backend + Azure + 真 KB)— vitest 覆蓋 mutation→summary 邏輯;live click-through 可後評,carry W46 closeout 或 W47+ Track A

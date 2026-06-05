@@ -220,7 +220,11 @@ export default function KbDetailPage() {
             >
               <Search size={13} /> Retrieval test
             </button>
-            <button type="button" className="btn btn-secondary btn-sm" disabled>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleTabChange('settings')}
+            >
               <RefreshCw size={13} /> Re-index
             </button>
             <button
@@ -2318,6 +2322,20 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
   const [description, setDescription] = useState(kb.description);
   const [topK, setTopK] = useState(kb.config.default_top_k);
   const [rerankK, setRerankK] = useState(kb.config.default_rerank_k);
+  // W46 (ADR-0042 + ADR-0043) — chunk_strategy + per-KB image cap are now editable.
+  // Both are INGEST-time params, so a change only takes effect after a re-index
+  // (Re-indexing card below). embedding_model stays locked (re-embed is heavier).
+  const [chunkStrategy, setChunkStrategy] = useState<KbConfig['chunk_strategy']>(
+    kb.config.chunk_strategy,
+  );
+  // '' = inherit the global cap (8); a positive int = this KB's per-chunk cap.
+  const [maxImages, setMaxImages] = useState<string>(
+    kb.config.chunker_max_images_per_chunk == null
+      ? ''
+      : String(kb.config.chunker_max_images_per_chunk),
+  );
+  const maxImagesValue: number | null =
+    maxImages.trim() === '' ? null : Number(maxImages);
   // W43 F3.2 — the 12 per-KB tuning knobs (null = inherit global). Seeded from the
   // saved config; the UI only writes a boolean to enable_* keys and a number to the
   // rest, so the loose Record value type is correct per-key at runtime.
@@ -2340,14 +2358,21 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     [knobs, kb],
   );
 
-  const dirty = useMemo(
+  // Everything that round-trips through PATCH /settings (KbConfig). Separated from
+  // the metadata diff because name/description go via patchMetadata.
+  const configDirty = useMemo(
     () =>
-      name !== kb.name ||
-      description !== kb.description ||
       topK !== kb.config.default_top_k ||
       rerankK !== kb.config.default_rerank_k ||
+      chunkStrategy !== kb.config.chunk_strategy ||
+      maxImagesValue !== (kb.config.chunker_max_images_per_chunk ?? null) ||
       knobsDirty,
-    [name, description, topK, rerankK, knobsDirty, kb],
+    [topK, rerankK, chunkStrategy, maxImagesValue, knobsDirty, kb],
+  );
+
+  const dirty = useMemo(
+    () => name !== kb.name || description !== kb.description || configDirty,
+    [name, description, configDirty, kb],
   );
 
   // PATCH /kb/{id}/settings replaces the whole KbConfig (omitted fields reset to
@@ -2357,6 +2382,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
   function buildConfigBody(): KbConfig {
     return {
       ...kb.config,
+      chunk_strategy: chunkStrategy,
+      chunker_max_images_per_chunk: maxImagesValue,
       default_top_k: topK,
       default_rerank_k: rerankK,
       ...(knobs as Partial<KbConfig>),
@@ -2392,11 +2419,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     if (name !== kb.name || description !== kb.description) {
       metaMutation.mutate();
     }
-    if (
-      topK !== kb.config.default_top_k ||
-      rerankK !== kb.config.default_rerank_k ||
-      knobsDirty
-    ) {
+    if (configDirty) {
       configMutation.mutate();
     }
   }
@@ -2490,7 +2513,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           <div className="field">
             <label className="label">
               Chunk strategy{' '}
-              <Shield
+              <RefreshCw
                 size={11}
                 style={{
                   verticalAlign: '-2px',
@@ -2499,7 +2522,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                 }}
               />
             </label>
-            <div className="seg" style={{ width: '100%', opacity: 0.7 }}>
+            <div className="seg" style={{ width: '100%' }}>
               {(
                 ['heading_aware', 'layout_aware', 'slide_based', 'auto'] as KbConfig['chunk_strategy'][]
               ).map((s) => (
@@ -2507,17 +2530,42 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                   type="button"
                   key={s}
                   className="seg-btn"
-                  data-active={kb.config.chunk_strategy === s}
+                  data-active={chunkStrategy === s}
+                  onClick={() => setChunkStrategy(s)}
                   style={{ flex: 1, padding: '5px 6px', fontSize: 11.5 }}
-                  disabled
                 >
                   {s}
                 </button>
               ))}
             </div>
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b> Changing
-              affects chunk boundaries → requires re-index.
+              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 改變切分策略 →
+              影響 chunk 邊界,儲存後須 re-index 全部文件先生效。
+            </div>
+          </div>
+          <div className="field">
+            <label className="label">
+              Max images / chunk{' '}
+              <RefreshCw
+                size={11}
+                style={{
+                  verticalAlign: '-2px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--warning))',
+                }}
+              />
+            </label>
+            <input
+              type="number"
+              className="input mono"
+              value={maxImages}
+              min={1}
+              placeholder="繼承全域 (8)"
+              onChange={(e) => setMaxImages(e.target.value)}
+            />
+            <div className="hint">
+              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 留空 = 沿用全域上限(8)。每
+              chunk 圖片數上限,超過即 force-split(ADR-0042)。
             </div>
           </div>
           <div className="field">
@@ -2650,6 +2698,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                 setDescription(kb.description);
                 setTopK(kb.config.default_top_k);
                 setRerankK(kb.config.default_rerank_k);
+                setChunkStrategy(kb.config.chunk_strategy);
+                setMaxImages(
+                  kb.config.chunker_max_images_per_chunk == null
+                    ? ''
+                    : String(kb.config.chunker_max_images_per_chunk),
+                );
                 const reset = {} as KnobState;
                 for (const k of TUNE_KNOB_KEYS) reset[k] = kb.config[k] ?? null;
                 setKnobs(reset);
@@ -2671,8 +2725,283 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         </div>
       </div>
 
+      <ReindexCard kb={kb} chunkStrategy={chunkStrategy} maxImages={maxImages} />
+
       <DangerZone kb={kb} />
     </form>
+  );
+}
+
+// ── W46 — Re-indexing card + confirm modal (ADR-0043) ────────────────────────
+// Triggers POST /kb/{id}/reindex: synchronous in-place per-doc delete+reingest
+// from each doc's stored original source under the CURRENT config, so a saved
+// chunk_strategy / image-cap change actually takes effect. 100% match to mockup
+// `ekp-page-kb.jsx` TabKbSettings Re-indexing card + .modal-overlay confirm.
+function ReindexCard({
+  kb,
+  chunkStrategy,
+  maxImages,
+}: {
+  kb: KbStatus;
+  chunkStrategy: KbConfig['chunk_strategy'];
+  maxImages: string;
+}) {
+  const queryClient = useQueryClient();
+  const [showExplainer, setShowExplainer] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  const reindexMutation = useMutation({
+    mutationFn: () => kbApi.reindex(kb.kb_id),
+    onSuccess: (summary) => {
+      void queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
+      setShowModal(false);
+      const skipped = summary.skipped_no_source.length;
+      const failed = summary.failed.length;
+      toast.success(
+        `Re-indexed ${summary.documents_reindexed}/${summary.documents_total} documents · ${summary.chunks_total.toLocaleString()} chunks` +
+          (skipped ? ` · ${skipped} skipped (no source)` : '') +
+          (failed ? ` · ${failed} failed` : ''),
+      );
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 're-index failed'),
+  });
+
+  const summary = reindexMutation.data;
+
+  return (
+    <div className="card" style={{ gridColumn: '1 / -1' }}>
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Re-indexing</h3>
+          <div className="card-desc">
+            Re-parse every document from its stored original source under the
+            current config. Needed after a chunk_strategy or image-cap change.
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setShowExplainer((v) => !v)}
+        >
+          {showExplainer ? 'Hide details' : 'What is this?'}{' '}
+          <ChevronRight
+            size={11}
+            style={{ transform: showExplainer ? 'rotate(90deg)' : 'none' }}
+          />
+        </button>
+      </div>
+      {showExplainer && (
+        <div style={{ padding: '0 18px 18px' }}>
+          <div
+            style={{
+              padding: '14px 16px',
+              background: 'oklch(var(--muted) / 0.4)',
+              border: '1px solid oklch(var(--border))',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 13,
+              lineHeight: 1.65,
+            }}
+          >
+            <p style={{ marginTop: 0, marginBottom: 10 }}>
+              <b>What happens during a re-index:</b>
+            </p>
+            <ol style={{ paddingLeft: 22, marginBottom: 10, lineHeight: 1.8 }}>
+              <li>
+                Each document is re-fetched from its stored original source (Word /
+                PDF / PPT).
+              </li>
+              <li>
+                Its existing chunks are removed, then it&rsquo;s re-parsed via the{' '}
+                <b>current</b> chunker config (chunk_strategy + max images / chunk).
+              </li>
+              <li>
+                Each chunk is re-embedded and upserted into{' '}
+                <span className="mono">ekp-kb-{kb.kb_id}-v1</span>.
+              </li>
+              <li>
+                Repeats per document — synchronous, in-place (Tier 1: no task queue).
+              </li>
+            </ol>
+            <p style={{ marginBottom: 8 }}>
+              <b>When you need to re-index:</b>
+              <span className="muted">
+                {' '}
+                chunk_strategy change · max-images-per-chunk change · Docling parser
+                upgrade.
+              </span>
+            </p>
+            <p style={{ marginBottom: 0 }} className="text-xs muted">
+              Docs ingested before W46 (no stored source) are skipped + reported —
+              re-upload them to make them reindexable. Zero-downtime v1→v2 atomic
+              switch + eval gate stays a Track A enhancement.
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                gap: 14,
+                marginTop: 14,
+                fontSize: 12,
+                color: 'oklch(var(--muted-foreground))',
+                fontFamily: 'var(--font-mono)',
+                padding: 10,
+                background: 'oklch(var(--background))',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <div>
+                <b style={{ color: 'oklch(var(--foreground))' }}>
+                  {kb.total_documents}
+                </b>{' '}
+                docs to re-parse
+              </div>
+              <div>
+                <b style={{ color: 'oklch(var(--foreground))' }}>
+                  {kb.total_chunks.toLocaleString()}
+                </b>{' '}
+                chunks to rebuild
+              </div>
+              <div>
+                in-place ·{' '}
+                <b style={{ color: 'oklch(var(--foreground))' }}>brief</b>{' '}
+                inconsistency window
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {summary && (
+        <div style={{ padding: '0 18px 14px' }}>
+          <div
+            className={`banner ${summary.failed.length ? 'banner-warning' : 'banner-success'}`}
+            style={{ marginBottom: 0 }}
+          >
+            {summary.failed.length ? (
+              <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
+            ) : (
+              <Check size={15} style={{ color: 'oklch(var(--success))' }} />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>
+                Re-indexed {summary.documents_reindexed} / {summary.documents_total}{' '}
+                documents · {summary.chunks_total.toLocaleString()} chunks rebuilt
+              </div>
+              <div className="text-xs muted mono">
+                skipped (no source): {summary.skipped_no_source.length} · failed:{' '}
+                {summary.failed.length}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="card-footer">
+        <div className="text-xs muted">
+          Last re-index: <span className="mono">{formatRelative(kb.last_indexed_at)}</span>{' '}
+          · current version <span className="mono">v1</span>
+        </div>
+        <div className="row">
+          <button type="button" className="btn btn-secondary btn-sm" disabled>
+            <Download size={13} /> Export config (YAML)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowModal(true)}
+            disabled={kb.archived || reindexMutation.isPending}
+          >
+            <RefreshCw size={13} />{' '}
+            {reindexMutation.isPending ? 'Re-indexing…' : 'Trigger re-index now'}
+          </button>
+        </div>
+      </div>
+
+      {showModal && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Re-index this knowledge base?</h2>
+              <p className="modal-desc">
+                Re-parses every document from its stored original source under the
+                current config. Each document is briefly unavailable while it
+                rebuilds.
+              </p>
+            </div>
+            <div className="modal-body">
+              <div className="banner banner-warning" style={{ marginBottom: 14 }}>
+                <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500 }}>Save config changes first</div>
+                  <div className="text-xs muted">
+                    Re-index uses the saved config. Unsaved chunk_strategy /
+                    image-cap edits won&rsquo;t apply until saved.
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 14,
+                  fontSize: 12.5,
+                  color: 'oklch(var(--muted-foreground))',
+                  fontFamily: 'var(--font-mono)',
+                  padding: 12,
+                  background: 'oklch(var(--muted) / 0.4)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>
+                    {kb.total_documents}
+                  </b>{' '}
+                  docs
+                </div>
+                <div>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>
+                    {kb.total_chunks.toLocaleString()}
+                  </b>{' '}
+                  chunks
+                </div>
+                <div>
+                  strategy{' '}
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{chunkStrategy}</b>
+                </div>
+                <div>
+                  max img{' '}
+                  <b style={{ color: 'oklch(var(--foreground))' }}>
+                    {maxImages || '8 (全域)'}
+                  </b>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowModal(false)}
+                disabled={reindexMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => reindexMutation.mutate()}
+                disabled={reindexMutation.isPending}
+              >
+                <RefreshCw size={13} />{' '}
+                {reindexMutation.isPending
+                  ? 'Re-indexing…'
+                  : `Re-index ${kb.total_documents} documents`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
