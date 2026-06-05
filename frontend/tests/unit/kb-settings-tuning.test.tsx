@@ -80,6 +80,7 @@ const FAKE_RESULT = {
     figure_count_dedup: band(6),
     latency_ms: band(4100),
     per_citation: [{ chunk_id: 'chunk-42', section_path: ['Address Book', 'Sync'], image_count: 6 }],
+    faithfulness: 0.97, // W48 dual-axis quality
   },
   saved: {
     runs: [
@@ -90,6 +91,7 @@ const FAKE_RESULT = {
     figure_count_dedup: band(29),
     latency_ms: band(5800),
     per_citation: [],
+    faithfulness: 0.94, // W48 dual-axis quality
   },
 };
 
@@ -204,5 +206,9 @@ describe('W43 F3.3 — config-test 試跑 panel', () => {
     expect(screen.getByText('已存配置(SAVED)')).toBeInTheDocument();
     // per-citation breakdown from the draft's last run
     expect(screen.getByText('chunk-42')).toBeInTheDocument();
+    // W48 dual-axis — faithfulness quality axis renders on both A/B cards
+    expect(screen.getAllByText(/忠實度/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('0.97')).toBeInTheDocument();
+    expect(screen.getByText('0.94')).toBeInTheDocument();
   });
 });

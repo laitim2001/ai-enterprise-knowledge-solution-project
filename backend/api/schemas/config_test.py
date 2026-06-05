@@ -44,6 +44,11 @@ class ConfigTestRequest(BaseModel):
     enable_crag: bool = False
     # F2.4 — also run N with the SAVED config (all-draft knobs cleared) for an A/B.
     compare_to_saved: bool = False
+    # W48 (ADR-0040 dual-axis) — also compute the reference-free RAGAs faithfulness
+    # quality axis (judge LLM). Default on (it's the quality signal the harness adds);
+    # set False for a fast presentation-only run. Degrades to None when no judge
+    # credential is configured.
+    eval_faithfulness: bool = True
 
 
 class CitationBreakdown(BaseModel):
@@ -86,6 +91,11 @@ class ConfigRunSummary(BaseModel):
     figure_count_dedup: MetricBand
     latency_ms: MetricBand
     per_citation: list[CitationBreakdown]  # from the last run (representative)
+    # W48 (ADR-0040 dual-axis) — reference-free RAGAs faithfulness for this config,
+    # computed ONCE on the last run's answer + retrieved contexts (mirrors
+    # per_citation's last-run capture — not an N-run band, for judge-LLM cost).
+    # None = quality axis skipped (eval_faithfulness=False) or no judge / judge error.
+    faithfulness: float | None = None
 
 
 class ConfigTestResult(BaseModel):

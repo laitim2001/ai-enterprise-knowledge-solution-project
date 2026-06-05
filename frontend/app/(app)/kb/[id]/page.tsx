@@ -2265,6 +2265,35 @@ function ConfigResultCard({
           background: 'oklch(var(--border))',
         }}
       >
+        {/* W48 質素軸 headline — reference-free RAGAs faithfulness (ADR-0040 雙軸) */}
+        <div
+          style={{
+            gridColumn: '1 / -1',
+            background: 'oklch(var(--card))',
+            padding: '10px 14px',
+          }}
+        >
+          <div className="text-xs muted">忠實度(faithfulness · 反幻覺 · 0–1)</div>
+          <div
+            className="mono"
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              marginTop: 2,
+              color:
+                summary.faithfulness != null
+                  ? 'oklch(var(--success))'
+                  : 'oklch(var(--muted-foreground))',
+            }}
+          >
+            {summary.faithfulness != null ? summary.faithfulness.toFixed(2) : '—'}
+            {summary.faithfulness == null && (
+              <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+                未評(無 judge / 已關)
+              </span>
+            )}
+          </div>
+        </div>
         <ConfigMetric k="引用數" v={fmt(summary.citation_count)} band={summary.citation_count.band} />
         <ConfigMetric
           k="圖片(dedup)"

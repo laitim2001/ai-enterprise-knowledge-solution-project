@@ -118,6 +118,7 @@ prior_phase: W47-reindex-live-verification
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-05 | Initial plan | W48 kickoff;Chris 揀 config-test 質素軸 scope Option A(runtime config-test faithfulness;ingestion-config 質素 out-of-scope per 架構限制)| Chris |
+| 2026-06-05 | F1 deviation:plan 原寫「reuse `make_ragas_evaluator` 不改 eval module」,但 `make_ragas_evaluator` 算**全 4-metric**(faithfulness + answer_relevancy + 2 context),棄 3 個違反 faithfulness-only 成本意圖 → 改加 **additive** `make_faithfulness_evaluator(settings)`(faithfulness-only,復用 `patch_for_gpt5`+`Faithfulness`+threadpool bridge;現有 `make_ragas_evaluator` 不動 = 0 regression)+ 為新 helper 加 H6 unit test | cost-conscious(R6 catch:plan-text 假設 reuse 路徑與 code 不符)| AI |
 
 ---
 

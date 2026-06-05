@@ -13,6 +13,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -113,6 +114,17 @@ def _app(service: KBService) -> FastAPI:
     return app
 
 
+@pytest.fixture(autouse=True)
+def _no_judge(monkeypatch: pytest.MonkeyPatch) -> None:
+    """W48 — default: NO faithfulness judge in tests (deterministic, no network).
+
+    `eval_faithfulness` defaults True, and the route resolves `get_settings()` (real
+    .env, which may carry an Azure key), so without this patch the presentation-counter
+    tests below would fire a live judge call. The faithfulness tests override this.
+    """
+    monkeypatch.setattr(ct_route, "make_faithfulness_evaluator", lambda settings: None)
+
+
 # Draft that disables the expansion side-paths so the mock engine needs no
 # list_chunks / aggregate methods — isolates the counts to build_citations + cap.
 _ISOLATE = {"enable_parent_doc_retrieval": False, "enable_citation_neighbour_images": False}
@@ -168,3 +180,62 @@ def test_config_test_unknown_kb_404() -> None:
     client = TestClient(_app(_service("kb-real", KbConfig())))
     resp = client.post("/kb/kb-missing/config-test", json={"query": "how?", "runs": 1})
     assert resp.status_code == 404
+
+
+# ── W48 — faithfulness quality axis (ADR-0040 dual-axis) ─────────────────────
+
+
+def test_config_test_faithfulness_computed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """eval_faithfulness (default True) → faithfulness on the summary, fed the
+    last-run answer + retrieved-chunk contexts."""
+    captured: dict[str, object] = {}
+
+    def fake_factory(settings: object):  # noqa: ANN202, ARG001
+        def _ev(question: str, answer: str, contexts: list[str]) -> float:
+            captured["question"] = question
+            captured["answer"] = answer
+            captured["contexts"] = contexts
+            return 0.95
+
+        return _ev
+
+    monkeypatch.setattr(ct_route, "make_faithfulness_evaluator", fake_factory)
+    client = TestClient(_app(_service("kb-faith", KbConfig())))
+    resp = client.post("/kb/kb-faith/config-test", json={
+        "query": "how?", "runs": 2, "draft_config": _ISOLATE,
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["draft"]["faithfulness"] == 0.95
+    # fed the mock synth's answer + the retrieved chunk texts (contexts) of the last run
+    assert captured["answer"] == "ans [chunk-a][chunk-b]"
+    assert captured["contexts"] == ["x", "y"]
+    assert captured["question"] == "how?"
+
+
+def test_config_test_faithfulness_disabled() -> None:
+    """eval_faithfulness=False → the judge is never built; faithfulness stays None."""
+    client = TestClient(_app(_service("kb-nofaith", KbConfig())))
+    resp = client.post("/kb/kb-nofaith/config-test", json={
+        "query": "how?", "runs": 1, "draft_config": _ISOLATE, "eval_faithfulness": False,
+    })
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["draft"]["faithfulness"] is None
+
+
+def test_config_test_faithfulness_graceful_when_evaluator_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An evaluator that yields None (no judge / per-call error contract) → the
+    config-test still returns 200 with faithfulness=None (graceful degradation)."""
+    monkeypatch.setattr(
+        ct_route, "make_faithfulness_evaluator", lambda settings: (lambda q, a, c: None)
+    )
+    client = TestClient(_app(_service("kb-graceful", KbConfig())))
+    resp = client.post("/kb/kb-graceful/config-test", json={
+        "query": "how?", "runs": 1, "draft_config": _ISOLATE, "compare_to_saved": True,
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["draft"]["faithfulness"] is None
+    assert body["saved"]["faithfulness"] is None

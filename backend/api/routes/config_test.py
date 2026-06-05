@@ -12,6 +12,8 @@ Distinct from `POST /kb/{kb_id}/retrieval-test` (ADR-0021 V4) which is RETRIEVE-
 override in the resolver (draft > saved KbConfig > global Settings default).
 """
 
+import asyncio
+from collections.abc import Callable
 from dataclasses import asdict
 from typing import Annotated
 
@@ -27,9 +29,13 @@ from api.schemas.config_test import (
     RunMetrics,
 )
 from api.schemas.query import Citation, QueryRequest
+from eval.ragas_evaluator import make_faithfulness_evaluator
 from generation.effective_config import EffectiveConfig, PerQueryOverrides, resolve_effective_config
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from storage.settings import Settings, get_settings
+
+# W48 — faithfulness evaluator signature (question, answer, contexts) -> score | None.
+FaithfulnessFn = Callable[[str, str, list[str]], float | None]
 
 router = APIRouter()
 
@@ -64,10 +70,20 @@ async def _run_n(
     effective: EffectiveConfig,
     settings: Settings,
     runs: int,
+    faithfulness_fn: FaithfulnessFn | None = None,
 ) -> ConfigRunSummary:
-    """Run the full pipeline `runs` times with `effective`; aggregate counters."""
+    """Run the full pipeline `runs` times with `effective`; aggregate counters.
+
+    When `faithfulness_fn` is supplied, the reference-free RAGAs faithfulness quality
+    axis (W48 / ADR-0040 dual-axis) is computed ONCE on the last run's answer +
+    retrieved contexts (mirrors `per_citation`'s last-run capture — not an N-run band,
+    for judge-LLM cost). The sync evaluator is offloaded via `asyncio.to_thread` so it
+    never blocks the event loop; it self-degrades to `None` on any judge error.
+    """
     metrics: list[RunMetrics] = []
     last_citations: list[Citation] = []
+    last_answer = ""
+    last_contexts: list[str] = []
     for i in range(1, runs + 1):
         resp = await execute_query_pipeline(qreq, request, effective, settings)
         raw, dedup = _figure_counts(resp.citations)
@@ -83,6 +99,9 @@ async def _run_n(
             )
         )
         last_citations = resp.citations
+        last_answer = resp.answer
+        # Contexts for faithfulness = the reranked chunks synthesis grounded on.
+        last_contexts = [c.chunk_text for c in resp.retrieved_chunks]
     per_citation = [
         CitationBreakdown(
             chunk_id=c.chunk_id,
@@ -91,6 +110,11 @@ async def _run_n(
         )
         for c in last_citations
     ]
+    faithfulness: float | None = None
+    if faithfulness_fn is not None:
+        faithfulness = await asyncio.to_thread(
+            faithfulness_fn, qreq.query, last_answer, last_contexts
+        )
     return ConfigRunSummary(
         runs=metrics,
         citation_count=_band([float(m.citation_count) for m in metrics]),
@@ -98,6 +122,7 @@ async def _run_n(
         figure_count_dedup=_band([float(m.figure_count_dedup) for m in metrics]),
         latency_ms=_band([float(m.latency_ms) for m in metrics]),
         per_citation=per_citation,
+        faithfulness=faithfulness,
     )
 
 
@@ -131,14 +156,24 @@ async def config_test(
         enable_crag=payload.enable_crag,
     )
 
+    # W48 — build the faithfulness evaluator ONCE (draft + saved share it); None when
+    # the axis is off or no judge credential → summaries get faithfulness=None.
+    faithfulness_fn: FaithfulnessFn | None = (
+        make_faithfulness_evaluator(settings) if payload.eval_faithfulness else None
+    )
+
     draft_override = PerQueryOverrides(**payload.draft_config.model_dump())
     draft_effective = resolve_effective_config(settings, saved_cfg, draft_override)
-    draft_summary = await _run_n(qreq, request, draft_effective, settings, payload.runs)
+    draft_summary = await _run_n(
+        qreq, request, draft_effective, settings, payload.runs, faithfulness_fn
+    )
 
     saved_summary: ConfigRunSummary | None = None
     if payload.compare_to_saved:
         saved_effective = resolve_effective_config(settings, saved_cfg, None)
-        saved_summary = await _run_n(qreq, request, saved_effective, settings, payload.runs)
+        saved_summary = await _run_n(
+            qreq, request, saved_effective, settings, payload.runs, faithfulness_fn
+        )
 
     return ConfigTestResult(
         kb_id=kb_id,

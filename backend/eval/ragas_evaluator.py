@@ -158,7 +158,8 @@ def make_ragas_evaluator(
             "answer_relevancy": await _ascore_metric(
                 "answer_relevancy",
                 lambda: answer_relevancy_m.ascore(
-                    user_input=sample.question, response=sample.answer,
+                    user_input=sample.question,
+                    response=sample.answer,
                 ),
                 sample.query_id,
             ),
@@ -195,3 +196,71 @@ def make_ragas_evaluator(
             return pool.submit(asyncio.run, _ascore_all(sample)).result()
 
     return _sync_eval
+
+
+def make_faithfulness_evaluator(
+    settings: Settings,
+) -> Callable[[str, str, list[str]], float | None] | None:
+    """W48 (ADR-0040 dual-axis) — a faithfulness-ONLY evaluator for the config-test
+    quality axis. Reference-free (no ground truth): scores whether the answer's
+    claims are grounded in the retrieved contexts. Returns `None` when no Azure
+    OpenAI judge credential is configured (local dev / CI) → config-test omits the
+    quality axis and still returns the presentation counters.
+
+    Distinct from `make_ragas_evaluator` (the 4-metric eval-set path): this computes
+    ONLY faithfulness — config-test runs it once per试跑 (last-run answer + contexts),
+    so paying for answer_relevancy embeddings + the 2 context metrics would be wasted
+    cost. Judge = `azure_openai_deployment_llm_judge` (gpt-5.4-mini per the cost
+    policy), same as `make_ragas_evaluator`. Takes a plain (question, answer,
+    contexts) tuple rather than a `RagasQuerySample`. Per-call try/except → `None` so
+    a judge hiccup never fails the config-test (graceful degradation).
+    """
+    if not settings.azure_openai_api_key:
+        logger.info(
+            "faithfulness_evaluator_skipped",
+            reason="no AZURE_OPENAI_API_KEY — config-test omits the quality axis",
+        )
+        return None
+
+    from openai import AsyncAzureOpenAI  # noqa: PLC0415
+    from ragas.llms import llm_factory  # noqa: PLC0415
+    from ragas.metrics.collections.faithfulness import Faithfulness  # noqa: PLC0415
+
+    judge_client = AsyncAzureOpenAI(
+        azure_endpoint=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+        api_version=settings.azure_openai_api_version,
+    )
+    patch_for_gpt5(judge_client)
+    wrapped_llm = llm_factory(settings.azure_openai_deployment_llm_judge, client=judge_client)
+    faithfulness_m = Faithfulness(llm=wrapped_llm)
+
+    def _eval(question: str, answer: str, contexts: list[str]) -> float | None:
+        # faithfulness needs both an answer to judge and contexts to judge against;
+        # a refused/empty answer or an empty retrieval has no meaningful score.
+        if not answer.strip() or not contexts:
+            return None
+
+        async def _ascore() -> float:
+            r = await faithfulness_m.ascore(
+                user_input=question,
+                response=answer,
+                retrieved_contexts=contexts,
+            )
+            return float(r.value)
+
+        try:
+            # Mirror `_sync_eval`: ragas needs its own event loop, bridged via a
+            # worker thread running asyncio.run (robust whether the caller is sync
+            # or — via asyncio.to_thread — an async route).
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, _ascore()).result()
+        except Exception as exc:  # noqa: BLE001 — ragas/instructor exception chain unpredictable
+            logger.warning(
+                "faithfulness_eval_exception_fallback",
+                exception_type=type(exc).__name__,
+                error=str(exc)[:200],
+            )
+            return None
+
+    return _eval

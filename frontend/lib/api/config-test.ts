@@ -42,6 +42,12 @@ export interface ConfigTestRequest {
   enable_crag?: boolean;
   /** Also run N with the SAVED config for an A/B (F2.4). */
   compare_to_saved?: boolean;
+  /**
+   * W48 (ADR-0040 dual-axis) — also compute the reference-free RAGAs faithfulness
+   * quality axis (judge LLM). Default true server-side; set false for a fast
+   * presentation-only run. Degrades to null when no judge credential is configured.
+   */
+  eval_faithfulness?: boolean;
 }
 
 /** Per-citation section + image count (one row of the breakdown). */
@@ -78,6 +84,12 @@ export interface ConfigRunSummary {
   figure_count_dedup: MetricBand;
   latency_ms: MetricBand;
   per_citation: CitationBreakdown[];
+  /**
+   * W48 (ADR-0040 dual-axis) — reference-free RAGAs faithfulness for this config,
+   * computed once on the last run's answer + retrieved contexts. null = quality axis
+   * skipped (eval_faithfulness=false) or no judge / judge error.
+   */
+  faithfulness: number | null;
 }
 
 export interface ConfigTestResult {

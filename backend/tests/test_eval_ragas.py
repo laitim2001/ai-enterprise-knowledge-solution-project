@@ -21,7 +21,7 @@ from types import SimpleNamespace
 import pytest
 
 from eval.orchestrator import run_eval_pipeline
-from eval.ragas_evaluator import make_ragas_evaluator
+from eval.ragas_evaluator import make_faithfulness_evaluator, make_ragas_evaluator
 from eval.ragas_runner import RagasQuerySample
 from storage.settings import Settings
 
@@ -79,6 +79,13 @@ def _mixed_evaluator(sample: RagasQuerySample) -> dict:
 
 def test_make_ragas_evaluator_returns_none_without_azure_key() -> None:
     assert make_ragas_evaluator(Settings(azure_openai_api_key="")) is None
+
+
+def test_make_faithfulness_evaluator_returns_none_without_azure_key() -> None:
+    # W48 — the config-test quality axis degrades to None (no quality column) when
+    # no Azure judge credential is configured (local dev / CI), same as the 4-metric
+    # path. The route then returns ConfigRunSummary.faithfulness=None.
+    assert make_faithfulness_evaluator(Settings(azure_openai_api_key="")) is None
 
 
 @pytest.mark.asyncio
