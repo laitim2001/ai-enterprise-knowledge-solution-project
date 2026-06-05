@@ -107,7 +107,7 @@ prior_phase: W45-per-kb-image-cap
 | R1 | H7 mockup design 未確認就動 frontend | — | High | F3 GATED on F0 H7 confirm;design-first 改 mockup |
 | R2 | in-place reindex 不一致窗口 | Med | Med | 接受(dev 層);v1→v2 原子切換留 Track A |
 | R3 | source-upload best-effort 失敗 → doc 不可 reindex | Med | Low | reindex report skip_no_source;doc-level re-upload 可補 |
-| R4 | live reindex verify 需 Azure + backend(R8/Track A adjacent)| Med | Low | pytest 覆蓋邏輯;live verify 可 🚧 deferred |
+| R4 | live reindex verify 需 Azure + backend(R8/Track A adjacent)| Med | Low | ✅ **RESOLVED 2026-06-05 via W47**(live end-to-end PASS:source persist + cap 8→3 重切 90→133 + skipped_no_source + archived 403;W46 reindex 零 defect)。frontend UI click-through 🚧 carry W48+(non-blocking)|
 | R5 | 大 KB 同步 reindex 慢(blocking)| Low | Low | Tier 1 接受;progress streaming 後補 |
 
 ## 5. Day-by-Day Breakdown(rough)

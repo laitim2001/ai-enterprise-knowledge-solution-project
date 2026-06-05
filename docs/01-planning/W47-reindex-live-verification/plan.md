@@ -3,8 +3,8 @@ phase: W47-reindex-live-verification
 name: "Live End-to-End Verification of W46 KB-Level Reindex (R4 carry-over)"
 sprint_week: W47
 start_date: 2026-06-05
-end_date: 2026-06-07          # planned, may slip with changelog log
-status: active
+end_date: 2026-06-05          # actual close (D1; F1-F4 all verified same-day)
+status: closed
 spec_refs:
   - ADR-0043 (original-file blob storage + real KB-level reindex)
   - architecture.md §3.4 (sources container + reindex) + §4.4 #19 (POST /kb/{id}/reindex) + §4.6 (re-sync)
@@ -129,6 +129,9 @@ Carry-over from `W46-ingestion-config-and-reindex/plan.md §4 R4`(live reindex v
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-05 | Initial plan | W47 kickoff;Chris 揀 R4 live reindex 端到端驗證 | Chris |
+| 2026-06-05 | F2 deviation:Free-tier 3-index cap(429)→ 唔建 fresh KB(刪 index = destructive),改複用 active `test-kb-20260531-v1` 上載副本 doc(非破壞性)| 環境限制 + 安全 | AI |
+| 2026-06-05 | F5 frontend live UI 🚧 deferred(loaded machine renderer 30s screenshot timeout;G5 stretch non-blocking)| infra 唔配合(R2)| AI |
+| 2026-06-05 | status active → closed;end_date 06-07→06-05(D1 全 F1-F4 同日驗完)| Phase Gate G1-G6 PASS;W46 reindex 零 defect | AI |
 
 ---
 

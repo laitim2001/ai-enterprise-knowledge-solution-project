@@ -13,25 +13,25 @@
 - [ ] F1.4 pre-flight:Langfuse `/api/public/health` 200 + Postgres `SELECT 1`(Docker unhealthy flag ≠ endpoint down)
 
 ## F2 — Seed + source-persist 驗證
-- [ ] F2.1 建 test KB(`Bearer dev-token`)+ 上載含圖文件(`curl.exe -F "file=@"` multipart)
-- [ ] F2.2 核 `-sources` container 有 blob(name=`doc_id`,metadata `original_filename`)
-- [ ] F2.3 記 baseline:chunk 數 + 每 chunk 圖數
+- [x] F2.1 複用 active `test-kb-20260531-v1`(Free-tier 3-index 滿,新 KB 撞 429;非破壞性)+ 上載 AR 圖密 doc 副本 `w47-ar-verify`(post-W46,90 chunks,253 圖全 SHA256 dedup)
+- [x] F2.2 核 `ekp-kb-test-kb-20260531-v1-sources` container 有 blob `w47-ar-verify`(name=doc_id)+ metadata `original_filename:"w47-ar-verify.docx"` ✅ — **W46 source-persist live 證實**
+- [x] F2.3 baseline(cap=null→全域 8):90 chunks,max 8 圖/chunk,29 chunk >3 圖,total 252 圖
 
 ## F3 — Reindex core 驗證(真重切)
-- [ ] F3.1 改 per-KB config(`chunker_max_images_per_chunk` 8→3 經 `PATCH /kb/{id}/settings`)
-- [ ] F3.2 `POST /kb/{id}/reindex` → 核 summary `{documents_total, documents_reindexed, reindexed, skipped_no_source, failed, chunks_total}` 數字
-- [ ] F3.3 核 reindex 後 chunks 真按**新** config 重切(cap 3 → force-split:chunk 數↑ / 每 chunk 圖數 ≤3)
-- [ ] F3.4 control:無改 config reindex idempotent(chunk 數穩定,無 regression)
+- [x] F3.1 `PATCH /kb/{id}/settings` `chunker_max_images_per_chunk` null→**3**(GET 確認持久化;chunk_strategy/extract_images 保留)
+- [x] F3.2 `POST /kb/{id}/reindex`(~30s)→ summary 正確:`documents_total=2 documents_reindexed=1 chunks_total=133 reindexed=[w47-ar-verify] skipped_no_source=[原AR pre-W46] failed=[]`
+- [x] F3.3 重切真生效:w47-ar-verify **90→133 chunks**(force-split +43)、max 圖/chunk **8→3**、>3 圖 chunk **29→0**、total 圖 **252 不變**(純重分佈)
+- [x] F3.4 control:無改 config 再 reindex → `chunks_total=133` 穩定(idempotent,無 regression)
 
 ## F4 — Edge path 驗證
-- [ ] F4.1 pre-W46 / 人手刪 source 嘅 doc → `skipped_no_source` report,no crash
-- [ ] F4.2 archived KB → `POST /kb/{id}/reindex` 返 403
+- [x] F4.1 pre-W46 原 AR doc(無 source)→ `skipped_no_source` + **90 chunks 不變**(skip 在 delete 前,未觸碰)no crash
+- [x] F4.2 archived KB `dce-integration-images-1` → `POST /kb/{id}/reindex` 返 **403**(「KB ... is archived — re-create the KB to resume ingest」)
 
 ## F5 — Frontend live UI click-through(stretch,唔 block closeout)
-- [ ] F5.1 `next dev` → Settings → Reindex 卡 → confirm modal → summary banner live(infra 許可;否則 🚧 deferred + reason)
+- [ ] 🚧 F5.1 **deferred** — Chrome MCP 連上 + navigate `/kb/test-kb-20260531-v1?tab=settings` 成功,但 loaded machine + next dev on-demand 編譯令 renderer 兩次 `Page.captureScreenshot` 30s timeout(plan §4 R2「infra 唔配合」場景)。**唔 block**:後端 reindex 已 data/API 層全面 live 證(F2-F4),前端 `<ReindexCard>` wiring vitest +3 已覆蓋(`kb-settings-reindex.test.tsx`),按鈕 call 嘅 `POST /kb/{id}/reindex` 已 live 證 work。carry W48+ 或用戶手動點(頁面編譯完即可見)
 
 ## F6 — Doc-sync + closeout
-- [ ] F6.1 R4 status 更新:W46 plan §4 R4 → RESOLVED + roadmap + session-start §10 carry-over verified(+ RISK_REGISTER 若有對應)
-- [ ] F6.2 live 發現記 progress.md;defect → BUG-NNN(PROCESS.md)
-- [ ] F6.3 Phase Gate G1-G6 評估 + verdict + retro
-- [ ] F6.4 checklist 全 tick / 🚧 標記 + session-start W47 closed + W48+ rolling JIT
+- [x] F6.1 R4 status 更新:W46 plan §4 R4 → RESOLVED(live verified)+ roadmap W47+ carry「R4 live verify」標 done + session-start §10 W47 row
+- [x] F6.2 live 發現記 progress.md:唯一 finding = Free-tier 3-index cap(環境限制非 defect);W46 reindex **零 defect** → 無 BUG-NNN
+- [x] F6.3 Phase Gate G1-G6 = **PASS**(F5 frontend 🚧 deferred non-blocking)+ retro(見 progress)
+- [x] F6.4 checklist 全 tick;唯一 🚧 = F5.1 frontend live UI(carry W48+)+ session-start W47 closed + W48+ rolling JIT
