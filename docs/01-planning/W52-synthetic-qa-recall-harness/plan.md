@@ -3,8 +3,8 @@ phase: W52-synthetic-qa-recall-harness
 name: "Synthetic-QA Recall Harness (self-supervised true recall — 決策 7 Option d 更深半邊 / 兩者合一 W52 基建)"
 sprint_week: W52
 start_date: 2026-06-06
-end_date:                     # actual close
-status: active
+end_date: 2026-06-06          # actual close (D1; F0-F4 same-day)
+status: closed
 spec_refs:
   - ROADMAP-per-kb-tunable-config.md line 107 (synthetic-QA auto-gen → 「留工程閘」offline,非自助面)+ line 112 (synthetic-QA 真 recall 留更未來)
   - W51 (completeness proxy「涵蓋章節數」誠實標明 proxy 非 recall — 本期補返真 recall 半邊)
@@ -132,6 +132,7 @@ combined_vision: "兩者合一(synthetic-QA 做 ingestion eval 指標)— W52 = 
 | 2026-06-06 | Initial plan | W52 kickoff;Chris AskUserQuestion 揀「兩者合一」→ split W52 synthetic-QA recall 基建 / W53 reindex 比較;synthetic 自監督 recall offline 工程閘;reuse EvalRunner + judge client + chunk 枚舉;無新 ADR/vendor/dep | Chris |
 | 2026-06-06 | **R3 deviation ①**:plan §1「zero C03 modification」修正 —— `_collect_chunks` 需 chunk_text(`list_chunks` 故意唔返),engine 未 expose `fetch_by_chunk_ids`(只喺 `_searcher`)→ 加 3 行 encapsulation-preserving passthrough `RetrievalEngine.fetch_by_chunk_ids`(mirror 現有 `list_chunks`/`list_documents` delegate)。**非 architectural**(§5.1「加 internal helper」+ additive delegate,無 interface/vendor/storage 改)| F1 think-before-coding(§1.1)+ R6 grep 揭 engine passthrough 缺;最乾淨 = 補 delegate(避免 C06 reach into C03 private `_searcher`)| AI |
 | 2026-06-06 | **R3 deviation ②**:CLI 由 plan §3 F2「`python -m eval.synthetic_qa`」改放 `scripts/run_synthetic_recall.py` | live bootstrap 需 `truststore.inject_into_ssl()` + engine 構建(mirror run_gate1_eval.py);模組保持 bootstrap-free → core 全 stub-testable(Karpathy:scripts/ = live driver,eval/ = importable logic,對齊既有 run_gate1_eval / eval_set_augmentor 分工)| AI |
+| 2026-06-06 | status active → closed;end_date set(D1 全 F0-F4 同日)| Phase Gate G1-G4 PASS;決策 7 Option (d) 更深半邊 done(synthetic-QA self-supervised recall 基建)| AI |
 
 ---
 

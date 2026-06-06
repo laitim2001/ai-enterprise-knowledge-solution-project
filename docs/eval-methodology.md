@@ -682,6 +682,19 @@ RAGAs faithfulness 第一步係 LLM 抽 claim。如果 judge 漏抽 claim,denomi
 
 W2–W3 iteration 用 GPT-5.4-mini 做 fast judge,**唔代表 W6 final 嘅信號**。Final eval **必須**用 GPT-5.5 Pro,W2–W3 嘅 mini-judge metric 唔 promote 入 official report。
 
+### 10.6 Synthetic-QA Self-Supervised Recall 非人手 Ground Truth(W52)
+
+**背景**:`backend/eval/synthetic_qa.py`(W52 offline 工程閘,決策 7 Option d「更深半邊」)量度一個 **self-supervised recall**:由 KB 自己嘅 indexed chunk 用 LLM(gpt-5.4-mini)生成問題(每條問題嘅答案只應喺嗰個 source chunk),source chunk_id 當作 ground truth,跑 retrieval 量「source chunk 有無喺 top-K 返」。formatted 成 `acceptable_chunk_ids=[source]` + `validated=True` 餵 §2.1 嘅 `EvalRunner` strict-mode(零新 recall 數學)。
+
+**比 W51 coverage proxy 進一步**:W51「涵蓋章節數」(distinct-sections-cited)係**廣度 proxy**(答案橫跨幾多章節),W52 synthetic recall 實際量 **retrieval 命中 source chunk 嘅比率** —— 更接近真 recall。
+
+**但仍非人手 ground-truth recall — 已知 bias**:
+- **生成偏差**:LLM 生成嘅問題傾向用 source chunk 嘅 vocabulary → 對 lexical/embedding retrieval **偏樂觀**(真實 user 用日常用語會更難);問題若太泛(任何 chunk 都答到)→ source chunk 唔係唯一答案 → recall 失真(故 prompt 明確要求 self-contained + answer-only-here)。
+- **單 chunk grounding**:只測「答案喺單一 chunk」嘅 lookup,**唔覆蓋** multi-chunk synthesis / cross-section reasoning(§3.4 `multi_step_synthesis`)。
+- **無人手驗證**:無 SME 確認生成問題真係 well-formed + source chunk 真係唯一正解。
+
+**Disclosure rule**:label 必須係 **synthetic / self-supervised recall**,**唔可以** present 做人手 ground-truth recall(對齊 §1.3 Bias-disclosed)。真 ground-truth recall 仍靠 §2.1 + §4 SME 標註集(eval-set-v1)。W52 synthetic recall 嘅用途 = **相對比較**(同一 KB 跨 config / 跨 chunk strategy 嘅 retrieval 變化,W53 reindex eval 基建),非絕對 production 質素 verdict。
+
 ---
 
 ## 11. Reporting Format

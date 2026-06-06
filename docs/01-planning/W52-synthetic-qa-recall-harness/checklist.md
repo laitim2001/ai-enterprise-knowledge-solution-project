@@ -27,7 +27,7 @@
 - [x] F3.5 既有 backend test 0 regression:eval suite **65 passed**(synthetic_qa 5 + eval_runner 11 + eval_ragas/ragas_runner/endpoints/augmentor)+ test_retrieval 31 passed(engine passthrough regression)
 
 ## F4 — Doc-sync + closeout
-- [ ] F4.1 eval-methodology.md 加 synthetic-QA recall 章節(self-supervised + **標明非人手 ground truth**)+ architecture.md §6 W52 amendment
-- [ ] F4.2 roadmap line 112「synthetic-QA 真 recall 留更未來」→ ✅ W52 shipped(基建;W53 reindex 比較候選)+ 修訂史 entry
-- [ ] F4.3 session-start §10 W52 closed row + W53 rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
-- [ ] F4.4 Phase Gate G1-G4 = PASS + retro + carry-overs(W53 reindex candidate)+ checklist 全 tick(或 🚧 + reason)+ R5 closeout recheck(§3/§4 touch?)
+- [x] F4.1 eval-methodology.md NEW **§10.6**(synthetic-QA self-supervised recall + **標明非人手 ground truth** + 3 bias disclosure)+ architecture.md **§5.5.5 W52 amendment**(非 §6 — §6 係 Sprint Plan;amendment 落 config-test arc block,標明 W52 = offline harness 非 panel)
+- [x] F4.2 roadmap line 112 (d) 更深半邊 → ✅ W52 shipped(基建;W53 reindex 比較候選)+ 修訂史 2026-06-06 entry
+- [x] F4.3 session-start §10 W52 closed row + W53+ rolling JIT row(local-only,不入 git)+ plan.md status→closed + changelog(含 2 R3 deviation)
+- [x] F4.4 Phase Gate G1-G4 = **PASS** + retro + carry-overs(W53 reindex candidate)+ checklist 全 tick(無 🚧)+ R5 closeout recheck(無 §3/§4 architectural touch;passthrough = additive delegate)
