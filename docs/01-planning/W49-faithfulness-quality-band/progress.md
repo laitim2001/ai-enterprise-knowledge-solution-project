@@ -64,8 +64,14 @@
 - **getByText nested-text 坑**:faithfulness headline mean + `±band` span 令 textContent = "0.78±0.16" → `getByText('0.78')` exact-match fail;改驗 band span leaf(`±0.16` 唯一)+ N=1 mean leaf(無 band span 時 textContent 純 "0.80")。
 - **Watch(carry W50+)**:(1) live-verify W49 band 喺真 pipeline(需 restart backend + N judge 成本,stretch 未做);(2) **length-bias 對沖**(roadmap 證據②:faithfulness 系統性懲罰長/全面答案,可能同 completeness 反相關)= 決策 7 Option (d),留未來期 — 配 recall 對沖指標 / UI 標示。
 
+### Post-closeout live-verify(同日稍後,用戶要求親眼睇 ±band)— ✅ **band 重現成功**
+- **restart backend** pick up W49(W48 雙進程樹 taskkill /T 連子樹清 → venv `-m api.server` /health 全綠;OpenAPI 確認 `faithfulness` schema number → `anyOf[MetricBand, null]`)。
+- **Run 1**(`test-kb-20260531-v1`,runs=3,A/B,query「manage AR…」,draft `citation_expansion_max_aux=10`):draft + saved faithfulness 兩邊 **{min:1.0,max:1.0,mean:1.0,band:0}**(質素軸三跑穩定 1.0,presentation cit 8/8/7 微動)→ band=0 = 有效訊號(此 config 質素穩定),但**冇噪音可睇**。
+- **Run 2**(runs=4,draft only,**列舉型 query**「list every step…」+ completeness-max:parent_doc on + citation_expansion_max_aux=10 + section_path_prefix_depth=1 + max_images=20):**faithfulness {min:0.545, max:0.95, mean:0.779, band:0.405}** — per-run cit 15/19/8/16、chars 2442–4005、figRaw 20(capped)。**同一 config 四跑 faithfulness 0.545↔0.95 擺動 0.405**,正正重現 roadmap 證據①(drive_user_manuals 0.929↔0.53,~0.4 swing)。
+- **驗證價值**:W48 single-shot 會隨機顯示 0.545(「好差」)或 0.95(「好正」)→ 憑運氣誤判;W49 顯示 **0.78 ± 0.41** → 用戶即知質素軸對此 config **唔穩定、勿單次定論**。**G1 band 量化噪音 live 證實**(非 mock)。同時觀察到 Run 2 長答案(>3500 字)+ 列舉 query 正係噪音高發區,印證證據② length-bias watch(留 W50+)。
+
 ### Carry-overs → W50+(rolling JIT)
-- 🚧 live-verify W49 band 喺真 config-test(restart backend + N judge;stretch,用戶可手動觸發)
+- ~~🚧 live-verify W49 band~~ → ✅ **RESOLVED 2026-06-05**(Run 2 band=0.405 重現噪音;見上 Post-closeout live-verify)
 - faithfulness **length-bias 對沖**(證據②;Option (d):completeness/recall 對沖指標 + UI 標示)
 - (前期 carry 不變)per-document scope(決策 1)/ AUDIT-D (ii) correctness+context_recall / production v1→v2(Track A 決策 4)/ presets+config 版本史(決策 5)/ Layer C 視覺內容揀圖(Tier 2 決策 3)/ heading_aware footgun
 
