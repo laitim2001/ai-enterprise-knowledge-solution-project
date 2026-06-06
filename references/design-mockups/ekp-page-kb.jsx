@@ -910,9 +910,9 @@ function TabKbSettings({ kb }) {
 
           {/* results A/B — DRAFT (保守草稿) vs SAVED (已存激進) ; 數字 = F2.6 dogfood */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <KbTestResultCard label="草稿配置(DRAFT)" accent faith="0.97"
+            <KbTestResultCard label="草稿配置(DRAFT)" accent faith="0.78" faithBand="0.16" runs={3}
               cit="1" citBand="0" imgRaw="6" imgDedup="6" imgBand="0" lat="4.1s" chars="612" refused="否" />
-            <KbTestResultCard label="已存配置(SAVED)" faith="0.94"
+            <KbTestResultCard label="已存配置(SAVED)" faith="0.92" faithBand="0.05" runs={3}
               cit="11" citBand="0" imgRaw="36" imgDedup="28.7" imgBand="0" lat="5.8s" chars="1840" refused="否" />
           </div>
 
@@ -939,7 +939,7 @@ function TabKbSettings({ kb }) {
         </div>
         <div className="card-footer">
           <div className="text-xs muted">
-            N 次重跑取平均 · band = max − min(越細越穩定)· faithfulness 質素軸每 config 算一次 · presentation counters 為穩定度軸
+            N 次重跑取平均 · band = max − min(越細越穩定)· 忠實度質素軸 + presentation counters 逐 run 算 band · N=1 只方向性
           </div>
           <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> 把草稿配置儲存到此 KB</button>
         </div>
@@ -1116,7 +1116,7 @@ function KbTuneGroup({ icon, title, desc, enabled, enabledInherit, children }) {
 }
 
 // One A/B result column for the test-run panel. accent = DRAFT (草稿).
-function KbTestResultCard({ label, accent, faith, cit, citBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
+function KbTestResultCard({ label, accent, faith, faithBand, runs, cit, citBand, imgRaw, imgDedup, imgBand, lat, chars, refused }) {
   return (
     <div style={{
       border: accent ? "1px solid oklch(var(--accent) / 0.4)" : "1px solid oklch(var(--border))",
@@ -1126,13 +1126,20 @@ function KbTestResultCard({ label, accent, faith, cit, citBand, imgRaw, imgDedup
     }}>
       <div style={{ padding: "10px 14px", borderBottom: "1px solid oklch(var(--border))", fontSize: 12, fontWeight: 600 }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "oklch(var(--border))" }}>
-        {/* W48 質素軸 headline — reference-free RAGAs faithfulness (ADR-0040 雙軸) */}
+        {/* W48 質素軸 headline — reference-free RAGAs faithfulness (ADR-0040 雙軸)
+            W49 (決策 7) — mean + ±band over N runs; N=1 → single-shot warning */}
         <div style={{ gridColumn: "1 / -1", background: "oklch(var(--card))", padding: "10px 14px" }}>
           <div className="text-xs muted">忠實度(faithfulness · 反幻覺 · 0–1)</div>
           <div className="mono" style={{ fontSize: 18, fontWeight: 700, marginTop: 2, color: faith != null ? "oklch(var(--success))" : "oklch(var(--muted-foreground))" }}>
             {faith != null ? faith : "—"}
+            {faith != null && runs >= 2 && <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>±{faithBand}</span>}
             {faith == null && <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>未評(無 judge / 已關)</span>}
           </div>
+          {faith != null && runs === 1 && (
+            <div className="text-xs" style={{ marginTop: 3, color: "oklch(var(--warning))" }}>
+              單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band
+            </div>
+          )}
         </div>
         <KbTestMetric k="引用數" v={cit} band={citBand} />
         <KbTestMetric k="圖片(dedup)" v={imgDedup} sub={`raw ${imgRaw}`} band={imgBand} />

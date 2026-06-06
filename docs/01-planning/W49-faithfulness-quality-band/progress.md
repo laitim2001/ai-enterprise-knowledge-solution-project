@@ -22,8 +22,25 @@
 ### Done
 - F0 R1 phase 三件套建立(plan/checklist/progress);Phase Gate G1-G5 定義
 
+### F1 backend(同日)
+- `schemas/config_test.py`:`ConfigRunSummary.faithfulness` `float | None` → **`MetricBand | None`**(docstring 更新:band over runs + 2026-06-06 noise 證據)
+- `routes/config_test.py`:NEW `_faithfulness_band(faithfulness_fn, query, per_run_qa)` helper —— `asyncio.gather(*[asyncio.to_thread(faithfulness_fn, query, ans, ctx) ...])` 並發逐 run judge → filter None → `_band(ok)` if ok else None;`_run_n` 主 loop 改 capture **每 run** `(answer, [c.chunk_text for c in resp.retrieved_chunks])` 入 `per_run_qa`(取代只存 last_*)→ call `_faithfulness_band`
+- 驗:ruff check+format clean;mypy --strict **我兩個檔零 error**(exit 1 純跨模組 pre-existing,同 W48 一樣)
+
+### F2 frontend(同日,H7 design-first)
+- mockup `ekp-page-kb.jsx` `KbTestResultCard`:signature 加 `faithBand` + `runs`;headline 由單值 → mean + `±{faithBand}`(N≥2)/ 單值 + 「單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band」warning(N=1);2 call site 更新(DRAFT faith 0.78 ±0.16 runs 3 揭噪音 / SAVED 0.92 ±0.05)
+- mockup footer(`:942`,`16fc51f` 改過嗰句)→「忠實度質素軸 + presentation counters 逐 run 算 band · N=1 只方向性」
+- `config-test.ts`:`faithfulness: number | null` → **`MetricBand | null`**(reuse 既有 presentation `MetricBand` TS type)
+- `page.tsx` `ConfigResultCard`:headline `summary.faithfulness.mean.toFixed(2)` + `±band`(`summary.runs.length >= 2`)+ N=1 warning(`summary.runs.length === 1`);footer(`:2211`)同步
+- 驗:tsc --noEmit clean
+
+### F3 tests(同日)
+- backend `test_config_test_route.py`:`_computed` 改 MetricBand 斷言(mean=0.95 + band=0);NEW `_band_over_runs`(threadsafe iter [0.9,0.5,0.7] → min .5/max .9/band .4/mean .7,order-independent)+ `_n1_band_zero`(runs=1 → `{min:.8,max:.8,mean:.8,band:0}`)+ `_partial_none`(iter [0.9,None,0.5] → band over 成功 run);`_disabled`+`_graceful` None case 不變
+- frontend `kb-settings-tuning.test.tsx`:FAKE_RESULT draft/saved runs 補至 3 entries + faithfulness → MetricBand(draft ±0.16 / saved ±0.05);主 A/B test 改驗 `±0.16`/`±0.05` band span + 無「單次 judge」warning;NEW N=1 test(`mockResolvedValueOnce` runs=1 → 「單次 judge」warning + mean 0.80 無 band span)
+- 驗:backend **pytest 17 passed**(config_test 10 + eval_ragas 7)0 regression;frontend **kb-settings-tuning 4 passed** + full vitest **106 passed**(kb-detail/kb-settings-reindex full-suite flaky timeout = loaded machine,隔離單跑 5 passed 證非 regression;「Error: boom」= intentional pre-existing)+ tsc + lint(唯一 pre-existing chat `<img>` warning)+ `[oklch`=0
+
 ### Commits
-- (F0 kickoff commit pending)
+- (F0 kickoff `05019c7`;F1-F3 code+tests commit pending)
 
 ### Blockers / carry-over
-- 無 blocker。infra 已起(azurite 23252 / backend 8000 W48 code / frontend 46364 clean .next)。**注**:F1 改完後端要 restart backend 先 live 反映(同 W48→W47F5 一樣)。
+- 無 blocker。infra 已起(azurite 23252 / backend 8000 **跑緊 W48 code,W49 改動未 reload** / frontend 46364 clean .next)。**注**:F4 後若要 live 驗 W49 band,要 restart backend(同 W48→W47F5 一樣)。

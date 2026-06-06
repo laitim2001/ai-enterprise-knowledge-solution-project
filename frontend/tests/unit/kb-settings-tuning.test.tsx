@@ -74,24 +74,30 @@ const FAKE_RESULT = {
   draft: {
     runs: [
       { run: 1, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
+      { run: 2, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
+      { run: 3, citation_count: 1, figure_count_raw: 6, figure_count_dedup: 6, latency_ms: 4100, answer_chars: 612, refused: false },
     ],
     citation_count: band(1),
     figure_count_raw: band(6),
     figure_count_dedup: band(6),
     latency_ms: band(4100),
     per_citation: [{ chunk_id: 'chunk-42', section_path: ['Address Book', 'Sync'], image_count: 6 }],
-    faithfulness: 0.97, // W48 dual-axis quality
+    // W49 — faithfulness is now an N-run MetricBand (noisy draft: ±0.16)
+    faithfulness: { min: 0.7, max: 0.86, mean: 0.78, band: 0.16 },
   },
   saved: {
     runs: [
       { run: 1, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
+      { run: 2, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
+      { run: 3, citation_count: 11, figure_count_raw: 36, figure_count_dedup: 29, latency_ms: 5800, answer_chars: 1840, refused: false },
     ],
     citation_count: band(11),
     figure_count_raw: band(36),
     figure_count_dedup: band(29),
     latency_ms: band(5800),
     per_citation: [],
-    faithfulness: 0.94, // W48 dual-axis quality
+    // W49 — stable saved config (±0.05)
+    faithfulness: { min: 0.9, max: 0.95, mean: 0.92, band: 0.05 },
   },
 };
 
@@ -112,7 +118,7 @@ vi.mock('@/lib/api/config-test', () => ({
   configTestApi: { run: vi.fn(async () => FAKE_RESULT) },
 }));
 
-import { configTestApi } from '@/lib/api/config-test';
+import { configTestApi, type ConfigTestResult } from '@/lib/api/config-test';
 import { kbApi } from '@/lib/api/kb';
 import KbDetailPage from '../../app/(app)/kb/[id]/page';
 
@@ -208,7 +214,33 @@ describe('W43 F3.3 — config-test 試跑 panel', () => {
     expect(screen.getByText('chunk-42')).toBeInTheDocument();
     // W48 dual-axis — faithfulness quality axis renders on both A/B cards
     expect(screen.getAllByText(/忠實度/).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText('0.97')).toBeInTheDocument();
-    expect(screen.getByText('0.94')).toBeInTheDocument();
+    // W49 (決策 7) — mean ± band over N runs exposes run-to-run noise; runs=3 so the
+    // ±band shows on each card and the single-shot warning stays hidden.
+    expect(screen.getByText('±0.16')).toBeInTheDocument(); // noisy draft
+    expect(screen.getByText('±0.05')).toBeInTheDocument(); // stable saved
+    expect(screen.queryByText(/單次 judge/)).not.toBeInTheDocument();
+  });
+
+  it('shows a single-shot warning + no band when faithfulness has 1 run (W49)', async () => {
+    const n1: ConfigTestResult = {
+      ...FAKE_RESULT,
+      runs: 1,
+      draft: {
+        ...FAKE_RESULT.draft,
+        runs: [FAKE_RESULT.draft.runs[0]],
+        faithfulness: { min: 0.8, max: 0.8, mean: 0.8, band: 0 },
+      },
+      saved: null,
+    } as unknown as ConfigTestResult;
+    vi.mocked(configTestApi.run).mockResolvedValueOnce(n1);
+
+    renderSettings();
+    await screen.findByRole('heading', { name: /試跑/, level: 3 });
+    await userEvent.click(screen.getByRole('button', { name: /試跑/ }));
+
+    // N=1 → single-shot warning visible; the faithfulness headline shows the bare
+    // mean with NO ±band span (so its textContent is exactly "0.80").
+    expect(await screen.findByText(/單次 judge/)).toBeInTheDocument();
+    expect(screen.getByText('0.80')).toBeInTheDocument();
   });
 });

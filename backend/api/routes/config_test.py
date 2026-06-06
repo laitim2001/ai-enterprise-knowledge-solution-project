@@ -64,6 +64,34 @@ def _band(values: list[float]) -> MetricBand:
     )
 
 
+async def _faithfulness_band(
+    faithfulness_fn: FaithfulnessFn | None,
+    query: str,
+    per_run_qa: list[tuple[str, list[str]]],
+) -> MetricBand | None:
+    """W49 (決策 7) — judge faithfulness on EVERY run's (answer, contexts) and
+    aggregate into a band, so the quality axis exposes its run-to-run noise (a
+    single-shot judge swung 0.93 vs 0.53 on the same config, 2026-06-06 live).
+
+    The N judge calls run concurrently — each offloaded via `asyncio.to_thread` so it
+    never blocks the event loop, and each self-degrades to None on a judge error. The
+    band is computed over the runs whose judge succeeded; None only when the axis is
+    off (`faithfulness_fn is None`) or every run errored. N=1 → band=0.
+    """
+    if faithfulness_fn is None:
+        return None
+    scores: list[float | None] = list(
+        await asyncio.gather(
+            *(
+                asyncio.to_thread(faithfulness_fn, query, answer, contexts)
+                for answer, contexts in per_run_qa
+            )
+        )
+    )
+    ok = [s for s in scores if s is not None]
+    return _band(ok) if ok else None
+
+
 async def _run_n(
     qreq: QueryRequest,
     request: Request,
@@ -75,15 +103,17 @@ async def _run_n(
     """Run the full pipeline `runs` times with `effective`; aggregate counters.
 
     When `faithfulness_fn` is supplied, the reference-free RAGAs faithfulness quality
-    axis (W48 / ADR-0040 dual-axis) is computed ONCE on the last run's answer +
-    retrieved contexts (mirrors `per_citation`'s last-run capture — not an N-run band,
-    for judge-LLM cost). The sync evaluator is offloaded via `asyncio.to_thread` so it
-    never blocks the event loop; it self-degrades to `None` on any judge error.
+    axis (W48 / ADR-0040 dual-axis) is computed PER RUN and aggregated into an N-run
+    `MetricBand` (W49 / 決策 7) — so the quality axis exposes its run-to-run noise,
+    mirroring the presentation counters. The judge cost scales with `runs` (the user's
+    own choice); each judge call self-degrades to `None`, so the band is taken over the
+    runs that succeeded.
     """
     metrics: list[RunMetrics] = []
     last_citations: list[Citation] = []
-    last_answer = ""
-    last_contexts: list[str] = []
+    # W49 — capture every run's (answer, contexts) so faithfulness is judged per run
+    # (an N-run band), not just on the last run.
+    per_run_qa: list[tuple[str, list[str]]] = []
     for i in range(1, runs + 1):
         resp = await execute_query_pipeline(qreq, request, effective, settings)
         raw, dedup = _figure_counts(resp.citations)
@@ -99,9 +129,8 @@ async def _run_n(
             )
         )
         last_citations = resp.citations
-        last_answer = resp.answer
         # Contexts for faithfulness = the reranked chunks synthesis grounded on.
-        last_contexts = [c.chunk_text for c in resp.retrieved_chunks]
+        per_run_qa.append((resp.answer, [c.chunk_text for c in resp.retrieved_chunks]))
     per_citation = [
         CitationBreakdown(
             chunk_id=c.chunk_id,
@@ -110,11 +139,7 @@ async def _run_n(
         )
         for c in last_citations
     ]
-    faithfulness: float | None = None
-    if faithfulness_fn is not None:
-        faithfulness = await asyncio.to_thread(
-            faithfulness_fn, qreq.query, last_answer, last_contexts
-        )
+    faithfulness = await _faithfulness_band(faithfulness_fn, qreq.query, per_run_qa)
     return ConfigRunSummary(
         runs=metrics,
         citation_count=_band([float(m.citation_count) for m in metrics]),

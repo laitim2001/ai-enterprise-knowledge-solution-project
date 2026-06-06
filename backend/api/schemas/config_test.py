@@ -91,11 +91,14 @@ class ConfigRunSummary(BaseModel):
     figure_count_dedup: MetricBand
     latency_ms: MetricBand
     per_citation: list[CitationBreakdown]  # from the last run (representative)
-    # W48 (ADR-0040 dual-axis) — reference-free RAGAs faithfulness for this config,
-    # computed ONCE on the last run's answer + retrieved contexts (mirrors
-    # per_citation's last-run capture — not an N-run band, for judge-LLM cost).
-    # None = quality axis skipped (eval_faithfulness=False) or no judge / judge error.
-    faithfulness: float | None = None
+    # W48 (ADR-0040 dual-axis) → W49 (決策 7): reference-free RAGAs faithfulness for
+    # this config, computed PER RUN and aggregated into an N-run MetricBand (band =
+    # max - min) — mirrors the presentation counters so the quality axis exposes its
+    # run-to-run noise (a 2026-06-06 live test saw the same SAVED config score 0.93 vs
+    # 0.53 across two runs). Judge cost scales with the user's `runs` choice; N=1 →
+    # band=0 (the frontend then shows a single-shot warning). None = quality axis
+    # skipped (eval_faithfulness=False) or no judge / every run's judge errored.
+    faithfulness: MetricBand | None = None
 
 
 class ConfigTestResult(BaseModel):

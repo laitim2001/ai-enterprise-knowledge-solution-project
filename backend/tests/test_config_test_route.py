@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -186,8 +187,8 @@ def test_config_test_unknown_kb_404() -> None:
 
 
 def test_config_test_faithfulness_computed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """eval_faithfulness (default True) → faithfulness on the summary, fed the
-    last-run answer + retrieved-chunk contexts."""
+    """eval_faithfulness (default True) → faithfulness MetricBand on the summary, fed
+    each run's answer + retrieved-chunk contexts (W49 — judged per run, not once)."""
     captured: dict[str, object] = {}
 
     def fake_factory(settings: object):  # noqa: ANN202, ARG001
@@ -206,11 +207,81 @@ def test_config_test_faithfulness_computed(monkeypatch: pytest.MonkeyPatch) -> N
     })
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["draft"]["faithfulness"] == 0.95
-    # fed the mock synth's answer + the retrieved chunk texts (contexts) of the last run
+    # W49 — faithfulness is now an N-run MetricBand; identical per-run score → band=0.
+    faith = body["draft"]["faithfulness"]
+    assert faith["mean"] == 0.95
+    assert faith["band"] == 0
+    # fed the mock synth's answer + the retrieved chunk texts (contexts) of each run
     assert captured["answer"] == "ans [chunk-a][chunk-b]"
     assert captured["contexts"] == ["x", "y"]
     assert captured["question"] == "how?"
+
+
+def test_config_test_faithfulness_band_over_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """W49 — faithfulness is judged on EVERY run and aggregated into a band, so the
+    quality axis exposes its run-to-run noise (the whole point of 決策 7)."""
+    scores = iter([0.9, 0.5, 0.7])
+    lock = threading.Lock()  # judge calls run concurrently via asyncio.to_thread
+
+    def fake_factory(settings: object):  # noqa: ANN202, ARG001
+        def _ev(question: str, answer: str, contexts: list[str]) -> float:
+            with lock:
+                return next(scores)
+
+        return _ev
+
+    monkeypatch.setattr(ct_route, "make_faithfulness_evaluator", fake_factory)
+    client = TestClient(_app(_service("kb-band", KbConfig())))
+    resp = client.post("/kb/kb-band/config-test", json={
+        "query": "how?", "runs": 3, "draft_config": _ISOLATE,
+    })
+    assert resp.status_code == 200, resp.text
+    faith = resp.json()["draft"]["faithfulness"]
+    # band is order-independent (concurrent runs) — min/max/band over {0.9, 0.5, 0.7}
+    assert faith["min"] == 0.5
+    assert faith["max"] == 0.9
+    assert faith["band"] == pytest.approx(0.4)
+    assert faith["mean"] == pytest.approx(0.7)
+
+
+def test_config_test_faithfulness_n1_band_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    """runs=1 → single judge → band=0 (the frontend then shows a single-shot warning)."""
+    monkeypatch.setattr(
+        ct_route, "make_faithfulness_evaluator", lambda settings: (lambda q, a, c: 0.8)
+    )
+    client = TestClient(_app(_service("kb-n1", KbConfig())))
+    resp = client.post("/kb/kb-n1/config-test", json={
+        "query": "how?", "runs": 1, "draft_config": _ISOLATE,
+    })
+    assert resp.status_code == 200, resp.text
+    faith = resp.json()["draft"]["faithfulness"]
+    assert faith == {"min": 0.8, "max": 0.8, "mean": 0.8, "band": 0}
+
+
+def test_config_test_faithfulness_partial_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A judge error on some runs (per-call None) → band over the runs that succeeded;
+    None only when EVERY run errored."""
+    scores = iter([0.9, None, 0.5])
+    lock = threading.Lock()
+
+    def fake_factory(settings: object):  # noqa: ANN202, ARG001
+        def _ev(question: str, answer: str, contexts: list[str]) -> float | None:
+            with lock:
+                return next(scores)
+
+        return _ev
+
+    monkeypatch.setattr(ct_route, "make_faithfulness_evaluator", fake_factory)
+    client = TestClient(_app(_service("kb-partial", KbConfig())))
+    resp = client.post("/kb/kb-partial/config-test", json={
+        "query": "how?", "runs": 3, "draft_config": _ISOLATE,
+    })
+    assert resp.status_code == 200, resp.text
+    faith = resp.json()["draft"]["faithfulness"]
+    # band over {0.9, 0.5} (the None run dropped)
+    assert faith["min"] == 0.5
+    assert faith["max"] == 0.9
+    assert faith["band"] == pytest.approx(0.4)
 
 
 def test_config_test_faithfulness_disabled() -> None:

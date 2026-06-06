@@ -85,11 +85,13 @@ export interface ConfigRunSummary {
   latency_ms: MetricBand;
   per_citation: CitationBreakdown[];
   /**
-   * W48 (ADR-0040 dual-axis) — reference-free RAGAs faithfulness for this config,
-   * computed once on the last run's answer + retrieved contexts. null = quality axis
-   * skipped (eval_faithfulness=false) or no judge / judge error.
+   * W48 (ADR-0040 dual-axis) → W49 (決策 7) — reference-free RAGAs faithfulness for
+   * this config, judged PER RUN and aggregated into a MetricBand (band = max − min)
+   * so the quality axis exposes its run-to-run noise. N=1 → band=0 (the card then
+   * shows a single-shot warning). null = quality axis skipped (eval_faithfulness=false)
+   * or no judge / every run's judge errored.
    */
-  faithfulness: number | null;
+  faithfulness: MetricBand | null;
 }
 
 export interface ConfigTestResult {

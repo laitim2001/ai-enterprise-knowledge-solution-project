@@ -2208,8 +2208,8 @@ function ConfigTestPanel({
       </div>
       <div className="card-footer">
         <div className="text-xs muted">
-          N 次重跑取平均 · band = max − min(越細越穩定)· faithfulness 質素軸每
-          config 算一次 · presentation counters 為穩定度軸
+          N 次重跑取平均 · band = max − min(越細越穩定)· 忠實度質素軸 +
+          presentation counters 逐 run 算 band · N=1 只方向性
         </div>
         <button
           type="button"
@@ -2265,7 +2265,8 @@ function ConfigResultCard({
           background: 'oklch(var(--border))',
         }}
       >
-        {/* W48 質素軸 headline — reference-free RAGAs faithfulness (ADR-0040 雙軸) */}
+        {/* W48 質素軸 headline — reference-free RAGAs faithfulness (ADR-0040 雙軸)
+            W49 (決策 7) — mean + ±band over N runs; N=1 → single-shot warning */}
         <div
           style={{
             gridColumn: '1 / -1',
@@ -2286,13 +2287,23 @@ function ConfigResultCard({
                   : 'oklch(var(--muted-foreground))',
             }}
           >
-            {summary.faithfulness != null ? summary.faithfulness.toFixed(2) : '—'}
+            {summary.faithfulness != null ? summary.faithfulness.mean.toFixed(2) : '—'}
+            {summary.faithfulness != null && summary.runs.length >= 2 && (
+              <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+                ±{summary.faithfulness.band.toFixed(2)}
+              </span>
+            )}
             {summary.faithfulness == null && (
               <span className="text-xs muted" style={{ fontWeight: 400, marginLeft: 6 }}>
                 未評(無 judge / 已關)
               </span>
             )}
           </div>
+          {summary.faithfulness != null && summary.runs.length === 1 && (
+            <div className="text-xs" style={{ marginTop: 3, color: 'oklch(var(--warning))' }}>
+              單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band
+            </div>
+          )}
         </div>
         <ConfigMetric k="引用數" v={fmt(summary.citation_count)} band={summary.citation_count.band} />
         <ConfigMetric
