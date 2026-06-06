@@ -140,7 +140,14 @@ def main() -> int:
         default=Path("reports"),
         help="dir for per-strategy synthetic eval-set YAMLs",
     )
-    return asyncio.run(_amain(parser.parse_args()))
+    args = parser.parse_args()
+    # Windows: psycopg (lifespan audit-log prune) needs a SelectorEventLoop, not the
+    # default ProactorEventLoop — mirror api/server.py's __main__ guard + the W55
+    # run_controlled_ab_comparison fix. W53 shares the identical lifespan/psycopg path;
+    # confirmed live in W56 (this CLI was smoke-deferred → never exercised before).
+    if sys.platform == "win32":
+        return asyncio.run(_amain(args), loop_factory=asyncio.SelectorEventLoop)
+    return asyncio.run(_amain(args))
 
 
 if __name__ == "__main__":

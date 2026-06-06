@@ -17,10 +17,10 @@
 - [x] F2.3 **核心驗證**:recall 唔再飽和(W55 1.0/1.0 → W56 0.9917/0.9850 兩個 <1.0 + delta = saturation 打破)BUT 辨別力弱(0.67pp gap 喺 noise floor;不宣稱 winner);穩健信號 = chunk-count 分化 369 vs 415 再證 ADR-0044;強辨別需 strict ground truth/更低 top-k → eval-set-v1 carry-over
 
 ## F3 — 修 + verify W53/W52 CLI event-loop bug
-- [ ] F3.1 W53 `run_strategy_recall_comparison.py` 套 win32 SelectorEventLoop guard(mirror W55 reference;line 143)→ full run 跑通 exit 0
-- [ ] F3.2 W53 順帶 close W55 F3.2 deferred self-retrievability cross-check(per strategy recall 記 progress;依家非 saturated)
-- [ ] F3.3 W52 `run_synthetic_recall.py` 直接 run(cheap,不 reindex)→ verify event-loop path;若 break 套同款 guard,若 pass 記「不需修」(不盲套 unverified fix)
-- [ ] F3.4 任何其他 live-path bug 記低 + 最小修(非 architectural → STOP per H1)
+- [x] F3.1 W53 bug verify-then-fix:先跑 unfixed 確認 crash(psycopg ProactorEventLoop @ lifespan startup)→ 套 win32 SelectorEventLoop guard(mirror W55;ruff clean)→ 重跑 fixed exit 0 + 0 crash = 驗證成功
+- [x] F3.2 W53 self-retrievability cross-check(close W55 deferred):layout 0.9667 / heading 0.9333;**三角驗證**:W53 gap 3.3pp > W54 gap 0.67pp = confounding 放大 → 實證 W54 controlled 設計價值
+- [x] F3.3 W52 直接 run exit 0 + 0 crash → **不需修**(不用 lifespan/psycopg → 唔中 event-loop bug;Karpathy §1.3 不加多餘 guard);incidental:W52 無 reranker strict 0.7667 vs W53 有 rerank 0.9333 → 再證 synthetic recall 有 noise
+- [x] F3.4 其他 live-path bug = 無;3 個 smoke-deferred CLI 至此全部 live-exercised(W55 修 controlled_ab;W56 修 strategy_recall + 確認 synthetic_recall 不需修)
 
 ## F4 — 結果記錄 + closeout
 - [ ] F4.1 progress 記 W54 A/B + W53 cross-check + W52 verify 結果 + 誠實解讀(controlled-but-synthetic+lexical;multi-doc section_path collision caveat;recall 辨別 vs W55 saturation 對比)+ 所有 bug/fix

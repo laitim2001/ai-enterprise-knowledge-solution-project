@@ -91,6 +91,46 @@ W54 controlled shared-question A/B recall comparison
 
 **caveat(承 W54/W55 + 新增）**:controlled(同一 frozen 30-QA 跨兩 strategy,消 W53 per-config confounding)BUT 仍 synthetic(LLM 出題+keywords)+ keyword-containment **lexical proxy**;且 **R3 multi-doc section_path collision**(跨 manual 同名 section merge)令 lexical-proxy caveat 更響(部分 QA 由跨 doc 合併 passage 生成)—— 但對兩 strategy 同等作用,relative signal 仍有效。
 
-**Commits**:(F2 milestone 待 add)
+**Commits**:`8ee1322` feat(eval): W56 F2 A/B
+
+---
+
+### F3 — 修 + verify W53/W52 CLI event-loop bug
+
+**F3.1 — W53 bug verify-then-fix(W55「不盲套 unverified fix」立場）**:
+
+1. **先跑 unfixed 觀察**(`--sample 5` cheap)→ **crash 確認**,traceback 準確指向:
+   ```
+   backend/api/server.py:124  lifespan -> await audit_log_backend.prune_expired(90)
+   backend/storage/audit_log_postgres.py:129  psycopg.AsyncConnection.connect
+   psycopg.InterfaceError: Psycopg cannot use the 'ProactorEventLoop' to run in async mode.
+       Please use ... loop_factory=asyncio.SelectorEventLoop(...)
+   ```
+   crash 喺 lifespan startup(未到 reindex,KB 未郁)。同 W55 一模一樣。
+2. **套 fix**:`scripts/run_strategy_recall_comparison.py` main() 加 win32 `loop_factory=asyncio.SelectorEventLoop` guard(mirror W55 `run_controlled_ab_comparison.py` verified pattern;`sys` 已 import)。ruff check 通過;我加嘅行已 format-clean(pre-existing 長行未郁 per Karpathy §1.3 surgical,本來就唔 format-clean,我冇 introduce 新 failure)。
+3. **重跑 fixed**(`--sample 30 --top-k 5`,background ~15 分鐘)→ **0 psycopg crash + exit 0**,跑完全程 2× reindex + per-config QA → **fix 驗證成功**。
+
+**F3.2 — W53 self-retrievability cross-check(close W55 deferred F3.2)**:
+```
+W53 chunk-strategy self-supervised recall:
+  strategy          recall@k   chunks  sample  errored
+  layout_aware        0.9667      369      30        0
+  heading_aware       0.9333      415      30        0
+  best (self-retrievability): layout_aware
+```
+**方法學三角驗證(本期最有價值嘅發現)**:
+- W54 controlled(shared frozen QA)gap = **0.67pp**(0.9917 vs 0.9850);W53 self-retrievability(per-config confounded QA)gap = **3.3pp**(0.9667 vs 0.9333)。
+- W53 gap 大過 W54 **正正係 per-config confounding 放大**:heading_aware 更多更細 chunk(415)→ 自生 QA 嘅 answer keyword 更散 → self-retrieval recall 較低。W54 用同一 frozen set 消除呢個 confounding → 更誠實嘅細 gap。
+- → **實證 W54 controlled 設計嘅價值**(confounded 方法會誇大 strategy 差異)。兩法方向一致(layout_aware 略前),chunk-count 369 vs 415 跨兩 run 一致(reindex 穩定)。
+- W55 deferred 嘅原因(recall 飽和 → 重跑低 value)已由大 corpus 解除:W53 recall 0.93-0.97 非飽和,cross-check 有實質信息。
+
+**F3.3 — W52 verify(`run_synthetic_recall.py`)**:
+- 直接 run(`--index ekp-kb-w56-drive-ab-1-v1 --sample 30 --top-k 5`,不 reindex,cheap)→ **exit 0,0 crash**。
+- **W52 不需修**:W52 唔用 `lifespan(app)`(直接砌 embedder+searcher,line 66-80,唔掂 postgres)→ 唔行 audit-log prune → 唔中 ProactorEventLoop+psycopg bug。印證靜態分析。Karpathy §1.3 surgical:**不加多餘 guard**(W52 未 break)。
+- incidental:W52 strict Recall@5 = **0.7667**(mode breakdown strict 30 / keyword 0)vs W53 heading_aware strict 0.9333。差距主因 W52 嘅 bare searcher **無 reranker**(log `reranked=False`),W53/W54 用 lifespan engine **有 Cohere rerank**(`reranked=True`);加上 LLM 出題 stochasticity。→ **再證 synthetic recall 數字有 noise,唔好過度詮釋**(robust 信號仍係結構性 chunk-count 分化)。artifacts:`reports/w56-w52-synthetic-set.yaml` + `reports/w56-w52-recall.yaml`。
+
+**F3.4 — 其他 live-path bug**:無。W54 / W53(fixed)/ W52 三個 CLI 全 exit 0,除 W53 event-loop guard 外無其他 live-path bug。3 個 smoke-deferred CLI 至此全部 live-exercised(W55 修 `run_controlled_ab_comparison.py`;W56 修 `run_strategy_recall_comparison.py` + 確認 `run_synthetic_recall.py` 不需修)。
+
+**Commits**:(F3 待 add — W53 script fix + 本 progress + checklist)
 
 ---
