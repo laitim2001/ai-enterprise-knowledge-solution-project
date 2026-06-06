@@ -697,6 +697,8 @@ W2–W3 iteration 用 GPT-5.4-mini 做 fast judge,**唔代表 W6 final 嘅信號
 
 **W53 chunk-strategy 比較 — per-config 重生 QA 嘅額外 confounding**:`backend/eval/strategy_comparison.py`(W53 / ADR-0044)跨 `chunk_strategy`(heading_aware vs layout_aware)比較時,**每 strategy reindex 後由它自己 chunks 重生 synthetic QA** → 問題集**逐 strategy 唔同** → recall delta **含問題難度 confounding**。所以量度嘅係 **self-retrievability(自檢索性 — 「呢個 chunking 之下答案 chunk 幾易被檢索返」)**,**非 controlled A/B**(同問題跨 strategy)。`best_strategy` 讀作**相對信號**,非絕對 verdict。Controlled shared-question A/B(strategy-independent text-anchored ground truth + keyword-mode recall)留更未來。
 
+**W54 controlled shared-question A/B — 消除 confounding,但仍 synthetic + lexical proxy**:`backend/eval/controlled_comparison.py`(W54,W53 嚴謹版)收 W53 deferred — 用**一個 frozen question set 跨所有 strategy 評分**消除 W53 per-config 問題集 confounding。文字錨點 = 按 **strategy-invariant `section_path`** group 嘅 section passages(`HeadingAwareChunker` 繼承同一 section-walk → 兩 strategy 同錨點);judge LLM(gpt-5.4-mini)逐 passage 生**一問題 + 3-5 verbatim answer keywords**,frozen 成 keyword-mode eval-set(`validated=False` + `expected_answer_keywords`),跑 §2.1 `EvalRunner` 嘅 **keyword-containment recall**(`|keywords ∩ top-K chunk_text| / |keywords|`,chunk_id 無關 → 跨 strategy 可比;**零新 recall 數學**)。**仍存兩個誠實限制(必須標清)**:(1) **仍 synthetic** —— LLM 生成問題 + LLM 抽 keywords,**非人手 ground truth**(承 W52 bias);(2) **keyword-containment 係 lexical proxy** —— 某 chunk 含 keyword **唔證明**佢就係正確 answer-bearing chunk,且 section-anchored 問題可被多個 chunk 答中 → recall 偏寬鬆。所以 W54 雖然 controlled,**仍讀作相對信號非絕對 production verdict**;真 ground-truth recall 仍靠 §2.1 + §4 SME 標註集(eval-set-v1,留 W55+)。
+
 ---
 
 ## 11. Reporting Format

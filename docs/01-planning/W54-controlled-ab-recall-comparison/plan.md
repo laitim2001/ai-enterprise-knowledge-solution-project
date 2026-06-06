@@ -3,8 +3,8 @@ phase: W54-controlled-ab-recall-comparison
 name: "Controlled Shared-Question A/B Recall Comparison (text-anchored ground truth + keyword-mode recall — W53 self-retrievability 嚴謹版)"
 sprint_week: W54
 start_date: 2026-06-06
-end_date:                     # set at closeout
-status: active
+end_date: 2026-06-06          # actual close (D1; F0-F4 same-day)
+status: closed
 spec_refs:
   - W53 (chunk-strategy self-retrievability 比較 — 本期消除其 per-config 問題集 confounding)
   - W52 (synthetic-QA recall 基建 — reuse generator pattern + _collect_chunks)
@@ -144,6 +144,8 @@ combined_vision: "誠實 framing 階梯 — W51 coverage proxy → W52 synthetic
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W54 kickoff;Chris explicit 指示 controlled shared-question A/B(text-anchored + keyword-mode,W53 嚴謹版)。R6 grep 揭三發現(EvalRunner 已有 keyword mode → reuse 零新數學 / section_path strategy-invariant → 文字錨點 / W53 dataclass self-retrievability framing 不可 reuse → W54 自有 controlled dataclass)。無 H1(純 C06 eval extension,EvalRunner keyword mode reuse 非改)→ 無 ADR | Chris |
 | 2026-06-06 | F1 deviation:`TextAnchoredQAPair` drop `source_doc_id`,`build_section_passages` group by `tuple(section_path)` 而非 `(doc_id, section_path)` | F1 R6 grep:reuse 嘅 `synthetic_qa._collect_chunks` 唔返 doc_id(只 chunk_id/chunk_text/section_path);加 doc_id 要改 W52 frozen module → 改為 section_path-only grouping + docstring 標明 multi-doc same-section merge caveat(truncation 保護;controlled 性不受影響)。Karpathy:最大 reuse,minor passage-quality caveat 換零 W52 改動 | AI |
+| 2026-06-06 | F3 fix:CLI `run_kb_reindex` call `# type: ignore[arg-type]` 改 per-arg form | ruff format 將單行 call 拆多行 → ignore 移到 closing `)` 行 → mypy 報 line117 arg-type + line118 unused-ignore。per-arg(magic trailing comma 保持展開,ignore 釘 `request=request_shim,` 行)修正 | AI |
+| 2026-06-06 | status active → closed;end_date set(D1 全 F0-F4 同日)| Phase Gate G1-G5 PASS;controlled shared-question A/B 落地(shared frozen text-anchored set + keyword-mode reuse + 消除 W53 per-config confounding)。誠實階梯第四期守住 | AI |
 
 ---
 
