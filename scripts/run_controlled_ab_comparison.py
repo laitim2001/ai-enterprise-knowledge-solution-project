@@ -106,7 +106,7 @@ async def _amain(args: argparse.Namespace) -> int:
             .get("version", "unknown")
         )
         print(
-            f"shared question set: {pair_count} pairs → {shared_path} (version={version})"
+            f"shared question set: {pair_count} pairs -> {shared_path} (version={version})"
         )
 
         async def reindex_with_strategy(strategy: str) -> int:
@@ -151,7 +151,7 @@ async def _amain(args: argparse.Namespace) -> int:
             f"  {r.strategy:<16}{r.recall_at_k:>10.4f}{r.chunk_count:>9}{r.sample_size:>8}{r.errored:>9}"
         )
     print(f"  best (keyword-recall): {comparison.best_strategy}")
-    print("  NOTE: controlled (shared frozen question set) — removes W53 per-config")
+    print("  NOTE: controlled (shared frozen question set) -- removes W53 per-config")
     print("        confounding; STILL synthetic (LLM Q+keywords) + keyword-containment")
     print("        LEXICAL proxy, NOT human-ground-truth recall. Relative signal only.")
     print(f"{'=' * 66}\n")
@@ -183,7 +183,13 @@ def main() -> int:
         default=Path("reports"),
         help="dir for the frozen shared eval-set YAML",
     )
-    return asyncio.run(_amain(parser.parse_args()))
+    args = parser.parse_args()
+    # Windows: psycopg (lifespan audit-log prune) needs a SelectorEventLoop, not the
+    # default ProactorEventLoop — mirror api/server.py's __main__ guard. Surfaced live
+    # in W55 (the CLI was smoke-deferred, so this path was never exercised before).
+    if sys.platform == "win32":
+        return asyncio.run(_amain(args), loop_factory=asyncio.SelectorEventLoop)
+    return asyncio.run(_amain(args))
 
 
 if __name__ == "__main__":
