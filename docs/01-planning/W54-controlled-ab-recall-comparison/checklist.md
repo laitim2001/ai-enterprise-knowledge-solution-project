@@ -21,13 +21,13 @@
 - [x] F2.4 ruff clean;mypy controlled_comparison.py 唯一 finding = `yaml import-untyped`(W52 synthetic_qa.py / runner.py:22 同款 codebase baseline)
 
 ## F3 — CLI driver(scripts)
-- [ ] F3.1 thin CLI `scripts/run_controlled_ab_comparison.py`(`async with lifespan(app)` 攞 populated state + Request shim;build_shared_eval_set 一次 → per strategy update_config→run_kb_reindex→EvalRunner keyword mode 跑同一 frozen set;輸出報告 + 誠實 caveat;live smoke-deferred)
-- [ ] F3.2 ruff clean;mypy 零 error
+- [x] F3.1 thin CLI `scripts/run_controlled_ab_comparison.py`(`async with lifespan(app)` 攞 populated state + Request shim;`build_shared_eval_set` 一次 → 讀回 version → per strategy update_config→run_kb_reindex→`EvalRunner` keyword mode 跑同一 frozen set;輸出報告 + 誠實 caveat;live smoke-deferred)
+- [x] F3.2 ruff clean;mypy script 唯一 finding = `yaml import-untyped` baseline(per-arg `# type: ignore[arg-type]` 修正 ruff-format 移位坑 — pre-edit line117 arg-type + line118 unused-ignore 已清)
 
 ## F4 — Tests(H6)+ Doc-sync + closeout
-- [ ] F4.1 test `test_controlled_comparison.py`:`build_section_passages`(group by doc_id+section_path / concat / 截斷 / 丟空)+ `generate_text_anchored_qa`(seeded 穩定 / 無 keyword pair 丟 / stub generator)
-- [ ] F4.2 test:`to_keyword_eval_set_payload` 餵 EvalRunner → **assert mode=="keyword"**(stub engine 返含 keyword 文字 → recall 計算正確;R4 保護:確認唔誤入 strict)
-- [ ] F4.3 test:`run_controlled_strategy_comparison` stub reindex+score(同一 frozen set,per strategy 唔同 recall)→ 報告 assemble + best pick + empty case
-- [ ] F4.4 0 regression:test_controlled_comparison + eval suite(synthetic_qa/strategy_comparison/eval_runner)全 pass;ruff clean;mypy 改檔零 error
+- [x] F4.1 test `test_controlled_comparison.py`:`_parse_qa_keywords`(plain JSON / markdown fence+dedupe / reject malformed 7 case)+ `build_section_passages`(group by section_path / concat / 截斷 / 丟空+丟短)+ `generate_text_anchored_qa`(seeded 穩定 / 無 keyword pair 丟)
+- [x] F4.2 test:`to_keyword_eval_set_payload` shape(validated=False / acceptable_chunk_ids=[] / keywords 填值)+ 餵 `EvalRunner` → **assert mode=="keyword"**(stub engine 返含 keyword 文字 → recall=(1.0+0.5)/2 正確;R4 保護:確認唔誤入 strict)
+- [x] F4.3 test:`build_shared_eval_set` round-trip(enumerate→passages→generate→frozen YAML)+ `run_controlled_strategy_comparison` stub reindex+score(同一 frozen set,per strategy 唔同 recall)→ 報告 assemble + best pick + empty case
+- [x] F4.4 0 regression:廣 eval suite(eval_endpoints/eval_ragas/eval_runner/eval_set_augmentor/eval_throttle/synthetic_qa/strategy_comparison/controlled_comparison)**82 passed**(含 W54 新 13);ruff clean;mypy 改檔零 error(唯 yaml baseline)
 - [ ] F4.5 Doc-sync:architecture.md §5.5.5 W54 amendment(controlled A/B harness;NON-architectural eval extension 標明無 H1)+ W53 cross-ref;eval-methodology.md §10.6 W54 controlled-but-lexical 限制 note;roadmap line 112/§3 → ✅ W54 shipped + 修訂史;session-start §10 W54 closed row + W55+(local-only);plan status→closed + changelog
 - [ ] F4.6 Phase Gate G1-G5 = PASS + retro + carry-overs(W55+)+ R5 recheck(無 §3/§4 touch → 無 ADR)+ checklist 全 tick(無 🚧)

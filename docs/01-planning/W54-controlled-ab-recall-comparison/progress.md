@@ -50,5 +50,14 @@ W51 coverage proxy → W52 synthetic 非人手 ground truth → W53 self-retriev
 - **真正 reuse 點**:EvalRunner keyword mode(零新 recall 數學)+ `_collect_chunks`(同 package import)+ W52 generator pattern
 - ruff clean;mypy controlled_comparison.py 唯一 finding = `yaml import-untyped`(W52/runner.py:22 同款 baseline)
 
+### F3 CLI driver(同日,scripts)
+- NEW `scripts/run_controlled_ab_comparison.py`:mirror W53 bootstrap(`async with lifespan(app)` + Request shim);**關鍵差異** = `build_shared_eval_set` 喺 loop 前跑一次(讀回 version)→ per strategy `update_config`→`run_kb_reindex`→`EvalRunner` keyword mode 跑**同一 frozen set**;輸出報告 + controlled-but-synthetic+lexical caveat;live smoke-deferred
+- **F3 formatter 坑修正**:ruff format 將 `run_kb_reindex` call 拆多行,`# type: ignore[arg-type]` 移到 closing `)` 行 → mypy 報 line117 arg-type + line118 unused-ignore。改 per-arg form(magic trailing comma 保持展開,ignore 釘 `request=request_shim,` 行)→ 修正後唯一 finding = yaml baseline
+
+### F4 tests(同日,H6)
+- `test_controlled_comparison.py` 13 test:`_parse_qa_keywords`(JSON/markdown fence+dedupe/7 malformed reject)+ `build_section_passages`(group/concat/截斷/丟空丟短)+ `generate_text_anchored_qa`(seeded 穩定/丟 keyword-less)+ `to_keyword_eval_set_payload` shape + **EvalRunner keyword-mode 整合(R4:assert mode=="keyword" + recall=(1.0+0.5)/2)** + `build_shared_eval_set` round-trip + `run_controlled_strategy_comparison`(assemble+best pick+empty)+ generator None guard
+- 驗:test_controlled_comparison+synthetic_qa+strategy_comparison+eval_runner **31 passed**;廣 eval suite(8 檔)**82 passed**(cold 95s)= **0 regression**(無改任何現有檔,純新增)
+- ruff clean;mypy controlled_comparison.py + script 唯一 finding = yaml import-untyped baseline
+
 ### Commits
-- `dec9373` F0 kickoff + `dda0574` F1 QA 生成 + `<pending>` F2 harness
+- `dec9373` F0 kickoff + `dda0574` F1 QA 生成 + `5eb1baf` F2 harness + `<pending>` F3-F4 CLI+tests
