@@ -20,15 +20,15 @@ last_updated: 2026-06-06
 
 ## Implementation — Frontend (C02 SettingsTab)
 
-- [ ] I7 `kb/[id]/page.tsx` SettingsTab advanced-tuning panel 加 `answer_detail` 控件(concise/detailed,沿用既有 OptionRow/select 視覺;H7 — 對齊 panel 視覺語言,撞 mockup gap 則 STOP)
-- [ ] I8 `lib/api/kb.ts` KbConfig type + default 加 `answer_detail`;save→PATCH 帶上
+- [x] I7 `kb/[id]/page.tsx` SettingsTab「Retrieval config」card 加 `answer_detail` `.seg` 控件(concise/detailed,**沿用 chunk_strategy 既有 `.seg` + 綠色 Edit icon 視覺** → H7 一致延伸,非新 mockup 元素;state + configDirty + buildConfigBody wired)
+- [x] I8 `lib/api/kb.ts` KbConfig type 加 `answer_detail?: 'concise'|'detailed'|null`(沿用 W43 optional 模式,DEFAULT 不加 = inherit)
 
 ## Tests (H6 — generation + config)
 
 - [x] T1 `test_answer_detail_ch006`:concise 含「150」;detailed 不含 + 含「do not summarize」+「no word limit」+ 只 Rule 3 變(其餘 rule 保留)+ alias=concise + `build_prompt(detail_level)` 揀啱
 - [x] T2 KbConfig `answer_detail` round-trip + 拒 bad value + EffectiveConfig resolve 次序(per-query>KB>global>default)
 - [x] T3 synthesizer `detail_level="detailed"` → captured system message == SYSTEM_PROMPT_DETAILED(mock client）
-- [ ] T4 frontend vitest:控件 render + 預設值 + onChange→PATCH payload
+- [x] T4 frontend vitest(kb-settings-tuning +2):seg 兩 option render + 切 detailed→save→`patchSettings` payload `answer_detail:'detailed'`;6/6 pass + 相關 4 檔 7 test 0 regression
 
 ## Verification
 

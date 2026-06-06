@@ -2393,6 +2393,11 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
   const [description, setDescription] = useState(kb.description);
   const [topK, setTopK] = useState(kb.config.default_top_k);
   const [rerankK, setRerankK] = useState(kb.config.default_rerank_k);
+  // CH-006 — per-KB synthesis answer detail (query-time, no re-index). null/absent
+  // saved config = inherit global "concise"; the seg surfaces the effective value.
+  const [answerDetail, setAnswerDetail] = useState<'concise' | 'detailed'>(
+    kb.config.answer_detail ?? 'concise',
+  );
   // W46 (ADR-0042 + ADR-0043) — chunk_strategy + per-KB image cap are now editable.
   // Both are INGEST-time params, so a change only takes effect after a re-index
   // (Re-indexing card below). embedding_model stays locked (re-embed is heavier).
@@ -2437,8 +2442,9 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       rerankK !== kb.config.default_rerank_k ||
       chunkStrategy !== kb.config.chunk_strategy ||
       maxImagesValue !== (kb.config.chunker_max_images_per_chunk ?? null) ||
+      answerDetail !== (kb.config.answer_detail ?? 'concise') ||
       knobsDirty,
-    [topK, rerankK, chunkStrategy, maxImagesValue, knobsDirty, kb],
+    [topK, rerankK, chunkStrategy, maxImagesValue, answerDetail, knobsDirty, kb],
   );
 
   const dirty = useMemo(
@@ -2457,6 +2463,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       chunker_max_images_per_chunk: maxImagesValue,
       default_top_k: topK,
       default_rerank_k: rerankK,
+      answer_detail: answerDetail,
       ...(knobs as Partial<KbConfig>),
     };
   }
@@ -2663,7 +2670,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               Editable any time · doesn&rsquo;t require re-index
             </div>
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
+          <div className="field">
             <label className="label">
               Default rerank_k{' '}
               <Edit
@@ -2683,6 +2690,38 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               max={50}
               onChange={(e) => setRerankK(+e.target.value)}
             />
+          </div>
+          {/* CH-006 — per-KB synthesis answer detail (query-time, no re-index) */}
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">
+              答案詳細度 (synthesis){' '}
+              <Edit
+                size={10}
+                style={{
+                  verticalAlign: '-1px',
+                  marginLeft: 4,
+                  color: 'oklch(var(--success))',
+                }}
+              />
+            </label>
+            <div className="seg" style={{ width: '100%' }}>
+              {(['concise', 'detailed'] as const).map((d) => (
+                <button
+                  type="button"
+                  key={d}
+                  className="seg-btn"
+                  data-active={answerDetail === d}
+                  onClick={() => setAnswerDetail(d)}
+                  style={{ flex: 1, padding: '5px 6px', fontSize: 11.5 }}
+                >
+                  {d === 'concise' ? '精簡 concise' : '詳細 detailed'}
+                </button>
+              ))}
+            </div>
+            <div className="hint">
+              即時生效 · 無需 re-index。<b>concise</b> = 摘要(預設,≤150 字);
+              <b>detailed</b> = 逐步鋪開每個 sub-step(程序型手冊適用;答案較長 / 成本較高)。
+            </div>
           </div>
         </div>
       </div>

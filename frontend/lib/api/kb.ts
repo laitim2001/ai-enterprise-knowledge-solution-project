@@ -44,6 +44,10 @@ export interface KbConfig {
   // global-only. Consumed at INGEST time, so a change only takes effect on
   // re-index (KB Detail Settings → Re-indexing card, F3).
   chunker_max_images_per_chunk?: number | null;
+  // CH-006 — per-KB synthesis answer detail level. `null`/absent = inherit the global
+  // default ("concise" = 150-word cap). "detailed" relaxes the synthesis prompt so
+  // procedural answers reproduce every sub-step. Query-time knob (no re-index needed).
+  answer_detail?: 'concise' | 'detailed' | null;
 }
 
 export const DEFAULT_KB_CONFIG: KbConfig = {

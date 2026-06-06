@@ -250,3 +250,29 @@ describe('W43 F3.3 — config-test 試跑 panel', () => {
     expect(screen.getByText('0.80')).toBeInTheDocument();
   });
 });
+
+describe('CH-006 — per-KB synthesis answer detail level', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('renders the answer-detail seg with concise + detailed options', async () => {
+    renderSettings();
+    expect(await screen.findByText(/答案詳細度/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '精簡 concise' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '詳細 detailed' })).toBeInTheDocument();
+  });
+
+  it('PATCHes answer_detail=detailed when toggled to detailed + saved', async () => {
+    renderSettings();
+    await screen.findByText(/答案詳細度/);
+    // FAKE_KB has no answer_detail → defaults concise; toggling to detailed makes the
+    // config dirty so the save button fires configMutation with the full body.
+    await userEvent.click(screen.getByRole('button', { name: '詳細 detailed' }));
+    await userEvent.click(screen.getByRole('button', { name: '儲存到此 KB' }));
+    await waitFor(() =>
+      expect(kbApi.patchSettings).toHaveBeenCalledWith(
+        'test-kb',
+        expect.objectContaining({ answer_detail: 'detailed' }),
+      ),
+    );
+  });
+});

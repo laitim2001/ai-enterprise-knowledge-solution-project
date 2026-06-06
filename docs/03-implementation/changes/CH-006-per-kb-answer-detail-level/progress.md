@@ -19,7 +19,8 @@ W56 後續 live 診斷(KB `w56-drive-ab-1`):procedural 問題(GL03 post journal)
 ### Done
 - (kickoff)spec.md status draft → **approved**(Chris)+ checklist + progress committed(R1.change 滿足)。
 - **Backend I1-I6 + T1-T3 完成**:Settings 全域預設 + KbConfig.answer_detail + EffectiveConfig resolve + prompt_builder concise/detailed 雙變體(`.replace()` 派生)+ synthesizer detail_level + query.py 兩路 + CRAG re-synth wiring。**14 個 CH-006 test 全綠**;52 個相關 test 通過。
-- (pending I7-I8 frontend / T4 / V1-V3)
+- **Frontend I7-I8 + T4 完成**:kb.ts KbConfig type 加 `answer_detail`;SettingsTab「Retrieval config」card 加 `.seg` 控件(沿用 chunk_strategy 視覺 → H7 一致)+ state/dirty/buildConfigBody wired。vitest 6/6(+2 CH-006)+ 相關 4 檔 7 test 0 regression;tsc exit 0;eslint clean。
+- (pending V1-V3 verification + closeout)
 
 ### Decisions
 - 預設 `concise` = 現行 prompt 逐字不變 → **零 regression**;`detailed` opt-in per-KB。
