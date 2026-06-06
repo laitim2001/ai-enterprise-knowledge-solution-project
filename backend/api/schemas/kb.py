@@ -90,6 +90,15 @@ class KbConfig(BaseModel):
     # required for a change to take effect (cap is consumed at chunk time).
     chunker_max_images_per_chunk: int | None = None
 
+    # CH-006 — per-KB synthesis answer detail level (extends ADR-0040 config-scope
+    # to the GENERATION stage). `None` = inherit global `Settings.synthesis_answer_detail`
+    # (default "concise" = W2 baseline prompt_builder Rule 3 150-word cap → zero
+    # behaviour change for existing KBs). "detailed" = relaxed Rule 3 (no word cap,
+    # enumerate every sub-step) so a procedural-manual KB reproduces the full source
+    # procedure instead of a summary. Resolved query-time via `EffectiveConfig`
+    # (NOT a re-index knob — synthesis is read at /query + /query/stream).
+    answer_detail: Literal["concise", "detailed"] | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

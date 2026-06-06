@@ -261,6 +261,7 @@ async def execute_query_pipeline(
         synth = await synthesizer.synthesize(
             payload.query, expanded_chunks,
             engine=engine, kb_id=payload.kb_id, effective_config=effective,
+            detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
@@ -457,6 +458,7 @@ async def query_stream(
             synth_stream = synthesizer.synthesize_stream(
                 payload.query, expanded_chunks,
                 engine=engine, kb_id=payload.kb_id, effective_config=effective,
+                detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
             )
             observed = observe_streaming(
                 compose_query_stream(

@@ -17,7 +17,7 @@ from retrieval.retrieval_engine import RetrievedChunk
 
 REFUSAL_PHRASE = "I cannot find this in the available documentation"
 
-SYSTEM_PROMPT = f"""You are Ricoh's internal Knowledge Assistant. Answer the user's question using ONLY the retrieved knowledge chunks below.
+SYSTEM_PROMPT_CONCISE = f"""You are Ricoh's internal Knowledge Assistant. Answer the user's question using ONLY the retrieved knowledge chunks below.
 
 Rules:
 1. Cite every fact with [chunk-{{chunk_id}}] markers immediately after the sentence that uses the chunk. Use the literal chunk_id from the chunk's header line; never invent or shorten one.
@@ -28,6 +28,43 @@ Rules:
 6. For overview / aggregate queries (e.g. "show me all X", "list all Y", "describe the integration scenarios"), synthesize what IS available from the chunks even if coverage is partial; explicitly note any gaps via "Based on available documentation:" framing rather than refusing entirely. Only emit the refusal phrase (Rule 2) when chunks are COMPLETELY off-topic — not when partial coverage exists. (CH-005 — R14 mitigation 2026-05-24)
 7. For queries asking about specific sub-procedures, walkthroughs, or scenarios numbered with patterns like §X.M (e.g. §8.1, §8.2, §8.3, Scenario A walkthrough, Step 3.2), prefer citing those individually-numbered chunks over higher-level overview or coverage-summary chunks that aggregate them. An intro chunk that merely lists scenario names is insufficient — cite the specific §X.M chunks that describe each scenario's actual procedure. (W33 F1.1.a — Rule 7 v2 restored from W31 commit 16b9b3d per sequential ship on W32 (h') baseline)
 8. When multiple retrieved chunks each contain partial information relevant to the answer, cite the chunks that support each fact (typically 1-2 per fact) — avoid citing multiple overlapping chunks that convey the same information. (W35 F1.7 — Rule 8 wording Option C re-tighten from Option B per F1.4 correctness -5pp regression side effect)"""
+
+# CH-006 — backward-compat alias. Existing imports/tests reference `SYSTEM_PROMPT`;
+# it stays pinned to the concise (W2 baseline) variant so behaviour + substring tests
+# are unchanged when `detail_level` is not requested.
+SYSTEM_PROMPT = SYSTEM_PROMPT_CONCISE
+
+# CH-006 — the exact Rule 3 sentence (concise) + its detailed replacement. Deriving
+# SYSTEM_PROMPT_DETAILED via .replace() guarantees it is byte-identical to CONCISE
+# EXCEPT Rule 3 — no rule duplication, no drift. If _RULE_3_CONCISE ever stops matching
+# the prompt text, the replace is a no-op and test_prompt_detail_level catches it
+# (detailed would still contain "150 words").
+_RULE_3_CONCISE = (
+    "3. Lead with a direct one-sentence answer to the user's question; then provide "
+    "supporting details only as needed (target <= 150 words total). Use ordered lists "
+    "/ steps when answering procedural questions."
+)
+_RULE_3_DETAILED = (
+    "3. Lead with a direct one-sentence answer to the user's question; then reproduce "
+    "the FULL procedure in COMPLETE detail — enumerate EVERY step and sub-step exactly "
+    "as the retrieved chunks describe, and do NOT summarize, compress, merge, or omit "
+    "any step. There is no word limit. Use ordered / nested numbered lists for "
+    "procedural questions so each sub-step is on its own line, and preserve the "
+    "source's button / menu / field names verbatim."
+)
+
+# Detailed variant: concise prompt with ONLY Rule 3 swapped (CH-006).
+SYSTEM_PROMPT_DETAILED = SYSTEM_PROMPT_CONCISE.replace(_RULE_3_CONCISE, _RULE_3_DETAILED)
+
+
+def _system_prompt_for(detail_level: str) -> str:
+    """Pick the synthesis system-prompt variant (CH-006).
+
+    `"detailed"` → no-word-cap full-enumeration prompt; anything else (incl. the
+    default `"concise"`) → the W2 baseline prompt. Unknown values fall back to concise
+    so a stray config value never breaks synthesis.
+    """
+    return SYSTEM_PROMPT_DETAILED if detail_level == "detailed" else SYSTEM_PROMPT_CONCISE
 
 
 @dataclass(slots=True, frozen=True)
@@ -90,12 +127,17 @@ def build_prompt(
     chunks: list[RetrievedChunk],
     *,
     dispatch_mode: str = "replace",
+    detail_level: str = "concise",
 ) -> PromptMessages:
     """Build system+user messages with formatted chunk context.
 
     dispatch_mode: "replace" (W26 F2 baseline default) | "append" (W27 F1 candidate)
     — passed through to `_format_chunk` per Settings.parent_doc_dispatch_mode.
     Default "replace" preserves W26 F2 G semantics + existing 7 test invariants.
+
+    detail_level: "concise" (default, W2 baseline 150-word system prompt) | "detailed"
+    (CH-006 — no-word-cap, full sub-step enumeration). Default preserves existing
+    behaviour + system-prompt substring tests.
     """
     if not chunks:
         chunk_block = "(no chunks retrieved)"
@@ -105,7 +147,7 @@ def build_prompt(
     user_msg = f"Question: {query}\n\nRetrieved chunks:\n{chunk_block}\n\nAnswer with citations."
     return PromptMessages(
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": _system_prompt_for(detail_level)},
             {"role": "user", "content": user_msg},
         ]
     )

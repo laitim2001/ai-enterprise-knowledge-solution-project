@@ -424,6 +424,10 @@ class CragLoop:
             new_synth = await self._synthesizer.synthesize(
                 rewrite.rewritten_query, expanded_new_chunks,
                 engine=self._engine, kb_id=kb_id, effective_config=effective_config,
+                # CH-006 — keep CRAG re-synthesis on the same per-KB answer detail level.
+                detail_level=(
+                    effective_config.answer_detail if effective_config is not None else "concise"
+                ),
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")

@@ -139,6 +139,13 @@ class Settings(BaseSettings):
     # answer chat (dev/demo); leave at 30 in production.
     synthesizer_request_timeout_s: float = 30.0
 
+    # CH-006 — synthesis answer detail level (global default; per-KB overridable via
+    # KbConfig.answer_detail, resolved by EffectiveConfig). "concise" = W2 baseline
+    # prompt_builder Rule 3 150-word cap (production preserve, zero behaviour change).
+    # "detailed" = relaxed Rule 3 (no word cap, enumerate every sub-step) for KBs whose
+    # procedural answers must reproduce the full source procedure.
+    synthesis_answer_detail: str = "concise"
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →

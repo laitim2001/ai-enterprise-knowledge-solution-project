@@ -132,6 +132,7 @@ class Synthesizer:
         engine: RetrievalEngine | None = None,
         kb_id: str | None = None,
         effective_config: ExpansionConfig | None = None,
+        detail_level: str = "concise",
     ) -> SynthesisResult:
         """W32 F1.1.a — `engine + kb_id` keyword-only optional params enable post-hoc
         citation expansion via async `engine.list_chunks` full-doc fetch (mirror W25 F5 D1
@@ -155,6 +156,7 @@ class Synthesizer:
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
+            detail_level=detail_level,
         )
         prompt_build_latency_ms = int((time.perf_counter() - prompt_build_start) * 1000)
 
@@ -231,6 +233,7 @@ class Synthesizer:
         engine: RetrievalEngine | None = None,
         kb_id: str | None = None,
         effective_config: ExpansionConfig | None = None,
+        detail_level: str = "concise",
     ) -> AsyncIterator[dict]:
         """Stream chat.completions tokens; yield SSE events for stream_composer.
 
@@ -255,6 +258,7 @@ class Synthesizer:
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
+            detail_level=detail_level,
         )
         start = time.perf_counter()
         accumulated = ""

@@ -11,12 +11,12 @@ last_updated: 2026-06-06
 
 ## Implementation — Backend (C02 config + C05 prompt)
 
-- [ ] I1 `Settings.synthesis_answer_detail: str = "concise"` 全域預設(storage/settings.py)
-- [ ] I2 `KbConfig.answer_detail: Literal["concise","detailed"] | None = None`(schemas/kb.py)+ config_test DraftRetrievalConfig 對應欄位(若 harness 需要)
-- [ ] I3 EffectiveConfig 加 `answer_detail` + `_resolve_effective_config` resolve 次序(KB > 全域 > "concise")
-- [ ] I4 `prompt_builder.py`:`SYSTEM_PROMPT` 改名/保留為 concise variant(逐字不變)+ NEW `SYSTEM_PROMPT_DETAILED`(放寬 Rule 3:無字數上限 + 逐 sub-step + nested 編號 + 唔壓縮;Rule 1/2/4-8 不變)+ `build_prompt(..., detail_level="concise")` 揀 prompt;保留 `SYSTEM_PROMPT` 別名 backward-compat
-- [ ] I5 `synthesizer.synthesize` + stream 變體加 `detail_level` 參數 → 傳落 `build_prompt`
-- [ ] I6 `query.py` execute_query_pipeline 把 `effective.answer_detail` 傳落 synthesizer(`/query` + `/query/stream` 兩路)
+- [x] I1 `Settings.synthesis_answer_detail: str = "concise"` 全域預設(storage/settings.py)
+- [x] I2 `KbConfig.answer_detail: Literal["concise","detailed"] | None = None`(schemas/kb.py);config_test DraftRetrievalConfig **不加**(synthesis knob,非 retrieval;config-test 用 KB saved/default = concise,scope 收窄記 progress)
+- [x] I3 EffectiveConfig 加 `answer_detail: str` + PerQueryOverrides + resolve(KB > 全域 > "concise";str `or` chain 因 `_resolve` int-bound)
+- [x] I4 `prompt_builder.py`:rename → `SYSTEM_PROMPT_CONCISE`(body 逐字不變)+ `SYSTEM_PROMPT = SYSTEM_PROMPT_CONCISE` 別名 + `SYSTEM_PROMPT_DETAILED = CONCISE.replace(_RULE_3_CONCISE, _RULE_3_DETAILED)`(只換 Rule 3,零 rule 重複/drift)+ `_system_prompt_for(detail_level)` + `build_prompt(..., detail_level="concise")`
+- [x] I5 `synthesizer.synthesize` + `synthesize_stream` 加 `detail_level: str = "concise"` → 傳落 `build_prompt`
+- [x] I6 `query.py` execute_query_pipeline 兩路(`/query` line 261 + `/query/stream` line 457)+ CRAG `refine` re-synth(crag.py 424)都傳 `effective.answer_detail`
 
 ## Implementation — Frontend (C02 SettingsTab)
 
@@ -25,9 +25,9 @@ last_updated: 2026-06-06
 
 ## Tests (H6 — generation + config)
 
-- [ ] T1 `test_prompt_builder`:concise variant 含「150」cap 字眼;detailed variant 不含 + 含「do not summarize」類指令;`build_prompt(detail_level=...)` 揀啱
-- [ ] T2 KbConfig `answer_detail` round-trip + EffectiveConfig resolve 次序(KB>global>default)
-- [ ] T3 synthesizer 傳遞 detail_level 落 build_prompt(unit / mock)
+- [x] T1 `test_answer_detail_ch006`:concise 含「150」;detailed 不含 + 含「do not summarize」+「no word limit」+ 只 Rule 3 變(其餘 rule 保留)+ alias=concise + `build_prompt(detail_level)` 揀啱
+- [x] T2 KbConfig `answer_detail` round-trip + 拒 bad value + EffectiveConfig resolve 次序(per-query>KB>global>default)
+- [x] T3 synthesizer `detail_level="detailed"` → captured system message == SYSTEM_PROMPT_DETAILED(mock client）
 - [ ] T4 frontend vitest:控件 render + 預設值 + onChange→PATCH payload
 
 ## Verification
