@@ -12,9 +12,9 @@
 - [x] F1.3 驗 total_chunks=369 >> fetch_k=50 + `-sources` 6 blobs(reindex 前提)+ section_path 12/12 non-empty 真階層;R3 multi-doc collision 確認(F4 記)
 
 ## F2 — 跑 W54 controlled A/B(大 corpus,核心)
-- [ ] F2.1 CLI 跑通 exit 0(`--kb-id w56-drive-ab-1 --strategies layout_aware heading_aware --sample 30 --top-k 5`)
-- [ ] F2.2 報告捕捉入 progress:per strategy recall@5 + chunk 數 + best;frozen eval-set `reports/controlled-ab-shared-seed0.yaml`
-- [ ] F2.3 **核心驗證**:recall 軸辨別 strategy(recall < 1.0 或 strategy delta 出現 = 消 W55 saturation artifact;若仍飽和則明標原因 + 對比 W55)
+- [x] F2.1 CLI 跑通 exit 0(`--kb-id w56-drive-ab-1 --strategies layout_aware heading_aware --sample 30 --top-k 5`;W55 已修 CLI 直接 reuse 無新 bug)
+- [x] F2.2 報告捕捉入 progress:layout_aware 0.9917/369chunks、heading_aware 0.9850/415chunks、best=layout_aware;30 shared QA;frozen `reports/controlled-ab-shared-seed0.yaml`(version controlled-ab-W54-w56-drive-ab-1-seed0)
+- [x] F2.3 **核心驗證**:recall 唔再飽和(W55 1.0/1.0 → W56 0.9917/0.9850 兩個 <1.0 + delta = saturation 打破)BUT 辨別力弱(0.67pp gap 喺 noise floor;不宣稱 winner);穩健信號 = chunk-count 分化 369 vs 415 再證 ADR-0044;強辨別需 strict ground truth/更低 top-k → eval-set-v1 carry-over
 
 ## F3 — 修 + verify W53/W52 CLI event-loop bug
 - [ ] F3.1 W53 `run_strategy_recall_comparison.py` 套 win32 SelectorEventLoop guard(mirror W55 reference;line 143)→ full run 跑通 exit 0
