@@ -7,12 +7,12 @@
 - [x] F0.1 plan/checklist/progress committed(R1);scope(controlled A/B 收 W53 deferred / section-anchored shared QA / keyword-mode reuse / 誠實限制)+ key design 鎖定;R6 grep 三發現記 progress
 
 ## F1 — Text-anchored shared QA 生成(C06)
-- [ ] F1.1 NEW `backend/eval/controlled_comparison.py`:`TextAnchoredQAPair`(question/expected_keywords/source_doc_id/source_section_path/source_text)+ `KeywordQAGenerateFn` type alias
-- [ ] F1.2 `make_qa_keyword_generator(settings) -> KeywordQAGenerateFn | None`(judge `gpt-5.4-mini` + `patch_for_gpt5`;單 call 返 `(question, keywords)` JSON;parse fail / 無 cred → None;mirror W52 graceful)
-- [ ] F1.3 `build_section_passages(chunks)`:group by `(doc_id, tuple(section_path))` → concat 文字(newline join)→ 截斷 `max_passage_chars` → 丟空/過短
-- [ ] F1.4 `generate_text_anchored_qa(passages, generate_fn, *, sample_size, seed, max_concurrency)`:seeded 抽樣 + sorted 穩定;無 keyword pair 丟
-- [ ] F1.5 `to_keyword_eval_set_payload(pairs, *, kb_id, seed)`:EvalRunner keyword-mode entries(`validated=False` + `acceptable_chunk_ids=[]` + `expected_answer_keywords` 填值 → 保證 keyword path)
-- [ ] F1.6 ruff check+format clean;mypy --strict controlled_comparison.py 零 error(exit 純跨模組 pre-existing)
+- [x] F1.1 NEW `backend/eval/controlled_comparison.py`:`TextAnchoredQAPair`(question/expected_keywords/source_section_path/source_text)+ `KeywordQAGenerateFn` type alias + `ControlledRecallError`。**deviation**:drop `source_doc_id`(R6:`_collect_chunks` 唔返 doc_id;group by section_path → 記 changelog)
+- [x] F1.2 `make_qa_keyword_generator(settings) -> KeywordQAGenerateFn | None`(judge `gpt-5.4-mini` + `patch_for_gpt5`;單 call 返 `(question, keywords)` JSON;`_parse_qa_keywords` pure 函式 tolerant markdown fence;parse fail / 無 cred → None;mirror W52 graceful)
+- [x] F1.3 `build_section_passages(chunks, *, max_passage_chars=4000, min_passage_chars=40)`:group by `tuple(section_path)` → concat 文字(newline join)→ 截斷 → 丟空/過短(multi-doc same-section merge caveat docstring 標明)
+- [x] F1.4 `generate_text_anchored_qa(passages, generate_fn, *, sample_size, seed, max_concurrency)`:seeded 抽樣 + sorted by section_path 穩定;無 keyword pair 丟
+- [x] F1.5 `to_keyword_eval_set_payload(pairs, *, kb_id, seed)`:EvalRunner keyword-mode entries(`validated=False` + `acceptable_chunk_ids=[]` + `expected_answer_keywords` 填值 → 保證 keyword path)
+- [x] F1.6 ruff check+format clean;mypy --strict controlled_comparison.py 零 error(exit 1 純 ragas_runner/ragas_evaluator 跨模組 pre-existing,同 W52 baseline)
 
 ## F2 — Controlled 比較 harness(C06)
 - [ ] F2.1 `build_shared_eval_set(engine, kb_id, *, generate_fn, output_path, sample_size, seed) -> int`(collect chunks → passages → generate → 寫 frozen YAML → 返 pair 數;空 → raise 自有 error)

@@ -143,6 +143,7 @@ combined_vision: "誠實 framing 階梯 — W51 coverage proxy → W52 synthetic
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W54 kickoff;Chris explicit 指示 controlled shared-question A/B(text-anchored + keyword-mode,W53 嚴謹版)。R6 grep 揭三發現(EvalRunner 已有 keyword mode → reuse 零新數學 / section_path strategy-invariant → 文字錨點 / W53 dataclass self-retrievability framing 不可 reuse → W54 自有 controlled dataclass)。無 H1(純 C06 eval extension,EvalRunner keyword mode reuse 非改)→ 無 ADR | Chris |
+| 2026-06-06 | F1 deviation:`TextAnchoredQAPair` drop `source_doc_id`,`build_section_passages` group by `tuple(section_path)` 而非 `(doc_id, section_path)` | F1 R6 grep:reuse 嘅 `synthetic_qa._collect_chunks` 唔返 doc_id(只 chunk_id/chunk_text/section_path);加 doc_id 要改 W52 frozen module → 改為 section_path-only grouping + docstring 標明 multi-doc same-section merge caveat(truncation 保護;controlled 性不受影響)。Karpathy:最大 reuse,minor passage-quality caveat 換零 W52 改動 | AI |
 
 ---
 

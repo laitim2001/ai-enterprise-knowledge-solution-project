@@ -34,5 +34,14 @@ W51 coverage proxy → W52 synthetic 非人手 ground truth → W53 self-retriev
 ### Done(F0)
 - F0 R1 phase 三件套建立(plan/checklist/progress);Phase Gate G1-G5 定義;無 H1 → 無 ADR
 
+### F1 text-anchored shared QA 生成(同日,C06)
+- NEW `backend/eval/controlled_comparison.py`:`TextAnchoredQAPair`(question/expected_keywords/source_section_path/source_text)+ `KeywordQAGenerateFn` + `ControlledRecallError`
+- `make_qa_keyword_generator`(judge `gpt-5.4-mini` + `patch_for_gpt5`;單 call 返 `(question, keywords)` JSON;`_parse_qa_keywords` pure 函式 — tolerant markdown ```json fence + validate question/keywords;parse fail/無 cred → None graceful)
+- `build_section_passages`(group by `tuple(section_path)` → concat → 截斷 max_passage_chars=4000 → 丟 < min_passage_chars=40)
+- `generate_text_anchored_qa`(seeded 抽樣 + sorted by section_path 穩定;無 keyword pair 丟)
+- `to_keyword_eval_set_payload`(`validated=False` + `acceptable_chunk_ids=[]` + `expected_answer_keywords` 填值 → 保證 EvalRunner keyword path;metadata note 標 controlled-but-synthetic+lexical-proxy)
+- **F1 deviation(R3,記 plan changelog)**:drop `source_doc_id` + section_path-only grouping(`_collect_chunks` 唔返 doc_id;避免改 W52 frozen module;multi-doc same-section merge caveat docstring 標明)
+- ruff clean + auto-format;mypy controlled_comparison.py 零 error(exit 1 純 ragas_* 跨模組 pre-existing,同 W52 baseline)
+
 ### Commits
-- `<pending>` F0 kickoff
+- `dec9373` F0 kickoff + `<pending>` F1 QA 生成
