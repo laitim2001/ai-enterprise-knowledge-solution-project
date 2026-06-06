@@ -34,6 +34,33 @@
 
 **Pre-flight infra**:backend `/health` 200(全 component OK,azure_search/azure_openai/cohere/langfuse/postgres);working tree 乾淨(只 local-only `01-session-start.md` + 5 他-session `live-*.png`)。origin/main = HEAD,0/0。
 
-**Commits**:(F0 commit 待 add)
+**Commits**:`dc69c58` docs(planning): W56 F0 kickoff
+
+---
+
+### F1 — Ingest fresh KB(6 DRIVE manuals)
+
+**F1.1**:`POST /kb` 建 `w56-drive-ab-1`,index `ekp-kb-w56-drive-ab-1-v1` provisioned;config 確認 `extract_embedded_images=false` + `slide_screenshots=false` + chunk_strategy=auto + default_top_k=50 + default_rerank_k=5。
+
+**F1.2**:sequential multipart upload(`curl.exe -F`,images off)— **6 docs 全成功,無 AP timeout**(舊 drive_user_manuals AP 曾 embed APITimeoutError,今次 images off 令 embed 負載輕咗 → 過):
+
+| Module | 檔案大小 | chunks_emitted | images |
+|---|---|---|---|
+| BM (0606) | 0.4MB | 16 | 0 |
+| CB (0604) | 1.8MB | 28 | 0 |
+| GL (0605) | 6.8MB | 74 | 0 |
+| FA (0603) | 8MB | 78 | 0 |
+| AP (0602) | 7MB | 83 | 0 |
+| AR (0601) | 10MB | 90 | 0 |
+| **總計** | | **369** | **0** |
+
+KB status:`total_documents=6 / total_chunks=369 / total_screenshots=0 / failed_documents=[]`。**369 >> fetch_k=50** ✓(對返舊 drive_user_manuals 嘅 369,證 ingest 一致)。
+
+**F1.3**(scratch `_scratch_verify_kb.py` 驗,不入 git）:
+- **`-sources` container `ekp-kb-w56-drive-ab-1-sources` = 6 blobs**(每 doc 一個,reindex 前提 ✓)。
+- **section_path sample 12/12 non-empty**,真階層(`['1 The Scope of this Document', '1.1 Process Overview – Diagram']` 等,controlled A/B 文字錨點前提 ✓)。
+- **R3 確認**:部分 chunk section_path 係純 heading 無 doc-title prefix(如 `['1 The Scope of this Document', ...]`)→ 跨 doc 同名 section 會 collide(`build_shared_eval_set` group by `tuple(section_path)` 會 merge 跨 doc)。**controlled 性質不受影響**(frozen set 對兩 strategy 同一套),只係 lexical-proxy caveat 更響(F4 記)。
+
+**Commits**:(F1 milestone 待 add)
 
 ---

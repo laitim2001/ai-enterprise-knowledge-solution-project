@@ -4,12 +4,12 @@
 > 大 corpus live verification + 2 個 CLI latent-bug 修;誠實解讀承 W54/W55(controlled-but-synthetic+lexical)+ multi-doc collision caveat。
 
 ## F0 — Phase kickoff
-- [ ] F0.1 plan/checklist/progress committed(R1);pre-flight 4 發現(Azure 查 1 live index/2 free / drive_user_manuals metadata stale 不可 reuse / fresh KB 必須 / 1 KB=1 index 喺 budget 內)+ 決策(6-doc rebuild / images off)記 progress
+- [x] F0.1 plan/checklist/progress committed(R1);pre-flight 4 發現(Azure 查 1 live index/2 free / drive_user_manuals metadata stale 不可 reuse / fresh KB 必須 / 1 KB=1 index 喺 budget 內)+ 決策(6-doc rebuild / images off)記 progress
 
 ## F1 — Ingest fresh KB(6 DRIVE manuals)
-- [ ] F1.1 `POST /kb` 建 `w56-drive-ab-1`(index `ekp-kb-w56-drive-ab-1-v1` provisioned;config chunk_strategy=auto / extract_embedded_images=false / slide_screenshots=false)
-- [ ] F1.2 sequential multipart upload 6 docs(AR/AP/CB/FA/BM/GL;`curl.exe -F`)→ ingest;記每 doc chunk 數 + 任何 fail(AP timeout = partial 可接受)
-- [ ] F1.3 驗 total_chunks >> fetch_k=50(target ≥200)+ `-sources` 有 docs(reindex 前提)+ chunks section_path 有值(controlled A/B 文字錨點前提)
+- [x] F1.1 `POST /kb` 建 `w56-drive-ab-1`(index `ekp-kb-w56-drive-ab-1-v1` provisioned;config chunk_strategy=auto / extract_embedded_images=false / slide_screenshots=false)
+- [x] F1.2 sequential multipart upload 6 docs(AR/AP/CB/FA/BM/GL;`curl.exe -F`)→ ingest;**6 docs 全成功無 AP timeout**;BM16/CB28/GL74/FA78/AP83/AR90 = 369 chunks
+- [x] F1.3 驗 total_chunks=369 >> fetch_k=50 + `-sources` 6 blobs(reindex 前提)+ section_path 12/12 non-empty 真階層;R3 multi-doc collision 確認(F4 記)
 
 ## F2 — 跑 W54 controlled A/B(大 corpus,核心)
 - [ ] F2.1 CLI 跑通 exit 0(`--kb-id w56-drive-ab-1 --strategies layout_aware heading_aware --sample 30 --top-k 5`)
