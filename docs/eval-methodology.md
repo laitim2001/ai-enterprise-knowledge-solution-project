@@ -695,6 +695,8 @@ W2–W3 iteration 用 GPT-5.4-mini 做 fast judge,**唔代表 W6 final 嘅信號
 
 **Disclosure rule**:label 必須係 **synthetic / self-supervised recall**,**唔可以** present 做人手 ground-truth recall(對齊 §1.3 Bias-disclosed)。真 ground-truth recall 仍靠 §2.1 + §4 SME 標註集(eval-set-v1)。W52 synthetic recall 嘅用途 = **相對比較**(同一 KB 跨 config / 跨 chunk strategy 嘅 retrieval 變化,W53 reindex eval 基建),非絕對 production 質素 verdict。
 
+**W53 chunk-strategy 比較 — per-config 重生 QA 嘅額外 confounding**:`backend/eval/strategy_comparison.py`(W53 / ADR-0044)跨 `chunk_strategy`(heading_aware vs layout_aware)比較時,**每 strategy reindex 後由它自己 chunks 重生 synthetic QA** → 問題集**逐 strategy 唔同** → recall delta **含問題難度 confounding**。所以量度嘅係 **self-retrievability(自檢索性 — 「呢個 chunking 之下答案 chunk 幾易被檢索返」)**,**非 controlled A/B**(同問題跨 strategy)。`best_strategy` 讀作**相對信號**,非絕對 verdict。Controlled shared-question A/B(strategy-independent text-anchored ground truth + keyword-mode recall)留更未來。
+
 ---
 
 ## 11. Reporting Format

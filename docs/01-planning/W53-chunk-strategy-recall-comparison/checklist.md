@@ -26,5 +26,5 @@
 - [x] F4.2 test:`_select_chunker` dispatch 5 case(heading_aware → HeadingAwareChunker / +cap override / layout_aware → singleton 非 HeadingAware / auto+cap → factory / None → singleton)
 - [x] F4.3 test `test_strategy_comparison.py`:`run_strategy_recall_comparison` stub reindex+recall → 比較報告正確 assemble + best pick + empty case
 - [x] F4.4 0 regression:test_heading_aware_chunker+test_strategy_comparison+test_parser_factory+test_chunker **49 passed**;kb_reindex+synthetic_qa+eval_runner+W53 **34 passed**
-- [ ] F4.5 Doc-sync:architecture.md §3.3/§3.5 + §5.5.5 W53 amendment + ADR-0044 cross-ref;eval-methodology.md §10.6 per-config confounding note;roadmap 兩者合一下半截 → ✅ W53 shipped + 修訂史;session-start §10 W53 row + W54+(local-only);plan status→closed + changelog
-- [ ] F4.6 Phase Gate G1-G5 = PASS + retro + carry-overs(W54)+ checklist 全 tick(或 🚧 + reason)
+- [x] F4.5 Doc-sync:architecture.md §5.5.5 W53 amendment(標明 chunker 改動屬 §3.3/§3.5 per ADR-0044)+ ADR-0044 cross-ref;eval-methodology.md §10.6 per-config confounding note;roadmap line 112 → ✅ W53 shipped + 修訂史;session-start §10 W53 closed row + W54+(local-only);plan status→closed + changelog
+- [x] F4.6 Phase Gate G1-G5 = **PASS** + retro + carry-overs(W54)+ R5 recheck(有 §3/§4 touch → ADR-0044 已寫)+ checklist 全 tick(無 🚧)

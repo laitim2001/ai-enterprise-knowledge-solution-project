@@ -3,8 +3,8 @@ phase: W53-chunk-strategy-recall-comparison
 name: "Chunk-Strategy Recall Comparison (heading_aware 真 strategy + per-config synthetic recall — 兩者合一下半截)"
 sprint_week: W53
 start_date: 2026-06-06
-end_date:                     # actual close
-status: active
+end_date: 2026-06-06          # actual close (D1; F0-F4 same-day)
+status: closed
 spec_refs:
   - W52 (synthetic-QA recall 基建 — 本期 reuse run_synthetic_recall 跨 strategy 比較)
   - ROADMAP-per-kb-tunable-config.md (兩者合一:W52 recall 基建 → W53 reindex strategy 比較)
@@ -136,6 +136,8 @@ combined_vision: "兩者合一(synthetic-QA 做 ingestion eval 指標)— W52 = 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W53 kickoff;Chris AskUserQuestion(比較軸=實作 heading_aware 真 strategy / Recall=per-config 重生 QA reuse W52)。R6 grep 揭三發現(chunk_strategy degenerate / _select_chunker ignore strategy / chunk_id 跨 reindex 變);heading_aware section-bounded 語意 → ADR-0044(H1);順帶 close W46 reindex strategy-wiring over-promise gap | Chris |
+| 2026-06-06 | F2 實作細節:`HeadingAwareChunker` = thin `LayoutAwareChunker` subclass(super().__init__ 後 flip `target_tokens=hard_cap_tokens` + `min_chunk_merge_floor=0`)而非全新 class — Karpathy zero parsing rewrite + 仍係「真 strategy class」(discoverable + 獨立 test) | F2 think-before-coding:LayoutAwareChunker 已用 param 控 split/merge policy → subclass flip 兩個 knob = 最簡達成 section-bounded(記 ADR-0044 Alternatives 已覆蓋)| AI |
+| 2026-06-06 | status active → closed;end_date set(D1 全 F0-F4 同日)| Phase Gate G1-G5 PASS;兩者合一下半截 done(heading_aware 真 strategy + chunk-strategy self-retrievability 比較)| AI |
 
 ---
 
