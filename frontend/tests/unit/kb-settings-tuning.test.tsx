@@ -219,6 +219,8 @@ describe('W43 F3.3 — config-test 試跑 panel', () => {
     expect(screen.getByText('±0.16')).toBeInTheDocument(); // noisy draft
     expect(screen.getByText('±0.05')).toBeInTheDocument(); // stable saved
     expect(screen.queryByText(/單次 judge/)).not.toBeInTheDocument();
+    // W50 (決策 7 option d) — length-bias caveat renders below the A/B grid
+    expect(screen.getByText('length bias')).toBeInTheDocument();
   });
 
   it('shows a single-shot warning + no band when faithfulness has 1 run (W49)', async () => {

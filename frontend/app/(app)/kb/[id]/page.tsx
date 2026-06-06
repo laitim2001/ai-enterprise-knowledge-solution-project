@@ -2170,6 +2170,24 @@ function ConfigTestPanel({
               {result.saved && <ConfigResultCard label="已存配置(SAVED)" summary={result.saved} />}
             </div>
 
+            {/* W50 (決策 7 option d) — length-bias caveat: RAGAs faithfulness penalises
+                long/comprehensive answers, so a low score paired with high completeness
+                signals is likely the bias, not a worse config. */}
+            <div
+              className="hint"
+              style={{ marginTop: 10, display: 'flex', gap: 6, alignItems: 'flex-start' }}
+            >
+              <AlertTriangle
+                size={13}
+                style={{ color: 'oklch(var(--warning))', marginTop: 1, flexShrink: 0 }}
+              />
+              <span>
+                忠實度對長 / 全面答案有{' '}
+                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高引用數 /
+                長答案,多為 bias 而非 config 差,宜對照引用數 / 字數(+ 將來 recall)一齊判讀,勿與完整性混為一談。
+              </span>
+            </div>
+
             {result.draft.per_citation.length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <div className="text-xs muted" style={{ marginBottom: 6 }}>
@@ -2274,7 +2292,12 @@ function ConfigResultCard({
             padding: '10px 14px',
           }}
         >
-          <div className="text-xs muted">忠實度(faithfulness · 反幻覺 · 0–1)</div>
+          <div
+            className="text-xs muted"
+            title="RAGAs faithfulness:答案宣稱是否被 retrieved context 支撐(反幻覺)。注意對長/全面答案有 length bias —— claim 多 → 未逐句對上 context 機會大,低分未必代表 config 差,宜對照完整性訊號(引用數 / 字數)判讀,勿與 completeness 混為一談。"
+          >
+            忠實度(faithfulness · 反幻覺 · 0–1)
+          </div>
           <div
             className="mono"
             style={{

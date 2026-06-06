@@ -21,8 +21,18 @@ W49 closed + pushed(`ac172b0`,API + UI live-verify band 重現)。用戶問「W4
 ### Done
 - F0 R1 phase 三件套建立(plan/checklist/progress);Phase Gate G1-G4 定義
 
+### F1 frontend(同日,H7 design-first)
+- 落點定案:**(a) 忠實度 label `title=` tooltip**(on-the-spot,兩卡自動)+ **(b) A/B grid 下方單一 length-bias caveat note**(`IcAlert`/lucide `AlertTriangle` warning 色 + `<b>length bias</b>`,單一位置兩卡共用)。
+- mockup `ekp-page-kb.jsx` 先改:`KbTestResultCard` 忠實度 label 加 `title`(faithfulness 性質 + length bias 警示 + 對照完整性訊號判讀)+ A/B 結果 grid 後加 caveat note(IcAlert + 「忠實度對長/全面答案有 **length bias** —— 低分若配合高引用數/長答案,多為 bias 而非 config 差,宜對照引用數/字數(+ 將來 recall)判讀,勿與完整性混為一談」)。
+- `page.tsx` match:`ConfigResultCard` 忠實度 label 加同文 `title`;A/B grid(`result.saved ? 1fr 1fr : 1fr`)後加同款 caveat(`AlertTriangle` + 同文案),placement 對齊 mockup(grid 後、per-citation breakdown 前)。
+- 驗:tsc --noEmit clean + next lint clean(唯一 pre-existing chat `<img>`)+ `[oklch`=0(用 `oklch(var(--warning))` token)。
+
+### F2 test(同日)
+- frontend `kb-settings-tuning.test.tsx`:主 A/B test 加 `expect(screen.getByText('length bias')).toBeInTheDocument()`(`<b>length bias</b>` leaf,唯一,避 nested-text 坑)。
+- 驗:**kb-settings-tuning 4 passed**(含新斷言)+ kb-detail + kb-settings-reindex **5 passed**(page.tsx 純加性改動 0 regression)。
+
 ### Commits
-- (F0 kickoff commit pending)
+- (F0 kickoff `8830f4a`;F1-F2 code+test commit pending)
 
 ### Blockers / carry-over
-- 無 blocker。infra 已起(azurite 23252 / backend 8000 W49 code / frontend 46364 clean .next)。**注**:本期 frontend-only,frontend dev hot-reload 即時反映,**唔使** restart backend。
+- 無 blocker。infra 已起(azurite 23252 / backend 8000 W49 code / frontend 46364 clean .next)。**注**:本期 frontend-only,frontend dev hot-reload 即時反映,**唔使** restart backend。caveat 只喺有試跑結果時顯示(per-card title tooltip 隨時 hover 可見);未做 live UI screenshot(static note,vitest 已覆蓋 — 如要可手動再跑 config-test)。
