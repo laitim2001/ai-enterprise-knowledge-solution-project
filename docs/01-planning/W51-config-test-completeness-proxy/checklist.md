@@ -25,7 +25,7 @@
 - [x] F3.3 frontend vitest:`kb-settings-tuning` 主 A/B test `getAllByText('涵蓋章節數') ≥2`;FAKE_RESULT draft/saved summary 補 `distinct_sections` band(draft 1 / saved 5)→ **4 passed** + kb-detail/reindex 5 passed
 
 ## F4 — Doc-sync + closeout
-- [ ] F4.1 architecture.md §5.5.5 加 W51 amendment(completeness proxy distinct-sections band;**標清 proxy 非 recall**)
-- [ ] F4.2 roadmap 決策 7 Option (d) ideal 半邊 → ✅ done(distinct-sections proxy;synthetic-QA recall 留更未來)+ 修訂史 entry
-- [ ] F4.3 session-start §10 W51 closed row + W52+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
-- [ ] F4.4 Phase Gate G1-G4 = **PASS** + retro + carry-overs + checklist 全 tick(無 🚧)+ W52+ candidates
+- [x] F4.1 architecture.md §5.5.5 加 W51 amendment(completeness proxy distinct-sections band;**標清 proxy 非 recall**)+ 縮短 W50 amendment caveat 引文(避 stale quote)
+- [x] F4.2 roadmap W49 bullet (d) → ✅ W51 shipped(ideal 半邊;synthetic-QA recall 留更未來)+ 修訂史 entry
+- [x] F4.3 session-start §10 W51 closed row + W52+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
+- [x] F4.4 Phase Gate G1-G4 = **PASS** + retro + carry-overs + checklist 全 tick(無 🚧)+ W52+ candidates

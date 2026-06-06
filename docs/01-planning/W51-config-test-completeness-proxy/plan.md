@@ -3,8 +3,8 @@ phase: W51-config-test-completeness-proxy
 name: "Config-Test Completeness Proxy (distinct-sections band — 決策 7 Option d ideal 半邊)"
 sprint_week: W51
 start_date: 2026-06-05
-end_date:                     # set at closeout
-status: active
+end_date: 2026-06-05          # actual close (D1; F0-F4 all same-day)
+status: closed
 spec_refs:
   - ROADMAP-per-kb-tunable-config.md 決策 7 Option (d) ideal 半邊(completeness/recall 對沖指標)+ 證據②(faithfulness 同 completeness 反相關)
   - ADR-0040 (per-KB config-scope + config-test 雙軸)
@@ -113,6 +113,8 @@ prior_phase: W50-faithfulness-length-bias-affordance
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-05 | Initial plan | W51 kickoff;Chris AskUserQuestion 揀 W51 = **對沖指標**(distinct-sections completeness proxy per-run band;proxy 非 recall;C ingestion eval 留 W52)| Chris |
+| 2026-06-05 | 落點:涵蓋章節數 metric 擺 引用數 旁(coverage 群組喺 faithfulness 下)+ sub「非 recall」+ W50 caveat 指向佢 | design-first F2;誠實 framing R1(coverage proxy 非 recall)| AI |
+| 2026-06-05 | status active → closed;end_date set(D1 全 F0-F4 同日)| Phase Gate G1-G4 PASS;決策 7 Option (d) ideal 半邊 done | AI |
 
 ---
 
