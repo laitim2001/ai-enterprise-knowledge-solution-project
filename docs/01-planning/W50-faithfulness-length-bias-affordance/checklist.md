@@ -16,7 +16,7 @@
 - [x] F2.2 既有 kb-settings-tuning 4 passed + kb-detail/kb-settings-reindex 5 passed(0 regression);tsc + lint clean
 
 ## F3 — Doc-sync + closeout
-- [ ] F3.1 architecture.md §5.5.5 加 W50 amendment(length-bias affordance;static explainer;completeness 對沖留未來)
-- [ ] F3.2 roadmap 決策 7 Option (d)「平 part」→ ✅ done(completeness 對沖指標仍 ideal 留 W51+)+ 修訂史 entry
-- [ ] F3.3 session-start §10 W50 closed row + W51+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
-- [ ] F3.4 Phase Gate G1-G4 = **PASS** + retro + carry-overs(見 progress)+ checklist 全 tick(無 🚧)+ W51+ candidates
+- [x] F3.1 architecture.md §5.5.5 加 W50 amendment(length-bias affordance;static explainer;completeness 對沖留未來)
+- [x] F3.2 roadmap 逐期重點 W49 bullet (d) → ✅ W50 shipped(平 part;completeness 對沖指標仍 ideal 留 W51+)+ 修訂史 entry
+- [x] F3.3 session-start §10 W50 closed row + W51+ rolling JIT(local-only,gitignored)+ plan.md status→closed + changelog
+- [x] F3.4 Phase Gate G1-G4 = **PASS** + retro + carry-overs(見 progress)+ checklist 全 tick(無 🚧)+ W51+ candidates

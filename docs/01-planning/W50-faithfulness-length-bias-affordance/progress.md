@@ -31,8 +31,35 @@ W49 closed + pushed(`ac172b0`,API + UI live-verify band 重現)。用戶問「W4
 - frontend `kb-settings-tuning.test.tsx`:主 A/B test 加 `expect(screen.getByText('length bias')).toBeInTheDocument()`(`<b>length bias</b>` leaf,唯一,避 nested-text 坑)。
 - 驗:**kb-settings-tuning 4 passed**(含新斷言)+ kb-detail + kb-settings-reindex **5 passed**(page.tsx 純加性改動 0 regression)。
 
+### F3 doc-sync(同日)
+- architecture.md §5.5.5 加 **W50 amendment**(length-bias affordance:label tooltip + caveat note;static / frontend-only;completeness 對沖留 W51+)
+- roadmap:逐期重點 W49 bullet (d) → ✅ W50 shipped(平 part);修訂史加 2026-06-05 W50 entry
+- session-start §10 W50 closed row + plan.md status→closed + changelog
+
+### Phase Gate G1-G4 — **PASS**
+
+| # | Criterion | Verdict | Evidence |
+|---|---|---|---|
+| G1 | config-test panel 有 length-bias explainer affordance | ✅ PASS | 忠實度 label `title` tooltip + A/B grid 下 caveat note(`AlertTriangle` + `<b>length bias</b>`)|
+| G2 | 100% match mockup(H7 fidelity)| ✅ PASS | design-first mockup `ekp-page-kb.jsx` 先改 → page.tsx 同文案 + 同 placement(grid 後 / per-citation 前)|
+| G3 | tsc/lint/build clean + vitest 0 regression | ✅ PASS | tsc clean + lint(唯一 pre-existing chat `<img>`)+ `[oklch`=0;vitest kb-settings-tuning 4 + kb-detail/reindex 5 passed |
+| G4 | frontend-only + 無新 ADR/vendor/backend | ✅ PASS | 純前端;用 result card 現有資料;無新 metric/endpoint/dep;extend ADR-0040 |
+
+**判決:Phase Gate 通過(PASS)**。決策 7 Option (d) 平 part done;用戶試跑時有 length-bias 教育 affordance,避免把 faithfulness 跌誤判為 config 差。
+
+### Retro
+- **Karpathy simplicity 守得住**:抵住 scope creep —— 用戶 option 已 scope「先做平 part」,本期 static explainer only(無 arbitrary threshold conditional hint / 無 completeness proxy metric),frontend-only。completeness/recall 對沖明文留 W51+ 評估。
+- **落點 design judgment**:tooltip(on-the-spot,per-card 自動)+ 單一 caveat note(A/B 兩卡共用,唔 per-card 重複增噪)組合 — 兩種 discoverability(hover label vs 常駐 caveat)。
+- **R6 grep 慳 trial-and-error**:kickoff grep mockup hint 模式(`.hint` / `title=` / IcAlert)→ 直接沿用,無造新 component;page.tsx `AlertTriangle` 已 import 無需加 import。
+- **nested-text test 坑(W49 教訓延續)**:caveat span 含 `<b>length bias</b>` → 斷言用 `<b>` leaf `getByText('length bias')`(唯一),避 span/ancestor multiple-match。
+- **Watch(carry W51+)**:completeness/recall 對沖指標(Option d ideal 半邊;per_citation distinct-sections band 或 synthetic-QA)= 未做;length-bias static note 係教育非自動偵測,conditional flag 屬後續 refinement。
+
+### Carry-overs → W51+(rolling JIT)
+- faithfulness **completeness/recall 對沖指標**(決策 7 Option d ideal 半邊:distinct-sections band / synthetic-QA recall proxy + UI 對沖顯示)
+- (前期 carry 不變)per-document scope(決策 1 + AUDIT-E)/ ingestion 質素(reindex→eval)/ AUDIT-D (ii) correctness+context_recall / production v1→v2(Track A 決策 4)/ presets+config 版本史(決策 5)/ Layer C 視覺內容揀圖(Tier 2 決策 3)/ heading_aware footgun
+
 ### Commits
-- (F0 kickoff `8830f4a`;F1-F2 code+test commit pending)
+- `8830f4a` F0 kickoff + `ad2c93e` F1-F2 code+test + F3 closeout commit(pending)
 
 ### Blockers / carry-over
 - 無 blocker。infra 已起(azurite 23252 / backend 8000 W49 code / frontend 46364 clean .next)。**注**:本期 frontend-only,frontend dev hot-reload 即時反映,**唔使** restart backend。caveat 只喺有試跑結果時顯示(per-card title tooltip 隨時 hover 可見);未做 live UI screenshot(static note,vitest 已覆蓋 — 如要可手動再跑 config-test)。

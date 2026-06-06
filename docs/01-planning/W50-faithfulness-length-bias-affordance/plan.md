@@ -3,8 +3,8 @@ phase: W50-faithfulness-length-bias-affordance
 name: "Config-Test Faithfulness Length-Bias Affordance (決策 7 Option d, 平 part)"
 sprint_week: W50
 start_date: 2026-06-05
-end_date:                     # set at closeout
-status: active
+end_date: 2026-06-05          # actual close (D1; F0-F3 all same-day)
+status: closed
 spec_refs:
   - ROADMAP-per-kb-tunable-config.md 決策 7 Option (d)(length-bias UI 標示;completeness/recall 對沖指標屬 ideal)+ 逐期重點 bullet 證據②
   - ADR-0040 (per-KB config-scope + config-test 雙軸)
@@ -102,6 +102,8 @@ prior_phase: W49-faithfulness-quality-band
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-05 | Initial plan | W50 kickoff;Chris AskUserQuestion 揀 W50 起點 = **A. length-bias 對沖**(平 part:static UI explainer;completeness/recall 對沖指標留 W51+ 評估)| Chris |
+| 2026-06-05 | 落點定案:忠實度 label `title` tooltip + A/B grid 下單一 caveat note(`AlertTriangle`)| design-first F1;單一位置避 per-card 重複 + tooltip on-the-spot | AI |
+| 2026-06-05 | status active → closed;end_date set(D1 全 F0-F3 同日)| Phase Gate G1-G4 PASS;決策 7 Option (d) 平 part done | AI |
 
 ---
 
