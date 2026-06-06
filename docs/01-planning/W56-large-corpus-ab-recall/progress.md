@@ -131,6 +131,41 @@ W53 chunk-strategy self-supervised recall:
 
 **F3.4 — 其他 live-path bug**:無。W54 / W53(fixed)/ W52 三個 CLI 全 exit 0,除 W53 event-loop guard 外無其他 live-path bug。3 個 smoke-deferred CLI 至此全部 live-exercised(W55 修 `run_controlled_ab_comparison.py`;W56 修 `run_strategy_recall_comparison.py` + 確認 `run_synthetic_recall.py` 不需修)。
 
-**Commits**:(F3 待 add — W53 script fix + 本 progress + checklist)
+**Commits**:`191a1f8` fix(eval): W56 F3 W53 guard + cross-check
+
+---
+
+### F4 — 結果記錄 + closeout
+
+**收尾驗證**:
+- eval test suite(controlled_comparison + strategy_comparison + synthetic_qa)= **20 passed**,0 regression(我只改 driver script,未改任何 tested module)。
+- ruff check `run_strategy_recall_comparison.py` 通過;我加嘅 win32 guard 行已 format-clean(pre-existing 長行未郁 per Karpathy §1.3)。
+- mypy:7 個 `import-not-found`(api.* / eval.* / storage.* runtime path-injection,mypy 靜態跟唔到)= pre-existing 跨模組 limitation(W55 reference 同款)→ **我改檔零新 error**。
+- scratch script(`_scratch_list_indexes.py` / `_scratch_verify_kb.py`)已刪,不入 git。
+
+**Phase Gate G1-G5**:
+
+| # | Criterion | Verdict | 證據 |
+|---|---|---|---|
+| G1 | 6-doc fresh ingest + sources + section_path | **PASS** | 369 chunks(>>50)/ 6 source blobs / section_path 12/12 / 0 failed / 無 AP timeout |
+| G2 | W54 A/B CLI 跑通 end-to-end | **PASS** | exit 0,兩 strategy recall + chunk 數 assemble |
+| G3 | recall 軸辨別 strategy(消 W55 saturation)| **PASS(誠實 caveat)** | saturation 打破(1.0/1.0 → 0.9917/0.9850 兩個 <1.0 + delta);**但辨別力弱**(0.67pp gap 喺 noise floor,不宣稱 winner);強辨別需 strict ground truth |
+| G4 | W53/W52 event-loop bug 修+verify | **PASS** | W53 verify-then-fix(crash 確認 → guard → 重跑 exit 0);W52 verify = 不需修 |
+| G5 | 結果誠實解讀 | **PASS** | controlled-but-synthetic+lexical + multi-doc collision + 三角驗證 + synthetic recall noise caveat |
+
+→ **Phase Gate = PASS**(G3 帶誠實 caveat:saturation 已破但辨別力弱)。
+
+**R5 recheck(architectural-adjacent → ADR?)**:無。唯一 code change = W53 CLI win32 guard(driver,非 §3/§4 component / 非 vendor / 非 storage layout)→ 非 architectural → **無 ADR**(正確)。ingest/reindex = data ops 非 architectural。recall-discrimination 發現 = methodology observation,feed eval-set-v1(future),非架構決定。
+
+**Day 1 Retro**:
+- **做得好**:(1) 大 corpus 一次 ingest 6-doc 無 AP timeout(images off 減 embed 負載,驗證 W55 partial-acceptable 預案其實唔需用);(2) recall 軸成功脫離飽和(核心目標達);(3) **三角驗證發現**(W53 confounded gap 3.3pp > W54 controlled gap 0.67pp)實證 controlled 設計價值,係本期最高 signal;(4) verify-then-fix 紀律守住(W53 先觀察 crash 再 fix;W52 觀察 pass 後不盲加 guard);(5) 3-index budget 全程守住(查 Azure 確認,非靠 metadata)。
+- **學到**:(1) recall@5 喺 369 chunks 仍近天花板 → keyword/strict synthetic 都唔夠狠,**真要辨別 strategy 必須 human ground truth 或更低 top-k**;(2) synthetic recall 有 run-to-run noise(W52 strict 0.7667 vs W53 0.9333,部分 reranker 有無、部分 LLM 出題);(3) heading_aware 跨 6-doc 放大 chunk 分化(415 vs 369,+12.5%)穩定再證 ADR-0044。
+- **carry-over(W57+ 候選)**:(a) **eval-set-v1 human ground-truth recall**(strict chunk-id SME 標註,終極脫離 synthetic+lexical proxy);(b) lower-top-k 實驗(top-k=1/3 收窄槽位睇辨別力,但需 re-reindex 成本);(c) production default flip 仍待用戶決定(out-of-scope 本期);(d) Azure index cleanup 決定(見下)。
+
+**Infra / 3-index budget 收尾狀態**:
+- Azure Search **2 used / 1 free**:`ekp-kb-w54-live-ab-1-v1`(W55 CB)+ `ekp-kb-w56-drive-ab-1-v1`(本期,heading_aware 415 chunks,留住方便 W57+ top-k 實驗 / eval-set-v1)。**全程冇刪任何 index,守住 Free-tier 3-cap**。
+- backend(8000)+ azurite(10000)背景運行。
+
+**Commits**:`<F4 closeout commit>`(本 progress + checklist tick + plan status→closed + roadmap 修訂史)
 
 ---

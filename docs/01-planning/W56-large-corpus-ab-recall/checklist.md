@@ -23,5 +23,5 @@
 - [x] F3.4 其他 live-path bug = 無;3 個 smoke-deferred CLI 至此全部 live-exercised(W55 修 controlled_ab;W56 修 strategy_recall + 確認 synthetic_recall 不需修)
 
 ## F4 — 結果記錄 + closeout
-- [ ] F4.1 progress 記 W54 A/B + W53 cross-check + W52 verify 結果 + 誠實解讀(controlled-but-synthetic+lexical;multi-doc section_path collision caveat;recall 辨別 vs W55 saturation 對比)+ 所有 bug/fix
-- [ ] F4.2 Phase Gate G1-G5 verdict + retro + R5 recheck(只改 script → 非 §3/§4 → 無 ADR;若觸 architectural → ADR)+ checklist tick / 🚧 + doc-sync(roadmap 修訂史 + session-start §10 local-only)
+- [x] F4.1 progress 記 W54 A/B + W53 cross-check + W52 verify + 誠實解讀(controlled-but-synthetic+lexical;multi-doc collision caveat;recall 辨別 vs W55 saturation;三角驗證;synthetic noise)+ 所有 bug/fix
+- [x] F4.2 Phase Gate G1-G5 = **PASS**(G3 帶誠實 caveat)+ retro + R5 recheck(W53 driver guard 非 §3/§4 → 無 ADR)+ checklist tick + doc-sync(roadmap 修訂史 + session-start §10 W56 row local-only);20 eval test passed 0 regression;scratch 已刪

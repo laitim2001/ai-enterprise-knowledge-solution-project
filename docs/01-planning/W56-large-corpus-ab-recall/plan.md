@@ -3,8 +3,8 @@ phase: W56-large-corpus-ab-recall
 name: "Large-corpus controlled A/B — recall 軸真辨別 strategy(消 W55 saturation artifact)+ 修/verify W53/W52 CLI event-loop bug"
 sprint_week: W56
 start_date: 2026-06-06
-end_date:
-status: active
+end_date: 2026-06-06          # actual close (D1)
+status: closed
 spec_refs:
   - W54 (controlled_comparison.py — controlled A/B,本期跑大 corpus)
   - W55 (run_controlled_ab_comparison.py live-verified;本期換大 corpus 消 recall saturation)
@@ -102,6 +102,8 @@ combined_vision: "W55 把 controlled A/B live-verified,但小 corpus(28-33 chunk
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-06 | Initial plan | W56 kickoff;Chris explicit「執行大 corpus re-run」+ AskUserQuestion 揀「全 6-doc DRIVE rebuild」。Pre-flight 查 Azure = 1 live index/2 free;drive_user_manuals metadata stale 不可 reuse → fresh 6-doc KB(images off) | Chris |
+| 2026-06-06 | F3.1 W53 win32 SelectorEventLoop guard fix(scripts/run_strategy_recall_comparison.py)| verify-then-fix:先跑 unfixed 確認 psycopg ProactorEventLoop crash @ lifespan startup → 套 guard(mirror W55)→ 重跑 exit 0。最小修(非 architectural)| AI |
+| 2026-06-06 | status active → closed;end_date set | Phase Gate G1-G5 PASS(G3 帶誠實 caveat:saturation 已破但辨別力弱)。大 corpus A/B recall 脫離飽和 + 三角驗證實證 controlled 設計價值 + W53 fix verified + W52 確認不需修 + 3-index budget 守住 | AI |
 
 ---
 
