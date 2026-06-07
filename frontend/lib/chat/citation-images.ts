@@ -81,3 +81,18 @@ export function imageTitle(image: ImageRef, citation: Citation): string {
   const leaf = section.length > 0 ? section[section.length - 1] : '';
   return leaf || citation.chunk_title || 'Screenshot';
 }
+
+/**
+ * Format a citation relevance score for display (BUG-034 Finding C).
+ *
+ * Citation post-hoc expansion (backend §3.7 citation_expansion.py) materializes
+ * neighbour citations with a sentinel `relevance_score` of 0 — they were added
+ * for context completeness, never independently reranked. Rendering that as
+ * "0.000" reads as "zero relevance / broken" next to a genuinely-reranked
+ * sibling in the same section. Show an em-dash for the sentinel instead; a real
+ * Cohere rerank score is effectively never exactly 0, so `score > 0` reliably
+ * distinguishes reranked hits from expansion neighbours.
+ */
+export function formatRelevance(score: number): string {
+  return score > 0 ? score.toFixed(3) : '—';
+}

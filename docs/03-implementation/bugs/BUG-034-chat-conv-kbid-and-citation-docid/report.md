@@ -2,7 +2,7 @@
 bug_id: BUG-034
 title: "Chat: conversation persists stale kb_id (shows wrong KB) + expanded citations lose doc_id"
 severity: Sev3          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: done            # triaged | investigating | fixing | verifying | done | wont-fix
+status: verifying       # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-07
 reporter: "Chris (end-user testing on chat page, drive-images-1 KB)"
 affects_components: [C10, C04]   # C10 Frontend Chat UI (Finding A) · C04 Retrieval list_chunks (Finding B)
@@ -94,3 +94,27 @@ spec_refs:
 ---
 
 **Out-of-scope(明確)**:問題1 圖片 recall 相關性(retrieval 錨定 sub-section + 圖片擴展闊度)→ 屬 per-KB retrieval 調優 + domain 驗證,另案;對話跨多 KB 嘅產品語意(切 KB 是否該開新對話)→ Tier 1 採「最近 query KB = 對話 KB」,深層產品決定另議。
+
+---
+
+## Finding C addendum(2026-06-07 — 用戶重測後新發現)
+
+> 用戶重測:問題2(Finding A)確認 OK;問題3 嘅 doc_id(Finding B)已修(tooltip 而家顯示文件名),但 citation tooltip 大部分顯示 **`0.000`** relevance → 仍覺「對應內容唔正確」。實地抽數據確認新根因。
+
+### Symptom(C)
+一個 GL query 13 個 citation 入面,**只有 2 個有真實 relevance_score**(reranked 主命中),**其餘 11 個 = `0.000`**。
+
+### Root cause(C — confirmed)
+citation post-hoc expansion(`citation_expansion.py:332-343`)補入嘅 neighbor chunk 用 sentinel `score=0.0`(從未獨立 rerank)。前端 4 處 `citation.relevance_score.toFixed(3)`(`chat/page.tsx` 1580/2087/2257/2593)照樣顯示「0.000」→ context citation 睇落似「零相關 / 壞咗」,尤其同 section 隔籬有真分數。
+
+### Fix(C)
+新增 `formatRelevance(score)`(`lib/chat/citation-images.ts`):`score > 0 ? toFixed(3) : '—'`(真 Cohere rerank score 實際上永不剛好 0,故 `score>0` 可靠分辨 reranked vs expansion neighbor)。4 處顯示改用呢個 helper。純前端、display-only。
+
+### Acceptance(C)
+- [ ] expansion citation(score=0)tooltip / panel / modal 顯示 `—` 而非 `0.000`
+- [ ] 真 reranked citation 仍顯示 3 位小數分數
+- [ ] `formatRelevance` unit test;tsc + lint + vitest 0 regression
+- [ ] Live:GL query → 11 個 expansion citation 顯示 `—`,2 個 reranked 顯示分數
+
+### Out-of-scope(C)
+問題1 圖片 recall 相關性 + expansion 闊度調優(收窄 `citation_expansion_window` / `citation_neighbour_section_path_prefix_depth` 等)→ per-KB 配置實驗 + domain 驗證,**另案**(非 code bug;runtime config on `drive-images-1`)。本 BUG 只含 code 修復(A/B/C)。

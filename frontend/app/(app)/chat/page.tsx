@@ -113,6 +113,7 @@ import { kbApi, type KbStatus } from '@/lib/api/kb';
 import { streamQuery, type Citation, type ImageRef, type SseEvent } from '@/lib/api/query';
 import {
   dedupeCitationImages,
+  formatRelevance,
   imageSectionPath,
   imageTitle,
   type DedupedCitationImage,
@@ -1577,7 +1578,7 @@ function CitationPill({ citation, idx }: { citation: Citation; idx: number }) {
             >
               {citation.doc_title}
             </span>
-            <span className="mono muted text-xs">{citation.relevance_score.toFixed(3)}</span>
+            <span className="mono muted text-xs">{formatRelevance(citation.relevance_score)}</span>
           </span>
           {citation.section_path.length > 0 && (
             <span className="section-path text-xs" style={{ display: 'block', marginBottom: 6 }}>
@@ -2084,7 +2085,7 @@ function SourceDocCard({
               fontWeight: 600,
             }}
           >
-            {citation.relevance_score.toFixed(3)}
+            {formatRelevance(citation.relevance_score)}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
@@ -2254,7 +2255,7 @@ function PanelSourceCard({
             marginLeft: 'auto',
           }}
         >
-          {citation.relevance_score.toFixed(3)}
+          {formatRelevance(citation.relevance_score)}
         </span>
       </div>
 
@@ -2590,7 +2591,7 @@ function ScreenshotModal({
               </div>
             </div>
             <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
-              {citation.relevance_score.toFixed(3)}
+              {formatRelevance(citation.relevance_score)}
             </span>
             <button
               type="button"
