@@ -9,6 +9,8 @@ last_updated: 2026-06-07
 
 > **CH-007 amendment(2026-06-07)**:`RetrievalEngine.retrieve` 新增 additive `overfetch: int | None = None` kwarg(`None` = 沿用建構時 `self._hybrid_overfetch`,零行為改變);`fetched_k = max(top_k, overfetch ?? hybrid_overfetch)`。配合 `query.py` 把每個 KB 的 `default_rerank_k`(rerank 深度)→ `retrieve(top_k=)`、`default_top_k`(候選池 overfetch)→ `retrieve(overfetch=)`,經 `EffectiveConfig`(per-query > per-KB > 全域)resolve。修復 chat 路徑忽略 KB 設定的 top_k(`default_top_k` 之前在 query 路徑完全 dead)。`fused_retrieve` 同步透傳 `overfetch`。
 
+> **BUG-034 amendment(2026-06-07,Finding B)**:`HybridSearcher.list_chunks` 嘅 `$select` 之前缺 `doc_id` / `doc_title` / `doc_format` → citation post-hoc expansion 由 `list_chunks` 物化嘅 neighbor citation 落 `build_citations` 即拎到空 `doc_id`(只有主命中 reranked-search chunk 帶 doc identity)→ 前端 citation pill 連結斷、源頭顯示錯。投影 + 返回 dict 加返呢 3 個欄位(additive;`ChunkSummary` Pydantic 預設 `extra='ignore'` → `/chunks` route 無 regression)。Live 驗證:`/query` drive-images-1 GL 問題 11/11 citation 帶 doc_id。
+
 # C04 — Retrieval Engine Design Note
 
 > **Status**:`v2-stable`(W4 D1 2026-05-04 bump from v1-active):

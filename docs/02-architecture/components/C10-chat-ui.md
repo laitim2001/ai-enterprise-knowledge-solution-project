@@ -4,8 +4,10 @@ name: Chat Interface UI
 catalog_ref: ../COMPONENT_CATALOG.md#c10--chat-interface-ui
 spec_refs: [architecture.md §5 (chat-related views)]
 status: v1-active
-last_updated: 2026-05-04
+last_updated: 2026-06-07
 ---
+
+> **BUG-034 amendment(2026-06-07,Finding A)**:對話 `kb_id` 之前只喺建立嗰刻 capture(`handleNewChat` eager create / `ensureConversation` 重用不更新),切 KB 後 query 用新 kbId 但記錄停喺舊值 → 重開顯示錯 KB(BUG-033 只修「還原」,源頭錯漏網)。`handleSubmit` 現於重用既有對話(`reusedConversation = activeConvId != null`)時 `conversationsApi.update(convId, { kb_id: kbId })` 對齊實際 query KB,並 `queryClient.invalidateQueries(['conversations'])` 刷新側欄標籤;新建對話路徑已正確(create 用當前 kbId),guard 避免冗餘 PATCH。Playwright 真 browser 驗證 PASS。
 
 # C10 — Chat Interface UI Design Note
 
