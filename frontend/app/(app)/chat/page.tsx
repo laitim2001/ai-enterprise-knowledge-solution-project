@@ -293,6 +293,11 @@ export default function ChatPage() {
     setActiveConvId(conversationId);
     try {
       const detail = await conversationsApi.get(conversationId);
+      // BUG-033 Finding A — restore the conversation's bound KB so the selector
+      // reflects the loaded thread (was stuck on kbs[0] because loadConversation
+      // never synced kbId). kb_id lives on detail.conversation; null → leave the
+      // current selection.
+      if (detail.conversation.kb_id) setKbId(detail.conversation.kb_id);
       const hydrated: Message[] = detail.messages.map((m) => ({
         id: m.id,
         role: m.role,
@@ -1402,11 +1407,18 @@ function AnswerBodyMarkdown({ content, citations }: { content: string; citations
       p: ({ children }: { children?: ReactNode }) => (
         <p style={{ margin: '0 0 10px 0' }}>{injectPillsIntoChildren(children, citations, 'p')}</p>
       ),
+      // BUG-033 Finding B — Tailwind `@tailwind base` preflight resets `list-style:
+      // none`, so these renderers must re-assert the marker type or numbered/bulleted
+      // lists render markerless (LLM markdown is correct; this is the render fix).
       ol: ({ children }: { children?: ReactNode }) => (
-        <ol style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}>{children}</ol>
+        <ol style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7, listStyleType: 'decimal' }}>
+          {children}
+        </ol>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
-        <ul style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7 }}>{children}</ul>
+        <ul style={{ paddingLeft: 22, margin: '0 0 10px 0', lineHeight: 1.7, listStyleType: 'disc' }}>
+          {children}
+        </ul>
       ),
       li: ({ children }: { children?: ReactNode }) => (
         <li style={{ marginBottom: 2 }}>{injectPillsIntoChildren(children, citations, 'li')}</li>

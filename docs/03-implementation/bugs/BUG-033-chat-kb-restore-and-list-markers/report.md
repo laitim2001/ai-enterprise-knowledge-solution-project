@@ -2,7 +2,7 @@
 bug_id: BUG-033
 title: "Chat: KB selector not restored on conversation switch + ordered/bulleted list markers missing"
 severity: Sev3          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: triaged         # triaged | investigating | fixing | verifying | done | wont-fix
+status: done            # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-07
 reporter: "Chris (end-user testing on chat page)"
 affects_components: [C10]      # Frontend Chat UI (chat/page.tsx)

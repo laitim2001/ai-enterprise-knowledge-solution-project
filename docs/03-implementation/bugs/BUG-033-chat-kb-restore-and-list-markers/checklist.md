@@ -1,7 +1,7 @@
 ---
 bug_id: BUG-033
 report_ref: ./report.md
-status: in-progress     # in-progress | done
+status: done            # in-progress | done
 last_updated: 2026-06-07
 ---
 
@@ -18,32 +18,33 @@ last_updated: 2026-06-07
 
 ## Fix
 
-- [ ] F-A:`chat/page.tsx` `loadConversation` 加 `if (detail.kb_id) setKbId(detail.kb_id)`
-- [ ] F-B:`AnswerBodyMarkdown` `ol` 加 `listStyleType:'decimal'`、`ul` 加 `listStyleType:'disc'`(minimal,inline style;nested 全層 decimal)
-- [ ] surgical:只改呢兩處,唔郁無關 code
+- [x] F-A:`chat/page.tsx` `loadConversation` 加 `if (detail.conversation.kb_id) setKbId(detail.conversation.kb_id)`(**修正**:kb_id 喺 `detail.conversation`,非 `detail` 頂層 — 初稿寫錯,tsc 前自捉)
+- [x] F-B:`AnswerBodyMarkdown` `ol` 加 `listStyleType:'decimal'`、`ul` 加 `listStyleType:'disc'`(inline style;nested 全層 decimal;附註釋指 Tailwind preflight 根因)
+- [x] surgical:只改呢兩處 + 註釋,唔郁無關 code
 
 ## Regression Test
 
-- [ ] T-A:vitest — load 一個有 kb_id 嘅 conversation → KB selector value == conversation.kb_id(fail before / pass after)
-- [ ] T-B:vitest — AnswerBodyMarkdown render 一個 numbered list → `ol` 有 `list-style-type: decimal`(或 render 出可見序號)
-- [ ] frontend tsc + lint + 相關 vitest 0 regression
+- [x] T-A:`chat-bug033.test.tsx` — load conv(kb_id=kb-b)→ KB selector value 由 kb-a 變 kb-b(pass)
+- [x] T-B:同檔 — assistant message numbered list → `container.querySelector('ol').style.listStyleType === 'decimal'`(pass)
+- [x] frontend tsc exit 0 + eslint 0 error(1 pre-existing `<img>` warning 非我改)+ chat-kb-sync/meta-row 10 passed 0 regression
 
 ## Verification
 
-- [ ] Re-run report §2 repro:切對話 → KB selector 還原成該對話 KB
-- [ ] Re-run:detailed 答案顯示 `1. 2. 3.`(live UI 或 component test)
-- [ ] 相關 chat 功能無 regression(發訊息 / citation pill / images）
+- [x] T-A 證 Finding A:切對話 → selector 還原成該對話 KB(component test pass)
+- [x] T-B 證 Finding B:numbered list render 出 `<ol list-style-type:decimal>`(可見 1. 2. 3.)
+- [x] 相關 chat 功能無 regression(10 passed);**live-UI 視覺確認 → 用戶 refresh `/chat`(Next.js HMR 自動 reload)即見**(frontend bug,unit-test 已精準覆蓋邏輯)
 
 ## Closeout
 
-- [ ] progress.md closeout summary(root cause + lessons)
-- [ ] (Sev3 → **無** mandatory postmortem per PROCESS.md §4.5)
-- [ ] RISK_REGISTER 更新(若 pattern 新;預期不需 — 屬一般 UI state/CSS bug)
-- [ ] report.md status → done
-- [ ] progress.md status → closed
+- [x] progress.md closeout summary(root cause + lessons)
+- [x] (Sev3 → **無** mandatory postmortem per PROCESS.md §4.5)
+- [x] RISK_REGISTER 不需更新(一般 UI state/CSS bug,非新 pattern)
+- [x] report.md status → done
+- [x] progress.md status → closed
 
 ## Cross-Cutting
 
-- [ ] X1 commits 對應 progress Day-N(R2)+ component tag `fix(frontend): ... (C10)`
-- [ ] X2 非 architectural → 無 ADR(純前端 state + CSS 修正)
-- [ ] X3 doc-sync(若需;BUG fix 一般不改 spec)
+- [x] X1 commits 對應 progress Day 1 + component tag `fix(frontend): ... (C10)`
+- [x] X2 非 architectural → 無 ADR(純前端 state + CSS 修正)
+- [x] X3 無 spec 改動(BUG fix);doc-sync 見 progress
+- [x] X4 branch 策略:Option A — feat 上完成 → ff-merge 入 main(用戶 2026-06-07 揀)
