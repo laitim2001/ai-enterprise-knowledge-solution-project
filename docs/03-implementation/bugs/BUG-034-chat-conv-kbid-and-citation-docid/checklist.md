@@ -43,9 +43,9 @@ report_ref: ./report.md
 ## Verification (Finding C + D)
 - [x] VC1 — frontend tsc exit 0 + eslint 0 error(1 pre-existing `<img>` warning)+ vitest 21/21(citation-images 含 Finding D + format + bug034 + bug033)
 - [x] VC2 — Live(數據模擬真實 /query):Finding C 11 個 expansion citation = `—`;**Finding D 頭 8 張圖修前全 §3.1.5(p31)→ 修後 §3.1.1/§3.1.3(p20-28)lead**
-- [ ] VC3 — 用戶 chat 重測肉眼確認(Finding C `—` + Finding D Create 圖 lead)
+- [x] VC3 — 用戶 chat 重測肉眼確認(Finding C `—` + Finding D Create 圖 lead)— 用戶 2026-06-07「確認OK」
 
 ## Closeout
-- [x] C1 — report.md status(verifying;Finding C 待 live confirm)→ done after VC2;progress.md addendum
+- [x] C1 — report.md status → done;progress.md closed
 - [x] C2 — component design note bump(C10 chat / C04 retrieval list_chunks)
-- [ ] C3 — commits 對應 Day-N(R2);ff-merge 入 main(待用戶確認問題2+3 OK)
+- [x] C3 — commits 對應 Day-N(R2);ff-merge 入 main + push(用戶 2026-06-07 確認 OK)

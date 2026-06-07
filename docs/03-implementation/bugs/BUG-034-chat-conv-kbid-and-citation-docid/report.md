@@ -2,7 +2,7 @@
 bug_id: BUG-034
 title: "Chat: conversation persists stale kb_id (shows wrong KB) + expanded citations lose doc_id"
 severity: Sev3          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: verifying       # triaged | investigating | fixing | verifying | done | wont-fix
+status: done            # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-07
 reporter: "Chris (end-user testing on chat page, drive-images-1 KB)"
 affects_components: [C10, C04]   # C10 Frontend Chat UI (Finding A) · C04 Retrieval list_chunks (Finding B)
@@ -111,10 +111,10 @@ citation post-hoc expansion(`citation_expansion.py:332-343`)補入嘅 neighbor c
 新增 `formatRelevance(score)`(`lib/chat/citation-images.ts`):`score > 0 ? toFixed(3) : '—'`(真 Cohere rerank score 實際上永不剛好 0,故 `score>0` 可靠分辨 reranked vs expansion neighbor)。4 處顯示改用呢個 helper。純前端、display-only。
 
 ### Acceptance(C)
-- [ ] expansion citation(score=0)tooltip / panel / modal 顯示 `—` 而非 `0.000`
-- [ ] 真 reranked citation 仍顯示 3 位小數分數
-- [ ] `formatRelevance` unit test;tsc + lint + vitest 0 regression
-- [ ] Live:GL query → 11 個 expansion citation 顯示 `—`,2 個 reranked 顯示分數
+- [x] expansion citation(score=0)tooltip / panel / modal 顯示 `—` 而非 `0.000`
+- [x] 真 reranked citation 仍顯示 3 位小數分數
+- [x] `formatRelevance` unit test;tsc + lint + vitest 0 regression
+- [x] Live(數據模擬)+ 用戶 chat 重測確認 OK(2026-06-07)
 
 ### Out-of-scope(C)
 問題1 圖片 recall 相關性 + expansion 闊度調優 → 見 Finding D(下)結果:**圖片 ORDERING 屬 presentation,已修;retrieval RELEVANCE 仍不改**。
@@ -132,10 +132,10 @@ GL03「post a journal entry」程序 = §3.1.3 GL03-1 Create General Journal(~p2
 `dedupeCitationImages`(`lib/chat/citation-images.ts`)輸出加一個 stable sort,key = 圖片自己嘅 `source_section`(`imageSectionPath`)→ 圖片按 DOCUMENT 次序排(§3.1.1 → 3.1.3 → 3.1.4 → 3.1.5),程序由 Create(p20-28)順住落 Post(p31)。numeric badge(citationIdx)仍錨 citation 位置;只改 render order。純前端 presentation,**不改 retrieval**。
 
 ### Acceptance(D)
-- [ ] gallery + inline cards 按 section document 次序排(Create 先於 Post)
-- [ ] 同 section 圖片保持原(citation)次序(stable)
-- [ ] unit test;tsc + lint + vitest 0 regression
-- [ ] Live:GL query 頭幾張圖 = §3.1.1/§3.1.3(p20-28)而非 §3.1.5(p31)
+- [x] gallery + inline cards 按 section document 次序排(Create 先於 Post)
+- [x] 同 section 圖片保持原(citation)次序(stable)
+- [x] unit test;tsc + lint + vitest 0 regression
+- [x] Live(數據模擬:頭 8 張 §3.1.5→§3.1.1/§3.1.3)+ 用戶 chat 重測確認 OK(2026-06-07)
 
 ### 仍然 out-of-scope
 Retrieval RELEVANCE 本身(reranker 點解偏好 §3.1.5、要唔要改 rerank_k / query reformulation / low-value flag)**不改** —— text 答案已完整覆蓋全程序,圖片排序已解決 UX;深層 rerank 調優屬獨立 retrieval 課題,有需要先另案。
