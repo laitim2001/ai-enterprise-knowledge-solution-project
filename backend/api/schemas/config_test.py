@@ -117,7 +117,9 @@ class ConfigTestResult(BaseModel):
     query: str
     runs: int
     # The resolved EffectiveConfig actually applied (draft > saved KbConfig > global)
-    # — lets the caller confirm what was tested.
-    resolved_config: dict[str, int | bool | None]
+    # — lets the caller confirm what was tested. `str` covers the CH-006 `answer_detail`
+    # ("concise"/"detailed") EffectiveConfig field (asdict'd in here alongside the int /
+    # bool knobs + the CH-007 default_top_k / default_rerank_k ints).
+    resolved_config: dict[str, int | bool | str | None]
     draft: ConfigRunSummary
     saved: ConfigRunSummary | None = None  # populated when compare_to_saved=True

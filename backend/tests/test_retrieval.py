@@ -413,6 +413,39 @@ async def test_retrieval_engine_overfetches_when_reranker_present() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ch007_overfetch_override_sizes_candidate_pool() -> None:
+    """CH-007 — an explicit `overfetch` arg overrides the engine's hybrid_overfetch so
+    a per-KB default_top_k can size the rerank candidate pool; `None` keeps the default."""
+    from retrieval.reranker.base import RerankedChunk
+
+    def _engine() -> tuple[RetrievalEngine, MagicMock]:
+        embedder = _FakeEmbedder()
+        searcher = MagicMock()
+        searcher.search = AsyncMock(return_value=[
+            HybridSearchHit(score=0.5, fields={"chunk_id": f"c{i}", "chunk_text": "x"})
+            for i in range(80)
+        ])
+        reranker = MagicMock()
+        reranker.rerank = AsyncMock(return_value=[
+            RerankedChunk(fields={"chunk_id": "c0"}, rerank_score=0.99, hybrid_score=0.5, original_index=0),
+        ])
+        return RetrievalEngine(
+            embedder=embedder, searcher=searcher, reranker=reranker,
+            hybrid_overfetch_for_rerank=50,
+        ), searcher
+
+    # overfetch=80 > top_k(5) → fetch_k = 80 (overrides the engine default 50)
+    engine, searcher = _engine()
+    await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5, overfetch=80)
+    assert searcher.search.await_args.kwargs["top_k"] == 80
+
+    # overfetch=None → engine default (50) preserved (bit-identical to pre-CH-007)
+    engine, searcher = _engine()
+    await engine.retrieve(query="q", kb_id="drive_user_manuals", top_k=5, overfetch=None)
+    assert searcher.search.await_args.kwargs["top_k"] == 50
+
+
+@pytest.mark.asyncio
 async def test_retrieval_engine_no_rerank_call_when_hits_empty() -> None:
     embedder = _FakeEmbedder()
     searcher = MagicMock()

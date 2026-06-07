@@ -7,6 +7,8 @@ status: v2-stable
 last_updated: 2026-06-07
 ---
 
+> **CH-007 amendment(2026-06-07)**:`KbConfig.default_top_k` / `default_rerank_k`(W2 baseline 欄位)由「持久化但被 chat 忽略」變為**經 `EffectiveConfig` 生效於 `/query` + `/query/stream`**(`PerQueryOverrides` 加同名旋鈕;resolve = per-query > per-KB > 全域 `hybrid_top_k_retrieval`/`rerank_top_k`)。Frontend 控件 + PATCH 持久化早已存在(無前端改動)。詳見 [[../../03-implementation/changes/CH-007-per-kb-top-k-rerank-wiring/spec.md]] 與 C04 amendment。
+
 # C02 — Knowledge Base Manager Design Note
 
 > **Status**:`v2-stable`(W2 D5 cont 2026-05-04 — F10.4 carry-over closeout)— W1 D2 in-memory CRUD impl(commit `c6ca6e3`)+ W2 D5 cont 14 unit tests for `InMemoryKBBackend` + `KBService`(`backend/tests/test_kb_management.py`)。Azure-backed swap via FastAPI dependency override 仍 W3+ stretch(zero call-site change),non Tier 1 critical path。

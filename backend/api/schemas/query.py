@@ -46,8 +46,15 @@ class Citation(BaseModel):
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     kb_id: str
-    top_k_retrieval: int = 50
-    top_k_rerank: int = 5
+    # CH-007 — `None` = no per-query override → the pipeline falls back to the KB's
+    # `default_top_k` / `default_rerank_k` (resolved via EffectiveConfig: per-query >
+    # per-KB > global). A concrete int IS an explicit per-query override (eval harness,
+    # tests). Pre-CH-007 these defaulted to 50 / 5 (int), which was indistinguishable
+    # from "unset" — so a KB's saved values could never take effect for the chat path,
+    # which sends neither field. `top_k_retrieval` maps to the retrieval overfetch (the
+    # rerank candidate pool); `top_k_rerank` to the final rerank depth.
+    top_k_retrieval: int | None = None
+    top_k_rerank: int | None = None
     llm_model: Literal["gpt-5.5", "gpt-5.4-mini"] = "gpt-5.5"
     reranker: Literal[
         "cohere-v4.0-pro",

@@ -79,6 +79,7 @@ class _MockSynth:
         engine: object = None,  # W32 F1.1.a mock signature accept new kwargs (unused)
         kb_id: str | None = None,
         effective_config: object = None,  # W43 F1.5 — per-KB resolved config (unused in mock)
+        detail_level: str = "concise",  # CH-006 — route passes this; mock must accept it
     ) -> _SynthOutcome:
         return _SynthOutcome(
             answer=self._answer,

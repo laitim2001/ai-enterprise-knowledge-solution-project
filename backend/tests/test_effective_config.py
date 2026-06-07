@@ -59,6 +59,9 @@ def test_resolve_no_kb_config_inherits_every_global_default() -> None:
     assert eff.citation_neighbour_window == s.citation_neighbour_window
     # max_images_per_answer has no global field → None by default (no backend cap)
     assert eff.max_images_per_answer is None
+    # CH-007 — top_k overfetch + rerank depth fall through to the global retrieval defaults
+    assert eff.default_top_k == s.hybrid_top_k_retrieval
+    assert eff.default_rerank_k == s.rerank_top_k
 
 
 def test_resolve_empty_kb_config_is_bit_identical_to_global() -> None:
@@ -126,6 +129,40 @@ def test_resolve_per_query_partial_falls_through_to_per_kb() -> None:
     pq = PerQueryOverrides()  # all None — no override
     eff = resolve_effective_config(s, kb_config=kb, per_query=pq)
     assert eff.parent_doc_top_k == 4  # per-KB (per-query all-None)
+
+
+# --------------------------------------------------------------------------- #
+# CH-007 — default_top_k / default_rerank_k resolution (per-query > per-KB > global)
+# --------------------------------------------------------------------------- #
+
+
+def test_resolve_ch007_top_k_per_kb_overrides_global() -> None:
+    """A KB's saved default_top_k / default_rerank_k win over the global retrieval
+    defaults — the chat path (no per-query top_k) then uses the KB's values."""
+    s = _settings()
+    kb = KbConfig(default_top_k=80, default_rerank_k=20)
+    eff = resolve_effective_config(s, kb_config=kb)
+    assert eff.default_top_k == 80
+    assert eff.default_rerank_k == 20
+
+
+def test_resolve_ch007_top_k_per_query_overrides_per_kb_and_global() -> None:
+    """An explicit per-query top_k (eval harness / tests) beats the per-KB default."""
+    s = _settings()
+    kb = KbConfig(default_top_k=80, default_rerank_k=20)
+    pq = PerQueryOverrides(default_top_k=12, default_rerank_k=3)
+    eff = resolve_effective_config(s, kb_config=kb, per_query=pq)
+    assert eff.default_top_k == 12  # per-query beats per-KB(80) + global
+    assert eff.default_rerank_k == 3  # per-query beats per-KB(20)
+
+
+def test_resolve_ch007_top_k_none_per_query_falls_through_to_per_kb() -> None:
+    """The chat path sends neither top_k → PerQueryOverrides all-None → KB default wins."""
+    s = _settings()
+    kb = KbConfig(default_top_k=80, default_rerank_k=20)
+    eff = resolve_effective_config(s, kb_config=kb, per_query=PerQueryOverrides())
+    assert eff.default_top_k == 80
+    assert eff.default_rerank_k == 20
 
 
 # --------------------------------------------------------------------------- #

@@ -24,7 +24,11 @@ from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryRespons
 from generation.citation_enrichment import build_citations, cap_images_per_answer
 from generation.citation_image_neighbors import attach_neighbour_images
 from generation.crag import CragLoop
-from generation.effective_config import EffectiveConfig, resolve_effective_config
+from generation.effective_config import (
+    EffectiveConfig,
+    PerQueryOverrides,
+    resolve_effective_config,
+)
 from generation.query_reformulator import QueryReformulator
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
@@ -43,7 +47,10 @@ KbServiceDep = Annotated[KBService, Depends(get_kb_service)]
 
 
 async def _resolve_effective_config(
-    service: KBService, settings: Settings, kb_id: str,
+    service: KBService,
+    settings: Settings,
+    kb_id: str,
+    per_query: PerQueryOverrides | None = None,
 ) -> EffectiveConfig:
     """W43 F1.3 (ADR-0040) — resolve the per-request retrieval / citation config.
 
@@ -51,6 +58,10 @@ async def _resolve_effective_config(
     (per-query > per-KB > global). A missing KB record (`KBNotFoundError` — e.g. a
     query against an index that has no KB metadata row) falls back to the global
     defaults, so the request behaves exactly as pre-W43 (G7 back-compat).
+
+    CH-007 — `per_query` carries the request's explicit top_k overrides (the eval
+    harness / tests that DO send `top_k_*`); when `None` (the chat path), the KB's
+    `default_top_k` / `default_rerank_k` win, which is the whole point of this change.
     """
     kb_config = None
     try:
@@ -58,7 +69,20 @@ async def _resolve_effective_config(
         kb_config = kb_status.config
     except KBNotFoundError:
         kb_config = None  # global-default config for an unregistered KB
-    return resolve_effective_config(settings, kb_config)
+    return resolve_effective_config(settings, kb_config, per_query)
+
+
+def _per_query_from_payload(payload: QueryRequest) -> PerQueryOverrides:
+    """CH-007 — fold the request's explicit top_k fields into a `PerQueryOverrides`
+    so the resolver treats them as the highest-priority override. Both fields are
+    `None` for the chat path (which sends neither), letting the per-KB
+    `default_top_k` / `default_rerank_k` win.
+    """
+    return PerQueryOverrides(
+        default_top_k=payload.top_k_retrieval,
+        default_rerank_k=payload.top_k_rerank,
+    )
+
 
 _W2_PLACEHOLDER_ANSWER = (
     "[W2 baseline: retrieval-only response; synthesis answer wired W3 per "
@@ -127,7 +151,9 @@ async def query(
     harness runs the IDENTICAL pipeline).
     """
     settings = get_settings()
-    effective = await _resolve_effective_config(service, settings, payload.kb_id)
+    effective = await _resolve_effective_config(
+        service, settings, payload.kb_id, _per_query_from_payload(payload),
+    )
     return await execute_query_pipeline(payload, request, effective, settings)
 
 
@@ -162,11 +188,13 @@ async def execute_query_pipeline(
             fused = await fused_retrieve(
                 variants=reform.variants,
                 kb_id=payload.kb_id,
-                top_k=payload.top_k_rerank,
+                # CH-007 — per-KB rerank depth + overfetch (resolved EffectiveConfig).
+                top_k=effective.default_rerank_k,
                 engine=engine,
                 rrf_k=settings.query_expansion_rrf_k,
                 per_variant_overfetch=settings.query_expansion_per_variant_overfetch,
                 mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
+                overfetch=effective.default_top_k,
             )
             result: RetrievalResult = fused.as_retrieval_result()
             logger.info(
@@ -180,7 +208,9 @@ async def execute_query_pipeline(
             result = await engine.retrieve(
                 query=payload.query,
                 kb_id=payload.kb_id,
-                top_k=payload.top_k_rerank,
+                # CH-007 — per-KB rerank depth + overfetch (resolved EffectiveConfig).
+                top_k=effective.default_rerank_k,
+                overfetch=effective.default_top_k,
                 mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
             )
     except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
@@ -371,13 +401,19 @@ async def query_stream(
             ),
         )
 
-    effective = await _resolve_effective_config(service, get_settings(), payload.kb_id)
+    effective = await _resolve_effective_config(
+        service, get_settings(), payload.kb_id, _per_query_from_payload(payload),
+    )
 
     try:
         result = await engine.retrieve(
             query=payload.query,
             kb_id=payload.kb_id,
-            top_k=payload.top_k_rerank,
+            # CH-007 — rerank depth + overfetch from the resolved per-KB config
+            # (per-query override > per-KB default > global). The chat path sends
+            # neither top_k field, so the KB's saved values take effect here.
+            top_k=effective.default_rerank_k,
+            overfetch=effective.default_top_k,
             mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
         )
     except Exception as exc:  # noqa: BLE001

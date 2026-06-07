@@ -4,8 +4,10 @@ name: Retrieval Engine
 catalog_ref: ../COMPONENT_CATALOG.md#c04--retrieval-engine
 spec_refs: [architecture.md §3.1, architecture.md §3.2, eval-methodology.md §7]
 status: v2-stable
-last_updated: 2026-05-04
+last_updated: 2026-06-07
 ---
+
+> **CH-007 amendment(2026-06-07)**:`RetrievalEngine.retrieve` 新增 additive `overfetch: int | None = None` kwarg(`None` = 沿用建構時 `self._hybrid_overfetch`,零行為改變);`fetched_k = max(top_k, overfetch ?? hybrid_overfetch)`。配合 `query.py` 把每個 KB 的 `default_rerank_k`(rerank 深度)→ `retrieve(top_k=)`、`default_top_k`(候選池 overfetch)→ `retrieve(overfetch=)`,經 `EffectiveConfig`(per-query > per-KB > 全域)resolve。修復 chat 路徑忽略 KB 設定的 top_k(`default_top_k` 之前在 query 路徑完全 dead)。`fused_retrieve` 同步透傳 `overfetch`。
 
 # C04 — Retrieval Engine Design Note
 

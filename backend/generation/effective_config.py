@@ -38,6 +38,10 @@ class PerQueryOverrides:
     forward-compat exposure.
     """
 
+    # CH-007 — retrieval overfetch + rerank depth per-query override (None = no
+    # override → fall back to per-KB default_top_k / default_rerank_k, else global).
+    default_top_k: int | None = None
+    default_rerank_k: int | None = None
     enable_parent_doc_retrieval: bool | None = None
     parent_doc_section_depth_offset: int | None = None
     parent_doc_top_k: int | None = None
@@ -69,6 +73,13 @@ class EffectiveConfig:
     ``ExpansionConfig`` protocol).
     """
 
+    # CH-007 — retrieval overfetch (rerank candidate pool) + final rerank depth.
+    # Resolved per-query > per-KB (KbConfig.default_top_k / default_rerank_k) > global
+    # (Settings.hybrid_top_k_retrieval / Settings.rerank_top_k). `execute_query_pipeline`
+    # reads ONLY these (never payload.top_k_*) so the chat path — which sends neither —
+    # honours the KB's saved values, while an explicit per-query value still wins.
+    default_top_k: int
+    default_rerank_k: int
     # parent-doc retrieval (ADR-0037 / architecture.md §3.1)
     enable_parent_doc_retrieval: bool
     parent_doc_section_depth_offset: int
@@ -121,6 +132,20 @@ def resolve_effective_config(
     pq = per_query
 
     return EffectiveConfig(
+        # CH-007 — top_k overfetch + rerank depth. KbConfig.default_top_k /
+        # default_rerank_k are concrete ints (W2 baseline 50 / 5, not Optional), so a
+        # registered KB always supplies a value; the global Settings fallback only
+        # applies when the KB record is absent (kb_config=None).
+        default_top_k=_resolve(
+            pq.default_top_k if pq else None,
+            kb.default_top_k if kb else None,
+            settings.hybrid_top_k_retrieval,
+        ),
+        default_rerank_k=_resolve(
+            pq.default_rerank_k if pq else None,
+            kb.default_rerank_k if kb else None,
+            settings.rerank_top_k,
+        ),
         enable_parent_doc_retrieval=_resolve(
             pq.enable_parent_doc_retrieval if pq else None,
             kb.enable_parent_doc_retrieval if kb else None,

@@ -126,6 +126,7 @@ class RetrievalEngine:
         filter_clause: str | None = None,
         mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
         rerank: bool = True,
+        overfetch: int | None = None,
     ) -> RetrievalResult:
         """Embed query + search (mode-selectable) + optional rerank; ordered chunks + timings.
 
@@ -160,7 +161,12 @@ class RetrievalEngine:
 
         do_rerank = self._reranker is not None and rerank
         # When reranking, fetch a wider candidate set then rerank to top_k.
-        fetch_k = max(top_k, self._hybrid_overfetch) if do_rerank else top_k
+        # CH-007: `overfetch` overrides the per-engine `self._hybrid_overfetch` default
+        # so a per-KB `default_top_k` can size the rerank candidate pool. `None` keeps
+        # the W38 baseline (the global Settings.hybrid_top_k_retrieval the engine was
+        # built with) → bit-identical to pre-CH-007 for callers that don't pass it.
+        effective_overfetch = overfetch if overfetch is not None else self._hybrid_overfetch
+        fetch_k = max(top_k, effective_overfetch) if do_rerank else top_k
         search_start = time.perf_counter()
         hits = await self._searcher.search(
             query_text=query,

@@ -91,6 +91,7 @@ class _MockSynth:
     async def synthesize(
         self, query: str, chunks: list[_Chunk], *,
         engine: object = None, kb_id: str | None = None, effective_config: object = None,
+        detail_level: str = "concise",  # CH-006 — route passes this; mock must accept it
     ) -> _Synth:
         return _Synth(
             answer="ans [chunk-a][chunk-b]", citation_ids=["chunk-a", "chunk-b"],
