@@ -85,4 +85,28 @@ W56 後續 live 診斷(KB `w56-drive-ab-1`):procedural 問題(GL03 post journal)
 
 ---
 
+## Retro addendum — 2026-06-07(CH-007 期間發現,post-closeout)
+
+> 由 [[../CH-007-per-kb-top-k-rerank-wiring/spec.md|CH-007]] 跑 query-pipeline 完整 test suite 時揭發:**CH-006 landing 其實唔完整**,有兩層 latent bug 互相遮蔽,本 CH 嘅 V1「80 passed」從未覆蓋到。已於 CH-007 內恢復(commit `6ab7adc`),此處補 retro 記錄根因 + 教訓。
+
+### 漏網兩層(互相遮蔽)
+1. **4 個 route-test mock 漏改 `detail_level`**:CH-006 令 `query.py` route 無條件傳 `synthesize(..., detail_level=effective.answer_detail)`,但只更新咗部分 test mock。`test_query_per_kb_config.py` / `test_config_test_route.py` / `test_observe_query_route.py` / `test_e1_e5_e12_smoke.py` 4 個 `_MockSynth.synthesize` 簽名冇收 `detail_level` → 打 route 時 `TypeError` → 502。
+2. **`ConfigTestResult.resolved_config` type 容唔落 `answer_detail: str`**:CH-006 為 `EffectiveConfig` 加 `answer_detail: str`,但 `config_test.py` 的 `resolved_config: dict[str, int | bool | None]` 冇放寬 → `asdict(effective)` 帶 str 入去 → `ValidationError`。
+
+### 點解 CH-006 V1 走漏
+- 第 1 層 502(`synthesize` TypeError)發生喺 `return ConfigTestResult(...)` **之前**,遮蔽咗第 2 層。
+- CH-006 V1 實際只跑 `prompt_builder` / `synthesizer` / `effective_config` / `crag` 等**唔打 route mock** 的檔(該批答案 80 passed 真實),從未跑呢 4 個 route-test 檔 → 兩個 bug 都漏網。
+
+### 教訓
+- 改 pipeline 入口簽名(新增**無預設**或**無條件傳遞**的 kwarg)時,要 grep 晒**所有** route-test mock 同步;單靠跑「相關」子集 test 會走漏 route-level 檔。
+- Pydantic response model 的 union type(如 `resolved_config`)隨上游 dataclass 加欄位要同步放寬,否則 `asdict` 序列化會喺 runtime 先爆。
+- **驗收 gate 應跑覆蓋該 route 的完整 test 檔集**,唔好只跑 feature-local 檔。
+
+### CH-007 恢復內容(commit `6ab7adc`)
+- 4 檔 mock `synthesize` 加 `detail_level: str = "concise"`(對齊 ship 的真簽名)。
+- `ConfigTestResult.resolved_config` type 放寬至 `dict[str, int | bool | str | None]`。
+- 恢復後全 suite **113 passed / 0 fail**。CH-006 行為本身正確,純屬 test-coverage + schema-type 漏網。
+
+---
+
 **End of CH-006 progress**
