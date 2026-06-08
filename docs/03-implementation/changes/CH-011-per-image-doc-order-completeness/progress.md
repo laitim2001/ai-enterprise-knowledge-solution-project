@@ -35,8 +35,15 @@ status: in-progress     # in-progress | closed
 - ⚠️ **pre-existing ruff 保留**:`citation_image_neighbors.py:83` B905 zip(CH-010 已記錄)+ `test_citation_image_neighbors.py:18` I001 import block(git diff 確認非我改動)→ surgical 保留。
 - ℹ️ `ruff format` normalize 咗 `test_citation_image_neighbors.py` 3 處 pre-existing trailing-comma 格式(L233/260/336,我冇 touch 嘅 test)— canonical formatter side-effect,formatting-only。
 
+### Execution(live,2026-06-08)
+- Commit `0283e3e`(feat code+tests)+ docs commit;working tree 淨剩 session-start.md(永不 commit)+ live-*.png(scratch)
+- Backend 殺 dual-process(venv parent 42616 + system child 41360)→ venv python 重啟(`HYBRID_USE_SEMANTIC_RANKER=false`);/health 全 component OK
+- **Re-index drive-images-1:6/6 reindexed,0 skipped(sources 齊),0 failed,369 chunks** → `doc_order` 入 index
+- Backend /query GL03 驗:lead citation 20 圖 doc_order **259→265→269→…→357 嚴格遞增**;概覽(259/265)行頭,§3.1.3 步驟照頁次 → **Q3 backend 層證實解決**(視覺待用戶 UI 驗 V2)
+- **Q1 完整性 cap 決定**:用戶選**保持 cap=20**(C2.2);順序為本期重點,完整性 ~35 留 P2
+
 ### Blockers
-- **V1 re-index drive-images-1**:需 backend 重啟載新 code + 原始檔已存(ADR-0043 sources container)— 未確認 drive-images-1 是否有 source 可 re-index
+- 無(V1 re-index 已完成,sources 齊)
 
 ### Effort
 - Planned:1–1.5 day;Actual(Day1 文檔 + code + test):~3h;Variance:—

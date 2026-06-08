@@ -24,7 +24,7 @@ last_updated: 2026-06-08
 
 ## C-2 — document-span 揀圖(改善 Q1)
 - [x] C2.1 — `_find_section_neighbour_images` cap 選擇 nearest-first → document-order(chunk_index ascending)(`citation_image_neighbors.py`)
-- [ ] 🚧 C2.2 — verify 時調大 drive-images-1 per-KB `max_images_per_answer`(config,非 code;V1 re-index 時做)
+- [x] C2.2 — **用戶決定保持 cap=20**(2026-06-08):順序(Q3)修復為本期重點;完整性(Q1 ~35)維持 cap,超額入 Image Library;full per-doc 完整性控制留 P2(layer A)。drive-images-1 config 不變(max_images_per_answer=20 / neighbour max_aux=18)
 
 ## Tests
 - [x] T1 — `parse_embedded_images` doc_order unit test(有/無 key + storage→query round-trip)(AC2)
@@ -33,11 +33,12 @@ last_updated: 2026-06-08
 - [x] T4 — backend pytest **1262 passed + 25 skipped + 1 pre-existing fail(非我 — 見 progress)**;frontend vitest 28 + type-check exit 0;ruff 我 code 乾淨(B905 L83 + I001 import 皆 pre-existing 保留);ruff format 全過;mypy --strict 改檔 0 新 error(AC7)
 
 ## Verify
-- [ ] V1 — re-index drive-images-1(`HYBRID_USE_SEMANTIC_RANKER=false`;pre-flight Langfuse 200 + PG SELECT 1)
-- [ ] V2 — **live chat GL03 query**:§3.1.3 步驟圖照 Word 頁次 render(Q3 解)+ 概覽 lead + coverage 改善(Q1)(AC5)— **用戶驗**
+- [x] V-restart — backend 殺 dual-process(42616+41360)→ venv python 重啟載新 code(`HYBRID_USE_SEMANTIC_RANKER=false`);/health 全 component OK;frontend :3001 alive
+- [x] V1 — re-index drive-images-1 **6/6 reindexed,0 skipped(sources 齊),0 failed,369 chunks**;pre-flight Langfuse 200 + PG 1 row + azurite 10000 ✓
+- [ ] V2 — **live chat GL03 query**:§3.1.3 步驟圖照 Word 頁次 render(Q3 解)+ 概覽 lead(AC5)— **用戶驗**(backend /query 已證 doc_order 升序;待 UI 視覺確認)
 - [ ] 🚧 V3 — 跨文件 30-query eval:recall / faithfulness flat + p95 latency 記錄(AC6)
-- [ ] V4 — production-preserve:未 re-index KB(doc_order=0)行為 bit-identical(AC7)
-- [ ] V5 — doc_order 單調性抽查(GL03 `img@<N>` N 遞增)(R2)
+- [x] V4 — production-preserve:frontend `allHaveDocOrder` mode 一次性決定 → 未 re-index KB(doc_order=0)退回 section sort,既有 vitest(唔 set doc_order)全綠驗證 bit-identical(AC7)
+- [x] V5 — doc_order 單調性確認:GL03 /query lead citation 圖 doc_order=259,265,269,275,…,357 **嚴格遞增**(R2)
 
 ## Cross-Cutting
 - [ ] X1 — 每 commit 對應 `progress.md` Day-N(R2)+ component tag(`feat(scope): ... (Cn)`)
