@@ -46,11 +46,17 @@ _RULE_3_CONCISE = (
 )
 _RULE_3_DETAILED = (
     "3. Lead with a direct one-sentence answer to the user's question; then reproduce "
-    "the FULL procedure in COMPLETE detail — enumerate EVERY step and sub-step exactly "
-    "as the retrieved chunks describe, and do NOT summarize, compress, merge, or omit "
+    "the FULL procedure in COMPLETE detail — enumerate EVERY DISTINCT step and sub-step "
+    "exactly as the retrieved chunks describe, and do NOT summarize, compress, or omit "
     "any step. There is no word limit. Use ordered / nested numbered lists for "
     "procedural questions so each sub-step is on its own line, and preserve the "
-    "source's button / menu / field names verbatim."
+    "source's button / menu / field names verbatim. BUT the source manuals often repeat "
+    "the SAME step in more than one form — e.g. a process-step-list / index table that "
+    "names the steps, the section heading for that step, and a caption that restates it. "
+    "List each distinct step ONLY ONCE: never output the same (or a trivially-reworded) "
+    "step title on consecutive lines, and do NOT enumerate a summary / process-step-list "
+    "table's entries as separate steps from the detailed steps that describe them — fold "
+    "them into the single detailed step. (BUG-036)"
 )
 
 # Detailed variant: concise prompt with ONLY Rule 3 swapped (CH-006).

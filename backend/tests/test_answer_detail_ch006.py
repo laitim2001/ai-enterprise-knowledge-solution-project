@@ -59,6 +59,20 @@ def test_detailed_variant_drops_cap_and_demands_full_enumeration() -> None:
     assert "no word limit" in low
 
 
+def test_detailed_variant_dedups_repeated_source_headings_bug036() -> None:
+    # BUG-036 — the Drive manuals repeat the same step as a process-step-list table
+    # entry + a section heading + a caption; the detailed prompt must instruct the LLM
+    # to list each distinct step ONCE (fold the summary table into the detailed step)
+    # so the answer does not show duplicate step lines. Completeness ("every DISTINCT
+    # step") is preserved — only exact/near-exact repeats are folded.
+    low = SYSTEM_PROMPT_DETAILED.lower()
+    assert "distinct step" in low  # still enumerate every DISTINCT step (completeness)
+    assert "only once" in low  # but each distinct step listed only once
+    assert "process-step-list" in low  # do not enumerate the summary table separately
+    # the over-faithful "merge" prohibition that caused verbatim heading repeats is gone
+    assert "compress, merge" not in SYSTEM_PROMPT_DETAILED
+
+
 def test_detailed_actually_differs_from_concise() -> None:
     # Guards the .replace() match — if _RULE_3_CONCISE stopped matching, the replace
     # would be a no-op and the two prompts would be identical.

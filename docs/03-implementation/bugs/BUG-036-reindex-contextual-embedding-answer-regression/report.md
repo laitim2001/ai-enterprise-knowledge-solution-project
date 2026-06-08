@@ -2,7 +2,7 @@
 bug_id: BUG-036
 title: "Chat 文字答案格式 regression — re-index 引入 contextual embedding 後步驟列亂編號 + 重複行"
 severity: Sev2          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: investigating   # triaged | investigating | fixing | verifying | done | wont-fix
+status: verifying   # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-08
 reporter: "End-user (Chris)"
 affects_components: [C04, C05]
