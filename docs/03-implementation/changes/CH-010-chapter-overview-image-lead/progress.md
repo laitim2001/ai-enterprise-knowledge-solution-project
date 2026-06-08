@@ -44,4 +44,51 @@ status: in-progress     # in-progress | closed
 
 ---
 
-**End of CH-010 progress (Day 1 — Approach 1 locked;ADR-0047 Proposed;config/eval GATED on Accept)**
+## Day 1 cont — 2026-06-08(Accept → 實作)
+
+### ADR-0047 Accepted(Chris)→ 執行 Approach 1 config
+
+- live A/B(drive-images-1「confirm voucher」)逐步試 per-KB config(neighbour depth=1 max_aux 12→20 + parent_doc + expansion)。
+
+### 關鍵發現:Approach 1 config-only 解唔到概覽 lead(兩個 code 層根因)
+
+1. **neighbour-attach pile-on-lead + nearest-first**:所有 neighbour 圖 pile 落 top citation(CIT 1 idx 27),nearest-first 切,§3.1.3 就近大量圖(idx 25/26/28 共 ~25 張)食晒 max_aux → reach 唔到 idx-24 §3.1.1 概覽(距離 3)。
+2. **`cap_images_per_answer` citation-order 餓死概覽**:expansion materialize §3.1.1 做 citation(CIT 5/13,連 2 張概覽圖),但 backend cap(citation/relevance order)喺前端 document-order 之前 pre-trim,top citation 食晒 `max_images_per_answer=20` budget → 概覽 citation 圖 trim 到 0。
+- **驗證根因**:set `max_images_per_answer=null` → §3.1.1 citation 即 keep 返 2 張概覽圖(`60a8a6e9` + `cfe10a8d`)→ 證實 cap 餓死。
+
+### 決策 + 落實(promote Approach 2 pin;config 全 revert baseline)
+
+- Approach 1 config **全 revert 返 baseline**(6 個完整性 knobs → null;`max_images_per_answer=20` 保留)。
+- 用戶「兩者都做(查 Y + 加 X)」→ Y(cap 餓死)= 診斷,X(pin-before-cap)= 修法,收斂成一個 cap-aware pin。
+- 實作 `pin_chapter_overview_images`(NEW,`citation_image_neighbors.py`):偵測主導章節 → fetch §X.1 "Overview" chunk 圖 → prepend 到 lead citation 最前、排喺 cap 之前 → survive cap + document-order lead。per-KB flag `enable_chapter_overview_pin`(default OFF,production-preserve)。
+- ADR-0047 加 implementation amendment。
+
+### Code 變更(6 files + tests)
+
+- `storage/settings.py`(C05):`enable_chapter_overview_pin: bool = False` 全域 default。
+- `api/schemas/kb.py`(C03):`KbConfig.enable_chapter_overview_pin: bool | None`。
+- `generation/effective_config.py`(C05):PerQueryOverrides + EffectiveConfig + resolve。
+- `api/schemas/config_test.py`(C05):DraftRetrievalConfig 加 field(harness 可試)。
+- `generation/citation_image_neighbors.py`(C05):`pin_chapter_overview_images`(pure aside fetch;graceful)。
+- `api/routes/query.py`(C05):wire 兩條 path(attach 後、cap **前**)。
+- `tests/test_ch010_chapter_overview_pin.py`:7 tests。
+
+### Verify(單元)
+
+- **V-unit PASS**:pytest 47(7 新 pin + 40 既有 neighbour/effective_config)+ ruff 我 code 乾淨(唯一 B905 = pre-existing,非我 code,surgical 不修)+ ruff format 全過 + mypy --strict 改動檔 0 新 error(64 pre-existing baseline)。
+
+### Blockers / Carry-over
+
+- 🚧 **重啟 backend 載新 code**(無 --reload;dual-process;startup 慢,輪詢 /health)。
+- 🚧 **V1/V2 live**:enable drive-images-1 `enable_chapter_overview_pin=true`(+ neighbour depth=1 完整性)→ /query/stream 確認概覽 lead + 步驟補齊。
+- 🚧 **V3 跨文件 30-query eval**(必須,防 regression)。
+- 🚧 V5 用戶 chat live。
+
+### Commits（本 cont）
+| Hash | Subject |
+|---|---|
+| _(本次)_ | feat(chat): CH-010 chapter-overview image pin (ADR-0047) |
+
+---
+
+**End of CH-010 progress (Day 1 cont — pin implemented + unit-verified;backend restart + live/eval GATED)**

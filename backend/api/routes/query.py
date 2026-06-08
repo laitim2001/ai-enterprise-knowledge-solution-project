@@ -22,7 +22,10 @@ from fastapi.responses import StreamingResponse
 from api.routes.documents import screenshot_proxy_url
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations, cap_images_per_answer
-from generation.citation_image_neighbors import attach_neighbour_images
+from generation.citation_image_neighbors import (
+    attach_neighbour_images,
+    pin_chapter_overview_images,
+)
 from generation.crag import CragLoop
 from generation.effective_config import (
     EffectiveConfig,
@@ -91,7 +94,9 @@ _W2_PLACEHOLDER_ANSWER = (
 
 
 def _proxy_citation_images(
-    citations: list[Citation], request: Request, kb_id: str,
+    citations: list[Citation],
+    request: Request,
+    kb_id: str,
 ) -> list[Citation]:
     """BUG-010 — rewrite citation `embedded_images` blob URLs to the screenshot
     proxy route. The screenshot container is private; a chat-surface `<img>`
@@ -137,7 +142,9 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
     ),
 )
 async def query(
-    payload: QueryRequest, request: Request, service: KbServiceDep,
+    payload: QueryRequest,
+    request: Request,
+    service: KbServiceDep,
 ) -> QueryResponse:
     """Main RAG query — hybrid → (rerank) → synthesis → citations.
 
@@ -152,7 +159,10 @@ async def query(
     """
     settings = get_settings()
     effective = await _resolve_effective_config(
-        service, settings, payload.kb_id, _per_query_from_payload(payload),
+        service,
+        settings,
+        payload.kb_id,
+        _per_query_from_payload(payload),
     )
     return await execute_query_pipeline(payload, request, effective, settings)
 
@@ -174,7 +184,9 @@ async def execute_query_pipeline(
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
     reformulator: QueryReformulator | None = getattr(
-        request.app.state, "query_reformulator", None,
+        request.app.state,
+        "query_reformulator",
+        None,
     )
 
     try:
@@ -250,7 +262,8 @@ async def execute_query_pipeline(
     # prompt_builder reads fields['expanded_text'] if present, else falls back to chunk_text.
     try:
         expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
-            result.chunks, kb_id=payload.kb_id,
+            result.chunks,
+            kb_id=payload.kb_id,
         )
     except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020
         logger.warning(
@@ -289,8 +302,11 @@ async def execute_query_pipeline(
         # kb_id=None → expansion no-op.
         # W43 F1.5 — effective_config carries the per-KB-resolved expansion knobs.
         synth = await synthesizer.synthesize(
-            payload.query, expanded_chunks,
-            engine=engine, kb_id=payload.kb_id, effective_config=effective,
+            payload.query,
+            expanded_chunks,
+            engine=engine,
+            kb_id=payload.kb_id,
+            effective_config=effective,
             detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
         )
     except Exception as exc:  # noqa: BLE001
@@ -309,7 +325,11 @@ async def execute_query_pipeline(
     final_chunks = result.chunks
     if crag_loop is not None and payload.enable_crag:
         outcome = await crag_loop.refine(
-            payload.query, result, synth, kb_id=payload.kb_id, effective_config=effective,
+            payload.query,
+            result,
+            synth,
+            kb_id=payload.kb_id,
+            effective_config=effective,
         )
         crag_triggered = outcome.triggered
         crag_iterations = outcome.iterations
@@ -348,13 +368,28 @@ async def execute_query_pipeline(
                 engine=engine,
                 max_aux_per_citation=effective.citation_neighbour_max_aux_images,
                 neighbour_window=effective.citation_neighbour_window,
-                section_path_prefix_depth=(
-                    effective.citation_neighbour_section_path_prefix_depth
-                ),
+                section_path_prefix_depth=(effective.citation_neighbour_section_path_prefix_depth),
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0034 §Consequences
             logger.warning(
                 "neighbour_images_attach_failed_using_original",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
+    # CH-010 / ADR-0047 — pin the chapter §X.1 Overview figures to the lead citation
+    # front BEFORE the cap, so a procedural answer leads with the overview/flow
+    # diagram (the cap is citation-order; without the pin the far, low-relevance
+    # overview images are starved). Graceful fallback to current citations on error.
+    if effective.enable_chapter_overview_pin:
+        try:
+            citations = await pin_chapter_overview_images(
+                citations,
+                kb_id=payload.kb_id,
+                engine=engine,
+            )
+        except Exception as exc:  # noqa: BLE001 — graceful degradation
+            logger.warning(
+                "chapter_overview_pin_failed_using_current",
                 error=f"{type(exc).__name__}: {exc}",
             )
 
@@ -378,7 +413,9 @@ async def execute_query_pipeline(
 
 @router.post("/query/stream")
 async def query_stream(
-    payload: QueryRequest, request: Request, service: KbServiceDep,
+    payload: QueryRequest,
+    request: Request,
+    service: KbServiceDep,
 ) -> StreamingResponse:
     """SSE streaming variant of /query (W3 D3 F4).
 
@@ -396,13 +433,15 @@ async def query_stream(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "Synthesizer not initialized — check Azure OpenAI .env config "
-                "(Q4 dependency)."
+                "Synthesizer not initialized — check Azure OpenAI .env config (Q4 dependency)."
             ),
         )
 
     effective = await _resolve_effective_config(
-        service, get_settings(), payload.kb_id, _per_query_from_payload(payload),
+        service,
+        get_settings(),
+        payload.kb_id,
+        _per_query_from_payload(payload),
     )
 
     try:
@@ -425,7 +464,8 @@ async def query_stream(
     # ADR-0020 Context Expander parallel to /query happy path (graceful degradation).
     try:
         expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
-            result.chunks, kb_id=payload.kb_id,
+            result.chunks,
+            kb_id=payload.kb_id,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -479,6 +519,20 @@ async def query_stream(
                     error=f"{type(exc).__name__}: {exc}",
                 )
                 augmented = citations
+        # CH-010 / ADR-0047 — pin chapter §X.1 Overview figures to lead-citation
+        # front before the cap (parallel to /query path).
+        if effective.enable_chapter_overview_pin:
+            try:
+                augmented = await pin_chapter_overview_images(
+                    augmented,
+                    kb_id=payload.kb_id,
+                    engine=engine,
+                )
+            except Exception as exc:  # noqa: BLE001 — graceful degradation
+                logger.warning(
+                    "stream_chapter_overview_pin_failed_using_current",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
         # W43 F1.6 — per-KB blunt image cap (parallel to /query path).
         return cap_images_per_answer(augmented, effective.max_images_per_answer)
 
@@ -492,8 +546,11 @@ async def query_stream(
             # W32 F1.4.b — pass engine + kb_id to enable engine-fetch citation expansion
             # in stream path (final `result` event carries expanded values).
             synth_stream = synthesizer.synthesize_stream(
-                payload.query, expanded_chunks,
-                engine=engine, kb_id=payload.kb_id, effective_config=effective,
+                payload.query,
+                expanded_chunks,
+                engine=engine,
+                kb_id=payload.kb_id,
+                effective_config=effective,
                 detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
             )
             observed = observe_streaming(
@@ -512,7 +569,9 @@ async def query_stream(
                     for image in event.get("citation", {}).get("embedded_images", []):
                         if isinstance(image, dict) and image.get("blob_url"):
                             image["blob_url"] = screenshot_proxy_url(
-                                request, payload.kb_id, image["blob_url"],
+                                request,
+                                payload.kb_id,
+                                image["blob_url"],
                             )
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:

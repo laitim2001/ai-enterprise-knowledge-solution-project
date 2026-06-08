@@ -54,6 +54,7 @@ class PerQueryOverrides:
     citation_neighbour_max_aux_images: int | None = None
     citation_neighbour_section_path_prefix_depth: int | None = None
     max_images_per_answer: int | None = None
+    enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
     answer_detail: str | None = None  # CH-006 — synthesis detail level override
 
 
@@ -99,6 +100,8 @@ class EffectiveConfig:
     citation_neighbour_window: int  # global-only pass-through
     # image flood cap (ADR-0040 + BUG-031); None = no backend cap (frontend caps display)
     max_images_per_answer: int | None
+    # CH-010 / ADR-0047 — pin chapter §X.1 Overview figures to lead citation front
+    enable_chapter_overview_pin: bool
     # CH-006 — synthesis answer detail level ("concise" | "detailed"), read by the
     # Synthesizer to pick the prompt_builder system-prompt variant. Always a concrete
     # str after resolution (per-query > per-KB > global Settings.synthesis_answer_detail).
@@ -208,8 +211,14 @@ def resolve_effective_config(
         # max_images_per_answer has NO global Settings field (per-KB / per-query only;
         # default None = no backend cap, frontend INLINE_IMAGE_CAP handles display).
         max_images_per_answer=(
-            pq.max_images_per_answer if pq and pq.max_images_per_answer is not None
+            pq.max_images_per_answer
+            if pq and pq.max_images_per_answer is not None
             else (kb.max_images_per_answer if kb else None)
+        ),
+        enable_chapter_overview_pin=_resolve(
+            pq.enable_chapter_overview_pin if pq else None,
+            kb.enable_chapter_overview_pin if kb else None,
+            settings.enable_chapter_overview_pin,
         ),
         # CH-006 — str field, so resolve via `or` chain (the int-bound `_resolve`
         # helper can't type it). Non-empty strings are truthy → falls through to the

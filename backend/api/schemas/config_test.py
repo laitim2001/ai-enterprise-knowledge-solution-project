@@ -29,6 +29,7 @@ class DraftRetrievalConfig(BaseModel):
     citation_neighbour_max_aux_images: int | None = None
     citation_neighbour_section_path_prefix_depth: int | None = None
     max_images_per_answer: int | None = None
+    enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
 
 
 class ConfigTestRequest(BaseModel):

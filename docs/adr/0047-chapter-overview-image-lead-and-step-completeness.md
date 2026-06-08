@@ -1,8 +1,8 @@
 # ADR-0047: Chapter-overview image lead + step-image completeness via per-KB completeness config
 
 **Date**: 2026-06-08
-**Status**: Proposed
-**Approver**: Chris(pending)
+**Status**: Accepted
+**Approver**: Chris(2026-06-08)
 
 ## Context
 
@@ -42,6 +42,13 @@ CH-009(ADR-0046)修咗 chat 圖片兩件事:OD-3 revert → 圖照 document-orde
 
 **H4 硬邊界**:全程只用 section / 文字信號;**嚴禁 image embedding / 純圖片 multimodal 檢索**(Tier 2 禁)。
 **範圍邊界**:只改 drive-images-1 per-KB(隔離、可逆);**不**順手 flip 全域 default(屬另一決定);**不**改 `default_rerank_k`(section-aware 同章節 attach 已覆蓋,rerank_k 改動屬另一 retrieval 決定)。
+
+> **Amendment 2026-06-08(Accept 後實作發現,Chris)— Approach 1 config-only 實證不足,確立 root cause + 落實 explicit pin(原 Approach 2,promote)**:
+> Live 驗(drive-images-1,「confirm voucher」)逐步試 per-KB config(neighbour depth=1 max_aux 12→20 + parent_doc + expansion)後**確認 config-only 解唔到概覽 lead**,並 root-cause 兩個 code 層機制:
+> 1. **neighbour-attach pile-on-lead + nearest-first cap**:所有 neighbour 圖 pile 落 top citation,nearest-first 切,§3.1.3 嘅大量就近圖(idx 25/26/28 共 ~25 張)食晒 `max_aux`,reach 唔到 idx-24 §3.1.1 概覽(距離 3)。
+> 2. **`cap_images_per_answer` citation-order 餓死概覽**:即使 expansion materialize §3.1.1 做 citation(連自己 2 張概覽圖),backend 嘅 `cap_images_per_answer`(citation/relevance order)喺前端 document-order 之前 pre-trim,top citation 食晒 `max_images_per_answer=20` budget → 低 relevance 嘅概覽 citation 圖被 trim 到 0。
+> **驗證**:set `max_images_per_answer=null`(去 backend cap)後,§3.1.1 citation 即 keep 返 2 張概覽圖 → 證實 cap 餓死係根因。
+> **結論 + 落實**:**Approach 1 config 全 revert 返 baseline**;promote **Approach 2 = `pin_chapter_overview_images`**(NEW backend function)—— 偵測主導章節 → fetch §X.1 "Overview" chunk 圖 → **prepend 到 lead citation 最前、排喺 `cap_images_per_answer` 之前**,令概覽圖 survive cap(front-kept)+ 前端 document-order 自動 lead。新增 per-KB flag `enable_chapter_overview_pin`(default OFF,production-preserve)。「兩者都做(Y 查 + X 加)」收斂:Y(cap 餓死)= 診斷,X(pin-before-cap)= 修法。完整性(更多步驟圖)由 neighbour depth=1 + 調大 max_aux 並行提供(verify 時連 pin 一齊 eval)。
 
 ## Alternatives Considered
 

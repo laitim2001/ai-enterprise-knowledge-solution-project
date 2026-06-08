@@ -221,6 +221,16 @@ class Settings(BaseSettings):
     # for a 5-scenario section).
     citation_neighbour_section_path_prefix_depth: int = 0
 
+    # CH-010 / ADR-0047 — chapter-overview image pin. When True, the dominant
+    # chapter's §X.1 "Overview" figures (e.g. GL03 High Level Process / Business
+    # Process Flow) are fetched and prepended to the FRONT of the lead citation's
+    # images BEFORE `cap_images_per_answer`, so a procedural answer leads with the
+    # chapter overview/flow diagram. Fixes the root cause that neither the
+    # nearest-first neighbour-attach nor post-hoc expansion surfaces the (far,
+    # low-relevance) overview chunk's images past the citation-order image cap.
+    # depth=0 default OFF (production-preserve); per-KB opt-in via KbConfig.
+    enable_chapter_overview_pin: bool = False
+
     # W25 F5 D2 — retrieval low_value soft-relax per ADR-0035. W2 baseline
     # used Azure Search server-side OData filter `low_value_flag eq false`
     # (hard exclude) — diverged from architecture.md §3.5 "deboost" spec

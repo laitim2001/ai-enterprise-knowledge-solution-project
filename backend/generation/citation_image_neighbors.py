@@ -31,6 +31,7 @@ neighbour chunks own.
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 
 import structlog
 
@@ -171,9 +172,7 @@ def _find_neighbour_images(
 
     # Dedup checksums — start with citation's own images
     own_checksums: set[str] = {
-        img.checksum_sha256
-        for img in citation.embedded_images
-        if img.checksum_sha256
+        img.checksum_sha256 for img in citation.embedded_images if img.checksum_sha256
     }
 
     new_images: list[ImageRef] = []
@@ -233,9 +232,7 @@ def _find_section_neighbour_images(
         return []
 
     own_checksums: set[str] = {
-        img.checksum_sha256
-        for img in citation.embedded_images
-        if img.checksum_sha256
+        img.checksum_sha256 for img in citation.embedded_images if img.checksum_sha256
     }
 
     # Collect same-section candidates with chunk-index distance so the cap takes
@@ -274,3 +271,97 @@ def _find_section_neighbour_images(
                 return new_images
 
     return new_images
+
+
+async def pin_chapter_overview_images(
+    citations: list[Citation],
+    kb_id: str,
+    engine: RetrievalEngine,
+    *,
+    chapter_prefix_depth: int = 1,
+    overview_section_keyword: str = "overview",
+) -> list[Citation]:
+    """CH-010 / ADR-0047 — pin the dominant chapter's §X.1 "Overview" figures to the
+    FRONT of the lead citation's ``embedded_images``.
+
+    Why this exists (root cause, verified 2026-06-08 on drive-images-1): for a
+    narrow-step query the §X.1 Overview chunk (e.g. GL03 §3.1.1 with the High Level
+    Process + Business Process Flow diagrams) is neither retrieved (rerank_k=5) nor
+    reached by the nearest-first neighbour-attach (the abundant same-section step
+    images saturate ``max_aux`` before the far overview chunk). Even when post-hoc
+    expansion materialises the overview as a (low-relevance) citation, the
+    citation-order ``cap_images_per_answer`` starves its images. Fetching the
+    overview chunk's images and prepending them to ``citations[0]`` places them
+    AHEAD of the cap (front-kept), so they survive; the frontend's document-order
+    sort (§X.1 < §X.3) then makes them lead the procedure.
+
+    Text / section signal only — no image embedding (H4). Returns a NEW citation
+    list; the original is returned unchanged on no dominant chapter / no overview
+    chunk / fetch error (graceful degradation per ADR-0034 §Consequences). Pure
+    aside from the single ``engine.list_chunks`` fetch.
+    """
+    if not citations:
+        return citations
+
+    # Dominant chapter = the most common section_path[:depth] across citations.
+    prefixes = [
+        tuple(c.section_path[:chapter_prefix_depth])
+        for c in citations
+        if len(c.section_path) >= chapter_prefix_depth and c.section_path[:chapter_prefix_depth]
+    ]
+    if not prefixes:
+        return citations
+    dominant_chapter = Counter(prefixes).most_common(1)[0][0]
+
+    lead = citations[0]
+    if not lead.doc_id:
+        return citations
+
+    try:
+        doc_chunks = await engine.list_chunks(kb_id, lead.doc_id)
+    except Exception as exc:  # noqa: BLE001 — graceful degradation; keep original citations
+        logger.warning(
+            "chapter_overview_pin_fetch_failed",
+            kb_id=kb_id,
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        return citations
+
+    # Collect images from the dominant chapter's "Overview" chunk(s), deduped.
+    keyword = overview_section_keyword.lower()
+    overview_images: list[ImageRef] = []
+    seen: set[str] = set()
+    for chunk in doc_chunks:
+        section_path = chunk.get("section_path")
+        if not isinstance(section_path, list) or len(section_path) < chapter_prefix_depth:
+            continue
+        if tuple(section_path[:chapter_prefix_depth]) != dominant_chapter:
+            continue
+        leaf = str(section_path[-1]) if section_path else ""
+        if keyword not in leaf.lower():
+            continue
+        for img in parse_embedded_images(str(chunk.get("embedded_images_json", "") or "")):
+            if not img.checksum_sha256 or img.checksum_sha256 in seen:
+                continue
+            seen.add(img.checksum_sha256)
+            overview_images.append(img)
+
+    if not overview_images:
+        return citations
+
+    # Prepend to the lead citation, deduped against its existing images.
+    lead_checksums = {img.checksum_sha256 for img in lead.embedded_images if img.checksum_sha256}
+    pinned = [img for img in overview_images if img.checksum_sha256 not in lead_checksums]
+    if not pinned:
+        return citations
+
+    new_lead = lead.model_copy(
+        update={"embedded_images": pinned + list(lead.embedded_images)},
+    )
+    logger.info(
+        "chapter_overview_pinned",
+        kb_id=kb_id,
+        chapter=list(dominant_chapter),
+        pinned_images=len(pinned),
+    )
+    return [new_lead, *citations[1:]]

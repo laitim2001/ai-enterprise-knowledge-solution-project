@@ -71,6 +71,11 @@ class KbConfig(BaseModel):
     citation_neighbour_max_aux_images: int | None = None
     citation_neighbour_section_path_prefix_depth: int | None = None
     max_images_per_answer: int | None = None
+    # CH-010 / ADR-0047 — pin the dominant chapter's §X.1 "Overview" figures to the
+    # front of the lead citation (before the image cap) so a procedural answer leads
+    # with the chapter overview/flow diagram. `None` = inherit global Settings
+    # (default False). Per-KB opt-in for image-heavy procedural manuals.
+    enable_chapter_overview_pin: bool | None = None
 
     # W45 — per-KB ingest-time chunker image cap (per ADR-0042; extends the
     # ADR-0040 config-scope model from query-time to INGEST-time). Mirrors the
