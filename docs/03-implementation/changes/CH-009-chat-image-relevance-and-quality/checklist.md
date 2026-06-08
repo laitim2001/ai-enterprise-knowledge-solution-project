@@ -20,8 +20,8 @@ adr_ref: ../../../adr/0046-chat-image-relevance-decorative-dims.md
 - [x] B2 — C10 design note bump(cap wiring + decorative + relevance,CH-009 block)
 
 ## I-C — Query-relevance ordering (OD-3)
-- [x] C1 — `selectInlineImages(deduped, cap)`:top-cap by `relevanceScore`(owning citation max)→ cap 內 document-order 顯示;`dedupeCitationImages` 加 `relevanceScore`(max across citations)
-- [x] C2 — **H4 guard**:relevance 純用 `citation.relevance_score`(Cohere 文字 rerank),無 image embedding;ADR-0046 邊界 + code comment cross-ref
+- [x] C1 — ⚠️ **OD-3 REVERTED 2026-06-08**:原實作 relevance-select(`selectInlineImages` top-cap by relevanceScore)live 驗揭把低分 §3.1.1 概覽圖排出 cap → 改回 **`selectInlineImages = deduped.slice(0, cap)` 純 document-order**(Finding D),概覽圖 lead;移除 `relevanceScore` 追蹤 + relevance sort。vitest 21 + tsc clean
+- [x] C2 — ~~H4 guard~~ N/A after revert(無 relevance 排序 = 無 image signal 問題);document-order 用 `source_section`(既有),零 H4 風險
 - [x] C3 — C10 design note bump(relevance-select + document-display);C05 generation 無 code 改(`parse_embedded_images` 早讀 width/height;`cap_images_per_answer` payload ceiling 不變 — interaction 記 progress)
 
 ## Tests (H6)

@@ -4,6 +4,8 @@
 **Status**: Accepted
 **Approver**: Chris
 
+> **Amendment 2026-06-08(post-Accept,Chris)**:**Decision #3(query-relevance ordering)REVERTED → 純 document-order**。Live 驗揭 relevance-select 把低 rerank 分數(score 0,expansion neighbour)嘅 §3.1.1 章節概覽圖(High Level Process)排出 cap,令 chat lead 變成高分 mid-procedure step 圖(§3.1.4)。程序手冊嘅正確 image 流程 = 照 document order(概覽 → step),概覽圖必須 lead。`selectInlineImages` 改為 `deduped.slice(0, cap)`(純 document-order + per-KB cap),移除 relevance sort。**Decision #1(decorative filter)+ #2(per-KB cap)維持**。教訓:relevance-select 對「最相關片段」有用,但對「程序流程圖」係錯方向(document-order 先啱)。
+
 ## Context
 
 BUG-034 問題1 嘅**圖片維度**(CH-008 已修復文字 rerank — chat 答案 13/13 citation 全部錨 GL03;merged 2026-06-08 `34c5d7c`)。Live 診斷(drive-images-1,GL「post a journal entry」,`/query` 重現)揭三個**圖片質素 / presentation** 問題(全部圖 `source_section` 正確喺 GL03 §3.1.x — **非 retrieval recall 錯**):

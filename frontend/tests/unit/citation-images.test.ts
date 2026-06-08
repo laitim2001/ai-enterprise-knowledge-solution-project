@@ -168,8 +168,9 @@ describe('dedupeCitationImages — decorative filter (CH-009 / ADR-0046 OD-1)', 
   });
 });
 
-describe('selectInlineImages — relevance-select + document-order (CH-009 / ADR-0046 OD-2/OD-3)', () => {
-  // Helper: a citation with explicit relevance + a single image in a given section.
+describe('selectInlineImages — document-order cap (CH-009 / ADR-0046 OD-2; OD-3 reverted)', () => {
+  // Helper: a citation with a single image in a given section (relevance kept on
+  // the model but NOT used for selection — OD-3 relevance-select reverted 2026-06-08).
   function cit(idx: number, relevance: number, sha: string, section: string[]): Citation {
     return {
       chunk_id: `chunk-${idx}`,
@@ -190,34 +191,21 @@ describe('selectInlineImages — relevance-select + document-order (CH-009 / ADR
       cit(2, 0.5, 'b', ['3', '3.1.3']),
     ]);
     const selected = selectInlineImages(deduped, 8);
-    // document order: 3.1.3 (b) before 3.1.5 (a)
+    // document order: 3.1.3 (b) before 3.1.5 (a) — NOT relevance order.
     expect(selected.map((d) => d.image.checksum_sha256)).toEqual(['b', 'a']);
   });
 
-  it('keeps the most query-relevant figures when over cap, shown in document order', () => {
-    // low-relevance early-section image must NOT crowd out high-relevance later ones.
+  it('takes the first `cap` in DOCUMENT order — low-rerank overview leads, not the high-score step', () => {
+    // The §3.1.1 chapter overview has a LOW (0) rerank score but must still lead
+    // the procedure (the user-reported regression: relevance-select buried it).
     const deduped = dedupeCitationImages([
-      cit(1, 0.2, 'low', ['3', '3.1.1']), // earliest section, lowest relevance
-      cit(2, 0.9, 'hiB', ['3', '3.1.5']), // latest section, highest
-      cit(3, 0.8, 'hiA', ['3', '3.1.3']), // middle section, high
+      cit(1, 0.0, 'overview', ['3', '3.1.1']), // earliest section, score 0
+      cit(2, 0.9, 'step5', ['3', '3.1.5']), // latest section, highest score
+      cit(3, 0.8, 'step3', ['3', '3.1.3']), // middle section
     ]);
     const selected = selectInlineImages(deduped, 2);
-    // top-2 by relevance = hiB(0.9) + hiA(0.8); 'low' dropped.
-    // displayed in document order: 3.1.3 (hiA) before 3.1.5 (hiB).
-    expect(selected.map((d) => d.image.checksum_sha256)).toEqual(['hiA', 'hiB']);
-  });
-
-  it('tracks MAX relevance across citations referencing the same image', () => {
-    const section = ['3', '3.1.3'];
-    const shared = imageRef({ checksum_sha256: 'shared', source_section: section });
-    const deduped = dedupeCitationImages([
-      // expansion neighbour (sentinel 0) references it first…
-      { ...cit(1, 0, 'unused', ['3', '3.1.1']), embedded_images: [shared] },
-      // …and the genuinely-reranked chunk also references it.
-      { ...cit(2, 0.85, 'unused2', section), embedded_images: [imageRef({ ...shared })] },
-    ]);
-    expect(deduped).toHaveLength(1);
-    expect(deduped[0]!.relevanceScore).toBe(0.85); // max, not the 0 sentinel
+    // first 2 in document order = overview (§3.1.1) + step3 (§3.1.3); step5 overflows.
+    expect(selected.map((d) => d.image.checksum_sha256)).toEqual(['overview', 'step3']);
   });
 
   it('returns empty for cap <= 0', () => {

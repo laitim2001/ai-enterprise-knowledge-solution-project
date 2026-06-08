@@ -42,7 +42,7 @@ spec_refs:
 - AC1 — `drive-images-1` re-index 後 ImageRef 帶真實 width/height(非 0)。
 - AC2 — 裝飾 icon(燈泡 < threshold)唔再 surface 成 figure(GL query 圖片無燈泡)。
 - AC3 — cap 可經 per-KB `max_images_per_answer` 控制(null fallback 現行 8)。
-- AC4 — GL query inline cap 內圖片 = 最相關 GL03 step 圖(relevance selection by owning citation `relevance_score`),cap 內按 document-order(Finding D)顯示。
+- AC4 — GL query inline cap 內圖片 = 首 N 張(document-order,Finding D)→ §3.1.1 章節概覽圖(High Level Process)lead,照手冊流程 start→end(OD-3 reverted:非 relevance order)。
 - AC5 — 無 regression:text-only KB / 無圖 KB 行為不變;Finding D dedup 仍 work;CH-008 文字 rerank 不受影響。
 - AC6 — backend pytest(ingestion + generation)+ frontend lint/test pass + ruff + mypy 改檔 0 新 error。
 
@@ -54,7 +54,7 @@ spec_refs:
 ## 5. Locked Decisions(Chris 2026-06-08)
 - **OD-1 ✅**(#1 過濾位置):**存 `decorative` flag + display filter**。ingest probe PNG 尺寸 + 標 `decorative`(`min(width,height) < 64px`)→ 圖照存 index → chat display 時 filter 走。保留資料 / threshold 可調 / 可 audit / 可 per-KB override。要 re-index drive-images-1 populate dims。
 - **OD-2 ✅**(#2 cap):**Wire per-KB `max_images_per_answer`**。frontend cap 讀 per-KB config,`null` fallback 維持 8。
-- **OD-3 ✅**(#3 排序):**relevance 揀圖 + 文件次序顯示**。owning citation `relevance_score` 決定邊幾張入 cap(最相關行先),cap 內按 document-order(Finding D)顯示。**只用文字 rerank 信號(H4 — 無 image embedding)**。
+- **OD-3 ⚠️ REVERTED 2026-06-08**(#3 排序):原鎖定「relevance 揀圖 + 文件次序顯示」,但 live 驗揭 **relevance-select 把低 rerank 分數嘅 §3.1.1 章節概覽圖(High Level Process,score 0 expansion neighbour)排出 cap**,令 lead 變成高分嘅 mid-procedure step 圖(§3.1.4)。用戶反饋:程序手冊應由概覽圖(page 20)行先。**改回純 document-order(Finding D)+ cap** —— `selectInlineImages = deduped.slice(0, cap)`,概覽圖照文件次序 lead。relevance-select code(`relevanceScore` 追蹤 + relevance sort)移除。decorative filter(OD-1)+ per-KB cap(OD-2)保留。
 
 ## 6. Risks
 - **R1**:re-index `drive-images-1` 期間短暫不可查(同 CH-008 V2,in-place)。
@@ -67,3 +67,5 @@ spec_refs:
 |---|---|---|
 | 2026-06-08 | spec draft 建立 | Chris 揀「一個 CH 三項一齊」處理 BUG-034 問題1 圖片維度(CH-008 文字已 merged);待 OD-1/2/3 鎖定 + ADR |
 | 2026-06-08 | draft → approved;OD-1/2/3 鎖定 | Chris 鎖定:OD-1 decorative flag + display filter(64px)/ OD-2 wire per-KB max_images_per_answer / OD-3 relevance 揀圖 + 文件次序顯示。ADR-0046 Proposed 待 Accept(H1 code gate) |
+| 2026-06-08 | 實作 + V2/V3 PASS | I-A dims probe + decorative filter + I-B per-KB cap + I-C(OD-3)落地;re-index drive-images-1;V3 `/query` 40 unique 0 dims-miss、93×62 燈泡判 decorative |
+| 2026-06-08 | **OD-3 REVERTED → 純 document-order**(Chris 確認) | live 驗:OD-3 relevance-select 把低分(score 0)§3.1.1 章節概覽圖排出 cap,lead 變 §3.1.4 step;用戶要概覽圖(page 20)行先。`selectInlineImages` 改 `slice(0,cap)`;移除 relevanceScore + relevance sort;decorative(OD-1)+ cap(OD-2)保留。vitest 21 + tsc clean。**同時開 BUG-035 修 conversation kb_id 綁定**(揀 DRIVE reopen 變 DCE) |

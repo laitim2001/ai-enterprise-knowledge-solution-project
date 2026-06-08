@@ -441,7 +441,7 @@ EKP Platform
 > **CH-009 amendment per ADR-0046**(Chat image relevance,2026-06-08):圖片 `ImageRef` 加 **真實 `width`/`height`** —— ingest 時 `ScreenshotExtractor` 用 stdlib 解 PNG IHDR header probe 尺寸(`probe_png_dimensions`,零新 dep;非 PNG / 截斷 → 不設,dims=0),經 `embedded_images_json` 落 index。三項 chat 圖片質素改動:
 > - **Decorative filter(OD-1)**:`min(width,height) < 64px`(可調)視為裝飾 icon(手冊 Tip/Note 燈泡),**chat display 時** filter 走(`frontend/lib/chat/citation-images.ts`);圖照存 index(dims=0 legacy 不判,保 production-preserve)。
 > - **Per-KB cap(OD-2)**:chat inline 圖片數 = per-KB `KbConfig.max_images_per_answer`(`null` → 前端 `INLINE_IMAGE_CAP=8` fallback)。
-> - **Relevance ordering(OD-3)**:inline cap 揀 owning citation `relevance_score`(Cohere 文字 rerank 信號)最高嘅 N 張,cap 內按 document-order(Finding D)顯示。**H4 邊界:只用文字信號,無 image embedding / multimodal(Tier 2)**。
+> - **Document-order cap(OD-3,relevance-select reverted 2026-06-08)**:inline cap = 首 N 張(document-order,Finding D),令章節概覽圖(如 §3.1.1 High Level Process)照手冊流程 lead。原 relevance-select 把低 rerank 分數嘅概覽圖排出 cap,對程序手冊係錯方向,已 revert 為純 document-order。
 >
 > Embedding 端不變;只 ImageRef 多 dims(要 re-index 受影響 KB populate;本期 `drive-images-1`)。stored 圖片 + Finding D dedup 不變(decorative 只 display filter)。
 
