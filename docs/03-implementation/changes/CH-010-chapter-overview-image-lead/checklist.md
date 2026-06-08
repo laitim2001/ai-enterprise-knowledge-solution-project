@@ -25,8 +25,10 @@ adr_ref: ../../../adr/0047-chapter-overview-image-lead-and-step-completeness.md
 - [x] X4 — `tests/test_ch010_chapter_overview_pin.py`(7 tests)
 
 ## V — Verify
-- [ ] 🚧 V1 — `/query/stream` drive-images-1 GL narrow query **AC1**:figure 1 = §3.1.1 概覽圖(`60a8a6e9` / `cfe10a8d`)lead
-- [ ] 🚧 V2 — **AC2**:候選池含該章全部相關步驟圖(§3.1.3/3.1.4/3.1.5)+ 概覽;顯示首 20 document-order,其餘入 Image Library;vs baseline 明顯增加覆蓋
+- [x] V-restart — 前後端全部重啟(backend venv PID 系列載入新 code + frontend `.next` wipe + pnpm dev :3001);infra pre-flight PASS(Langfuse 200 + PG SELECT 1);drive-images-1 enable pin + neighbour depth=1 max_aux=18 cap=20
+- [x] V1 — `/query/stream` drive-images-1 GL narrow query **AC1 PASS**:fix 後 lead citation 最前 = `60a8a6e9`(367×87 High Level Process)+ `cfe10a8d`(1167×565 Business Process Flow);前端 document-order → **figure 1-2 = §3.1.1 概覽圖 lead**;`chapter_overview_pinned` logged
+- [x] V2 — **AC2 PASS**:候選池含 §3.1.1 概覽 + §3.1.3 步驟圖(neighbour depth=1 max_aux=18);distinct-sections=2;顯示首 20 document-order
+- [x] V1.5 — **真 bug fix**(commit `bd58709`):pin 原邏輯「已存在就跳過」令 neighbour 後段 attach 嘅 overview 被 cap 剝走;改為**強制 move 到 lead 最前**(strip + re-prepend);8 CH-010 tests(+buried-overview)
 - [ ] 🚧 V3 — **AC4 跨文件 30-query eval(必須)**:recall / faithfulness flat + p95 latency 增幅記錄;對照 memory `[[project_chat_demo_rag_quality_followups]]` #1
 - [ ] 🚧 V4 — **AC3 + 無 regression**:無 Overview 子節 / 已 retrieve §3.1.1 query 無重複 / 無 spurious;其他 KB(per-KB null)行為不變;CH-009 OD-4 + document-order + cap 不受影響
 - [ ] 🚧 V5 — chat live 驗(**用戶**):chat 問 GL,確認概覽圖 lead + 步驟圖補齊
