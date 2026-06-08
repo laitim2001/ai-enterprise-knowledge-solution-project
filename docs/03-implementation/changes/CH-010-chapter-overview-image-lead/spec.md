@@ -1,8 +1,8 @@
 ---
 change_id: CH-010
 title: "Chapter-overview image lead + step-image completeness — 程序類答案概覽圖行頭 + 補齊缺失步驟圖"
-status: draft          # draft | approved | done
-adr_ref: TBD (next NNNN=0047) — H1, code/config GATED on user approve + ADR Accept
+status: approved       # draft | approved | done — Approach 1 locked(Chris 2026-06-08);code/config GATED on ADR-0047 Accept
+adr_ref: ../../../adr/0047-chapter-overview-image-lead-and-step-completeness.md  # Proposed — code/config GATED on Accept(H1)
 affects_components: [C05, C03]   # C05 Generation (citation attach/expansion);C03 per-KB config (ADR-0040 tunable knobs — runtime,無 re-index)
 spec_refs:
   - architecture.md §3.6 (index schema / citation embedded_images)
@@ -124,3 +124,4 @@ spec_refs:
 |---|---|---|
 | 2026-06-08 | spec draft 建立(原範圍:概覽圖 lead;Option A pin vs B config)| CH-009 衍生:OD-4 修燈泡後,次序根因(章節概覽圖未 attach)獨立成 CH-010 |
 | 2026-06-08 | **scope 擴大 → 概覽 lead + 步驟圖完整性(用戶「做到足」)**;重寫 §2 為 Approach 1(per-KB 完整性 config)vs 2(+ 明確 pin)| 用戶要求 CH-010 連「補齊缺失步驟圖」一齊做。grounding:drive-images-1 完整性 knobs 全 null(關)+ rerank_k=5 + cap=20 實測;memory 完整性組合已跨文件 eval PASS 未 flip。**DECISION PENDING — 無 code** |
+| 2026-06-08 | **Approach 1 鎖定**(Chris AskUserQuestion)+ status draft → approved + ADR-0047 Proposed 寫 | Chris 揀 Approach 1(per-KB 完整性 config)over Approach 2(+明確 pin;留作日後 cap 收窄 robustness 補強)over 先實測。ADR-0047 Proposed + README index;**code/config GATED on ADR-0047 Accept(H1)— 仍無 code/config** |
