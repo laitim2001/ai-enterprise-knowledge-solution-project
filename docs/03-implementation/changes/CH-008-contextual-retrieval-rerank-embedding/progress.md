@@ -2,7 +2,7 @@
 change_id: CH-008
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: in-progress     # in-progress | closed
+status: closed          # in-progress | closed
 ---
 
 # CH-008 — Progress
@@ -79,8 +79,19 @@ ADR-0045 Chris Accept → code 解 gate(H1)。落 I1→I3 + tests + I7 docs。
 |---|---|
 | 328e579 | docs(adr+change): ADR-0045 + CH-008 kickoff |
 | 9af448e | feat(retrieval): contextual retrieval — section-context inject (I1-I3+tests+docs) |
-| _(本次)_ | docs(change): CH-008 V2-V4 verification — AC4 PASS live + AC5 接設計+live 證據 + I2b dropped |
+| 07a8c7a | docs(change): CH-008 V2-V4 verification — AC4 PASS live + AC5 接設計+live 證據 + I2b dropped |
+| _(closeout)_ | docs(change): CH-008 closeout — V5 文字維度 PASS + 圖片維度 split + ff-merge |
+
+### V5 + Closeout(Day 2 收尾,2026-06-08)
+- **V5 文字維度 PASS**(用戶 chat live + `/query` 重現):GL「post a journal entry」答案 **13/13 citation 全部 GL03 §3.1.x**(Overview / System Instruction,chunk_index 24-36 順序),零 off-topic。CH-008 文字 rerank + embedding 目標**徹底達成**。
+- **圖片維度 split 到新工作**:用戶 V5 揭三個圖片問題 —— ① 裝飾燈泡 icon surface 成 figure(ingestion 抽晒所有 embedded image,無裝飾過濾;所有圖 `width=0 height=0` 無法用尺寸 filter)② `INLINE_IMAGE_CAP=8`(BUG-031)截斷令後段 figure 入 Image Library ③ 無 query-相關性排圖。**呢三項全部 = deferred problem 1 圖片維度,非 CH-008 文字 scope**(所有圖 source_section 正確喺 GL03,非 recall 錯)。Chris 2026-06-08 決定:先 merge CH-008、圖片另開新 BUG/CH。
+- **C1/C2/C3 closeout 完成**:spec status → done;ADR-0045 Accepted;ff-merge 入 main。
+
+### Retro
+- **What went well**:74-chunk A/B 實驗先行驗證根因 → ADR 信心高;helper 抽得乾淨(rerank + embedding 共用);fallback bit-identical 保零 regression;live retrieval-test 即時證 AC4。
+- **Surprises / R6 catches**:(1) I2b azure_semantic 唔砌 document list(spec text 假設錯)→ dropped;(2) `affects_components` C03→C01 component 名張冠李戴;(3) eval-set-v0 = W1 MFP placeholder 非 DRIVE corpus + 所有 eval-baseline KB index 在 Free-tier 3-slot 下已 drop → full RAGAs eval 環境性 blocked,AC5 改接設計+live 證據。三個都係 plan-text contamination,kickoff 階段未 catch,實作時先發現。
+- **Carry-over → 新工作**:圖片質素(裝飾過濾 + 尺寸記錄 + 相關性排序 + cap 策略)= deferred problem 1,另開 spec/診斷。
 
 ---
 
-**End of CH-008 progress (Day 2 — code+tests+docs done;V2 re-index + V3 AC4 PASS + V4 AC5 settled;🚧 V5 用戶 live 驗 + C1/C3 ff-merge 待)**
+**End of CH-008 progress (CLOSED 2026-06-08 — 文字維度全綠 + ff-merge;圖片維度 split 到新工作)**

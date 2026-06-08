@@ -25,9 +25,9 @@ spec_ref: ./spec.md
 - [x] V2 — `drive-images-1` in-place re-index DONE(6/6 reindexed,0 skipped,0 failed,369 chunks;I3 contextual embedding 生效)
 - [x] V3 — retrieval-test(GL「post a journal entry」)before/after **AC4 PASS**:rerank=true top-8 = GL03 ×7 + GL05 #8(對照 ADR 實驗 baseline 純 chunk_text rerank #1 GL05 / #3-4 GL02);rerank=false 候選池 re-index 後跨文件 AR03 洩漏清走、GL03 佔比 4→5/8
 - [x] V4 — **AC5 = 接設計+live 證據**(Chris 2026-06-08):full RAGAs eval 環境性 blocked(所有 eval-baseline KB index 在 Free-tier 3-slot 下已 drop;eval-set-v0 = W1 MFP placeholder 非 DRIVE corpus)→ regression 證據改以 ① fallback bit-identical unit test ② strictly-more-context 設計 ③ live DRIVE retrieval-test 改善(非 regression)三項
-- [ ] 🚧 V5 — chat live 驗(**用戶動作**):chat 頁面問 GL「post a journal entry」確認答案錨 GL03 + 圖由 Create 章節行先(配合已 merge Finding D)— 待用戶喺 chat UI 驗
+- [x] V5 — chat live 驗(用戶 2026-06-08)**文字維度 PASS**:GL「post a journal entry」答案 13/13 citation 全部錨 GL03 §3.1.x(Overview/System Instruction 順序),零 off-topic;`/query` 重現確認。**圖片維度**(裝飾燈泡 icon surface + `INLINE_IMAGE_CAP=8` 截斷 + 圖片相關性排序)= deferred problem 1,**split 到新工作**(非 CH-008 文字 scope;所有圖 source_section 正確喺 GL03,非 recall 錯)
 
 ## Closeout
-- [ ] 🚧 C1 — spec status → done;progress closeout — 待 V5 用戶 live 驗後
+- [x] C1 — spec status → done;progress closeout retro
 - [x] C2 — ADR-0045 Proposed → Accepted(Chris 2026-06-08;README index 同步)
-- [ ] 🚧 C3 — commits 對應 Day-N(R2);ff-merge 入 main(用戶確認)— 待 V5 + 用戶 merge go
+- [x] C3 — commits 對應 Day-N(R2);ff-merge 入 main(Chris 2026-06-08 go)

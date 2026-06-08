@@ -1,7 +1,7 @@
 ---
 change_id: CH-008
 title: "Contextual Retrieval — section-context injection for rerank + embedding"
-status: approved          # draft | approved | done
+status: done              # draft | approved | done
 adr_ref: ../../../adr/0045-contextual-retrieval-section-context-injection.md
 affects_components: [C04, C01, C03]   # C04 Retrieval (reranker) · C01 Ingestion (embedding input) · C03 Indexing (§3.6 index-schema doc text only)
 spec_refs:
