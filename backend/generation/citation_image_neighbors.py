@@ -349,19 +349,30 @@ async def pin_chapter_overview_images(
     if not overview_images:
         return citations
 
-    # Prepend to the lead citation, deduped against its existing images.
-    lead_checksums = {img.checksum_sha256 for img in lead.embedded_images if img.checksum_sha256}
-    pinned = [img for img in overview_images if img.checksum_sha256 not in lead_checksums]
-    if not pinned:
+    # MOVE the overview images to the FRONT of the lead citation. They must lead
+    # AND survive the citation-order `cap_images_per_answer` (which keeps each
+    # citation's FIRST N). It is NOT enough to skip when they are already present:
+    # the neighbour-attach may have attached them at a LATE position on the lead,
+    # where the cap then strips them. So strip any existing copies from the lead
+    # and re-prepend — overview first, then the lead's other images.
+    overview_checksums = {img.checksum_sha256 for img in overview_images}
+    lead_rest = [
+        img for img in lead.embedded_images if img.checksum_sha256 not in overview_checksums
+    ]
+    new_images = [*overview_images, *lead_rest]
+
+    # No-op when the lead already leads with exactly these overview images in order
+    # (avoids a needless model_copy + keeps the citation object identity stable).
+    if [img.checksum_sha256 for img in lead.embedded_images] == [
+        img.checksum_sha256 for img in new_images
+    ]:
         return citations
 
-    new_lead = lead.model_copy(
-        update={"embedded_images": pinned + list(lead.embedded_images)},
-    )
+    new_lead = lead.model_copy(update={"embedded_images": new_images})
     logger.info(
         "chapter_overview_pinned",
         kb_id=kb_id,
         chapter=list(dominant_chapter),
-        pinned_images=len(pinned),
+        overview_images=len(overview_images),
     )
     return [new_lead, *citations[1:]]

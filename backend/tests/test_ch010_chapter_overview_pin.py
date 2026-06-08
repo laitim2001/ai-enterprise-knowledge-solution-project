@@ -191,12 +191,31 @@ async def test_lead_without_doc_id_unchanged() -> None:
 
 
 @pytest.mark.asyncio
-async def test_overview_image_already_on_lead_not_duplicated() -> None:
-    # Lead already carries the overview image (e.g. retrieved directly) → no dup.
+async def test_overview_image_already_at_front_noop() -> None:
+    # Lead already leads with the overview image (already at front) → no dup, no-op.
     citations = [_citation("c1", 24, "3.1.1 Overview", images=[_img("ov-flow")])]
     engine = _engine([_chunk(24, "3.1.1 Overview", ["ov-flow"])])
     out = await pin_chapter_overview_images(citations, "kb-1", engine)
     assert [i.checksum_sha256 for i in out[0].embedded_images] == ["ov-flow"]
+
+
+@pytest.mark.asyncio
+async def test_buried_overview_moved_to_front() -> None:
+    # The real bug (2026-06-08): neighbour-attach put the overview on the lead but
+    # BURIED behind step images, where the citation-order cap then strips it. The pin
+    # must MOVE the overview to the FRONT (strip the buried copy + re-prepend) so it
+    # survives the cap — not skip because it is "already present".
+    citations = [
+        _citation(
+            "c1",
+            27,
+            "3.1.3 System Instruction for each step",
+            images=[_img("step-a"), _img("step-b"), _img("ov-flow")],
+        )
+    ]
+    engine = _engine([_chunk(24, "3.1.1 Overview", ["ov-flow"])])
+    out = await pin_chapter_overview_images(citations, "kb-1", engine)
+    assert [i.checksum_sha256 for i in out[0].embedded_images] == ["ov-flow", "step-a", "step-b"]
 
 
 @pytest.mark.asyncio
