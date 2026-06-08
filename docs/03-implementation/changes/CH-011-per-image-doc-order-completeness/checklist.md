@@ -36,15 +36,15 @@ last_updated: 2026-06-08
 - [x] V-restart — backend 殺 dual-process(42616+41360)→ venv python 重啟載新 code(`HYBRID_USE_SEMANTIC_RANKER=false`);/health 全 component OK;frontend :3001 alive
 - [x] V1 — re-index drive-images-1 **6/6 reindexed,0 skipped(sources 齊),0 failed,369 chunks**;pre-flight Langfuse 200 + PG 1 row + azurite 10000 ✓
 - [ ] V2 — **live chat GL03 query**:§3.1.3 步驟圖照 Word 頁次 render(Q3 解)+ 概覽 lead(AC5)— **用戶驗**(backend /query 已證 doc_order 升序;待 UI 視覺確認)
-- [ ] 🚧 V3 — 跨文件 30-query eval:recall / faithfulness flat + p95 latency 記錄(AC6)
+- [ ] 🚧 V3 — 跨文件 30-query eval(AC6):**deferred(用戶決定 2026-06-08)**。理由:① eval CLI `scripts/run_ragas_eval.py:136` **pre-existing 壞**(`engine.retrieve()` missing `kb_id`,stale 自 ADR-0018 multi-KB wiring,非 CH-011)② text RAGAs(4 metric 全 text-based)**對圖片-only 改動 N/A** —— CLI 唔行圖片 attach/sort 路徑,且 re-index 用相同 embedding 邏輯 → text retrieval bit-identical,metric 必然 flat。real regression 證據已齊(V1 6/6 / V4 production-preserve / V5 doc_order 升序 / 完整 suite 1262 pass)。開 task `task_ecd4f8bd` 修 harness
 - [x] V4 — production-preserve:frontend `allHaveDocOrder` mode 一次性決定 → 未 re-index KB(doc_order=0)退回 section sort,既有 vitest(唔 set doc_order)全綠驗證 bit-identical(AC7)
 - [x] V5 — doc_order 單調性確認:GL03 /query lead citation 圖 doc_order=259,265,269,275,…,357 **嚴格遞增**(R2)
 
 ## Cross-Cutting
-- [ ] X1 — 每 commit 對應 `progress.md` Day-N(R2)+ component tag(`feat(scope): ... (Cn)`)
-- [ ] X2 — ADR-0048 Accepted + README index(R5)
-- [ ] X3 — components `C01/C03/C05/C10-*.md` design note bump(若適用)(CC-5)
-- [ ] X4 — `progress.md` closeout summary + status flip `closed`
+- [x] X1 — 每 commit 對應 `progress.md` Day-N(R2)+ component tag(`0283e3e` feat / docs commit / `0b29c1b` housekeeping）
+- [x] X2 — ADR-0048 Accepted + README index(R5)
+- [ ] 🚧 X3 — components `C01/C03/C05/C10-*.md` design note bump:**deferred** — doc_order propagation 屬既有 ImageRef pipeline 增量,未起獨立 design note；如後續整合落 component 文件再 bump（CC-5,非阻塞）
+- [x] X4 — `progress.md` closeout summary + status flip `closed`
 
 ---
 

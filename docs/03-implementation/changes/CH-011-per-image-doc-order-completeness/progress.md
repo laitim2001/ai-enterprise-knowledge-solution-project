@@ -2,7 +2,7 @@
 change_id: CH-011
 spec_ref: ./spec.md
 checklist_ref: ./checklist.md
-status: in-progress     # in-progress | closed
+status: closed     # in-progress | closed
 ---
 
 # CH-011 — Progress
@@ -56,16 +56,32 @@ status: in-progress     # in-progress | closed
 
 ---
 
-## Closeout(填於 status=closed)
+## Closeout（2026-06-08，status=closed）
 
 ### Acceptance verification
-_(待)_
+- **AC1** ✅ `ImageRef.doc_order` 兩個 schema + orchestrator stamp（`img@<N>`）+ `to_search_doc` 自動序列化（round-trip test）
+- **AC2** ✅ `parse_embedded_images` 讀 doc_order（有/無 key + storage→query round-trip test）
+- **AC3** ✅ frontend `dedupeCitationImages` doc_order 主鍵排序 + 缺失 fallback（vitest 28）
+- **AC4** ✅ `_find_section_neighbour_images` document-order（chunk_index ascending）+ pytest
+- **AC5** ✅（backend 層）GL03 /query lead citation doc_order 259→357 嚴格升序、概覽 lead；🚧 **UI 視覺確認待用戶（V2）**
+- **AC6** 🚧 **deferred** — eval CLI pre-existing 壞（kb_id）+ text RAGAs 對圖片-only N/A（見 checklist V3 + task `task_ecd4f8bd`）
+- **AC7** ✅ production-preserve（vitest fallback）+ backend suite 1262 pass（1 pre-existing 非我）+ ruff/format/mypy 改檔 0 新 error
+- **AC8** ✅ H4（無 image embedding）+ H7（reverse-drift fix）
 
 ### Effort summary
-_(待)_
+| Day | Planned (h) | Actual (h) | Variance |
+|---|---|---|---|
+| 1（design spec + ADR + code + test + restart + re-index + closeout）| 8–12 | ~5 | −3 |
 
 ### Lessons
-_(待)_
+- **doc_order 一直喺手**：解 Q3 嘅 primitive（`EmbeddedImage.doc_order`）ingest 早就有,只係 orchestrator 砌 `ImageRef` 時用完即棄 → 接通一段就解,零新 extraction。先查清 as-built 避免重造（Karpathy §1.1）。
+- **平台 as-built > memory**：per-doc config 平台 vision memory（2 日前）已過時 —— 全 pipeline 試跑 loop W43-W51 已建。design spec 階段查證救返避免重做整個平台。
+- **null-byte silent corruption**：`citation-images.ts` `join(' ')` 空格被損壞成 `\0`（committed 入 CH-009）—— 只用於內部比較故 vitest 一直照過。Grep binary-match 揭發。教訓:exact-match Edit 失敗 + Grep 報 binary → 查 raw bytes,勿盲 rewrite。
+- **text RAGAs ≠ 圖片 regression 工具**:image-ordering 改動唔應該用 text eval 把關;real guard = backend doc_order 升序驗 + vitest production-preserve + re-index 0-failed。
+- **Carry-overs**:V2（用戶 UI 驗）/ V3+AC6（eval harness 修 + 跑,task `task_ecd4f8bd`）/ pre-existing synthesizer test（task `task_b05602ed`）。
+
+### Component design note status updates
+- 🚧 deferred（X3）— doc_order 屬既有 ImageRef pipeline 增量,未起獨立 design note bump（非阻塞）
 
 ---
 

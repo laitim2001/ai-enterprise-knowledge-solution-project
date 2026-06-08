@@ -1,7 +1,7 @@
 ---
 change_id: CH-011
 title: "Per-image doc_order propagation + document-order 圖片排序/揀圖(platform P1 / Gap C)"
-status: approved           # draft | proposed | approved | active | done | cancelled
+status: done               # draft | proposed | approved | active | done | cancelled
 created: 2026-06-08
 target_completion: 2026-06-09
 affects_components: [C01, C03, C05, C10]
