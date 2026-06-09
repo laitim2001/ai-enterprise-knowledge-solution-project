@@ -192,15 +192,24 @@ async def config_test(
         make_faithfulness_evaluator(settings) if payload.eval_faithfulness else None
     )
 
+    # W57 / ADR-0050 — per-DOCUMENT scope: load the doc's STORED per-doc config so
+    # both the draft and the A/B-saved resolutions insert it as the per-DOC layer.
+    # `None` doc_id (or no store / no config for the doc) → KB-scoped (pre-W57).
+    doc_cfg = None
+    if payload.doc_id:
+        store = getattr(request.app.state, "doc_config_store", None)
+        if store is not None:
+            doc_cfg = await store.get(kb_id, payload.doc_id)
+
     draft_override = PerQueryOverrides(**payload.draft_config.model_dump())
-    draft_effective = resolve_effective_config(settings, saved_cfg, draft_override)
+    draft_effective = resolve_effective_config(settings, saved_cfg, draft_override, doc_cfg)
     draft_summary = await _run_n(
         qreq, request, draft_effective, settings, payload.runs, faithfulness_fn
     )
 
     saved_summary: ConfigRunSummary | None = None
     if payload.compare_to_saved:
-        saved_effective = resolve_effective_config(settings, saved_cfg, None)
+        saved_effective = resolve_effective_config(settings, saved_cfg, None, doc_cfg)
         saved_summary = await _run_n(
             qreq, request, saved_effective, settings, payload.runs, faithfulness_fn
         )

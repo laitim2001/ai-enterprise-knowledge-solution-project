@@ -32,14 +32,28 @@ status: active     # active | closed
 - 儲存用獨立 `DocConfigStore`(新表 `document_configs`)平行 `make_kb_backend` pattern,唔污染 KB CRUD。
 - doc_id free-form key(無 documents 持久表;MVP 不強制 FK,記 OQ)。
 
+### 實作 + Verify(Day 1 cont)
+- **F1 store**:`DocConfig` schema(10 個 post-retrieval 旋鈕,全 Optional)+ `DocConfigStore` Protocol + `InMemoryDocConfigStore` + `PostgresDocConfigStore`(表 `document_configs`,`DictRow`-typed = 0 新 mypy error)+ `make_doc_config_store` factory + wire `app.state.doc_config_store`(`server.py`)。
+- **F2 解析**:`resolve_effective_config` 加 `doc_config` 參數;新增 `_layer()` helper 把 doc-over-kb fold 入既有 `_resolve` 鏈(只改 post-retrieval 旋鈕行,retrieval-entry 行 untouched = surgical)。
+- **F3 dominant-doc**:`_dominant_doc_id`(最多引用 doc,tie 取最高 rank)+ `_make_doc_overlay` callback(route 層 close over resolution inputs)+ `execute_query_pipeline` / `query_stream` retrieve 後單點注入(downstream `effective.*` 不變)。
+- **F4 CRUD API**:`doc_config.py` 4 endpoint(GET/PUT/DELETE `/config` + list `/doc-configs`,避開 `/docs/{doc_id}` 撞名)+ wire `server.py` `_auth`。
+- **F5 config-test doc-scope**:`ConfigTestRequest.doc_id` + route load stored doc config 插 draft+saved 兩側解析鏈。
+- **F6 test**:5 個新 test 檔/section,**62 passed**(test_doc_config_store / test_doc_config_routes / test_query_doc_config_overlay 新 + test_effective_config 6 新 + test_config_test_route 3 新 + 既有 regression 全綠)。
+- **V1 PASS**:pytest 62 綠;ruff format clean(12 檔);ruff check 專案預設全綠(server.py 30 E402 = pre-existing truststore,我 import 已 noqa);mypy `--explicit-package-bases` 新 file 零新 error(剩 7 全在 pre-existing postgres_backend.py)。
+
+### Decisions(cont)
+- 儲存層 `_connect` 用 `psycopg.AsyncConnection[DictRow]` typed(改善 postgres_backend.py 同 pattern 嘅 mypy 缺口)→ 新 file 零新 mypy error,守 §3.1 mypy-clean 目標,但**不** retro-fix postgres_backend(非我 mess,Karpathy §1.3)。
+- list endpoint 路徑 `/kb/{kb_id}/doc-configs`(非 `/docs/configs`)避開 documents route `/kb/{kb_id}/docs/{doc_id}` 以 `doc_id="configs"` 搶 match。
+
 ### Blockers
-- 無(待實作)。
+- 無(待 V2 可選 live 驗 + V3 用戶 review)。
 
 ### Commits
 | Hash | Subject |
 |---|---|
-| _(pending)_ | docs(planning): W57 kickoff — plan + ADR-0050 |
+| `2d98de1` | docs(planning): W57 kickoff — plan + ADR-0050 |
+| _(pending)_ | feat(generation): W57 per-doc config backend layer(F1-F6) |
 
 ---
 
-**End of W57 progress(Day 1 cont 將續寫實作)**
+**End of W57 progress(Day 1)**

@@ -28,6 +28,7 @@ from api.routes import (
     config_test,
     conversations,
     debug,
+    doc_config,
     documents,
     feedback,
     groups,
@@ -55,6 +56,7 @@ from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
 from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
+from kb_management.doc_config_store import make_doc_config_store  # noqa: E402
 from observability.langfuse_tracer import flush_tracer, init_tracer
 from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
@@ -107,6 +109,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     app.state.make_ingestion_chunker = _make_ingestion_chunker
     app.state.ingestion_chunker = _make_ingestion_chunker(settings.chunker_max_images_per_chunk)
+
+    # W57 / ADR-0050 — per-document config store (platform P2a / Gap A). Postgres
+    # table `document_configs` when DATABASE_URL is set, else process-local
+    # in-memory (mirrors the ADR-0023 make_kb_backend pattern). Read by the query
+    # pipeline (dominant-doc overlay) + the per-doc config CRUD routes.
+    app.state.doc_config_store = make_doc_config_store(settings)
 
     # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
     # Both factories pick lazy-imported production impls only when their env
@@ -331,6 +339,8 @@ app.include_router(chunks.router, tags=["chunks"], dependencies=_auth)
 app.include_router(chunking.router, tags=["chunking"], dependencies=_auth)
 app.include_router(retrieval_test.router, tags=["retrieval-test"], dependencies=_auth)
 app.include_router(config_test.router, tags=["config-test"], dependencies=_auth)
+# W57 / ADR-0050 — per-document config CRUD (platform P2a / Gap A).
+app.include_router(doc_config.router, tags=["doc-config"], dependencies=_auth)
 app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)
 app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)

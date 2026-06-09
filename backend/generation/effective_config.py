@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from api.schemas.doc_config import DocConfig
 from api.schemas.kb import KbConfig
 from storage.settings import Settings
 
@@ -120,19 +121,39 @@ def _resolve[T: int](per_query: T | None, kb_value: T | None, global_value: T) -
     return global_value
 
 
+def _layer[T](doc_value: T | None, kb_value: T | None) -> T | None:
+    """ADR-0050 per-DOC overlay over per-KB: the doc value wins when set, else KB.
+
+    Folds the per-DOC layer INTO the per-KB slot of the existing `_resolve` chain
+    (per-query > [per-DOC > per-KB] > global) so only the post-retrieval knobs gain
+    the doc layer — the retrieval-entry knobs (which `DocConfig` deliberately omits)
+    keep their existing 2-layer resolution untouched. ``doc_value=None`` (no per-doc
+    config) → returns ``kb_value`` → bit-identical to pre-W57 (production-preserve).
+    """
+    return doc_value if doc_value is not None else kb_value
+
+
 def resolve_effective_config(
     settings: Settings,
     kb_config: KbConfig | None = None,
     per_query: PerQueryOverrides | None = None,
+    doc_config: DocConfig | None = None,
 ) -> EffectiveConfig:
     """Resolve the live retrieval / citation config for one request.
 
     ``kb_config=None`` (KB record absent, e.g. a query against an index with no KB
     metadata row) → every knob falls through to the global ``Settings`` default, so
     the request behaves exactly as pre-W43.
+
+    W57 / ADR-0050 — ``doc_config`` is the optional per-DOCUMENT overlay (resolved
+    from the dominant cited doc by the query pipeline AFTER retrieval). It only
+    carries the post-retrieval knobs, so it wins over ``kb_config`` for those (chain
+    per-query > per-DOC > per-KB > global) and leaves the retrieval-entry knobs
+    untouched. ``doc_config=None`` → bit-identical to pre-W57 (production-preserve).
     """
     kb = kb_config
     pq = per_query
+    dc = doc_config
 
     return EffectiveConfig(
         # CH-007 — top_k overfetch + rerank depth. KbConfig.default_top_k /
@@ -172,59 +193,92 @@ def resolve_effective_config(
         # global-only pass-throughs (no per-KB knob in the W43 MVP per plan §2 F1.1)
         parent_doc_max_chunks_per_parent=settings.parent_doc_max_chunks_per_parent,
         parent_doc_fallback_to_doc_on_shallow=settings.parent_doc_fallback_to_doc_on_shallow,
+        # W57 / ADR-0050 — post-retrieval knobs gain the per-DOC layer via `_layer`
+        # (doc wins over KB when set). `dc=None` → `_layer` returns the KB value →
+        # bit-identical to pre-W57.
         enable_citation_post_hoc_expansion=_resolve(
             pq.enable_citation_post_hoc_expansion if pq else None,
-            kb.enable_citation_post_hoc_expansion if kb else None,
+            _layer(
+                dc.enable_citation_post_hoc_expansion if dc else None,
+                kb.enable_citation_post_hoc_expansion if kb else None,
+            ),
             settings.enable_citation_post_hoc_expansion,
         ),
         citation_expansion_max_aux=_resolve(
             pq.citation_expansion_max_aux if pq else None,
-            kb.citation_expansion_max_aux if kb else None,
+            _layer(
+                dc.citation_expansion_max_aux if dc else None,
+                kb.citation_expansion_max_aux if kb else None,
+            ),
             settings.citation_expansion_max_aux,
         ),
         citation_expansion_window=_resolve(
             pq.citation_expansion_window if pq else None,
-            kb.citation_expansion_window if kb else None,
+            _layer(
+                dc.citation_expansion_window if dc else None,
+                kb.citation_expansion_window if kb else None,
+            ),
             settings.citation_expansion_window,
         ),
         citation_expansion_section_path_prefix_depth=_resolve(
             pq.citation_expansion_section_path_prefix_depth if pq else None,
-            kb.citation_expansion_section_path_prefix_depth if kb else None,
+            _layer(
+                dc.citation_expansion_section_path_prefix_depth if dc else None,
+                kb.citation_expansion_section_path_prefix_depth if kb else None,
+            ),
             settings.citation_expansion_section_path_prefix_depth,
         ),
         enable_citation_neighbour_images=_resolve(
             pq.enable_citation_neighbour_images if pq else None,
-            kb.enable_citation_neighbour_images if kb else None,
+            _layer(
+                dc.enable_citation_neighbour_images if dc else None,
+                kb.enable_citation_neighbour_images if kb else None,
+            ),
             settings.enable_citation_neighbour_images,
         ),
         citation_neighbour_max_aux_images=_resolve(
             pq.citation_neighbour_max_aux_images if pq else None,
-            kb.citation_neighbour_max_aux_images if kb else None,
+            _layer(
+                dc.citation_neighbour_max_aux_images if dc else None,
+                kb.citation_neighbour_max_aux_images if kb else None,
+            ),
             settings.citation_neighbour_max_aux_images,
         ),
         citation_neighbour_section_path_prefix_depth=_resolve(
             pq.citation_neighbour_section_path_prefix_depth if pq else None,
-            kb.citation_neighbour_section_path_prefix_depth if kb else None,
+            _layer(
+                dc.citation_neighbour_section_path_prefix_depth if dc else None,
+                kb.citation_neighbour_section_path_prefix_depth if kb else None,
+            ),
             settings.citation_neighbour_section_path_prefix_depth,
         ),
         citation_neighbour_window=settings.citation_neighbour_window,
         # max_images_per_answer has NO global Settings field (per-KB / per-query only;
         # default None = no backend cap, frontend INLINE_IMAGE_CAP handles display).
+        # W57 — per-DOC > per-KB via `_layer` (per-query still wins over both).
         max_images_per_answer=(
             pq.max_images_per_answer
             if pq and pq.max_images_per_answer is not None
-            else (kb.max_images_per_answer if kb else None)
+            else _layer(
+                dc.max_images_per_answer if dc else None,
+                kb.max_images_per_answer if kb else None,
+            )
         ),
         enable_chapter_overview_pin=_resolve(
             pq.enable_chapter_overview_pin if pq else None,
-            kb.enable_chapter_overview_pin if kb else None,
+            _layer(
+                dc.enable_chapter_overview_pin if dc else None,
+                kb.enable_chapter_overview_pin if kb else None,
+            ),
             settings.enable_chapter_overview_pin,
         ),
         # CH-006 — str field, so resolve via `or` chain (the int-bound `_resolve`
         # helper can't type it). Non-empty strings are truthy → falls through to the
-        # global default when both per-query and per-KB are None.
+        # global default when per-query, per-DOC and per-KB are all None. W57 — the
+        # per-DOC layer sits between per-query and per-KB.
         answer_detail=(
             (pq.answer_detail if pq else None)
+            or (dc.answer_detail if dc else None)
             or (kb.answer_detail if kb else None)
             or settings.synthesis_answer_detail
         ),

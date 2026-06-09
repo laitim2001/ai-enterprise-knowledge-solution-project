@@ -10,6 +10,7 @@ Covers the three F1 acceptance pillars:
 
 from __future__ import annotations
 
+from api.schemas.doc_config import DocConfig
 from api.schemas.kb import KbConfig
 from api.schemas.query import Citation, ImageRef
 from generation.citation_enrichment import cap_images_per_answer
@@ -166,6 +167,91 @@ def test_resolve_ch007_top_k_none_per_query_falls_through_to_per_kb() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# W57 / ADR-0050 — per-DOC layer (per-query > per-DOC > per-KB > global)
+# --------------------------------------------------------------------------- #
+
+
+def test_resolve_doc_config_none_is_bit_identical() -> None:
+    """G7 production-preserve — doc_config=None resolves exactly like the per-KB-only
+    chain (the W57 doc layer is a strict superset that no-ops when absent)."""
+    s = _settings()
+    kb = KbConfig(citation_expansion_max_aux=10, max_images_per_answer=8)
+    assert resolve_effective_config(s, kb) == resolve_effective_config(s, kb, None, None)
+    assert resolve_effective_config(s, kb) == resolve_effective_config(
+        s, kb, doc_config=DocConfig()
+    )
+
+
+def test_resolve_per_doc_overrides_per_kb_for_post_retrieval_knobs() -> None:
+    s = _settings()
+    kb = KbConfig(
+        citation_expansion_max_aux=10,
+        max_images_per_answer=8,
+        answer_detail="concise",
+        enable_chapter_overview_pin=False,
+    )
+    dc = DocConfig(
+        citation_expansion_max_aux=18,
+        max_images_per_answer=30,
+        answer_detail="detailed",
+        enable_chapter_overview_pin=True,
+    )
+    eff = resolve_effective_config(s, kb, doc_config=dc)
+    # per-DOC wins over per-KB for every post-retrieval knob it sets
+    assert eff.citation_expansion_max_aux == 18
+    assert eff.max_images_per_answer == 30
+    assert eff.answer_detail == "detailed"
+    assert eff.enable_chapter_overview_pin is True
+
+
+def test_resolve_per_doc_partial_falls_through_to_per_kb() -> None:
+    """A DocConfig only overrides the knobs it sets; the rest inherit per-KB."""
+    s = _settings()
+    kb = KbConfig(citation_expansion_max_aux=10, citation_expansion_window=2)
+    dc = DocConfig(citation_expansion_max_aux=18)  # window left None
+    eff = resolve_effective_config(s, kb, doc_config=dc)
+    assert eff.citation_expansion_max_aux == 18  # per-DOC
+    assert eff.citation_expansion_window == 2  # per-KB (doc didn't set it)
+
+
+def test_resolve_per_doc_does_not_touch_retrieval_entry_knobs() -> None:
+    """DocConfig has no retrieval-entry fields, so top_k / rerank / parent_doc stay
+    resolved from per-KB (per ADR-0050 — these are consumed before any doc is cited)."""
+    s = _settings()
+    kb = KbConfig(
+        default_top_k=80,
+        default_rerank_k=20,
+        enable_parent_doc_retrieval=True,
+        parent_doc_top_k=4,
+    )
+    dc = DocConfig(citation_expansion_max_aux=18)
+    eff = resolve_effective_config(s, kb, doc_config=dc)
+    assert eff.default_top_k == 80
+    assert eff.default_rerank_k == 20
+    assert eff.enable_parent_doc_retrieval is True
+    assert eff.parent_doc_top_k == 4
+
+
+def test_resolve_per_query_beats_per_doc() -> None:
+    """per-query override still wins over the per-DOC layer (chain head)."""
+    s = _settings()
+    kb = KbConfig(max_images_per_answer=8)
+    dc = DocConfig(max_images_per_answer=30)
+    pq = PerQueryOverrides(max_images_per_answer=3)
+    eff = resolve_effective_config(s, kb, per_query=pq, doc_config=dc)
+    assert eff.max_images_per_answer == 3  # per-query > per-DOC(30) > per-KB(8)
+
+
+def test_resolve_per_doc_false_flag_overrides_true_per_kb() -> None:
+    """A per-DOC `False` must win over a per-KB `True` (not be read as 'unset')."""
+    s = _settings()
+    kb = KbConfig(enable_citation_neighbour_images=True)
+    dc = DocConfig(enable_citation_neighbour_images=False)
+    eff = resolve_effective_config(s, kb, doc_config=dc)
+    assert eff.enable_citation_neighbour_images is False
+
+
+# --------------------------------------------------------------------------- #
 # KbConfig migration-default (F1.7) — legacy dict missing W43 keys
 # --------------------------------------------------------------------------- #
 
@@ -202,15 +288,24 @@ def test_kb_config_legacy_dict_without_w43_keys_parses_with_none() -> None:
 
 def _img(i: int) -> ImageRef:
     return ImageRef(
-        blob_url=f"blob://img-{i}", alt_text=f"img {i}",
-        checksum_sha256=f"sha-{i}", width=10, height=10,
+        blob_url=f"blob://img-{i}",
+        alt_text=f"img {i}",
+        checksum_sha256=f"sha-{i}",
+        width=10,
+        height=10,
     )
 
 
 def _citation(chunk_id: str, n_images: int) -> Citation:
     return Citation(
-        chunk_id=chunk_id, doc_id="doc-a", doc_title="Doc A", doc_format="docx",
-        chunk_title="T", chunk_index=0, section_path=["Doc"], relevance_score=0.9,
+        chunk_id=chunk_id,
+        doc_id="doc-a",
+        doc_title="Doc A",
+        doc_format="docx",
+        chunk_title="T",
+        chunk_index=0,
+        section_path=["Doc"],
+        relevance_score=0.9,
         embedded_images=[_img(i) for i in range(n_images)],
     )
 

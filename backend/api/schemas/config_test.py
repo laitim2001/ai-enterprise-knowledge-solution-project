@@ -40,6 +40,11 @@ class ConfigTestRequest(BaseModel):
     # single run can't decide a config. Capped at 5 (each run = a full synth, ~10-40s).
     runs: int = Field(default=3, ge=1, le=5)
     draft_config: DraftRetrievalConfig = Field(default_factory=DraftRetrievalConfig)
+    # W57 / ADR-0050 — optional per-DOCUMENT scope. When set, the doc's STORED
+    # `DocConfig` is inserted as the per-DOC layer (draft > per-DOC > per-KB > global)
+    # so the harness previews exactly what a real query landing on this doc would do.
+    # `None` = KB-scoped test (bit-identical to pre-W57).
+    doc_id: str | None = None
     mode: Literal["hybrid", "vector", "fulltext"] = "hybrid"
     # Default CRAG off for a clean per-config signal (CRAG re-synth adds its own variance).
     enable_crag: bool = False

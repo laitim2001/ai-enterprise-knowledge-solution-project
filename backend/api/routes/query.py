@@ -13,6 +13,7 @@ for tests / local dev). SSE /query/stream remains 501 — F4 W3 D3 scope.
 
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 
 import structlog
@@ -20,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from api.routes.documents import screenshot_proxy_url
+from api.schemas.kb import KbConfig
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
 from generation.citation_enrichment import build_citations, cap_images_per_answer
 from generation.citation_image_neighbors import (
@@ -35,6 +37,7 @@ from generation.effective_config import (
 from generation.query_reformulator import QueryReformulator
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
+from kb_management.doc_config_store import DocConfigStore
 from kb_management.service import KBService, get_kb_service
 from kb_management.storage import KBNotFoundError
 from observability.observe import observe_async, observe_streaming
@@ -47,6 +50,78 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 KbServiceDep = Annotated[KBService, Depends(get_kb_service)]
+
+
+# W57 / ADR-0050 — given the dominant cited doc_id, return the per-request
+# `EffectiveConfig` with that doc's per-doc config overlaid (or the base config
+# unchanged). Built per request by `_make_doc_overlay`; consumed by
+# `execute_query_pipeline` + the stream path after retrieval.
+DocOverlayResolver = Callable[[str | None], Awaitable[EffectiveConfig]]
+
+
+async def _get_kb_config(service: KBService, kb_id: str) -> KbConfig | None:
+    """Fetch the per-KB `KbConfig`; ``None`` when the KB has no metadata row
+    (a query against an index with no KB record → global-default config, pre-W43
+    back-compat)."""
+    try:
+        return (await service.get(kb_id)).config
+    except KBNotFoundError:
+        return None
+
+
+def _doc_config_store(request: Request) -> DocConfigStore | None:
+    """W57 — the per-doc config store wired on app.state (None in tests / when the
+    server didn't wire it → no per-doc overlay, behaves as per-KB)."""
+    return getattr(request.app.state, "doc_config_store", None)
+
+
+def _dominant_doc_id(chunks: list) -> str | None:
+    """ADR-0050 — the ``doc_id`` appearing most across the reranked chunk set.
+
+    Ties resolve to the highest-ranked doc: chunks arrive rank-ordered (best first),
+    and Python's ``max`` returns the first key reaching the max while dict iteration
+    preserves insertion (== rank) order. ``None`` when no chunk carries a doc_id.
+    """
+    counts: dict[str, int] = {}
+    for c in chunks:
+        fields = getattr(c, "fields", None)
+        doc_id = str(fields.get("doc_id", "")) if isinstance(fields, dict) else ""
+        if doc_id:
+            counts[doc_id] = counts.get(doc_id, 0) + 1
+    if not counts:
+        return None
+    return max(counts, key=lambda d: counts[d])
+
+
+def _make_doc_overlay(
+    *,
+    base: EffectiveConfig,
+    settings: Settings,
+    kb_config: KbConfig | None,
+    per_query: PerQueryOverrides,
+    store: DocConfigStore | None,
+    kb_id: str,
+) -> DocOverlayResolver | None:
+    """W57 / ADR-0050 — build the per-document config overlay for a request.
+
+    Returns ``None`` (no overlay → pipeline keeps the per-KB ``base``) when no store
+    is wired. Otherwise a callback that, given the dominant cited doc_id, re-resolves
+    the full chain with that doc's `DocConfig` inserted (per-query > per-DOC > per-KB
+    > global). When the dominant doc has NO per-doc config it returns ``base``
+    unchanged — so an answer over un-configured docs is bit-identical to pre-W57.
+    """
+    if store is None:
+        return None
+
+    async def _overlay(dominant_doc_id: str | None) -> EffectiveConfig:
+        if not dominant_doc_id:
+            return base
+        doc_config = await store.get(kb_id, dominant_doc_id)
+        if doc_config is None:
+            return base
+        return resolve_effective_config(settings, kb_config, per_query, doc_config)
+
+    return _overlay
 
 
 async def _resolve_effective_config(
@@ -66,12 +141,7 @@ async def _resolve_effective_config(
     harness / tests that DO send `top_k_*`); when `None` (the chat path), the KB's
     `default_top_k` / `default_rerank_k` win, which is the whole point of this change.
     """
-    kb_config = None
-    try:
-        kb_status = await service.get(kb_id)
-        kb_config = kb_status.config
-    except KBNotFoundError:
-        kb_config = None  # global-default config for an unregistered KB
+    kb_config = await _get_kb_config(service, kb_id)
     return resolve_effective_config(settings, kb_config, per_query)
 
 
@@ -158,13 +228,26 @@ async def query(
     harness runs the IDENTICAL pipeline).
     """
     settings = get_settings()
-    effective = await _resolve_effective_config(
-        service,
-        settings,
-        payload.kb_id,
-        _per_query_from_payload(payload),
+    kb_config = await _get_kb_config(service, payload.kb_id)
+    per_query = _per_query_from_payload(payload)
+    effective = resolve_effective_config(settings, kb_config, per_query)
+    # W57 / ADR-0050 — per-document config overlay (no-op when no store / no per-doc
+    # config for the dominant cited doc).
+    overlay = _make_doc_overlay(
+        base=effective,
+        settings=settings,
+        kb_config=kb_config,
+        per_query=per_query,
+        store=_doc_config_store(request),
+        kb_id=payload.kb_id,
     )
-    return await execute_query_pipeline(payload, request, effective, settings)
+    return await execute_query_pipeline(
+        payload,
+        request,
+        effective,
+        settings,
+        doc_overlay=overlay,
+    )
 
 
 async def execute_query_pipeline(
@@ -172,6 +255,7 @@ async def execute_query_pipeline(
     request: Request,
     effective: EffectiveConfig,
     settings: Settings,
+    doc_overlay: DocOverlayResolver | None = None,
 ) -> QueryResponse:
     """W43 F2 — the shared `/query` full pipeline (retrieve → context-expand →
     parent-doc → synth → CRAG → citations → neighbour-images → image-cap),
@@ -180,6 +264,11 @@ async def execute_query_pipeline(
     Both `/query` (saved per-KB config) and the config-test harness
     (`POST /kb/{kb_id}/config-test`, draft config) call this — so the harness
     measures the IDENTICAL pipeline a real query runs (F2.6 trust requirement).
+
+    W57 / ADR-0050 — `doc_overlay` (when supplied by `/query`) re-resolves the
+    post-retrieval knobs using the dominant cited doc's per-doc config, applied
+    AFTER retrieval (the retrieval-entry knobs in `effective` already drove the
+    fetch). `None` (config-test / tests) → no overlay, behaves as the passed config.
     """
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
@@ -230,6 +319,12 @@ async def execute_query_pipeline(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"retrieval failure: {type(exc).__name__}: {exc}",
         ) from exc
+
+    # W57 / ADR-0050 — per-document config overlay. Now that retrieval is done we
+    # know the cited docs; re-resolve the post-retrieval knobs using the dominant
+    # doc's per-doc config (no-op when no overlay / no per-doc config).
+    if doc_overlay is not None:
+        effective = await doc_overlay(_dominant_doc_id(result.chunks))
 
     chunk_previews = [
         ChunkPreview(
@@ -437,11 +532,18 @@ async def query_stream(
             ),
         )
 
-    effective = await _resolve_effective_config(
-        service,
-        get_settings(),
-        payload.kb_id,
-        _per_query_from_payload(payload),
+    settings = get_settings()
+    kb_config = await _get_kb_config(service, payload.kb_id)
+    per_query = _per_query_from_payload(payload)
+    effective = resolve_effective_config(settings, kb_config, per_query)
+    # W57 / ADR-0050 — per-document overlay built here, applied after retrieval below.
+    overlay = _make_doc_overlay(
+        base=effective,
+        settings=settings,
+        kb_config=kb_config,
+        per_query=per_query,
+        store=_doc_config_store(request),
+        kb_id=payload.kb_id,
     )
 
     try:
@@ -460,6 +562,12 @@ async def query_stream(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"retrieval failure: {type(exc).__name__}: {exc}",
         ) from exc
+
+    # W57 / ADR-0050 — re-resolve post-retrieval knobs via the dominant cited doc's
+    # per-doc config. Reassigns `effective` BEFORE synth + the citation-augment
+    # closure (both read this `effective`), so the stream honours per-doc config.
+    if overlay is not None:
+        effective = await overlay(_dominant_doc_id(result.chunks))
 
     # ADR-0020 Context Expander parallel to /query happy path (graceful degradation).
     try:
