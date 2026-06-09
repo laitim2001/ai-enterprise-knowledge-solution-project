@@ -17,11 +17,11 @@ last_updated: 2026-06-08
 - [x] I5 — **lever = synthesis prompt（用戶揀 A）**：`_RULE_3_DETAILED` 明文「do NOT summarize, compress, **merge**, or omit」正係令 LLM 忠實列冗餘 heading 嘅原因 → 改為「enumerate every DISTINCT step + list each distinct step ONLY ONCE + 唔把 process-step-list 摘要表當獨立步驟」。保完整性 + recall + 圖片,唔需 reduce expansion / contextual toggle
 
 ## Fix（A — synthesis dedup prompt）
-- [x] F1 — 改 `_RULE_3_DETAILED`（`backend/generation/prompt_builder.py`）：移除 "merge" 過度忠實字眼 + 加 distinct-step dedup + summary-table fold 指示（BUG-036）；concise 變體不變
-- [x] F2 — regression test（`test_detailed_variant_dedups_repeated_source_headings_bug036`）+ 既有 40 prompt test 全綠
+- [x] F1 — 改 `_RULE_3_DETAILED`（`backend/generation/prompt_builder.py`）：(1) 移除 "merge" 過度忠實字眼 + distinct-step dedup（去重複 heading）；(2) **follow-up** — 用戶反映第一版 dedup **順手 flatten 咗**(失去 nested 分組),再加「**PRESERVE source grouping + NEST 子組步驟 + 唔 flatten**」+ 把 "fold into single step" 改 "treat summary table as outline"；concise 變體不變
+- [x] F2 — regression test（dedup + grouping/nest/flatten assertions）+ 既有 prompt test 全綠（16 answer_detail）
 
 ## Verify
-- [x] V1 — 重跑 repro（backend /query，新 prompt）：§GL03-2 由「Confirm Approval Request ×3 / Approve General Journal ×2」→ **每 step 一次**；完整性保留（create→validate→submit→approve/reject→post→voucher 全在）；答案 ~10300→~2098 字(去 cite) leaner
+- [x] V1 — 重跑 repro（backend /query，新 prompt）：(a) §GL03-2「Confirm Approval Request ×3 / Approve General Journal ×2」→ **每 step 一次**；(b) **結構還原 nested 分組**（`## 3.1.1 Overview` / `## 3.1.3` + `### Create General Journal header` / `### Prepare excel file` / `### Upload excel file` … 每組 numbered 步驟,唔再 flat 1.1–1.19）；完整性保留；deduped。**注意**:測試期機器重度 load,query ~220s（event-loop starvation,非 backend 壞,per memory loaded-machine）
 - [x] V2 — **CH-011 圖片 doc_order 不受影響**：prompt 改動只掂 synthesis 文字,圖片 attach/pin/sort 路徑無關;13 citations + lead doc_order-sorted 圖不變
 - [ ] V3 — 用戶 live 驗（chat UI hard refresh + 問 GL03）
 

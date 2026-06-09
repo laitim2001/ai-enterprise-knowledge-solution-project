@@ -73,6 +73,17 @@ def test_detailed_variant_dedups_repeated_source_headings_bug036() -> None:
     assert "compress, merge" not in SYSTEM_PROMPT_DETAILED
 
 
+def test_detailed_variant_preserves_source_grouping_bug036() -> None:
+    # BUG-036 follow-up — the first dedup pass removed duplicates but flattened the
+    # procedure into one long decimal list (1.1..1.19), losing the source's nested
+    # sub-procedure grouping (GL03-1 > "Create General Journal header" > steps). The
+    # prompt must preserve the source hierarchy as nested sub-lists, not flatten it.
+    low = SYSTEM_PROMPT_DETAILED.lower()
+    assert "grouping" in low  # preserve the source's grouping
+    assert "nest" in low  # nest each group's steps as a sub-list
+    assert "flatten" in low  # ...and the explicit do-NOT-flatten instruction
+
+
 def test_detailed_actually_differs_from_concise() -> None:
     # Guards the .replace() match — if _RULE_3_CONCISE stopped matching, the replace
     # would be a no-op and the two prompts would be identical.
