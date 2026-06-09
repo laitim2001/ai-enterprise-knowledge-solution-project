@@ -60,6 +60,7 @@ from storage.settings import get_settings  # noqa: E402
 
 DEFAULT_EVAL_SET = Path("docs/eval-set-v1-draft.yaml")
 DEFAULT_OUTPUT = Path("reports/ragas-results.json")
+DEFAULT_KB_ID = "drive_user_manuals"  # BUG-037 — Tier 1 single-KB baseline (Q7 Resolved)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -77,6 +78,12 @@ def _parse_args() -> argparse.Namespace:
         help="Subset to first N queries (0 = all main queries; cost containment per W4 plan §4 R4)",
     )
     parser.add_argument(
+        "--kb-id", type=str, default=DEFAULT_KB_ID,
+        help=f"Target KB id for retrieval (default: {DEFAULT_KB_ID}). BUG-037 — required by "
+             "RetrievalEngine.retrieve per ADR-0018; per-query kb_id in the eval-set still "
+             "overrides at the runner layer.",
+    )
+    parser.add_argument(
         "--pipeline-cache", type=Path, default=None,
         help="Reuse cached pipeline outputs JSON instead of re-running retrieve+synthesize",
     )
@@ -91,8 +98,15 @@ def _parse_args() -> argparse.Namespace:
 async def _build_samples_via_pipeline(
     eval_set_path: Path,
     subset: int,
+    kb_id: str,
 ) -> list[RagasQuerySample]:
-    """Run EKP RAG pipeline per query → assemble RagasQuerySample list."""
+    """Run EKP RAG pipeline per query → assemble RagasQuerySample list.
+
+    `kb_id` (BUG-037) is the target KB for retrieval — required by
+    `RetrievalEngine.retrieve` since ADR-0018 (multi-KB invariant). HybridSearcher
+    resolves the per-KB index dynamically (`kb_id_to_index_name`), so the searcher
+    constructor's `index_name` is only the legacy default fallback.
+    """
     settings = get_settings()
     if not (settings.azure_openai_api_key and settings.azure_search_admin_key):
         raise SystemExit(
@@ -133,7 +147,7 @@ async def _build_samples_via_pipeline(
                 hybrid_overfetch_for_rerank=settings.hybrid_top_k_retrieval,
             )
             for sample in samples:
-                retrieval = await engine.retrieve(query=sample.question, top_k=5)
+                retrieval = await engine.retrieve(query=sample.question, kb_id=kb_id, top_k=5)
                 sample.contexts = [
                     str(c.fields.get("chunk_text", "")) for c in retrieval.chunks
                 ]
@@ -174,6 +188,7 @@ async def _amain() -> int:
     eval_set_path: Path = args.eval_set
     output_path: Path = args.output
     subset: int = args.subset
+    kb_id: str = args.kb_id
 
     if args.skip_pipeline and args.pipeline_cache is None:
         print("--skip-pipeline requires --pipeline-cache PATH", file=sys.stderr)
@@ -184,7 +199,7 @@ async def _amain() -> int:
     elif args.skip_pipeline:
         samples = _build_samples_via_cache(eval_set_path, args.pipeline_cache, subset)  # type: ignore[arg-type]
     else:
-        samples = await _build_samples_via_pipeline(eval_set_path, subset)
+        samples = await _build_samples_via_pipeline(eval_set_path, subset, kb_id)
 
     if not samples:
         print("no samples to evaluate (empty eval-set after subset/OOS filter)", file=sys.stderr)

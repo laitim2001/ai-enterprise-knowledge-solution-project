@@ -43,6 +43,11 @@ _SHOOTOUT_DEFAULT_RERANKERS = [
 
 class EvalRunRequest(BaseModel):
     eval_set_id: str = "eval-set-v0"  # default to docs/eval-set-v0.yaml
+    # BUG-037 — target KB for the eval run. Default preserves the Tier 1 single-KB
+    # baseline (Q7 Resolved); set to eval CH-011 / per-doc config against another KB
+    # (e.g. "drive-images-1"). Per-query `kb_id` in the eval-set YAML still overrides
+    # this (ADR-0018), so this is the runner default for queries that don't carry one.
+    kb_id: str = "drive_user_manuals"
     llm_model: str = "gpt-5.5"
     reranker: str = "cohere-v4.0-pro"  # ADR-0012 production lock
     enable_crag: bool = True
@@ -51,6 +56,7 @@ class EvalRunRequest(BaseModel):
 
 class EvalShootoutRequest(BaseModel):
     eval_set_id: str = "eval-set-v0"
+    kb_id: str = "drive_user_manuals"  # BUG-037 — target KB (default = Tier 1 baseline)
     rerankers: list[str] = []  # empty → use _SHOOTOUT_DEFAULT_RERANKERS
     max_main_queries: int | None = None
 
@@ -132,7 +138,7 @@ async def run_eval(payload: EvalRunRequest, request: Request) -> EvalReport:
         report = await run_eval_pipeline(
             eval_set_path=eval_set_path,
             engine=engine,
-            kb_id="drive_user_manuals",  # Tier 1 single-KB Q7 Resolved baseline
+            kb_id=payload.kb_id,  # BUG-037 — was hardcoded "drive_user_manuals"
             max_main_queries=payload.max_main_queries,
             synthesizer=synthesizer,
             ragas_evaluator=ragas_evaluator,
@@ -175,25 +181,29 @@ async def run_shootout(payload: EvalShootoutRequest, request: Request) -> Shooto
 
     for reranker_label in rerankers:
         if reranker_label in ("voyage-rerank-2.5", "zeroentropy-zerank-1", "azure-semantic"):
-            entries.append(RerankerShootoutEntry(
-                reranker=reranker_label,
-                skipped=True,
-                skip_reason=(
-                    f"{reranker_label} requires per-reranker engine reconstruction; "
-                    "use scripts/run_reranker_shootout.py CLI driver (W4-era pattern). "
-                    "API endpoint shootout limited to current engine + hybrid-only baseline."
-                ),
-                report=None,
-            ))
+            entries.append(
+                RerankerShootoutEntry(
+                    reranker=reranker_label,
+                    skipped=True,
+                    skip_reason=(
+                        f"{reranker_label} requires per-reranker engine reconstruction; "
+                        "use scripts/run_reranker_shootout.py CLI driver (W4-era pattern). "
+                        "API endpoint shootout limited to current engine + hybrid-only baseline."
+                    ),
+                    report=None,
+                )
+            )
             continue
 
         if reranker_label not in ("cohere-v4.0-pro", "cohere-v3.5", "off"):
-            entries.append(RerankerShootoutEntry(
-                reranker=reranker_label,
-                skipped=True,
-                skip_reason=f"Unknown reranker label '{reranker_label}'",
-                report=None,
-            ))
+            entries.append(
+                RerankerShootoutEntry(
+                    reranker=reranker_label,
+                    skipped=True,
+                    skip_reason=f"Unknown reranker label '{reranker_label}'",
+                    report=None,
+                )
+            )
             continue
 
         # cohere-v4.0-pro / cohere-v3.5 → use current engine (its reranker fixed at boot)
@@ -202,25 +212,29 @@ async def run_shootout(payload: EvalShootoutRequest, request: Request) -> Shooto
             report = await run_eval_pipeline(
                 eval_set_path=eval_set_path,
                 engine=engine,
-                kb_id="drive_user_manuals",
+                kb_id=payload.kb_id,  # BUG-037 — was hardcoded "drive_user_manuals"
                 max_main_queries=payload.max_main_queries,
                 synthesizer=synthesizer,
                 ragas_evaluator=ragas_evaluator,
                 judge_deployment=judge_deployment,
             )
-            entries.append(RerankerShootoutEntry(
-                reranker=reranker_label,
-                skipped=False,
-                skip_reason="",
-                report=report,
-            ))
+            entries.append(
+                RerankerShootoutEntry(
+                    reranker=reranker_label,
+                    skipped=False,
+                    skip_reason="",
+                    report=report,
+                )
+            )
         except Exception as exc:  # noqa: BLE001 — surface per-reranker errors as skipped
-            entries.append(RerankerShootoutEntry(
-                reranker=reranker_label,
-                skipped=True,
-                skip_reason=f"runtime error: {type(exc).__name__}: {exc}",
-                report=None,
-            ))
+            entries.append(
+                RerankerShootoutEntry(
+                    reranker=reranker_label,
+                    skipped=True,
+                    skip_reason=f"runtime error: {type(exc).__name__}: {exc}",
+                    report=None,
+                )
+            )
 
     finished_at = datetime.now(UTC).isoformat()
 
