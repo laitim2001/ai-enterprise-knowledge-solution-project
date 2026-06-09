@@ -84,6 +84,20 @@ def test_detailed_variant_preserves_source_grouping_bug036() -> None:
     assert "flatten" in low  # ...and the explicit do-NOT-flatten instruction
 
 
+def test_detailed_variant_nested_numbered_list_not_headings_bug036() -> None:
+    # BUG-036 follow-up #2 — the "group headings" wording made gpt-5.5 render groups as
+    # Markdown headings (## / ###) with per-group restarted numbering (2 visual levels),
+    # not the preferred single continuous 3-level nested *numbered* outline. The fix
+    # pins the target via (a) explicit "nested ordered list / no Markdown headings /
+    # bold group titles" wording and (b) a concrete few-shot worked example.
+    low = SYSTEM_PROMPT_DETAILED.lower()
+    assert "ordered" in low  # render as a nested ORDERED (numbered) list
+    assert "markdown heading" in low  # ...and the explicit do-NOT-use-headings ban
+    assert "bold" in low  # group / sub-procedure titles are bold list items
+    assert "worked example" in low  # few-shot exemplar present
+    assert "level-1 numbered item" in low  # exemplar describes the nesting levels
+
+
 def test_detailed_actually_differs_from_concise() -> None:
     # Guards the .replace() match — if _RULE_3_CONCISE stopped matching, the replace
     # would be a no-op and the two prompts would be identical.

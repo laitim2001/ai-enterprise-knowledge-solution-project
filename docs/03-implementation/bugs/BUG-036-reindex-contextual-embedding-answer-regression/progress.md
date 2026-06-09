@@ -40,6 +40,34 @@ status: investigating     # investigating | closed
 
 ---
 
+## Day 2 — 2026-06-09 — 格式 regression 連環修(去重 → 壓平 → 標題化 → few-shot 釘死)
+
+### Context
+Day 1 去重後,用戶連續 2 輪 live 驗反映**文字格式**仍未還原到 re-index 前滿意嗰版。逐張截圖比對鎖定真正差別(非內容、係**結構渲染**)。
+
+### Done
+- **F1 第二輪(hierarchy)** `276eb5e`：第一版 dedup 順手把程序壓平做單層 `1.1..1.19`,失去源層級。加「PRESERVE source grouping + NEST 子組 + 唔 flatten」+ 把 "fold into single step" 改 "summary table = outline"
+- **F1 第三輪(few-shot)** _(this commit)_：用戶截圖比對確認 — 第二輪「**group headings**」字眼令 gpt-5.5 把組渲染成 **markdown 標題**(`##`/`###`,每組重設編號、得 2 層),而非用戶要嘅**單一連續 3 層嵌套編號清單**(`1` → `1.1` → `1.1.1`,組標題=粗體編號 item)。修法:
+  - 換走「group headings」→ 明文「render the ENTIRE procedure as ONE single CONTINUOUS nested ordered (numbered) list」+ 三層定義(top-level / sub-procedure / step)+ 組標題粗體 + **禁 Markdown headings** + 禁 flatten / 禁 reset 編號
+  - **嵌入 few-shot worked example**(具體 3 層嵌套編號清單範本)— few-shot 對「格式重現」遠比抽象規則可靠
+  - 去重指令(distinct step ONLY ONCE + summary-table=outline)保留不變
+- **F2** regression test 加 `test_detailed_variant_nested_numbered_list_not_headings_bug036`(assert ordered / markdown heading ban / bold / worked example / level-1 numbered item)；`test_answer_detail_ch006.py` 17 passed；ruff/format clean
+
+### Decisions
+- 再郁 prompt 前同用戶 sync 目標格式(AskUserQuestion 確認 = 截圖2 嵌套編號清單)→ 避免第 4 次盲改(per CLAUDE.md §1.1 think-before-coding + §13 when-in-doubt)
+- 根因定性:**唔係 recall / 唔係內容**,係 synthesis **markdown 結構渲染**;「group headings」wording 係我自己上一輪引入嘅 regression
+
+### Blockers
+- 無(few-shot fix backend-restart 載入中,待 /query 驗證 + V3 用戶 live 驗)
+
+### Commits
+| Hash | Subject |
+|---|---|
+| `276eb5e` | fix(generation): BUG-036 follow-up — preserve source hierarchy, not flat list |
+| _(this commit)_ | fix(generation): BUG-036 follow-up #2 — nested numbered list + few-shot, not headings |
+
+---
+
 ## Closeout（填於 status=closed）
 _(待)_
 
