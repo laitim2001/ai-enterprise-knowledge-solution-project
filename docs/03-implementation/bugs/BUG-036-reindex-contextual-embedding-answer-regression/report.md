@@ -2,7 +2,7 @@
 bug_id: BUG-036
 title: "Chat 文字答案格式 regression — re-index 引入 contextual embedding 後步驟列亂編號 + 重複行"
 severity: Sev2          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: verifying   # triaged | investigating | fixing | verifying | done | wont-fix
+status: done   # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-08
 reporter: "End-user (Chris)"
 affects_components: [C04, C05]
@@ -66,17 +66,18 @@ drive-images-1 chat 問「How do I process and confirm journal voucher transacti
 
 ## 7. Acceptance for Fix（checklist preview）
 
-- [ ] Reproduction confirmed locally（已：API 2 run）
-- [ ] Root cause identified（contextual embedding 引入 vs expansion 餵料 vs synthesis dedup — 區分清楚）
-- [ ] Fix implemented（方向待 §6(iii) 投票後定）
-- [ ] Regression test added（如涉 synthesis/retrieval code）
-- [ ] Verified（重跑 §2 repro：清晰格式還原 + 完整性不退 + CH-011 圖片順序不受影響）
+- [x] Reproduction confirmed locally（API 2 run）
+- [x] Root cause identified（contextual embedding 令重複 chunk 同時 surface + `detailed` synthesis 過度忠實列 source-inherent 冗餘 heading；A = synthesis prompt dedup）
+- [x] Fix implemented（`_RULE_3_DETAILED` 三輪:dedup → preserve grouping → nested numbered list + few-shot）
+- [x] Regression test added（`test_answer_detail_ch006.py` 17 tests:dedup / grouping / nested-list / no-headings / few-shot）
+- [x] Verified（backend /query 3 層嵌套編號清單 + deduped + 完整性保留 + CH-011 圖片順序不受影響;**用戶 live UI 確認 2026-06-09「文字格式終於變回預期效果」**）
 
 ## 8. Report Changelog
 
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-08 | Initial triage（Sev2）+ 診斷捕捉 | CH-011 re-index 副作用，用戶 flag | Chris |
+| 2026-06-09 | Fix 三輪 + verified + status → done | 用戶 live UI 確認格式還原 | Chris |
 
 ---
 

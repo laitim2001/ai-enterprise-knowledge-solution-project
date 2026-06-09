@@ -1,8 +1,8 @@
 ---
 bug_id: BUG-036
 report_ref: ./report.md
-status: investigating     # investigating | fixing | verifying | done
-last_updated: 2026-06-08
+status: done     # investigating | fixing | verifying | done
+last_updated: 2026-06-09
 ---
 
 # BUG-036 — Checklist
@@ -23,8 +23,8 @@ last_updated: 2026-06-08
 ## Verify
 - [x] V1 — 重跑 repro（backend /query，新 prompt）：(a) §GL03-2「Confirm Approval Request ×3 / Approve General Journal ×2」→ **每 step 一次**；(b) **結構還原 nested 分組**（`## 3.1.1 Overview` / `## 3.1.3` + `### Create General Journal header` / `### Prepare excel file` / `### Upload excel file` … 每組 numbered 步驟,唔再 flat 1.1–1.19）；完整性保留；deduped。**注意**:測試期機器重度 load,query ~220s（event-loop starvation,非 backend 壞,per memory loaded-machine）
 - [x] V2 — **CH-011 圖片 doc_order 不受影響**：prompt 改動只掂 synthesis 文字,圖片 attach/pin/sort 路徑無關;13 citations + lead doc_order-sorted 圖不變
-- [ ] V3 — 用戶 live 驗（chat UI hard refresh + 問 GL03）
+- [x] V3 — 用戶 live 驗（chat UI 2026-06-09「文字格式終於變回預期效果」）
 
 ## Closeout
-- [ ] C1 — postmortem.md（Sev2 mandatory）— 重點：re-index 副作用未預警
-- [ ] C2 — report status → done;ff-merge（用戶確認）
+- [x] C1 — postmortem.md（Sev2 mandatory）— 重點：re-index 副作用未預警;sign-off signed（用戶 verified）
+- [x] C2 — report status → done;ff-merge fix branch → main（用戶確認）

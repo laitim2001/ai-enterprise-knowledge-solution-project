@@ -2,7 +2,7 @@
 bug_id: BUG-036
 report_ref: ./report.md
 checklist_ref: ./checklist.md
-status: investigating     # investigating | closed
+status: closed     # investigating | closed
 ---
 
 # BUG-036 — Progress
@@ -68,8 +68,16 @@ Day 1 去重後,用戶連續 2 輪 live 驗反映**文字格式**仍未還原到
 
 ---
 
-## Closeout（填於 status=closed）
-_(待)_
+## Closeout — 2026-06-09
+
+**判決**:✅ RESOLVED（用戶 live UI 確認「文字格式終於變回預期效果」）
+
+- Fix 共 3 輪 prompt 演進(dedup → preserve grouping → nested numbered list + few-shot),根因 = re-index 引入 contextual embedding 令 source-inherent 重複 heading 同時 surface + `detailed` synthesis 過度忠實。
+- 教訓(postmortem §5）:**re-index = 全 pipeline 重跑**(chunker + contextual embedding 現行版)→ 副作用未預警;格式精確重現靠 **few-shot worked example**(抽象規則 whack-a-mole 唔可靠,連錯 2 輪先 sync 用戶確認目標格式)。
+- Action item 1（re-index pre-flight checklist)+ 新風險候選(全 pipeline 重跑 drift)入 postmortem §7/§8,建議入 RISK_REGISTER。
+- ff-merge fix branch → main;V3/postmortem signed。
+
+**Sev2 postmortem**:`./postmortem.md`(signed 2026-06-09）。
 
 ---
 

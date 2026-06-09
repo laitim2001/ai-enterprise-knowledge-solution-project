@@ -4,7 +4,7 @@ report_ref: ./report.md
 progress_ref: ./progress.md
 written: 2026-06-09
 author: "Claude (AI)"
-sign_off: pending     # pending | signed
+sign_off: signed     # pending | signed
 ---
 
 # BUG-036 — Postmortem
@@ -22,7 +22,9 @@ sign_off: pending     # pending | signed
 | +25 min | **I4 root cause**：讀 §3.1.4 chunk 原文 → 重複 heading 係 **source-inherent**（process-step-list 摘要表 + 逐步 heading + caption）；`_RULE_3_DETAILED` 明令「do NOT merge」→ LLM 忠實列冗餘 |
 | +35 min | Fix：改 `_RULE_3_DETAILED`（distinct-step dedup + summary-table fold）+ regression test |
 | +50 min | Verify：backend /query 新 prompt → §GL03-2 重複消失，完整性保留，CH-011 圖片不受影響 |
-| **Total**:~50 min（report → backend-verified fix）| |
+| 2026-06-09 Day 2 | **格式 follow-up ×2**：用戶 live 驗反映去重後格式仍未還原 — (1) dedup 順手壓平做單層 1.1–1.19 → 加 preserve-grouping；(2)「group headings」字眼令 gpt-5.5 渲染成 markdown 標題 → 換 nested numbered list + **few-shot worked example**;再郁前先 sync 用戶確認目標格式 |
+| 2026-06-09 | 用戶 live UI 確認「文字格式終於變回預期效果」→ status done + ff-merge | |
+| **Total**:report → user-verified ≈ 3 輪 prompt 演進（Day 1 dedup + Day 2 ×2 格式）| |
 
 ## 2. Root Cause（detailed）
 
@@ -57,6 +59,7 @@ sign_off: pending     # pending | signed
 
 - **落 re-index 前無 warn 用戶會 re-embed（contextual）影響文字答案** —— 應喺 CH-011「Commit+重啟+re-index」決策前明列副作用。
 - CH-011 spec 嘅 re-index 風險（R4「re-index 令 chunk_index 變」）只諗咗 chunk_index，**漏咗 embedding 演進（CH-008）令檢索/答案改變**。
+- **格式 fix 連錯 2 輪先 sync 目標**：dedup 後用戶要嘅係特定 nested 編號清單格式,我先壓平、再用「group headings」字眼整成 markdown 標題,兩次都偏離。教訓:**精確格式重現靠 few-shot worked example**(俾 LLM 睇實際目標輸出),抽象規則描述對 gpt-5.5 服從唔穩定;且**連錯一次就應停手同用戶 sync 目標**(Karpathy §1.1),唔好無限 prompt whack-a-mole。
 
 ## 6. Surprises
 
@@ -82,4 +85,4 @@ sign_off: pending     # pending | signed
 ---
 
 **Sign-off**:Claude (AI) | Date:2026-06-09
-**Reviewed by**:_(待 Chris)_ | Date:—
+**Reviewed by**:Chris（用戶 live UI verified 格式還原）| Date:2026-06-09
