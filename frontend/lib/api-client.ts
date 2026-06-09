@@ -162,6 +162,23 @@ export class ApiClient {
     return response.json() as Promise<T>;
   }
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...buildAuthHeader(),
+        ...getCsrfHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw await buildApiError(response);
+    }
+    return response.json() as Promise<T>;
+  }
+
   /**
    * DELETE — used by routes that return `204 No Content` (the body is empty,
    * so we don't `.json()` it; the generic `T` is typically `void`). Callers

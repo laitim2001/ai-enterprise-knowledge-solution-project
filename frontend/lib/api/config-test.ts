@@ -30,6 +30,8 @@ export interface DraftRetrievalConfig {
   citation_neighbour_max_aux_images?: number | null;
   citation_neighbour_section_path_prefix_depth?: number | null;
   max_images_per_answer?: number | null;
+  /** CH-010 / ADR-0047 — chapter-overview pin (backend DraftRetrievalConfig field). */
+  enable_chapter_overview_pin?: boolean | null;
 }
 
 export interface ConfigTestRequest {
@@ -42,6 +44,12 @@ export interface ConfigTestRequest {
   enable_crag?: boolean;
   /** Also run N with the SAVED config for an A/B (F2.4). */
   compare_to_saved?: boolean;
+  /**
+   * W57 / ADR-0050 — optional per-DOCUMENT scope. When set, the doc's STORED
+   * `DocConfig` is inserted as the per-DOC layer server-side. The doc-config-tab
+   * UI previews UNSAVED edits via `draft_config` instead, so it leaves this unset.
+   */
+  doc_id?: string | null;
   /**
    * W48 (ADR-0040 dual-axis) — also compute the reference-free RAGAs faithfulness
    * quality axis (judge LLM). Default true server-side; set false for a fast

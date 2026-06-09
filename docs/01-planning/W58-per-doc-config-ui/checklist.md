@@ -18,20 +18,20 @@ last_updated: 2026-06-09
 - [x] F1.2 — per-doc config 面(`DocConfigTab`):`answer_detail`(繼承 KB/concise/detailed 3-way seg)+ Citation expansion `DocTuneGroup` + Neighbour images + 圖片上限 `DocTuneGroup`(只 post-retrieval 旋鈕;`DocTuneKnob`/`DocTuneGroup`/`DocSwitchKnob` mirror KbTune*)
 - [x] F1.3 — 繼承 KB / 已覆寫(此文件)badge + 還原至 KB affordance + scope 註(per-query > per-DOC > per-KB > 全域 · ADR-0050,banner + footer)+ 檢索入口旋鈕 explanatory card(KB-level only,IcShield)
 - [x] F1.4 — per-doc config-test 面(`DocTestResultCard`/`DocTestMetric` mirror;A/B = 此文件 vs 繼承 KB;`POST /kb/{kb}/config-test · doc_id`;length-bias caveat)。babel JSX parse OK
-- [ ] F1.5 — **用戶 review mockup(H7 gate)** — approve 後 ADR-0051 → Accepted,F2-F4 解鎖
+- [x] F1.5 — **用戶 review mockup(H7 gate)PASS**(2026-06-09 approve)→ ADR-0051 Accepted,F2-F4 解鎖
 
-## F2 — API client(gated on F1 approve)
-- [ ] 🚧 F2.1 — `frontend/lib/api/doc-config.ts`:get/put/delete/list per-doc config
-- [ ] 🚧 F2.2 — config-test client 加 `doc_id` 透傳
+## F2 — API client(F1 approved 2026-06-09)
+- [x] F2.1 — `frontend/lib/api/doc-config.ts`:get/put/delete/list per-doc config(`DocConfig` type 鏡 backend);加 `ApiClient.put` 方法(additive)
+- [x] F2.2 — `config-test.ts` 加 `enable_chapter_overview_pin` + `doc_id`(additive,backend 已有)
 
-## F3 — 砌 doc-detail config tab(gated on F1 approve)
-- [ ] 🚧 F3.1 — 抽出/重用 tuning 元件(`KbTuneGroup`/`KbTuneKnob`/config-test 元件;限抽出共用,唔改 KB 行為)
-- [ ] 🚧 F3.2 — doc-detail 頁加 tab + per-doc config tab,100% match approved mockup
-- [ ] 🚧 F3.3 — wire CRUD + scoped config-test API
+## F3 — 砌 doc-detail config tab(F1 approved)
+- [x] F3.1 — **deviation from R2**:建 self-contained `doc-config-tab.tsx`(`DocTuneKnob`/`DocTuneGroup`/`DocSwitchKnob`/`DocConfigResultCard` mirror KB pattern,「繼承 KB」framing)而非抽 KB 頁元件 —— §1.3 唔掂 3174 行 KB 頁 + mockup 本身分開 Doc*/Kb* + framing 不同(記 plan §7 changelog)
+- [x] F3.2 — doc-detail `page.tsx` 加 tab strip(inspector wrap 入 fragment 視覺不變 + config tab)+ render `<DocConfigTab>`,逐元素 mirror approved mockup
+- [x] F3.3 — wire CRUD(load via `docConfigApi.get` + save via `put`)+ config-test(draft_config 機制,見 F4 fidelity note)
 
-## F4 — Test + fidelity(gated on F3)
-- [ ] 🚧 F4.1 — Vitest + RTL component test
-- [ ] 🚧 F4.2 — §12 H7 fidelity self-check(逐元素對齊 approved mockup)+ 既有 KB SettingsTab test 全綠(R2 抽出守)
+## F4 — Test + fidelity(F3 done)
+- [x] F4.1 — `tests/unit/doc-config-tab.test.tsx`(4 test:render 全 section / inherit→save disabled / override answer_detail→已覆寫+save enabled / save PUTs config)。**4 passed**
+- [x] F4.2 — §12 H7 fidelity self-check:逐元素對齊 approved mockup。**一處偏差**:config-test 機制由 mockup 暗示嘅 `doc_id` scope 改為 `draft_config` 預覽(免 backend 改動 + 「proposed-doc vs 繼承 KB」A/B 更清晰);`answer_detail` 不在 `DraftRetrievalConfig` → 試跑預覽唔覆蓋(經「儲存」real-query 生效,W57 dominant-doc 解析覆蓋)→ **mockup 2 句文字已對齊 frontend**(single source of truth)。既有 KB SettingsTab test(kb-detail-tabs/kb-settings-reindex/kb-detail)全綠 = 零回歸(R2 守)。tsc/eslint/prettier clean
 
 ## Closeout
 - [ ] C1 — plan/checklist/progress closed;progress retro

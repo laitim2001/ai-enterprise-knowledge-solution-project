@@ -1,8 +1,8 @@
 # ADR-0051: Doc-Detail Per-Document 配置 surface(design-stage expansion)
 
 **Date**: 2026-06-09
-**Status**: Proposed
-**Approver**: Chris(pending — mockup review 後 Accepted)
+**Status**: Accepted
+**Approver**: Chris(2026-06-09 — mockup review PASS)
 
 ## Context
 

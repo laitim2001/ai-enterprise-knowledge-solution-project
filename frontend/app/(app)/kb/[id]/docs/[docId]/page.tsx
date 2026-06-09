@@ -34,6 +34,7 @@ import {
   Layers,
   Link as LinkIcon,
   RefreshCw,
+  Settings,
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -47,6 +48,8 @@ import {
   type ImageRef,
 } from '@/lib/api/documents';
 import { kbApi, type KbStatus } from '@/lib/api/kb';
+
+import { DocConfigTab } from './doc-config-tab';
 
 export default function DocDetailPage() {
   const params = useParams<{ id: string; docId: string }>();
@@ -74,6 +77,8 @@ export default function DocDetailPage() {
 
   const [selectedChunkIdx, setSelectedChunkIdx] = useState(0);
   const [activeOutlinePath, setActiveOutlinePath] = useState<string | null>(null);
+  // W58 / ADR-0051 — doc-detail tabs: read-only inspector + per-doc config surface.
+  const [tab, setTab] = useState<'inspector' | 'config'>('inspector');
 
   if (kbQuery.isLoading || docQuery.isLoading) {
     return (
@@ -129,7 +134,7 @@ export default function DocDetailPage() {
             >
               <ChevronLeft size={12} /> Knowledge
             </button>
-            <span className="text-xs muted">·</span>
+            <span className="muted text-xs">·</span>
             <button
               type="button"
               className="btn btn-ghost btn-xs btn-ghost-muted"
@@ -137,8 +142,8 @@ export default function DocDetailPage() {
             >
               {kb.name || kbId}
             </button>
-            <span className="text-xs muted">·</span>
-            <span className="text-xs muted mono">{doc.doc_id}</span>
+            <span className="muted text-xs">·</span>
+            <span className="muted mono text-xs">{doc.doc_id}</span>
           </div>
           <div
             style={{
@@ -166,26 +171,19 @@ export default function DocDetailPage() {
             }}
           >
             <span>
-              <FileText
-                size={11}
-                style={{ verticalAlign: '-2px', marginRight: 4 }}
-              />
+              <FileText size={11} style={{ verticalAlign: '-2px', marginRight: 4 }} />
               {doc.file_type.toUpperCase()}
               {doc.size_kb != null && ` · ${(doc.size_kb / 1024).toFixed(1)} MB`}
               {doc.pages != null && ` · ${doc.pages} pp`}
             </span>
             <span>
               · chunk_strategy{' '}
-              <b style={{ color: 'oklch(var(--foreground))' }}>
-                {doc.chunk_strategy ?? '—'}
-              </b>
+              <b style={{ color: 'oklch(var(--foreground))' }}>{doc.chunk_strategy ?? '—'}</b>
             </span>
             <span>
               · {doc.total_chunks} chunks ({doc.low_value_chunks} low_value)
             </span>
-            {doc.total_tokens != null && (
-              <span>· {doc.total_tokens.toLocaleString()} tokens</span>
-            )}
+            {doc.total_tokens != null && <span>· {doc.total_tokens.toLocaleString()} tokens</span>}
             <span>· {doc.total_images} embedded images</span>
           </div>
         </div>
@@ -214,372 +212,357 @@ export default function DocDetailPage() {
         </div>
       </div>
 
-      {/* Pipeline stages strip */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-body" style={{ padding: 0 }}>
+      {/* W58 / ADR-0051 — tab strip: read-only inspector + per-doc config surface */}
+      <div className="tabs">
+        {(
+          [
+            { id: 'inspector', label: 'Chunk inspector', icon: Layers },
+            { id: 'config', label: 'Per-doc 配置', icon: Settings },
+          ] as const
+        ).map((t) => {
+          const Ic = t.icon;
+          return (
+            <div
+              key={t.id}
+              className="tab"
+              data-active={tab === t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              tabIndex={0}
+              onClick={() => setTab(t.id)}
+            >
+              <Ic size={14} /> {t.label}
+            </div>
+          );
+        })}
+      </div>
+
+      {tab === 'inspector' && (
+        <>
+          {/* Pipeline stages strip */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-body" style={{ padding: 0 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                }}
+              >
+                {[
+                  {
+                    label: 'Parse',
+                    value: doc.parse_duration_ms != null ? `${doc.parse_duration_ms}ms` : '—',
+                    sub: 'Docling layout-aware',
+                  },
+                  {
+                    label: 'Extract',
+                    value: `${doc.total_images} imgs`,
+                    sub: 'SHA256 dedup applied',
+                  },
+                  {
+                    label: 'Chunk',
+                    value: `${doc.total_chunks} chunks`,
+                    sub: `${doc.chunk_strategy ?? 'auto'} strategy`,
+                  },
+                  {
+                    label: 'Embed',
+                    value: doc.embed_duration_ms != null ? `${doc.embed_duration_ms}ms` : '—',
+                    sub: `${kb.config.embedding_model} ${kb.config.embedding_dimension}d`,
+                  },
+                  {
+                    label: 'Index',
+                    value: 'upserted',
+                    sub: `ekp-kb-${kbId}-v1`,
+                  },
+                ].map((s, i) => (
+                  <div
+                    key={s.label}
+                    style={{
+                      padding: '14px 18px',
+                      borderRight: i < 4 ? '1px solid oklch(var(--border))' : 'none',
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'oklch(var(--success) / 0.12)',
+                        color: 'oklch(var(--success))',
+                        display: 'grid',
+                        placeItems: 'center',
+                        flexShrink: 0,
+                      }}
+                      title={s.value === '—' ? 'Stage timing — Wave C+ instrumentation' : undefined}
+                    >
+                      <Layers size={15} />
+                    </div>
+                    <div>
+                      <div
+                        className="muted mono text-xs"
+                        style={{
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                          marginBottom: 2,
+                        }}
+                      >
+                        {s.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        {s.value}
+                      </div>
+                      <div className="muted text-xs">{s.sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Image strip — horizontal scroll of inline ImageThumb */}
+          {doc.image_refs.length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">
+                    Extracted images{' '}
+                    <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
+                      {doc.image_refs.length} total · SHA256 deduplicated
+                    </span>
+                  </h3>
+                  <div className="card-desc">
+                    Each chunk references images via{' '}
+                    <span className="mono">embedded_image_positions</span>; orchestrator resolves to{' '}
+                    <span className="mono">ImageRef.blob_url</span>.
+                  </div>
+                </div>
+                <Link href={`/kb/${kbId}?tab=images`} className="btn btn-ghost btn-sm">
+                  View all in Image Library →
+                </Link>
+              </div>
+              <div className="card-body" style={{ padding: '14px 18px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    overflowX: 'auto',
+                    paddingBottom: 4,
+                  }}
+                >
+                  {doc.image_refs.map((img, i) => (
+                    <ImageThumb key={img.checksum_sha256} img={img} idx={i} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3-pane main: outline 240 / chunk list 1fr / inspector 380 */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
+              gridTemplateColumns: '240px 1fr 380px',
+              gap: 16,
             }}
           >
-            {[
-              {
-                label: 'Parse',
-                value:
-                  doc.parse_duration_ms != null
-                    ? `${doc.parse_duration_ms}ms`
-                    : '—',
-                sub: 'Docling layout-aware',
-              },
-              {
-                label: 'Extract',
-                value: `${doc.total_images} imgs`,
-                sub: 'SHA256 dedup applied',
-              },
-              {
-                label: 'Chunk',
-                value: `${doc.total_chunks} chunks`,
-                sub: `${doc.chunk_strategy ?? 'auto'} strategy`,
-              },
-              {
-                label: 'Embed',
-                value:
-                  doc.embed_duration_ms != null
-                    ? `${doc.embed_duration_ms}ms`
-                    : '—',
-                sub: `${kb.config.embedding_model} ${kb.config.embedding_dimension}d`,
-              },
-              {
-                label: 'Index',
-                value: 'upserted',
-                sub: `ekp-kb-${kbId}-v1`,
-              },
-            ].map((s, i) => (
+            {/* Left: outline */}
+            <div className="card" style={{ alignSelf: 'start', position: 'sticky', top: 16 }}>
+              <div className="card-header" style={{ padding: '10px 14px' }}>
+                <div>
+                  <h3 className="card-title" style={{ fontSize: 12.5 }}>
+                    Document outline
+                  </h3>
+                </div>
+              </div>
               <div
-                key={s.label}
+                className="card-body card-body-tight"
                 style={{
-                  padding: '14px 18px',
-                  borderRight:
-                    i < 4 ? '1px solid oklch(var(--border))' : 'none',
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
+                  maxHeight: 540,
+                  overflowY: 'auto',
+                  padding: '6px 0',
                 }}
               >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'oklch(var(--success) / 0.12)',
-                    color: 'oklch(var(--success))',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                  }}
-                  title={
-                    s.value === '—'
-                      ? 'Stage timing — Wave C+ instrumentation'
-                      : undefined
-                  }
-                >
-                  <Layers size={15} />
-                </div>
+                {doc.outline.length === 0 ? (
+                  <div className="muted text-xs" style={{ padding: '8px 14px' }}>
+                    (No structured outline — text-only doc.)
+                  </div>
+                ) : (
+                  doc.outline.map((s, i) => {
+                    const key = `${s.level}|${s.title}|${i}`;
+                    const active = activeOutlinePath === key;
+                    return (
+                      <div
+                        key={key}
+                        onClick={() => setActiveOutlinePath(key)}
+                        style={{
+                          padding: `5px ${14}px 5px ${14 + (s.level - 1) * 14}px`,
+                          fontSize: s.level === 1 ? 12.5 : 12,
+                          fontWeight: s.level === 1 ? 600 : 450,
+                          background: active ? 'oklch(var(--accent) / 0.08)' : 'transparent',
+                          color: active ? 'oklch(var(--accent))' : 'oklch(var(--foreground))',
+                          borderLeft: active
+                            ? '2px solid oklch(var(--accent))'
+                            : '2px solid transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          cursor: 'default',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <span style={{ flex: 1 }}>{s.title}</span>
+                        <span className="muted mono text-xs">{s.chunk_count}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div className="card-footer" style={{ padding: '8px 12px' }}>
+                <span className="muted mono text-xs">{doc.outline.length} sections</span>
+                <button type="button" className="btn btn-ghost btn-xs" disabled>
+                  Export TOC
+                </button>
+              </div>
+            </div>
+
+            {/* Center: chunk list */}
+            <div className="card">
+              <div className="card-header">
                 <div>
-                  <div
-                    className="text-xs muted mono"
-                    style={{
-                      letterSpacing: '0.04em',
-                      textTransform: 'uppercase',
-                      marginBottom: 2,
-                    }}
-                  >
-                    {s.label}
+                  <h3 className="card-title">Chunks</h3>
+                  <div className="card-desc">
+                    {chunkList.length.toLocaleString()} chunks in this document
                   </div>
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      fontFamily: 'var(--font-mono)',
-                    }}
-                  >
-                    {s.value}
-                  </div>
-                  <div className="text-xs muted">{s.sub}</div>
+                </div>
+                <div className="row">
+                  <button type="button" className="btn btn-secondary btn-xs" disabled>
+                    <Filter size={12} /> All
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-xs" disabled>
+                    <Layers size={12} /> With images
+                  </button>
+                  <button type="button" className="btn btn-secondary btn-xs muted" disabled>
+                    low_value
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Image strip — horizontal scroll of inline ImageThumb */}
-      {doc.image_refs.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">
-                Extracted images{' '}
-                <span
-                  className="text-xs muted mono"
-                  style={{ marginLeft: 6 }}
-                >
-                  {doc.image_refs.length} total · SHA256 deduplicated
-                </span>
-              </h3>
-              <div className="card-desc">
-                Each chunk references images via{' '}
-                <span className="mono">embedded_image_positions</span>;
-                orchestrator resolves to{' '}
-                <span className="mono">ImageRef.blob_url</span>.
-              </div>
-            </div>
-            <Link
-              href={`/kb/${kbId}?tab=images`}
-              className="btn btn-ghost btn-sm"
-            >
-              View all in Image Library →
-            </Link>
-          </div>
-          <div className="card-body" style={{ padding: '14px 18px' }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                overflowX: 'auto',
-                paddingBottom: 4,
-              }}
-            >
-              {doc.image_refs.map((img, i) => (
-                <ImageThumb key={img.checksum_sha256} img={img} idx={i} />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3-pane main: outline 240 / chunk list 1fr / inspector 380 */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '240px 1fr 380px',
-          gap: 16,
-        }}
-      >
-        {/* Left: outline */}
-        <div
-          className="card"
-          style={{ alignSelf: 'start', position: 'sticky', top: 16 }}
-        >
-          <div className="card-header" style={{ padding: '10px 14px' }}>
-            <div>
-              <h3 className="card-title" style={{ fontSize: 12.5 }}>
-                Document outline
-              </h3>
-            </div>
-          </div>
-          <div
-            className="card-body card-body-tight"
-            style={{
-              maxHeight: 540,
-              overflowY: 'auto',
-              padding: '6px 0',
-            }}
-          >
-            {doc.outline.length === 0 ? (
-              <div className="text-xs muted" style={{ padding: '8px 14px' }}>
-                (No structured outline — text-only doc.)
-              </div>
-            ) : (
-              doc.outline.map((s, i) => {
-                const key = `${s.level}|${s.title}|${i}`;
-                const active = activeOutlinePath === key;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => setActiveOutlinePath(key)}
-                    style={{
-                      padding: `5px ${14}px 5px ${14 + (s.level - 1) * 14}px`,
-                      fontSize: s.level === 1 ? 12.5 : 12,
-                      fontWeight: s.level === 1 ? 600 : 450,
-                      background: active
-                        ? 'oklch(var(--accent) / 0.08)'
-                        : 'transparent',
-                      color: active
-                        ? 'oklch(var(--accent))'
-                        : 'oklch(var(--foreground))',
-                      borderLeft: active
-                        ? '2px solid oklch(var(--accent))'
-                        : '2px solid transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      cursor: 'default',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    <span style={{ flex: 1 }}>{s.title}</span>
-                    <span className="text-xs muted mono">{s.chunk_count}</span>
+              <div className="card-body card-body-tight">
+                {chunksQuery.isLoading && (
+                  <div style={{ padding: 14 }} className="muted text-xs">
+                    Loading chunks…
                   </div>
-                );
-              })
-            )}
-          </div>
-          <div className="card-footer" style={{ padding: '8px 12px' }}>
-            <span className="text-xs muted mono">
-              {doc.outline.length} sections
-            </span>
-            <button type="button" className="btn btn-ghost btn-xs" disabled>
-              Export TOC
-            </button>
-          </div>
-        </div>
-
-        {/* Center: chunk list */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">Chunks</h3>
-              <div className="card-desc">
-                {chunkList.length.toLocaleString()} chunks in this document
-              </div>
-            </div>
-            <div className="row">
-              <button
-                type="button"
-                className="btn btn-secondary btn-xs"
-                disabled
-              >
-                <Filter size={12} /> All
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-xs"
-                disabled
-              >
-                <Layers size={12} /> With images
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-xs muted"
-                disabled
-              >
-                low_value
-              </button>
-            </div>
-          </div>
-          <div className="card-body card-body-tight">
-            {chunksQuery.isLoading && (
-              <div style={{ padding: 14 }} className="text-xs muted">
-                Loading chunks…
-              </div>
-            )}
-            {chunksQuery.isError && (
-              <div style={{ padding: 14 }} className="text-xs">
-                Failed to load chunks:{' '}
-                {String((chunksQuery.error as Error)?.message)}
-              </div>
-            )}
-            {chunkList.length === 0 && !chunksQuery.isLoading && (
-              <div className="text-xs muted" style={{ padding: 14 }}>
-                No chunks listed.
-              </div>
-            )}
-            {chunkList.map((c, i) => {
-              const active = selectedChunkIdx === i;
-              return (
-                <div
-                  key={c.chunk_id}
-                  onClick={() => setSelectedChunkIdx(i)}
-                  style={{
-                    padding: '14px 18px',
-                    borderBottom:
-                      i < chunkList.length - 1
-                        ? '1px solid oklch(var(--border))'
-                        : 'none',
-                    background: active
-                      ? 'oklch(var(--muted) / 0.5)'
-                      : 'transparent',
-                    borderLeft: active
-                      ? '2px solid oklch(var(--accent))'
-                      : '2px solid transparent',
-                    cursor: 'default',
-                    opacity: c.low_value_flag ? 0.65 : 1,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span
-                      className="mono text-xs"
+                )}
+                {chunksQuery.isError && (
+                  <div style={{ padding: 14 }} className="text-xs">
+                    Failed to load chunks: {String((chunksQuery.error as Error)?.message)}
+                  </div>
+                )}
+                {chunkList.length === 0 && !chunksQuery.isLoading && (
+                  <div className="muted text-xs" style={{ padding: 14 }}>
+                    No chunks listed.
+                  </div>
+                )}
+                {chunkList.map((c, i) => {
+                  const active = selectedChunkIdx === i;
+                  return (
+                    <div
+                      key={c.chunk_id}
+                      onClick={() => setSelectedChunkIdx(i)}
                       style={{
-                        background: 'oklch(var(--muted))',
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        fontWeight: 600,
+                        padding: '14px 18px',
+                        borderBottom:
+                          i < chunkList.length - 1 ? '1px solid oklch(var(--border))' : 'none',
+                        background: active ? 'oklch(var(--muted) / 0.5)' : 'transparent',
+                        borderLeft: active
+                          ? '2px solid oklch(var(--accent))'
+                          : '2px solid transparent',
+                        cursor: 'default',
+                        opacity: c.low_value_flag ? 0.65 : 1,
                       }}
                     >
-                      #{c.chunk_index}
-                    </span>
-                    <div className="section-path text-xs" style={{ flex: 1 }}>
-                      {c.section_path.map((s, j) => (
-                        <span key={j}>{s}</span>
-                      ))}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          marginBottom: 6,
+                        }}
+                      >
+                        <span
+                          className="mono text-xs"
+                          style={{
+                            background: 'oklch(var(--muted))',
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            fontWeight: 600,
+                          }}
+                        >
+                          #{c.chunk_index}
+                        </span>
+                        <div className="section-path text-xs" style={{ flex: 1 }}>
+                          {c.section_path.map((s, j) => (
+                            <span key={j}>{s}</span>
+                          ))}
+                        </div>
+                        {c.embedded_image_count > 0 && (
+                          <span className="badge badge-accent">
+                            embedded_images{' '}
+                            <b style={{ marginLeft: 2 }}>{c.embedded_image_count}</b>
+                          </span>
+                        )}
+                        {c.low_value_flag && <span className="badge badge-warning">low_value</span>}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {c.chunk_title}
+                      </div>
                     </div>
-                    {c.embedded_image_count > 0 && (
-                      <span className="badge badge-accent">
-                        embedded_images{' '}
-                        <b style={{ marginLeft: 2 }}>{c.embedded_image_count}</b>
-                      </span>
-                    )}
-                    {c.low_value_flag && (
-                      <span className="badge badge-warning">low_value</span>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 500,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {c.chunk_title}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: chunk inspector */}
-        <div
-          className="col"
-          style={{ gap: 16, alignSelf: 'start', position: 'sticky', top: 16 }}
-        >
-          {selectedChunk && (
-            <ChunkInspector
-              chunk={selectedChunk}
-              embeddingDim={kb.config.embedding_dimension}
-              embeddingModel={kb.config.embedding_model}
-            />
-          )}
-          {!selectedChunk && (
-            <div className="card">
-              <div className="card-body">
-                <div className="text-xs muted">
-                  Select a chunk to inspect metadata + embedding preview.
-                </div>
+                  );
+                })}
               </div>
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Right: chunk inspector */}
+            <div
+              className="col"
+              style={{ gap: 16, alignSelf: 'start', position: 'sticky', top: 16 }}
+            >
+              {selectedChunk && (
+                <ChunkInspector
+                  chunk={selectedChunk}
+                  embeddingDim={kb.config.embedding_dimension}
+                  embeddingModel={kb.config.embedding_model}
+                />
+              )}
+              {!selectedChunk && (
+                <div className="card">
+                  <div className="card-body">
+                    <div className="muted text-xs">
+                      Select a chunk to inspect metadata + embedding preview.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'config' && <DocConfigTab kbId={kbId} docId={docId} kbName={kb.name} />}
     </div>
   );
 }
@@ -663,10 +646,7 @@ function ImageThumb({ img, idx }: { img: ImageRef; idx: number }) {
         >
           {img.alt_text || '—'}
         </div>
-        <div
-          className="text-xs muted mono"
-          style={{ marginTop: 2 }}
-        >
+        <div className="muted mono text-xs" style={{ marginTop: 2 }}>
           {img.width}×{img.height}
         </div>
       </div>
@@ -679,9 +659,8 @@ function ImageThumb({ img, idx }: { img: ImageRef; idx: number }) {
 // 343-353 (F6.4 — H7 mockup wins; real Azure Search vector exposure stays
 // Tier 2 but user-invisible).
 const SYNTHETIC_VECTOR_PREVIEW = [
-  0.024, -0.018, 0.092, 0.144, -0.061, 0.027, -0.084, 0.117,
-  0.038, -0.052, 0.071, 0.094, -0.022, 0.013, -0.046, 0.082,
-  0.041, -0.029, 0.068, 0.075, -0.034, 0.018, -0.011, 0.063,
+  0.024, -0.018, 0.092, 0.144, -0.061, 0.027, -0.084, 0.117, 0.038, -0.052, 0.071, 0.094, -0.022,
+  0.013, -0.046, 0.082, 0.041, -0.029, 0.068, 0.075, -0.034, 0.018, -0.011, 0.063,
 ];
 
 function ChunkInspector({
@@ -701,10 +680,7 @@ function ChunkInspector({
             <h3 className="card-title" style={{ fontSize: 13 }}>
               Chunk inspector
             </h3>
-            <div
-              className="text-xs muted mono"
-              style={{ marginTop: 2, wordBreak: 'break-all' }}
-            >
+            <div className="muted mono text-xs" style={{ marginTop: 2, wordBreak: 'break-all' }}>
               {chunk.chunk_id}
             </div>
           </div>
@@ -740,23 +716,18 @@ function ChunkInspector({
             }}
           >
             <span className="badge badge-muted">
-              chunk_index{' '}
-              <b style={{ marginLeft: 2 }}>{chunk.chunk_index}</b>
+              chunk_index <b style={{ marginLeft: 2 }}>{chunk.chunk_index}</b>
             </span>
             <span className="badge badge-muted">
               of <b style={{ marginLeft: 2 }}>{chunk.chunk_total}</b>
             </span>
-            {chunk.low_value_flag && (
-              <span className="badge badge-warning">low_value</span>
-            )}
-            {!chunk.enabled && (
-              <span className="badge badge-error">disabled</span>
-            )}
+            {chunk.low_value_flag && <span className="badge badge-warning">low_value</span>}
+            {!chunk.enabled && <span className="badge badge-error">disabled</span>}
           </div>
 
           {/* section_path */}
           <div
-            className="text-xs muted mono"
+            className="muted mono text-xs"
             style={{
               marginBottom: 4,
               letterSpacing: '0.04em',
@@ -765,10 +736,7 @@ function ChunkInspector({
           >
             section_path
           </div>
-          <div
-            className="section-path"
-            style={{ fontSize: 12, marginBottom: 12 }}
-          >
+          <div className="section-path" style={{ fontSize: 12, marginBottom: 12 }}>
             {chunk.section_path.map((s, j) => (
               <span key={j}>{s}</span>
             ))}
@@ -776,7 +744,7 @@ function ChunkInspector({
 
           {/* prev/next */}
           <div
-            className="text-xs muted mono"
+            className="muted mono text-xs"
             style={{
               marginBottom: 4,
               letterSpacing: '0.04em',
@@ -786,7 +754,7 @@ function ChunkInspector({
             Linked chunks
           </div>
           <div
-            className="text-xs mono"
+            className="mono text-xs"
             style={{
               marginBottom: 14,
               color: 'oklch(var(--muted-foreground))',
@@ -805,7 +773,7 @@ function ChunkInspector({
 
           {/* embedding preview — mockup synthetic per F6.4 */}
           <div
-            className="text-xs muted mono"
+            className="muted mono text-xs"
             style={{
               marginBottom: 6,
               letterSpacing: '0.04em',
@@ -841,10 +809,7 @@ function ChunkInspector({
               <span
                 key={i}
                 style={{
-                  color:
-                    v > 0
-                      ? 'oklch(var(--accent))'
-                      : 'oklch(var(--foreground))',
+                  color: v > 0 ? 'oklch(var(--accent))' : 'oklch(var(--foreground))',
                 }}
               >
                 {v.toFixed(3)}
@@ -862,7 +827,7 @@ function ChunkInspector({
           </div>
         </div>
         <div className="card-footer" style={{ padding: '8px 14px' }}>
-          <div className="text-xs muted mono">
+          <div className="muted mono text-xs">
             {embeddingModel} · MRL truncate {embeddingDim}d
           </div>
           <button type="button" className="btn btn-ghost btn-xs" disabled>
@@ -874,7 +839,7 @@ function ChunkInspector({
       <div className="card">
         <div className="card-body" style={{ padding: 14 }}>
           <div
-            className="text-xs muted mono"
+            className="muted mono text-xs"
             style={{
               marginBottom: 6,
               letterSpacing: '0.04em',
@@ -895,15 +860,10 @@ function ChunkInspector({
               overflowY: 'auto',
             }}
           >
-            <div
-              style={{ fontWeight: 500, marginBottom: 6 }}
-            >
-              {chunk.chunk_title}
-            </div>
-            <div className="text-xs muted">
-              Body text not surfaced via list_chunks (chunk_text_preview only
-              via retrieval-test or /query). Use Retrieval Testing tab for full
-              chunk text.
+            <div style={{ fontWeight: 500, marginBottom: 6 }}>{chunk.chunk_title}</div>
+            <div className="muted text-xs">
+              Body text not surfaced via list_chunks (chunk_text_preview only via retrieval-test or
+              /query). Use Retrieval Testing tab for full chunk text.
             </div>
           </div>
         </div>

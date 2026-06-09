@@ -502,7 +502,7 @@ function DocConfigTab({ kb, doc }) {
             </h3>
             <div className="card-desc">
               用此文件嘅配置喺真 pipeline 試跑(主導 doc = 此文件)。
-              <span className="mono"> POST /kb/{kb.kb_id}/config-test · doc_id={doc.doc_id}</span>
+              <span className="mono"> POST /kb/{kb.kb_id}/config-test · doc={doc.doc_id}</span>
             </div>
           </div>
         </div>
@@ -537,7 +537,7 @@ function DocConfigTab({ kb, doc }) {
           </div>
         </div>
         <div className="card-footer">
-          <div className="text-xs muted">N 次重跑取平均 · band = max − min · 此文件 scope 注入 dominant-doc 解析</div>
+          <div className="text-xs muted">N 次重跑取平均 · band = max − min · answer_detail 不在試跑草稿(經「儲存」生效)</div>
           <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> 把草稿儲存到此文件</button>
         </div>
       </div>

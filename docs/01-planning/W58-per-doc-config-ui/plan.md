@@ -89,3 +89,5 @@ design-stage expansion ADR-route precedent(KB Detail 5→8 tabs / Settings v1→
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-09 | Initial plan(P2b UI;路徑 A 先擴 mockup;F2-F4 gated on F1 review)| W57 後端完成 + 用戶揀 kickoff P2b + 路徑 A |
+| 2026-06-09 | **Deviation R2**:F3 建 self-contained `doc-config-tab.tsx` 而非抽 KB 頁 tuning 元件 | §1.3 唔掂 3174 行 KB 頁(零回歸)+ mockup 本身分開 Doc*/Kb* helpers + 「繼承 KB」vs「繼承全域」framing 不同 |
+| 2026-06-09 | **Config-test 機制**:用 `draft_config` 預覽(proposed-doc vs 繼承 KB A/B)而非 mockup 暗示嘅 `doc_id` scope;`answer_detail` 不在試跑預覽(經儲存 real-query 生效)| 免 W58 backend 改動(plan non-goal)+ 預覽未存編輯更貼 vision loop;mockup 2 句文字已對齊 frontend |
