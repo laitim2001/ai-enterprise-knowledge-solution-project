@@ -1,7 +1,7 @@
 ---
 bug_id: BUG-037
 report_ref: ./report.md
-status: fixing     # investigating | fixing | verifying | done
+status: done     # investigating | fixing | verifying | done
 last_updated: 2026-06-09
 ---
 
@@ -27,5 +27,5 @@ last_updated: 2026-06-09
 - [ ] 🚧 V3 — `/eval/run {"kb_id":"drive-images-1"}` live backend 透傳:**deferred** — 需 Azure key + Free-tier semantic 繞過;unit test 已覆蓋透傳邏輯,留待真跑 CH-011 AC6 eval 時順驗(target phase = Gap C C-2 / CH-011 AC6）
 
 ## Closeout
-- [ ] C1 — report status → done;commit(branch `fix/eval-harness-kb-id`)
-- [ ] C2 — unblock 記錄:CH-011 AC6 eval 解鎖(回 task_ecd4f8bd)
+- [x] C1 — report status → done;commit `5a2c3ae`(branch `fix/eval-harness-kb-id`)+ ff-merge → main
+- [x] C2 — unblock 記錄:CH-011 AC6 eval(`--kb-id drive-images-1` / `{"kb_id":"drive-images-1"}`)+ 未來 per-doc config-test eval 解鎖(task_ecd4f8bd 可關)

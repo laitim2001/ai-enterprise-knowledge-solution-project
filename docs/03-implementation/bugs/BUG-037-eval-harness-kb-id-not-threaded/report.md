@@ -2,7 +2,7 @@
 bug_id: BUG-037
 title: "Eval harness 無法針對非預設 KB — CLI run_ragas_eval 缺 required kb_id 而 crash + /eval API hardcode kb_id"
 severity: Sev3          # Sev1 | Sev2 | Sev3 | Sev4 (per PROCESS.md §4.5)
-status: triaged   # triaged | investigating | fixing | verifying | done | wont-fix
+status: done   # triaged | investigating | fixing | verifying | done | wont-fix
 reported: 2026-06-09
 reporter: "Claude (AI) — 起於 CH-011 AC6 eval 無法執行 (task_ecd4f8bd)"
 affects_components: [C06]
