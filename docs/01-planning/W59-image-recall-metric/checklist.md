@@ -24,12 +24,19 @@
 
 **F2 完成** ✅
 
+**F3 完成** ✅
+
 ## F3 — 指標 harness
-- [ ] `backend/eval/image_recall.py`(復用 `execute_query_pipeline`,**非** orchestrator RAGAs path)
-- [ ] image-recall / image-precision 計算(match key = checksum;per-query + aggregate)
+- [x] `backend/eval/image_recall.py`(純邏輯:compute_metrics / extract_returned_checksums / aggregate / report_to_dict;match key = checksum,blob_url fallback)
+- [x] `scripts/run_image_recall.py`(driver:POST 真實 `/query` full pipeline,抽 `citations[].embedded_images` checksum 對照 GT)
+- [x] image-recall / image-precision 計算(per-query + aggregate;沒標 query 排除 — production-preserve)
+- [x] ruff lint clean
 
 ## F4 — 跑 pilot 出實數
-- [ ] baseline 報告(現 default config;可選 A/B vs DD-4 config)+ 失敗案例分類
+- [x] baseline 報告(現 production default config)→ `reports/image_recall_ar_baseline.yaml`(gitignored per §6.1;結果寫入 progress.md)
+- [x] 9/9 scored:mean image-recall=0.5715 / mean image-precision=0.9824
+- [x] Q001/Q036 mega-section synth(預期 65 圖)— `SYNTHESIZER_REQUEST_TIMEOUT_S=180` 解 30s timeout
+- [x] 失敗案例分類(cap 天花板 / Q005 section miss / mega-section synth 負擔)→ progress.md
 
 ## F5 — 測試
-- [ ] 指標計算 unit test(空預期 / 空返回 / 部分命中邊界)
+- [x] 指標計算 unit test(空預期 / 空返回 / 部分命中邊界;11 test 全 PASS)

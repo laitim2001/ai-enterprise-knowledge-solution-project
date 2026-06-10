@@ -66,7 +66,64 @@
   (對應 section 圖數加總正確;sum=347,文件 distinct=222 圖,跨 query 有重疊屬正常)。
 - 用戶採用建議起點(9 條全填,與預填一致)。
 
-### 待 / 下一步(F3)
-- 寫 `backend/eval/image_recall.py` — 復用 `execute_query_pipeline`(full pipeline)跑 GT 9 query,
-  提取 `resp.citations[].embedded_images` checksum 集,對照 `expected_images` 算 image-recall / image-precision。
-- 需 backend 起 + azurite + Free-tier semantic 用 `HYBRID_USE_SEMANTIC_RANKER=false` 繞。
+### F3 指標 harness done(2026-06-10)
+- `backend/eval/image_recall.py`(純邏輯,無 IO):`compute_metrics`(set 比對 expected ∩ returned)/
+  `extract_returned_checksums`(由 `citations[].embedded_images[].checksum_sha256` 抽 set,blob_url fallback)/
+  `aggregate`(mean over non-errored)/ `report_to_dict`(YAML-friendly)。match key = checksum(re-index 穩定,鏡像前端 dedup)。
+- `scripts/run_image_recall.py`(driver):per GT query POST **真實 `/query` full pipeline**(非 retrieve-only,
+  非 orchestrator RAGAs path — per AC3 + memory `project_v4_retrieve_only_vs_query_pipeline`),抽返回圖 checksum 對照 GT。
+  httpx client timeout=300s(loaded machine + mega synth)。
+- ruff clean。
+
+### F5 測試 done(2026-06-10)
+- `backend/tests/test_image_recall.py` — 11 test 全 PASS(0.45s)。覆蓋邊界:空預期(recall=1.0)/ 空返回但有預期
+  (precision=0.0)/ 部分命中 / checksum fallback / aggregate 排除 errored query。對齊 H6 eval 模組 test 要求。
+
+### F4 baseline 出實數 done(2026-06-10)
+- **環境**:backend 重啟設 `SYNTHESIZER_REQUEST_TIMEOUT_S=180`(+ `PYTHONPATH=backend` +
+  `HYBRID_USE_SEMANTIC_RANKER=false`)。pre-flight `/health` 200 全 component ok;azurite native port 10000 在跑。
+- **第一輪 7/9**:Q001/Q036(兩條 AR01 收款,預期 65 圖含 S04 mega-section 44 圖)在 30s default timeout 下
+  `APITimeoutError`(synthesizer.py 預設 30s,settings.py:140)。其餘 7 條 scored。
+- **retry 2/9**:提高 timeout 至 180s 後 Q001/Q036 成功 → 各 recall=0.3077 / precision=1.0(hit 20/65)。
+- **合併 9/9 baseline**(`reports/image_recall_ar_baseline.yaml`,gitignored per eval-methodology §6.1):
+  - **mean image-recall = 0.5715** / **mean image-precision = 0.9824**(9/9 scored)。
+  - precision 0.982 = 圖洪水基本馴服(Gap C + chunker cap 成效);extra 圖每 query 僅 0–1 張。
+
+#### F4 失敗案例分類(9 query)
+
+| Query | 預期 | 返回 | 命中 | recall | precision | 分類 |
+|---|---|---|---|---|---|---|
+| Q001 | 65 | 20 | 20 | 0.308 | 1.00 | A. cap 天花板(mega，S04=44 圖)|
+| Q036 | 65 | 20 | 20 | 0.308 | 1.00 | A. cap 天花板(同 Q001 語意變體)|
+| Q043 | 73 | 20 | 20 | 0.274 | 1.00 | A. cap 天花板(最大預期)|
+| Q003 | 37 | 20 | 19 | 0.514 | 0.95 | A. cap 天花板 |
+| Q038 | 37 | 18 | 17 | 0.459 | 0.94 | A. cap 天花板 |
+| Q002 | 18 | 19 | 18 | 1.00 | 0.95 | B. ≤cap 全召回(+1 extra)|
+| Q004 | 12 | 12 | 12 | 1.00 | 1.00 | B. ≤cap 完美 |
+| Q006 | 8 | 8 | 8 | 1.00 | 1.00 | B. ≤cap 完美 |
+| Q005 | 32 | 9 | 9 | 0.281 | 1.00 | C. section miss(返回遠低於 cap)|
+
+- **A. cap 天花板(5 條)**:returned 卡 ~18–20,預期遠超上限 → recall 機械式崩到 0.27–0.51,但 precision 仍
+  0.94–1.0(返回幾乎全命中)。= **per-doc config 放寬 returned cap 的直接用武之地**,且風險低(precision 高,
+  放寬不會即時引入大量 noise)。但屬後續 phase —— W59 non-goal「只量度不改 pipeline」。
+- **B. ≤cap 全召回(3 條)**:預期 8–18 圖在 cap 內 → recall=1.0。Q002 唯一 1 extra(precision 0.947)。
+- **C. section miss(1 條)**:Q005 預期 32 但只返回 9(**遠低於 cap 20**)→ 相關 section 根本沒被 cite,
+  **非純 cap 問題**,是檢索 / cite 的 section 覆蓋缺口。需獨立調查(cap 放寬解不了),記入下方 deferred。
+
+#### 關鍵 takeaway
+- 「文字 + 相關圖片齊腳」由**哲學問題變實證問題**(rollup §4.1):圖片召回首次**可量度**(AC5 達成)。
+- precision 0.982 = 圖洪水已馴服;recall 瓶頸 = returned cap(~20)。預期 ≤cap 全 recall=1.0,預期 >cap 崩。
+- 改善槓桿已定位 = **per-doc config 放寬 cap**(對 A 類 5 條最直接),由實數驅動;留後續 phase。
+- **Deferred 觀察(非 W59 scope)**:
+  1. **Q005 section miss** — 唯一非 cap 異常,後續獨立追 section cite 覆蓋。
+  2. **mega-section synth 隱憂** — 圖密 mega query(S04 單 section 44 圖)synth 負擔在 production 30s timeout 下
+     會 `APITimeoutError`。本 phase 用 180s 繞過量度;production 路徑此風險未解,記 `DEFERRED_REGISTER.md` 候選。
+
+### Phase retro(2026-06-10)
+- **達成**:AC1–AC7 全部命中。圖片召回 / 精確率指標從零建立(F1 catalog → F2 GT 標注 + HTML 頁 →
+  F3 純邏輯 + driver → F4 9/9 實數 → F5 11 test)。pilot AR 模組(222 圖)baseline 落地。
+- **守 H1/H4**:純加 eval/指標 + additive schema(`expected_images`),不動 index schema / 揀圖行為 / pipeline;
+  match signal 限 checksum / doc_order / source_section,無 image embedding → 守 Tier 1 紅線。無 ADR(§5.1 例外確認)。
+- **教訓**:mega-context synth timeout 是量度過程才暴露的 production 隱憂 — 印證「先量度後改善」的價值
+  (rollup §4.1)。指標一上線即指出 per-doc config 是下一槓桿(A 類 5 條),把後續 phase 的優先序由實數定。
+- **status → closed**(F1–F5 全 done;改善留實數驅動的後續 phase)。

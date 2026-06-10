@@ -1,7 +1,7 @@
 ---
 phase: W59
 name: image-recall-metric
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-10
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "新缺口(藍圖 3-gap 以外)— 圖片側召回指標(CONFIG_PLATFORM_W43-W58_ROLLUP.md §4.5)"
@@ -110,3 +110,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-10 | Initial plan(draft)| rollup §4.5 + 用戶選定「圖片召回指標」為下一開發焦點 + scope(pilot 一份圖密手冊 / AI 建 tooling + 用戶填)|
+| 2026-06-10 | **Phase closed**(F1–F5 全 done)| baseline 9/9 出數:mean image-recall=0.5715 / image-precision=0.9824;失敗分類 = A.cap 天花板 5 條 + B.≤cap 全召回 3 條 + C.section miss(Q005)1 條;AC1–AC7 達成;Q001/Q036 mega-section synth 用 `SYNTHESIZER_REQUEST_TIMEOUT_S=180` 解 30s timeout;無 ADR(§5.1「加 test」例外確認)|
