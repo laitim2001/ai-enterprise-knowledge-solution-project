@@ -4,7 +4,7 @@ Pure file ops (no Azure) — turns the F1 image catalog + an eval-set into a
 section-range labeling worksheet, then expands the human-filled `expected_sections`
 into `expected_images` checksums as a self-contained image-recall eval-set.
 
-Two subcommands:
+Three subcommands:
 
   worksheet  — build a labeling worksheet from --catalog (F1 dump) + --eval-set.
                Groups the doc's images into a `section_index` (each section gets a
@@ -20,6 +20,11 @@ Two subcommands:
                expected_image_sections (human-readable provenance). Does NOT touch
                the source eval-set (keeps its comments / keyword GT intact).
 
+  html       — render a filled worksheet as a self-contained visual labeling page
+               (per query: each section as a checkbox + image thumbnails, suggestions
+               pre-ticked). Tick in the browser, click export → downloads a filled
+               worksheet JSON → feed to `expand`. Avoids hand-editing YAML.
+
 Usage (from project root):
     python -m scripts.image_recall_gt worksheet \
         --catalog reports/image_catalog_drive-images-1_<doc>.yaml \
@@ -33,6 +38,8 @@ Usage (from project root):
 from __future__ import annotations
 
 import argparse
+import html
+import json
 import sys
 from pathlib import Path
 
@@ -222,6 +229,132 @@ def _cmd_expand(worksheet_path: Path, out_path: Path) -> int:
     return 0
 
 
+_HTML_TEMPLATE = """<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+body{font-family:system-ui,"Microsoft JhengHei",sans-serif;margin:0;background:#f6f7f9;color:#1a1a1a}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;padding:12px 20px;display:flex;gap:16px;align-items:center;z-index:10;flex-wrap:wrap}
+header h1{font-size:15px;margin:0;flex:1}
+button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer}
+button:hover{background:#1d4ed8}
+.hint{font-size:12px;color:#666;width:100%}
+main{padding:20px;max-width:1180px;margin:0 auto}
+.qcard{background:#fff;border:1px solid #e3e3e3;border-radius:8px;padding:16px;margin-bottom:20px}
+.qcard h2{font-size:14px;margin:0 0 4px;color:#2563eb}
+.qtext{margin:0 0 12px;color:#333;font-size:14px}
+.sec{display:block;border-top:1px solid #eee;padding:8px 0;cursor:pointer}
+.sec input{margin-right:8px;vertical-align:top}
+.sechd{font-size:13px;font-weight:600}
+.sechd em{color:#999;font-weight:400}
+.thumbs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 0 26px}
+.thumbs img{width:84px;height:auto;border:1px solid #ccc;border-radius:3px;background:#fff}
+.sec:has(input:checked){background:#eff6ff}
+</style>
+</head>
+<body>
+<header>
+<h1>__TITLE__</h1>
+<button onclick="exportFilled()">匯出填好的 worksheet</button>
+<span class="hint">勾選每條 query 預期附帶的 section(縮圖可看圖判斷)→ 匯出 → 跑 expand。圖片需 azurite 在跑才顯示。</span>
+</header>
+<main>__CARDS__</main>
+<script id="wsdata" type="application/json">__WSDATA__</script>
+<script>
+function exportFilled(){
+ const ws=JSON.parse(document.getElementById('wsdata').textContent);
+ const picked={};
+ document.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
+  (picked[cb.dataset.q]=picked[cb.dataset.q]||[]).push(cb.dataset.sec);
+ });
+ ws.queries.forEach(function(q){q.expected_sections=picked[q.query_id]||[];});
+ const blob=new Blob([JSON.stringify(ws,null,2)],{type:'application/json'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='image_recall_worksheet_filled.json';
+ a.click();
+}
+</script>
+</body>
+</html>
+"""
+
+
+def _query_card(q: dict, sections: list[dict], cs_to_url: dict[str, str]) -> str:
+    """Render one query card: query text + every section as a checkbox row + thumbs."""
+    prefilled = set(q.get("expected_sections") or [])
+    qid = html.escape(str(q.get("query_id", "")))
+    rows = []
+    for s in sections:
+        sid = str(s.get("section_id", ""))
+        checked = "checked" if sid in prefilled else ""
+        path = html.escape(" › ".join(str(p) for p in s.get("section_path", [])))
+        thumbs = "".join(
+            f'<img loading="lazy" src="{html.escape(cs_to_url.get(str(cs), ""))}" '
+            f'title="{html.escape(str(cs)[:12])}">'
+            for cs in s.get("checksums", [])
+        )
+        rows.append(
+            f'<label class="sec"><input type="checkbox" data-q="{qid}" '
+            f'data-sec="{html.escape(sid)}" {checked}>'
+            f'<span class="sechd">{html.escape(sid)} · {path} '
+            f"<em>({s.get('image_count', 0)} 圖)</em></span>"
+            f'<div class="thumbs">{thumbs}</div></label>'
+        )
+    return (
+        f'<section class="qcard"><h2>{qid}</h2>'
+        f'<p class="qtext">{html.escape(str(q.get("query_text", "")))}</p>'
+        f'<div class="secs">{"".join(rows)}</div></section>'
+    )
+
+
+def _cmd_html(worksheet_path: Path, catalog_path: Path | None, out_path: Path) -> int:
+    """Render a filled worksheet as a self-contained visual labeling HTML page.
+
+    Pulls thumbnail URLs from the F1 catalog (worksheet.metadata.source_catalog by
+    default). Tick sections per query in the browser, click 匯出 → downloads a filled
+    worksheet JSON (a YAML subset) → feed to `expand`.
+    """
+    ws = _load_yaml(worksheet_path)
+    meta = ws.get("metadata", {})
+    sections = ws.get("section_index", [])
+    queries = ws.get("queries", [])
+
+    cat_path = catalog_path or Path(str(meta.get("source_catalog", "")))
+    if not cat_path or not cat_path.is_file():
+        print(
+            f"Catalog not found ({cat_path}); pass --catalog. Needed for thumbnails.",
+            file=sys.stderr,
+        )
+        return 1
+    catalog = _load_yaml(cat_path)
+    cs_to_url = {
+        str(img.get("checksum_sha256", "")): str(img.get("blob_url", ""))
+        for img in catalog.get("images", [])
+    }
+
+    cards = "\n".join(_query_card(q, sections, cs_to_url) for q in queries)
+    title = f"W59 圖片標注 — {meta.get('module', '')} · {meta.get('doc_title', '')}"
+    # Embed the worksheet so export can rebuild it; guard against </script> injection.
+    wsdata = json.dumps(ws, ensure_ascii=False).replace("</", "<\\/")
+    page = (
+        _HTML_TEMPLATE.replace("__TITLE__", html.escape(title))
+        .replace("__CARDS__", cards)
+        .replace("__WSDATA__", wsdata)
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(page, encoding="utf-8")
+    print(f"Labeling page written: {out_path}")
+    print(
+        "Open in a browser (azurite must be running for thumbnails), tick sections per "
+        "query, click the export button, then run expand on the downloaded .json.",
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -240,6 +373,13 @@ def main() -> int:
     ex.add_argument("--worksheet", required=True, type=Path)
     ex.add_argument("--out", required=True, type=Path)
 
+    ht = sub.add_parser(
+        "html", help="render a filled worksheet as a visual labeling HTML page"
+    )
+    ht.add_argument("--worksheet", required=True, type=Path)
+    ht.add_argument("--catalog", type=Path, default=None)
+    ht.add_argument("--out", type=Path, default=None)
+
     args = parser.parse_args()
     if args.cmd == "worksheet":
         out = (
@@ -249,6 +389,9 @@ def main() -> int:
         return _cmd_worksheet(args.catalog, args.eval_set, args.module, out)
     if args.cmd == "expand":
         return _cmd_expand(args.worksheet, args.out)
+    if args.cmd == "html":
+        out = args.out or args.worksheet.with_suffix(".html")
+        return _cmd_html(args.worksheet, args.catalog, out)
     return 2
 
 

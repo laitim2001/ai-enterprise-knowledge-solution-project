@@ -44,6 +44,13 @@
 - **資料觀察**:S04(AR01 步驟)44 圖、S11(AR03)23 圖、S22(AR07)20 圖 = 圖洪水 section(真實結構);
   S29/S30 section_path 只有編號無標題(`['11','11.1.3']`)= parser heading 抽取限制,標注可斟酌。
 
+### F2 HTML 標注頁(2026-06-10 — 應用戶「YAML 手填不便」)
+- `image_recall_gt.py` 加 `html` 子命令:worksheet → self-contained HTML(每 query 30 section checkbox + 該 section
+  縮圖,建議預勾,一鍵匯出填好 JSON 餵 expand)。產出 `reports/image_recall_worksheet_AR.html`(454KB;270 checkbox /
+  33 預勾 / 1998 縮圖 ref / wsdata 嵌入)。圖靠 azurite blob_url 渲染。**dev tooling 非 EKP 產品前端 → 不涉 H7**。
+- 建議起點已預填 9 query(`prefill_note` 標明請覆核)。
+- 注:Windows console cp1252 印中文會 UnicodeEncodeError → script print 一律英文(HTML 檔本身 utf-8 寫,無礙)。
+
 ### 待用戶(F2 收尾)
-- 在 `reports/image_recall_worksheet_AR.yaml` 為 9 條 AR query 填 `expected_sections`(從 30 section 挑 section_id),
-  跑 `python -m scripts.image_recall_gt expand` → `docs/eval-set-image-recall-ar.yaml` → 才入 F3 harness。
+- 開 `reports/image_recall_worksheet_AR.html`(瀏覽器;azurite 要跑先睇到圖)→ 覆核/調整勾選 → 匯出 →
+  跑 `expand --worksheet <下載的 .json>` → `docs/eval-set-image-recall-ar.yaml` → 才入 F3 harness。
