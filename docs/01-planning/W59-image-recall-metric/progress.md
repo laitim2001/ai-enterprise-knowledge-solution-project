@@ -51,6 +51,22 @@
 - 建議起點已預填 9 query(`prefill_note` 標明請覆核)。
 - 注:Windows console cp1252 印中文會 UnicodeEncodeError → script print 一律英文(HTML 檔本身 utf-8 寫,無礙)。
 
-### 待用戶(F2 收尾)
-- 開 `reports/image_recall_worksheet_AR.html`(瀏覽器;azurite 要跑先睇到圖)→ 覆核/調整勾選 → 匯出 →
-  跑 `expand --worksheet <下載的 .json>` → `docs/eval-set-image-recall-ar.yaml` → 才入 F3 harness。
+### azurite 看圖修復(2026-06-10 — 用戶 report HTML 圖看不到)
+- 診斷:azurite 之前沒跑 → native 啟動(loaded machine ~75s 才 listen 10000)→ blob anonymous GET **403**
+  (container 預設拒 anonymous,**非** azurite 故障;chat UI 經 backend/SAS 故能顯示)→ 設
+  `ekp-kb-drive-images-1-screenshots` container public(`set_container_access_policy public_access=blob`,
+  via `UseDevelopmentStorage=true`)→ 200。
+- playwright(file:// 被阻 → 起 http.server serve reports/)截圖確認圖**實際渲染**(Q001 S01-S05 縮圖全顯示)。
+- 記 memory [[project_azurite_anonymous_blob_public]]。
+
+### F2 完成(2026-06-10)
+- 用戶喺 HTML 標注頁(含 lightbox)覆核 9 條 AR query 勾選 → 匯出 `docs/06-reference/image_recall_worksheet_filled.json`
+  → 跑 `expand` → **GT 落地 `docs/eval-set-image-recall-ar.yaml`**(9/9 labeled)。
+- 每 query expected_images 數:Q001/Q036=65、Q002=18、Q003/Q038=37、Q004=12、Q005=32、Q006=8、Q043=73
+  (對應 section 圖數加總正確;sum=347,文件 distinct=222 圖,跨 query 有重疊屬正常)。
+- 用戶採用建議起點(9 條全填,與預填一致)。
+
+### 待 / 下一步(F3)
+- 寫 `backend/eval/image_recall.py` — 復用 `execute_query_pipeline`(full pipeline)跑 GT 9 query,
+  提取 `resp.citations[].embedded_images` checksum 集,對照 `expected_images` 算 image-recall / image-precision。
+- 需 backend 起 + azurite + Free-tier semantic 用 `HYBRID_USE_SEMANTIC_RANKER=false` 繞。

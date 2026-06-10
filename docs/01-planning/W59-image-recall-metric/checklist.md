@@ -19,7 +19,10 @@
 - [x] worksheet 產出:`reports/image_recall_worksheet_AR.yaml`(30 section + 9 AR query)
 - [x] 建議起點預填(9 query `expected_sections`;檔內 `prefill_note` 標明「請覆核」)
 - [x] HTML 視覺標注頁(`html` 子命令;`reports/image_recall_worksheet_AR.html` — 270 checkbox / 33 預勾 / section 縮圖;解 YAML 手填不便)
-- [ ] **用戶**喺 HTML 頁覆核勾選 → 匯出 → 跑 `expand` → `docs/eval-set-image-recall-ar.yaml`
+- [x] **用戶**喺 HTML 頁覆核勾選 → 匯出 `image_recall_worksheet_filled.json` → 跑 `expand`(2026-06-10)
+- [x] GT 落地:`docs/eval-set-image-recall-ar.yaml`(9 query,expected_images checksum + section provenance)
+
+**F2 完成** ✅
 
 ## F3 — 指標 harness
 - [ ] `backend/eval/image_recall.py`(復用 `execute_query_pipeline`,**非** orchestrator RAGAs path)

@@ -1,0 +1,800 @@
+{
+  "metadata": {
+    "purpose": "W59 F2 image-recall GT labeling worksheet (section-range).",
+    "instructions": "Fill `expected_sections` for each query with the section_id(s) (e.g. [S05, S06]) from section_index whose images SHOULD accompany a correct answer. Pick SECTIONS, not individual images. Use section_path + doc_order_range + image_count to locate each section against the source document; open a checksum's blob_url from the F1 catalog if you need to eyeball a figure. Leave empty to exclude a query from the image-recall metric. Then run: python -m scripts.image_recall_gt expand.",
+    "module": "AR",
+    "kb_id": "drive-images-1",
+    "doc_id": "drive-user-manual-0601-ar-fna-ar-management-v0-03",
+    "doc_title": "DRIVE_User Manual_0601(AR)_FNA-AR Management_v0.03",
+    "source_catalog": "reports\\image_catalog_drive-images-1_drive-user-manual-0601-ar-fna-ar-management-v0-03.yaml",
+    "source_eval_set": "docs\\eval-set-v1-draft.yaml",
+    "distinct_images_in_doc": 222,
+    "section_count": 30,
+    "query_count": 9,
+    "prefill_note": "AI-suggested starting point (2026-06-10) - REVIEW and adjust expected_sections per query before expand"
+  },
+  "section_index": [
+    {
+      "section_id": "S01",
+      "section_path": [
+        "DRIVE_User Manual_0601(AR)_FNA-AR Management_v0.03"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        10,
+        10
+      ],
+      "checksums": [
+        "019f36cfe7f4e982733d9e6840b3d980c4e314a2925d7238c80436fa42e8ce1a"
+      ]
+    },
+    {
+      "section_id": "S02",
+      "section_path": [
+        "1 The Scope of this Document",
+        "1.1 Process Overview – Diagram"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        38,
+        38
+      ],
+      "checksums": [
+        "095aaf509933b7d6d423a3678811efe4c53dfaff45a374afd4ffce48e44d4763"
+      ]
+    },
+    {
+      "section_id": "S03",
+      "section_path": [
+        "2 AR01. Payment Collection",
+        "2.1.1 Overview"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        61,
+        61
+      ],
+      "checksums": [
+        "880ce853bcbec41bebd2e444a429399ab78693ad50ce439fcafbe11135e9c09d"
+      ]
+    },
+    {
+      "section_id": "S04",
+      "section_path": [
+        "2 AR01. Payment Collection",
+        "2.1.3 System Instruction for each step"
+      ],
+      "image_count": 44,
+      "doc_order_range": [
+        66,
+        261
+      ],
+      "checksums": [
+        "01427fb7c3ca0f4ec39c7ffcf2165376ec76477967eef9b6960fe24b0c2b333a",
+        "020b22d159fe0beaf64ad1ac689a7b355279cd32a846a6c7bd8e9e55c7b5c22d",
+        "07013d9b2bc6a779e1cba919e8e12dfb3e6b792e54dfd8ec22d10df758cc3a4e",
+        "0aaa5a1d08065c1e98a5755cb1b0d0efc7b171aa68c25ccd17641c11ebd2aeaf",
+        "1842c3e9b768d1aeb63b701b1dc0fada9213bcd0b19daec068f38de6031301f8",
+        "1c0aae2c5663fdfd66d9fc75426ba0e6fb2d4c779ef3d02aa0efc8971243a43e",
+        "1e08efc33410614ff7e6347076531837f6f353692f8e415d645ce987fafeaa49",
+        "1f84b515cee2b37856f9579bfede5268711e1d79306b7dac684edffe2b97689c",
+        "316c3f311564140276c28051cb7e5fc272f6997d1a26f90e95cc2251078461b8",
+        "483358c935896a5bc2dc2d6cf8c2a22ff44afc83e8ad04b266da7e7c81eea0ff",
+        "49d822fd37b97ea1732f6274e4efefe7c6b23f639935dbb97659645331655916",
+        "4bb7eaa94759f036539751b84bd88bc885fece71b1002b318bc17002a1d877d4",
+        "4be78125743c44e512220079802f502a9256155742010cd411593e4c951e39e9",
+        "5109c74398bf3a329ab93a31993f1f19bf7db65074da4e1d71bdf4d486049055",
+        "517ad8e8ff1815ff13a15e4de772481ca935401b957a0ff391d13b310dccf122",
+        "54f9cd2fc84b02375dfad254e30dda5ed0c18ed7ecc30b19e6fde3f9a7423ff7",
+        "575a6aa9c3d286960efedbe53fbc986bdd0dc465d88fab17afeee8bea02fb117",
+        "6135c6a055fd421a02cbf500d3fedd908d6381ee4b491f39a712cba23cb60c09",
+        "67a188de7b79dc9abaa9cd7f000f22d92901d375516d1db8622263a6279c0958",
+        "6a13eddbf78144a1f72245f05b9cc6e2e655c3c929c2f4cf8e0553e3389ec624",
+        "6ae6a94713e71a66e2005262cb5cddb36e87b89da4ad70bf2a7a09baf28eeef6",
+        "74554b20a444de941406438cf2458c8ddb22b41929adc0434069de965f8bfb8f",
+        "7a45c2273173f1e0ae75d6fae68fa853cd9de920473938125a105f31e1bf275b",
+        "88d6d9434e9dd4b8a3d27643fa648cee59735f12db90b9f4049933e2d7bbabfa",
+        "8c77c8524e372f68c62afa08ed5f66c1076d9639d6047bb4dc594127ea4656ca",
+        "8dd98fdeab8880c5c1ab3afa122f64d4034167e69de8985bfc41fdfa45792d06",
+        "8ed21302f7e13b04f266a123db920fd85531ecee777fa328b8cdff4d9971e278",
+        "903100d4625d686e4ea53a70ad2ecd076abd1ab4c97344488ef65cc2d488b227",
+        "927203e63f7a137093b61a858e74fccba3c22d0fd36af55f3890dcb682e09ce0",
+        "988348e8214f38a2e543035c92f6f9407079dbaecad90dceba44626196da146d",
+        "9ae90bfb79f913a2e35e89ff094e3124fea68825404f700d52958a053bbafd7f",
+        "9c80479c32ed6deed239d49b5c9c22425b3c3f97dbb0e6aca26d04af11d915c1",
+        "9d9b35d30b7553922b4fbc14b5faf0bce568e4215067b843838a4a8009a195b3",
+        "a0d7de3b9736c5f9df608ba287e85c6358b67fd442c64ab8c5c0f77fa9f49224",
+        "a19f0d61112c4c54f22ee4e2cc35b4922fee48c37dae31ed5bf2c4b680544918",
+        "bbfa780fdfdc4679b359572915cfef3642f96a9c76db8d9b10912e956276d1fe",
+        "c101175d6623abb668190776dded75ae10e2b2286cb891777ca3b9db54131472",
+        "cbfff5ab8425650e5eb6bfbcdb39fe90014e5cb6e7bdbfa1c1b88f3408d3ece4",
+        "ccdc6b6d783d0b3446815156cde51ab1a9bacccccc6be9952685fd9a99e8e327",
+        "d5c7df38e14df010af1e4156eeaef66acb5b53eb2012d63955907b5cdf09a4e4",
+        "d832820b87911871177c27ff8c7dd650f64c76e713e23a1457a27f07c4ae75ee",
+        "ec3ff8789eace7aca79d8eb67425718c235b42cd15733b59f979428e1870220e",
+        "edee9bc4a1d901606288e7afbf0382925ef2a4be76d8cefe94b955045b734e66",
+        "fff7422b3ffc2ecb07f8242e22c8b25a7f463ccd1f200805ee080b92effc29a7"
+      ]
+    },
+    {
+      "section_id": "S05",
+      "section_path": [
+        "2 AR01. Payment Collection",
+        "2.1.4 System Instruction for each step"
+      ],
+      "image_count": 9,
+      "doc_order_range": [
+        267,
+        298
+      ],
+      "checksums": [
+        "1803309f55c33cbda7c3f539c1628f69fb7a386b21de4d14b614d9e93ad661be",
+        "5f06429da3de8e7e7e6ee38db11d46af411840dcfc0f088555a571cff86d714b",
+        "70d912c51de7e8a1b728be61ba5109465a0cc27248f67ba114b2dbda1e37de20",
+        "909e913bd7710440aa39e58defb8536184aeb96215dcce821355e862cee214d3",
+        "98a6b1621ae5c4f92e4c103beafd3f30dcca6437c74a1842dd2e7fa56b6e32b9",
+        "b533aa49b290e5eecdbc6e02dafd966bf288e2bf90377de26541ed65c76f41ae",
+        "c4cc94e37bd315da8120be33adf72dcb0249d3e39b5bfd22199e7c686a0ff360",
+        "f1c4c356d4b111de17c724aa959fb5a0c2483a2a9322a9f2dbb642cf6926b70a",
+        "f6144154e6bb44d4e6a987bcc84c16eaad5dd9cc45b80f9d9341c9a05f34b7f9"
+      ]
+    },
+    {
+      "section_id": "S06",
+      "section_path": [
+        "2 AR01. Payment Collection",
+        "2.1.5 System Instruction for each step"
+      ],
+      "image_count": 11,
+      "doc_order_range": [
+        303,
+        350
+      ],
+      "checksums": [
+        "1524aba29922d3982f88d1c044ad3f4a05929129854077e37c225cdefb0b47c0",
+        "2a0104729725ad1a4d2c7a3217cc2002978f49930b9ed93bb89dbddfe7945260",
+        "434eb1d25101f69c9dea5f14e346d56be613b0129d6f056a70065377f043016b",
+        "87ea737f26901063bbad10575872560dac2c3f9f8daa5bfb02575412596ecf15",
+        "8865662ba632b3aacc4254d2d83bed2954839f5a45184cb360ef838f3e371de3",
+        "9101a6be1242bdaa0b8b197e1d8acd484f774e9c6bb74b3551a91118e079805d",
+        "9ec3e86bc7c92763746e69d25e158ae739029ababbfe6ac63428d567f218d61b",
+        "d185b1e913d6026c7a1ecdb3eda872b443588a9ae6c1ea68c2aca277b1168270",
+        "d50b49190752d44089161948a508222272c58df7c12763a514ca5aa6d571538b",
+        "d5b8bbf4651079e61fafd0ae4253f7d5218e3170f019787342366c068636a052",
+        "fe80e587c4c0b662a98217cb39ad931764de56ff3ad5d7a574df2a0803948ac3"
+      ]
+    },
+    {
+      "section_id": "S07",
+      "section_path": [
+        "3 AR02. Reverse Customer Payment Journal",
+        "3.1.1 Overview"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        363,
+        369
+      ],
+      "checksums": [
+        "16b4d2e306dcb36df2ace28cda78160d05f4a2273d9535969d6acaf3cf72d448",
+        "e0d9d18d7eb3fffb8fd22b1445ed07dd2bce8b6a0424e545ce6773f1dcd5b545"
+      ]
+    },
+    {
+      "section_id": "S08",
+      "section_path": [
+        "3 AR02. Reverse Customer Payment Journal",
+        "3.1.3 System Instruction for each step"
+      ],
+      "image_count": 10,
+      "doc_order_range": [
+        373,
+        413
+      ],
+      "checksums": [
+        "0e562105e26fc580732ecb8e1765fa8d85c9a534b6faa5753788c4322ed8372a",
+        "11eccae5bd4f61cb509faa90f86ca55838f784c245894427c4399a69bf76ec3e",
+        "2c4a20201abcdabb69d43db36dd766e7efe3beb3c1bb03fb792b6d3526741c71",
+        "3e7a94950b496787c22e43dee6dc0584f7b43318a8cbe1001ab0aba18bf9cc13",
+        "77bcfec7e0276998ac669aea9f0cc1f9f6fd14da7b49be459af320443c55a09c",
+        "80870d5da5336552987c540dbc6c424bfe4355f4f211c50076532294c9bbe8a3",
+        "8b6713ad36f889bc1db3e3fd0a15b14d87078c8922beb3e0f7747da5498d1382",
+        "b4e2de84a2b1dfbaa14447ebe45c236941b0d3ccfef592df8d9c6bcf15497e2e",
+        "d2b8589d4cafb008d18ac953810384c74a0f45fedfc6f2ee28e8a71c84bd8887",
+        "e5d2176b5780c1816b24796a471be6ce0df0ed440e7172e7fd0bc978c9e9871f"
+      ]
+    },
+    {
+      "section_id": "S09",
+      "section_path": [
+        "3 AR02. Reverse Customer Payment Journal",
+        "3.1.4 System Instruction for each step"
+      ],
+      "image_count": 6,
+      "doc_order_range": [
+        418,
+        439
+      ],
+      "checksums": [
+        "3ced7440e503e8705f87b3eb74d2c361c72d969fa887066fd7b86c6ee433ad2d",
+        "62379cf409fc5b9778385c7b5e202129b16181e0e8cb3c2cb3fc254cc515eef9",
+        "98de97e23d889f7dca2497174c5ce721c55908dbaccf53b96c510f0f82362077",
+        "a20a5dcae39c5c0906280ec06a920cd0031e19607f349429e3ad271493983487",
+        "b163251bb39769e0d54f35011a239fb95676a07da236721a98cfa8414e0c6ab7",
+        "e3f3ca16c05fa147f022666b351ea9fa379c2ff579398aa9496f2caae777fa13"
+      ]
+    },
+    {
+      "section_id": "S10",
+      "section_path": [
+        "4 AR03. Write-Off Receivables",
+        "4.1.1 Overview"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        446,
+        452
+      ],
+      "checksums": [
+        "bc200ac438c85af1d067917866f1c5ca9c472ebb62bf1614ecbaa030812a20d5",
+        "e4e8ab488ff37b783bb64f1d533b6d9e335ca3ea8a79303bf74a0acbcb349580"
+      ]
+    },
+    {
+      "section_id": "S11",
+      "section_path": [
+        "4 AR03. Write-Off Receivables",
+        "4.1.3 System Instruction for each step"
+      ],
+      "image_count": 23,
+      "doc_order_range": [
+        456,
+        557
+      ],
+      "checksums": [
+        "0d62ffea904f0dc89cfd6e6efd81195220a29bc54ea24713c59797d475d311f5",
+        "0ee22feb2bd29811b1ea26325da8c8fdc2ac69a5e325b8c58b6bf6f19b0b90b8",
+        "1873317d6b53fe9f0fa0405936a51fe5c0368a5fdbbb0fe361531a72d252e65c",
+        "1ed9e0b34ec84c2fdc15f3f90b0ae952c3050d0d32ac5744fa72362b55520de7",
+        "3940a9d6afe25e0a05863f6c541753ca1b839820903462a5f6bd1a91e21f9777",
+        "54d77174ed57c48b2a33ad760480e0a57a25c05fd21f9622aa5b4b8aa84679b2",
+        "5c509facb466b31482669be72ee2cbb0b2c798a81545b1cdfe9abbdc39ad5de0",
+        "676ead45481f4d10c2e096d6c2ebecfec99b76ba92834785095e09d1490c4ab9",
+        "69c3ba51bb79773a3c52c84364cf205024a0aaf05f6a39e1e79d2dee155e26d1",
+        "6ed00952714c086087a3239de71523e71000d5d9b14e7ca8e09d2473aef1ac8f",
+        "6ff0b7b23e811c49f7ba162fc1e7b1b5d98f4e068b3509a9a31c048692269d03",
+        "7a8b440db3754da0d21559a9d70403846019a6b438ea2460a610a99d99815047",
+        "7fc19a63a9d95eb033ce2cbd0f9930a9263c00e6134cea88b83bbf2925f82dd8",
+        "8ef3aaa3c4828b13abd083afd9646fc47d1822aacd0d5dfd05d892d2ec2a3146",
+        "934b02cbd56b1bfba529760edfbe7a0e77115063c7a549441fed0914113d235a",
+        "a5f34c8a8fbdbb94a5276546eef78b3bb842db2a66093c100018463720bec593",
+        "a9e7204be0a63a8bda58fbb1eb7945bdcad5f0bcc027d3525b2dfd794038f595",
+        "aebe3e3d3531424e5e67608f75ff0e020356d1ed7e41758cf86f4b4c503116e4",
+        "c168e1ee13a145b16ba76c73cbd0e01f15e6a7df56eae593d5868cd9f2795386",
+        "c795496fc4979d02bf45e99f97383cd2537cd9f90f02f00427cabc344814e25d",
+        "c9ddafa4ee030b89eed69178c5f963534758edad847fc1c8cdb01899ff76f74c",
+        "d39e30d26eee23682a3fb346c71d67430a5a9347d5f329a12f97e295fed00e5b",
+        "d81bab5e1a656e4e53326f76ba4c69b4caf8b1bf0fecf216742480885a88ebba"
+      ]
+    },
+    {
+      "section_id": "S12",
+      "section_path": [
+        "4 AR03. Write-Off Receivables",
+        "4.1.4 System Instruction for each step"
+      ],
+      "image_count": 12,
+      "doc_order_range": [
+        563,
+        600
+      ],
+      "checksums": [
+        "0ec9fadc9e7f9c50c18bec0241ca7f0783d062cecedbcbc19866e1ac175f98d0",
+        "2723631ff1e1567ff5253ffc2ad9b20bd9b923df6ab2147cc01f8c67a9e61af3",
+        "4e8670ee3adf0adb6698313afde3e4d06b89f3b94dabe4852f1b12874d302b31",
+        "509ec0c9fb4eefa4f095e54d203f2e3119ec91c9bd302292f36ea7895ee22fa0",
+        "614628db5de726955d8c0fb987801055024b32210412637b7b732aedb351f47d",
+        "78ab7277002378c75e7a79ee5181142e491da264e7cfc8fffcd5d2e3010f4c46",
+        "900680b9383d9b222a56d0a226637cd8e5e39f432347cdeb848c2870fefdec12",
+        "975c25b042b16bb3070be646ca4e49317cdb26bd05c2a848e4bc2ad047b58fac",
+        "a7a85efc16ccba29754cdfc9cc843e5a37b10f087db2047d355eac129a4bced8",
+        "ae238dd8c481c180c2dc37cc4d3c551e5009c5684772243d8c6b2ce431d7962b",
+        "cdc3b47120a8a8f03fcfee957e7bf1ae1b5b7c599b9ed0dc1c13c3eb1e7b715e",
+        "cdc46b0a8a6c51a206cd559d14c389f56a5d87b61870f694ef8ef7f14688c02d"
+      ]
+    },
+    {
+      "section_id": "S13",
+      "section_path": [
+        "5 AR04. Generate customer account Statement",
+        "5.1.1 Overview"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        607,
+        613
+      ],
+      "checksums": [
+        "0f0d4db0ddd888b7d3623eecb9804cd6501b2289057595ff0945cf99beb993f3",
+        "24098276ceac6f7af0505dbf2710736870a6366fd531e0193ef741c72ea37fbd"
+      ]
+    },
+    {
+      "section_id": "S14",
+      "section_path": [
+        "5 AR04. Generate customer account Statement",
+        "5.1.3 System Instruction for each step"
+      ],
+      "image_count": 10,
+      "doc_order_range": [
+        617,
+        651
+      ],
+      "checksums": [
+        "159e7e21dd5cb7dfa6c1cae5fa24633dd3b13673008674759bd5bddc749c7eb8",
+        "30193ad0adefe15b9c1d0aaaef72e91de3a0598512f3c10ff97eadbf04cf9a41",
+        "55224e292c86a113bb2464df77bc2ba69a43c8da0c0d46f66a9574e1af904108",
+        "67a9f58574cb18ba17960d7a454cb6fbe49e3c0e1fa52ec3dee8a8deb793a3a7",
+        "6dd75fada0f4fbf6097c54f1af9eae643e29f2cd205fa53889d7cb20aa8ed52a",
+        "7773bf91a145bc3f8cca1a894a0fd71c0ffa35cfc19f98c6e66dba8c335b9ca0",
+        "c435e0458381e35cb8d9161e5d6e2404d12c29beb5bb54130aede46d017ce7fc",
+        "cf1c9e044d2e3e3ed3fc42aa5f8c09aa8926949a96fd6dfdc6e7d7e122967399",
+        "dbb1b52469cf5ea61bc2964083698e230db0b103af4368d261cf602a2b049fd4",
+        "e00f7decef5f1203bb3a82d60c0a8b6a9cb49fe00742f30de765b56fce3c7bf1"
+      ]
+    },
+    {
+      "section_id": "S15",
+      "section_path": [
+        "6 AR05. Create Aging Period Definition",
+        "6.1.1 Overview"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        659,
+        665
+      ],
+      "checksums": [
+        "46ab15ec8fa79127e51bb196537c7993ed589feb6fca2da98b2430414b9cdb55",
+        "8efb4c0fee7add4493c431b43a13a9410bb7751f7817d16227eced6508f5114f"
+      ]
+    },
+    {
+      "section_id": "S16",
+      "section_path": [
+        "6 AR05. Create Aging Period Definition",
+        "6.1.3 System Instruction for each step"
+      ],
+      "image_count": 6,
+      "doc_order_range": [
+        669,
+        696
+      ],
+      "checksums": [
+        "0e583c6385274f7e833ef0fa357c4587d87d04f98d5c6404a2b26d57f46d6ac3",
+        "1238dd6b2d08e99df1f3ed8b559a369c6a05c4fb5f095114a2800037c26ad629",
+        "422b5e6418040bd6f74c088042fadcb4129d1c0628973dc579537c453762a97d",
+        "63f03e181b30241322502b59ac0017c59731246e653c2b60b6ff305b4bc1b7ab",
+        "ed32168bc8e13325ff2e4736b1b83bb517f0e47875728ccfa39a47d7784b9414",
+        "f08caf9667533890f779132c14916c6a5abe1cf61ee0da9fca739dce2312b741"
+      ]
+    },
+    {
+      "section_id": "S17",
+      "section_path": [
+        "7 AR06. Collection Letter Setup"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        706,
+        706
+      ],
+      "checksums": [
+        "1b329b71a3ac6e9781bededf09bca718967f6f680db597cbd1619df25e2be571"
+      ]
+    },
+    {
+      "section_id": "S18",
+      "section_path": [
+        "7 AR06. Collection Letter Setup",
+        "7.1.1 Business Process Flow"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        712,
+        712
+      ],
+      "checksums": [
+        "6f4ea5f4a0d271fb620a8b0622e26d53ee0687f8b5b22553f933506856ccb108"
+      ]
+    },
+    {
+      "section_id": "S19",
+      "section_path": [
+        "7 AR06. Collection Letter Setup",
+        "7.1.2 System Instruction for each step"
+      ],
+      "image_count": 7,
+      "doc_order_range": [
+        716,
+        744
+      ],
+      "checksums": [
+        "154e38364c52ae0dc8d2ab68eccbfc9c50dc256ae392a2cb5973332c20497173",
+        "330e67b0f9bc94a6ec8bd460e032def69923bdc56b8dc8d652812ce9c2097a5c",
+        "68bb1140b6f8a48dc5ce5b7f58f3f1b4350408dee5e01a4897d6d199c945b616",
+        "6c092d38697e3469cc1f7d57338f1b9a49761602b0c0895d377ba340e5cdfc43",
+        "97a8986f1bb1f730cdec93c7697abe5aec37692396deed6f83c4b69bf93b5157",
+        "b1f9f44ff3cf706f00d39d3fdf5db7d8d1c711b2c26dfd2656fa4be0fd4c478b",
+        "f3526f6369ce59f27451ce74a9f1daaa199b4f90e4c20abc696ea2b33bd69b3e"
+      ]
+    },
+    {
+      "section_id": "S20",
+      "section_path": [
+        "8 AR07. Collection Letter Generation"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        754,
+        754
+      ],
+      "checksums": [
+        "71450f474124e627a11adab85f718709bb9ccda7add35b4d748727a14eeb9214"
+      ]
+    },
+    {
+      "section_id": "S21",
+      "section_path": [
+        "8 AR07. Collection Letter Generation",
+        "8.1.1 Business Process Flow"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        760,
+        761
+      ],
+      "checksums": [
+        "81b57ed666dc594486266f39dd5f47ccaf39b4d9eba34feb772920c6a475c396",
+        "a46b30393663ced7c676a249a1c429c8f1d695831fbcaa23ed54c474dff5bc99"
+      ]
+    },
+    {
+      "section_id": "S22",
+      "section_path": [
+        "8 AR07. Collection Letter Generation",
+        "8.1.2 System Instruction for each step"
+      ],
+      "image_count": 20,
+      "doc_order_range": [
+        770,
+        856
+      ],
+      "checksums": [
+        "0dcf36fdc8aa2f8893c0c61134af7ef7d2955e210030bb4ce0caea349bc4f17b",
+        "16f40da2f8e53456239cda154990862eaf81b75a10a08d09b18c407d64d8753b",
+        "18a80fc41414a70311d0e4862e12cd3c1387f1ab32a453b8fd71378185f5b526",
+        "1d16385bd2f554f600f343df44da7e89650cf012f84a6fbc57a28f3305f65a58",
+        "2f92fbc4575980c176ff7df22430002e1408e6853d6d0ef8dfa9b112675b0764",
+        "308b34b5e9913a8157b9694052d8d96fca04dca19e28188ffd1ffbb0f48cd031",
+        "45effffbb9cf36471ee03d21174ad7c2a5ce8bf6279efa89ebb40a19952463ac",
+        "6ba654e74a4a9dde05839129e4c69d629260c5eafb6ed1e9a96f85d4db61c0e5",
+        "713f93cc0b29ef01d75dddcd09a70f0266f93faa70338a985cbff6533ac28661",
+        "78c87d6885b583e006554a240eac299bbf382d75da37f21a60155c937e38fc7e",
+        "80204df2c1a0f86279c042ab35338fa498a0b94188809c60fbcdd46a83ed5820",
+        "9ac5f1921ca00c9002e076b270f5a0cca26ee263cfe9bc83559c61bcc1fec389",
+        "a0b8bccb7ed9f92317bbfb664b53a85c7edd3bcc6ab39796e9807a8b3ef7331c",
+        "a357b56cc79c5c6c3b9c21fba926cda0778c247bb3287011e8a553044d7749ed",
+        "a65dc975af47c7831ba068de4a2671c1bc07e7ec3a06923a54a19a4bc52f1bf6",
+        "c81fa240c08eab0a71538bd00060528cccaaea55682ba2b8e816a25076a7c672",
+        "e4a5cd1e4f62a345182f88aecf4ca751a24c0f2bb5f424fd85ffc7b188a07f47",
+        "e7225c6b373284bd381abeb614bbd17b4929bb128462ae5133af8305efe23578",
+        "e889690c91bc8acd9490347351fc549b9edcc8cde4d8dca98427b204fbc08cd9",
+        "fae344008706e1b1874cd80121483db1fe3acb3b82952de34432dd306ccec8c8"
+      ]
+    },
+    {
+      "section_id": "S23",
+      "section_path": [
+        "9 AR08. Payment Method Setup",
+        "9.1.1 Overview"
+      ],
+      "image_count": 2,
+      "doc_order_range": [
+        869,
+        875
+      ],
+      "checksums": [
+        "1fc41c06c794b44ee5c58094245ed9e94da4540ea7c7668fe1daa3585e2e4a33",
+        "4af143204d79367be2cc3c3d91ef98263ad8470c3b47bc3321d0caea7f9f7f35"
+      ]
+    },
+    {
+      "section_id": "S24",
+      "section_path": [
+        "9 AR08. Payment Method Setup",
+        "9.1.3 System Instruction for each step"
+      ],
+      "image_count": 12,
+      "doc_order_range": [
+        880,
+        928
+      ],
+      "checksums": [
+        "067a6b082d369267db90a83020685a529be865a6a5ad7c3733de584c70c08fbf",
+        "0809f514d525321961f4db105a0af64f803248c9e69411a3014c82b35f85f3a1",
+        "0c17762c295b59026d206f204dcacfa2595ea610517e598da0e61ed10d83234a",
+        "16d47f8e2014a42655c406ae18ce91e7c896064fcb680f0794d3e0566ddc6ca1",
+        "8083049feae8d9064a17f80b1e7a3bc040f97622c7c36f8d7b4d377e82a919a6",
+        "92aa2ae0e656e96016cae86156e545f27e174b984711b732ded30c24f6767e39",
+        "97fe278b250f0c6448c6f799d6a44c3c0d04e833b7ccd938884d82d657b7bfaa",
+        "a3bd33b3000e1d24bd1f28ca46cc5910aa1a350e5b57ffd056191cc2367aea37",
+        "abb94ddf706dc3d587779a5549df8ff12a59d751ec21b3a85f61e441b190c39d",
+        "ae46cf07c4907c453c1e3196d4d50d1caf14e065c31aed9d8443e9767e7137dd",
+        "b718b5c9689a3fbeece23e2378673b80fa35e6c421429e181f2c48cfffa6d38c",
+        "bbc65bf6cd1000a375b2fe32fb141f3b0f005e6c12df9eb81b92c927b3c69400"
+      ]
+    },
+    {
+      "section_id": "S25",
+      "section_path": [
+        "9 AR08. Payment Method Setup",
+        "9.1.5 Business Process Flow"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        934,
+        934
+      ],
+      "checksums": [
+        "25781004ac2429019d73194e5a5e5d37a74be3719db12686715e5df21a426434"
+      ]
+    },
+    {
+      "section_id": "S26",
+      "section_path": [
+        "9 AR08. Payment Method Setup",
+        "9.1.6 System Instruction for each step"
+      ],
+      "image_count": 17,
+      "doc_order_range": [
+        938,
+        1006
+      ],
+      "checksums": [
+        "1950859aa65f1e6d5211adf0af4fe20780fc78ebacc302865a6680622ffebceb",
+        "20f07e3b6e28670db5556a6816376b1b08075a313c0f2b235d807d51a38bab4f",
+        "2995e4ecaa19c5ccd4c0f160ddba80029200ca5ef145e1fc407bc4a1b57c5fd2",
+        "2b5e0011182df03d96ce41087cd64c524be9eefa8f70417546d55656afc3d9df",
+        "34e1a42915b089600453ce632f4a6353cddb1fb973ac0290aaee42f4f4945870",
+        "5b46cbdbf2e233c4baafcec0e5ae09cbb3a73784f46e309aecfb1856440fe03a",
+        "6392698468250c14ff419a8897379076d6aaf0a347dd74d4b72b8215d74307b9",
+        "6ff2a6894d16de93b565d51b695c6edb41e5c4078cf7f4f40624c81f53d25c69",
+        "84c31f89c98e09873dfc9a26f1536e7f030d272d4490fb3433a359e4f67f65cc",
+        "9c9a551c2f21c4c139eddb66f0bfd6eeb4d0a883d3abc09c5c7ead1dd6a05e10",
+        "acc5f849a9b63539ee5585dcbc62febc832f15dff4a44b771ca4cc38496f6545",
+        "b016fc7b57faa98791d3408bcbaf748c272d8a19359ec636b01f34b304de64e3",
+        "b72c39f7d7833d1712bb22aa4a6e8cb33a8344b26e4123169775f8cbc1ffe930",
+        "c2d38cc6c536e6d03b4e75905b43802e48cae1431dd73ee6bd06aaa0f6576ebd",
+        "c9c9839cf7fc810dd24bd0a0080804a586ae395beb53096b1e95872d0ed0b1f5",
+        "eadcfd3ab9b8f9b846ecb45810ce6842c1192da5659fae8cf9cfba83cb0b5928",
+        "ede05d7d9f7d1175b2e6379d211b8c0c7fa612e2024249ffb4f32262586ce786"
+      ]
+    },
+    {
+      "section_id": "S27",
+      "section_path": [
+        "10 AR10. Warranty Provision",
+        "10.1.1 Overview"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        1019,
+        1019
+      ],
+      "checksums": [
+        "065c4be9c659ee064dbbceae7aa6e4920b1b69da5f024274332bcff3ebdc2649"
+      ]
+    },
+    {
+      "section_id": "S28",
+      "section_path": [
+        "10 AR10. Warranty Provision",
+        "10.1.3 System Instruction for each step"
+      ],
+      "image_count": 3,
+      "doc_order_range": [
+        1023,
+        1033
+      ],
+      "checksums": [
+        "bd3a2873c183b046644427565d61d98687d8d4be1a415bf7651283f86069c9d2",
+        "c6181451391cfce7a355372f9aed953980de71d3e0ce5389eafeb4dd6e071e7a",
+        "f7e25f43a9e905b75f622574f4d72889ac54c15b762db7b03a90950ce1d1b518"
+      ]
+    },
+    {
+      "section_id": "S29",
+      "section_path": [
+        "11",
+        "11.1.2"
+      ],
+      "image_count": 1,
+      "doc_order_range": [
+        1044,
+        1044
+      ],
+      "checksums": [
+        "0efad151bf87d7d8ba741f8cc8368c4bbd261a26145f7c79499618df5c639f34"
+      ]
+    },
+    {
+      "section_id": "S30",
+      "section_path": [
+        "11",
+        "11.1.3"
+      ],
+      "image_count": 11,
+      "doc_order_range": [
+        1052,
+        1121
+      ],
+      "checksums": [
+        "26582596745c9fae500df616add7c09bbec80b64ec6014c170707624762ec17d",
+        "47682a855be5b64ed7ae529a49980d08e0aa084d2fd1b68d71f36249a35ba5f2",
+        "58f127a7a8560abe3a21094af86d98988e5681cdf0bee2e769e24daaec16bdc4",
+        "65df1c21808bfb38b2e91694e9a4b426f1f81b867327d4e52175788495a2716e",
+        "6abd3056bbffffeda88089e444855c7c5badf3e8e5d7c59ec40416c45823661a",
+        "a64496a6731930f1a1df025d43474eeab461cd28516139692fa5db298d49b99f",
+        "b7899a7bac04586088eda4f612d6ee0b121c1d7a1dd99016896524ad2069b404",
+        "c16137c371227a34061e213ec7e27d5afc5cc41271300df2b146f92184d2a2bf",
+        "cbb06c966099e0956efb6a2ed25df34f7a73afe3e660ffc52e6a177766ef05ee",
+        "d37d45c0b3df9b58b433a208c2ce2b8c8c7af6c560e3df06c38045a2d1fa0d51",
+        "feb45358530f56115883008feb4be2b2cfa40481bfc66534535b43bc28fc7b1a"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "Q001",
+      "query_text": "How do I record a payment collection from a customer?",
+      "expected_answer_keywords": [
+        "Payment Collection",
+        "customer payment journal",
+        "AR01",
+        "Settlement"
+      ],
+      "expected_sections": [
+        "S03",
+        "S04",
+        "S05",
+        "S06"
+      ]
+    },
+    {
+      "query_id": "Q002",
+      "query_text": "How to reverse a customer payment journal?",
+      "expected_answer_keywords": [
+        "Reverse Customer Payment Journal",
+        "AR02",
+        "Review Customer Payment Entries",
+        "reverse"
+      ],
+      "expected_sections": [
+        "S07",
+        "S08",
+        "S09"
+      ]
+    },
+    {
+      "query_id": "Q003",
+      "query_text": "What is the procedure to write off a receivable?",
+      "expected_answer_keywords": [
+        "Write-Off Receivables",
+        "write-off journal",
+        "AR03",
+        "General ledger"
+      ],
+      "expected_sections": [
+        "S10",
+        "S11",
+        "S12"
+      ]
+    },
+    {
+      "query_id": "Q004",
+      "query_text": "How to generate a customer account statement?",
+      "expected_answer_keywords": [
+        "Customer Account Statement",
+        "AR04",
+        "customer balance",
+        "parameter"
+      ],
+      "expected_sections": [
+        "S13",
+        "S14"
+      ]
+    },
+    {
+      "query_id": "Q005",
+      "query_text": "How do I set up a collection letter and then generate it?",
+      "expected_answer_keywords": [
+        "Collection letter",
+        "AR06",
+        "AR07",
+        "Credit and collections"
+      ],
+      "expected_sections": [
+        "S17",
+        "S18",
+        "S19",
+        "S20",
+        "S21",
+        "S22"
+      ]
+    },
+    {
+      "query_id": "Q006",
+      "query_text": "How to create an aging period definition for receivables?",
+      "expected_answer_keywords": [
+        "Aging Period Definition",
+        "AR05",
+        "Set aging definitions",
+        "Credit and collections"
+      ],
+      "expected_sections": [
+        "S15",
+        "S16"
+      ]
+    },
+    {
+      "query_id": "Q036",
+      "query_text": "Hey, can you walk me through how to log a customer payment? My screen looks different from the manual.",
+      "expected_answer_keywords": [
+        "Payment Collection",
+        "customer payment journal",
+        "AR01",
+        "post"
+      ],
+      "expected_sections": [
+        "S03",
+        "S04",
+        "S05",
+        "S06"
+      ]
+    },
+    {
+      "query_id": "Q038",
+      "query_text": "Where do I go to write off an invoice that the customer never paid?",
+      "expected_answer_keywords": [
+        "Write-Off Receivables",
+        "write-off journal",
+        "AR03",
+        "customer invoice"
+      ],
+      "expected_sections": [
+        "S10",
+        "S11",
+        "S12"
+      ]
+    },
+    {
+      "query_id": "Q043",
+      "query_text": "Customer payment came in but their aging report still shows them overdue — how to fix?",
+      "expected_answer_keywords": [
+        "Payment Collection",
+        "Settlement",
+        "aging",
+        "AR05"
+      ],
+      "expected_sections": [
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S15",
+        "S16"
+      ]
+    }
+  ]
+}
