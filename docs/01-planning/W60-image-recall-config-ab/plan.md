@@ -1,7 +1,7 @@
 ---
 phase: W60
 name: image-recall-config-ab
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-11
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "§4.5 未盡之一 — per-config A/B 對比(DD-4 前後對 image-recall 的影響)"
@@ -97,3 +97,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-11 | Initial plan(active)| rollup §4.5 未盡之一;用戶選「先 A/B、軸 = DD-4 前後」;方法論核實 = /query path + process env toggle + 兩次重啟(config-test response 無 checksum)|
+| 2026-06-11 | **Phase closed**(F1–F4 全 done)| controlled A/B 出數:A 臂 pre-DD-4 0.572(✅ 重現 W59 0.5715 sanity)/ B 臂 post-DD-4 0.609 = **DD-4 淨 +3.7pp**;改善來源 = Q005 section miss(returned 9→19,+0.28),DD-4 解 section-覆蓋型 C 類;cap 天花板 + ≤cap 對 DD-4 0 反應 → 下一槓桿 = per-doc 放寬 cap;AC1–AC5 達成;零 code 改動(重用 W59 harness)→ 無 ADR(§5.1 加 test 例外)。🚧 prose 第二份 GT 延後(硬依賴用戶提供文件 + 標注)|
