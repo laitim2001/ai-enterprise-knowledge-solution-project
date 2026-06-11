@@ -160,14 +160,15 @@ function DocConfigEditor({
   }
 
   // Draft config for the config-test preview — the post-retrieval knobs the user is
-  // editing (answer_detail is not part of DraftRetrievalConfig, so the test preview
-  // reflects the citation/image knobs only; see plan F1.4 note).
+  // editing. DD-5 (2026-06-11): answer_detail is now part of DraftRetrievalConfig, so
+  // the test preview reflects the synthesis detail level too (not just citation/image).
   function buildDraftConfig(): DraftRetrievalConfig {
     const draft: DraftRetrievalConfig = {};
     for (const k of DOC_TUNE_KNOB_KEYS) {
       const v = knobs[k];
       if (v !== null) (draft as Record<string, number | boolean>)[k] = v;
     }
+    if (answerDetail !== null) draft.answer_detail = answerDetail;
     return draft;
   }
 
@@ -782,7 +783,7 @@ function DocConfigTestPanel({
       </div>
       <div className="card-footer">
         <div className="muted text-xs">
-          N 次重跑取平均 · band = max − min · answer_detail 不在試跑草稿(經「儲存」生效)
+          N 次重跑取平均 · band = max − min · answer_detail 已納入試跑草稿
         </div>
         <button
           type="button"

@@ -537,7 +537,7 @@ function DocConfigTab({ kb, doc }) {
           </div>
         </div>
         <div className="card-footer">
-          <div className="text-xs muted">N 次重跑取平均 · band = max − min · answer_detail 不在試跑草稿(經「儲存」生效)</div>
+          <div className="text-xs muted">N 次重跑取平均 · band = max − min · answer_detail 已納入試跑草稿</div>
           <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> 把草稿儲存到此文件</button>
         </div>
       </div>

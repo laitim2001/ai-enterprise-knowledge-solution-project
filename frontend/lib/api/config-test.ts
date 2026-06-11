@@ -32,6 +32,8 @@ export interface DraftRetrievalConfig {
   max_images_per_answer?: number | null;
   /** CH-010 / ADR-0047 — chapter-overview pin (backend DraftRetrievalConfig field). */
   enable_chapter_overview_pin?: boolean | null;
+  /** CH-006 — synthesis answer detail. DD-5: now part of the config-test draft. */
+  answer_detail?: 'concise' | 'detailed' | null;
 }
 
 export interface ConfigTestRequest {

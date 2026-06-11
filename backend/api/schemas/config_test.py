@@ -12,10 +12,12 @@ from pydantic import BaseModel, Field
 
 
 class DraftRetrievalConfig(BaseModel):
-    """The 12 W43 per-KB knobs under test (draft, unsaved). Mirrors the `KbConfig`
-    Optional knobs + `EffectiveConfig` / `PerQueryOverrides` field shape. Every field
-    is Optional — `None` = fall through to the KB's saved config / global default in
-    the resolver (so a draft only overrides the knobs it sets)."""
+    """The W43 per-KB retrieval/citation knobs + the CH-006 `answer_detail` synthesis
+    knob, under test (draft, unsaved). Mirrors the `KbConfig` Optional knobs +
+    `EffectiveConfig` / `PerQueryOverrides` field shape. Every field is Optional —
+    `None` = fall through to the KB's saved config / global default in the resolver
+    (so a draft only overrides the knobs it sets). DD-5 (2026-06-11) added
+    `answer_detail` so the config-test preview reflects the synthesis detail too."""
 
     enable_parent_doc_retrieval: bool | None = None
     parent_doc_section_depth_offset: int | None = None
@@ -30,6 +32,11 @@ class DraftRetrievalConfig(BaseModel):
     citation_neighbour_section_path_prefix_depth: int | None = None
     max_images_per_answer: int | None = None
     enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
+    # DD-5 (2026-06-11) — synthesis detail level in the config-test draft (was
+    # saved-only). `PerQueryOverrides.answer_detail` + `resolve_effective_config`
+    # already resolve it (per-query > per-DOC > per-KB > global), so adding it here
+    # is the only wiring needed for the draft to override it.
+    answer_detail: Literal["concise", "detailed"] | None = None  # CH-006
 
 
 class ConfigTestRequest(BaseModel):
