@@ -131,13 +131,17 @@ class Settings(BaseSettings):
     azure_semantic_config_name: str = "ekp-semantic-config"
     azure_semantic_request_timeout_s: float = 10.0
 
-    # Synthesizer (GPT-5.5) chat-completion client timeout. Default 30s mirrors the
-    # synthesizer.py constructor default (production preserve). GPT-5.5 generating a
-    # complete multi-scenario answer can take ~90-98s (deboost surfaces more content
-    # → longer generation), tipping over 30s → APITimeoutError ("Thinking…" hang on
-    # the streaming path). Raise via .env SYNTHESIZER_REQUEST_TIMEOUT_S for full-
-    # answer chat (dev/demo); leave at 30 in production.
-    synthesizer_request_timeout_s: float = 30.0
+    # Synthesizer (GPT-5.5) chat-completion client timeout. Default 120s mirrors the
+    # synthesizer.py constructor default. GPT-5.5 generating a complete multi-scenario
+    # / image-dense mega-section answer can take ~90-98s (W59 measured Q001/Q036 with
+    # S04 44-image section; deboost + DD-4 parent-doc/citation-expansion flip surface
+    # more content → longer generation), tipping over the former 30s → APITimeoutError
+    # ("Thinking…" hang). The streaming path yields text-delta incrementally, so this
+    # is a safety-net ceiling on stream completion, NOT perceived latency for normal
+    # queries (which finish well under it). Raised 30→120s per ADR-0053 (DD-7 — root
+    # cause is output-bound generation time, not input context; image bytes never
+    # enter the synth prompt). Override via .env SYNTHESIZER_REQUEST_TIMEOUT_S.
+    synthesizer_request_timeout_s: float = 120.0
 
     # CH-006 — synthesis answer detail level (global default; per-KB overridable via
     # KbConfig.answer_detail, resolved by EffectiveConfig). "concise" = W2 baseline

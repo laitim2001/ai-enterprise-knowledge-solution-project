@@ -76,7 +76,7 @@ class Synthesizer:
         api_key: str,
         api_version: str,
         deployment: str,
-        timeout_s: float = 30.0,
+        timeout_s: float = 120.0,  # mirrors Settings.synthesizer_request_timeout_s (ADR-0053 / DD-7)
         temperature: float | None = None,
     ) -> None:
         # W5 D1 F1.7 fix: GPT-5 reasoning-style deployments(GPT-5.5 / GPT-5.4-mini /
