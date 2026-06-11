@@ -1,7 +1,7 @@
 ---
 phase: W61
 name: image-recall-cap-widen-ab
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-11
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "§4.5 未盡之一 — cap 放寬軸 A/B(W59/W60 確認 cap 天花板是圖片召回真瓶頸的候選,本 phase 實證)"
@@ -118,3 +118,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-11 | Initial plan(active)| rollup §4.5 未盡之一;用戶選「cap 放寬軸」;方法論核實 = per-KB config toggle(`PATCH /kb/{id}/settings` full replacement)+ GET readback 真 sanity gate + returned_count 量 cap-binding(W60 env-override 踩坑教訓);三臂 20/40/60,焦點 5 條 cap-bound,對照 4 條 non-cap-bound |
+| 2026-06-11 | **Phase closed**(F1–F5 全 done)| controlled A/B 5 runs:**cap=20 確 binding 但真天花板 = upstream 候選供給 ~26–33(非 cap)**;cap-bound returned 20→26–35(cap=40)但 40→60 零增長(plateau 26–33,2 runs 穩定);recall cap=20→40 partial gain +0.09~+0.17 / precision 維持 0.95–1.00(額外圖 GT-correct)/ 對照 3 條完美持平;**mega-query(GT 65–73)即使 cap 無限 recall 上限 ~0.40–0.51 → cap 放寬單獨不足以填缺口,真瓶頸 = 供給側(§4.6)**。AC1–AC5 全達(baseline 重現 0.574 / 每臂 GET readback gate / cap-binding 決定性判決 / 復原 cap=20)。零 code 改動(重用 W59 harness)→ 無 ADR(§5.1 加 test 例外)。Q005 高度 stochastic 跨 5 runs 印證;cap=60 首 run Azure transient 502 單次重試恢復。🚧 prose 第二份 GT 仍欠(硬依賴用戶) |
