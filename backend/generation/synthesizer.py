@@ -152,11 +152,17 @@ class Synthesizer:
 
         # F2.1.b prompt-build sub-stage timing
         prompt_build_start = time.perf_counter()
+        # W70 / ADR-0055 — marker knob read off the resolved config (EffectiveConfig
+        # or Settings both carry it; the ExpansionConfig protocol annotation doesn't,
+        # hence getattr). Legacy callers (effective_config=None) fall back to global.
+        _marker_cfg = effective_config if effective_config is not None else get_settings()
+        inline_image_markers = bool(getattr(_marker_cfg, "enable_inline_image_markers", False))
         prompt = build_prompt(
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
             detail_level=detail_level,
+            inline_image_markers=inline_image_markers,
         )
         prompt_build_latency_ms = int((time.perf_counter() - prompt_build_start) * 1000)
 
@@ -186,8 +192,11 @@ class Synthesizer:
         expand_citations_start = time.perf_counter()
         if not refused and engine is not None and kb_id is not None:
             answer_text, citation_ids, expanded_neighbor_chunks = await expand_citations(
-                answer_text, citation_ids, chunks,
-                engine=engine, kb_id=kb_id,
+                answer_text,
+                citation_ids,
+                chunks,
+                engine=engine,
+                kb_id=kb_id,
                 settings=effective_config if effective_config is not None else get_settings(),
             )
         expand_citations_latency_ms = int((time.perf_counter() - expand_citations_start) * 1000)
@@ -254,11 +263,14 @@ class Synthesizer:
         """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
+        # W70 / ADR-0055 — same marker-knob read as the non-stream path.
+        _marker_cfg = effective_config if effective_config is not None else get_settings()
         prompt = build_prompt(
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
             detail_level=detail_level,
+            inline_image_markers=bool(getattr(_marker_cfg, "enable_inline_image_markers", False)),
         )
         start = time.perf_counter()
         accumulated = ""
@@ -305,8 +317,11 @@ class Synthesizer:
         expanded_neighbor_chunks: list[RetrievedChunk] = []
         if not refused and engine is not None and kb_id is not None:
             accumulated, citation_ids, expanded_neighbor_chunks = await expand_citations(
-                accumulated, citation_ids, chunks,
-                engine=engine, kb_id=kb_id,
+                accumulated,
+                citation_ids,
+                chunks,
+                engine=engine,
+                kb_id=kb_id,
                 settings=effective_config if effective_config is not None else get_settings(),
             )
 

@@ -69,7 +69,11 @@ class _RecordingEngine:
         return _RetrievalResult(chunks=self._chunks, reranked=True, total_latency_ms=10)
 
     async def expand_context_for_chunks(
-        self, chunks: list[_Chunk], *, kb_id: str,
+        self,
+        chunks: list[_Chunk],
+        *,
+        kb_id: str,
+        use_marked: bool = False,
     ) -> tuple[list[_Chunk], dict]:
         return chunks, {}
 
@@ -83,36 +87,59 @@ class _RecordingEngine:
         max_tokens_per_parent: int,
         max_chunks_per_parent: int,
         fallback_to_doc_on_shallow: bool,
+        use_marked: bool = False,
     ) -> tuple[list[_Chunk], dict]:
         self.aggregate_calls.append(
-            {"section_depth_offset": section_depth_offset, "parent_doc_top_k": parent_doc_top_k},
+            {
+                "section_depth_offset": section_depth_offset,
+                "parent_doc_top_k": parent_doc_top_k,
+                "use_marked": use_marked,  # W70 / ADR-0055 wire verification
+            },
         )
         return chunks, {}
 
 
 class _MockSynth:
     async def synthesize(
-        self, query: str, chunks: list[_Chunk], *,
-        engine: object = None, kb_id: str | None = None, effective_config: object = None,
+        self,
+        query: str,
+        chunks: list[_Chunk],
+        *,
+        engine: object = None,
+        kb_id: str | None = None,
+        effective_config: object = None,
         detail_level: str = "concise",  # CH-006 — route passes this; mock must accept it
     ) -> _Synth:
         return _Synth(
-            answer="ok", citation_ids=[], deployment="gpt-5.5-mock",
-            latency_ms=1, refused=False,
+            answer="ok",
+            citation_ids=[],
+            deployment="gpt-5.5-mock",
+            latency_ms=1,
+            refused=False,
         )
 
     async def synthesize_stream(
-        self, query: str, chunks: list[_Chunk], *,
-        engine: object = None, kb_id: str | None = None, effective_config: object = None,
+        self,
+        query: str,
+        chunks: list[_Chunk],
+        *,
+        engine: object = None,
+        kb_id: str | None = None,
+        effective_config: object = None,
         detail_level: str = "concise",
     ):
         """Minimal Synthesizer.synthesize_stream protocol: text-delta* then a terminal
         `result` event (per stream_composer.compose_query_stream)."""
         yield {"type": "text-delta", "content": "ok"}
         yield {
-            "type": "result", "citation_ids": [], "deployment": "gpt-5.5-mock",
-            "answer": "ok", "input_tokens": 1, "output_tokens": 1,
-            "latency_ms": 1, "refused": False,
+            "type": "result",
+            "citation_ids": [],
+            "deployment": "gpt-5.5-mock",
+            "answer": "ok",
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "latency_ms": 1,
+            "refused": False,
         }
 
 
@@ -140,7 +167,8 @@ def test_per_kb_enables_parent_doc_over_global_off(monkeypatch) -> None:
     """per-KB enable_parent_doc_retrieval=True + offset=3 reaches the engine even
     though the global default is OFF."""
     monkeypatch.setattr(
-        query_route, "get_settings",
+        query_route,
+        "get_settings",
         lambda: Settings(_env_file=None, enable_parent_doc_retrieval=False),
     )
     engine = _RecordingEngine([_good_chunk()])
@@ -163,7 +191,8 @@ def test_per_kb_disables_parent_doc_over_global_on(monkeypatch) -> None:
     """per-KB enable_parent_doc_retrieval=False suppresses an aggressive global ON
     (the AR-conservative scenario per ADR-0040 G2)."""
     monkeypatch.setattr(
-        query_route, "get_settings",
+        query_route,
+        "get_settings",
         lambda: Settings(_env_file=None, enable_parent_doc_retrieval=True),
     )
     engine = _RecordingEngine([_good_chunk()])
@@ -244,3 +273,45 @@ def test_ch007_query_stream_uses_per_kb_rerank_k_and_overfetch(monkeypatch) -> N
 
     assert resp.status_code == 200, resp.text
     assert engine.retrieve_calls == [{"top_k": 20, "overfetch": 80}]
+
+
+def test_w70_per_kb_marker_knob_reaches_engine(monkeypatch) -> None:
+    """W70 / ADR-0055 wire - per-KB enable_inline_image_markers=True threads
+    use_marked=True into the parent-doc aggregation call (global default OFF)."""
+    monkeypatch.setattr(
+        query_route,
+        "get_settings",
+        lambda: Settings(_env_file=None),
+    )
+    engine = _RecordingEngine([_good_chunk()])
+    kb = KbConfig(
+        enable_parent_doc_retrieval=True,
+        enable_inline_image_markers=True,
+        enable_citation_neighbour_images=False,
+    )
+    client = TestClient(_build_app(engine, _kb_service_with("kb-mk", kb)))
+
+    resp = client.post("/query", json={"query": "how?", "kb_id": "kb-mk"})
+
+    assert resp.status_code == 200, resp.text
+    assert engine.aggregate_calls[0]["use_marked"] is True
+
+
+def test_w70_marker_knob_off_threads_false(monkeypatch) -> None:
+    """W70 G3 - knob unset -> use_marked=False reaches the engine (pre-W70 path)."""
+    monkeypatch.setattr(
+        query_route,
+        "get_settings",
+        lambda: Settings(_env_file=None),
+    )
+    engine = _RecordingEngine([_good_chunk()])
+    kb = KbConfig(
+        enable_parent_doc_retrieval=True,
+        enable_citation_neighbour_images=False,
+    )
+    client = TestClient(_build_app(engine, _kb_service_with("kb-mk2", kb)))
+
+    resp = client.post("/query", json={"query": "how?", "kb_id": "kb-mk2"})
+
+    assert resp.status_code == 200, resp.text
+    assert engine.aggregate_calls[0]["use_marked"] is False

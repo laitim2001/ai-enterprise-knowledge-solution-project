@@ -114,3 +114,32 @@
   consumer + config-test 合計 73 passed;ruff 全過。
 - 下一步:F5 三條 prompt 路徑(`prompt_builder._format_chunk` dispatch +
   `parent_doc_retriever` + `context_expander` marked 變體 + system prompt rule)。
+
+### F5 — 三條 prompt 路徑 + system rule ✅
+- **數據面先核實**(R6 精神):hybrid 三個 fetch(主 `search` / `fetch_by_chunk_ids`
+  / `fetch_chunks_by_section_path`)全部冇 `select` → Azure 回傳全部 retrievable
+  欄位,`chunk_text_marked` 自動入 `fields` — `hybrid.py` 零改動。
+- **threading 設計 = 方案 X**(knob 傳入組裝者,唔係雙 key):`use_marked: bool
+  = False` 參數加入 `expand_context` / `aggregate_parent_sections` / engine 兩個
+  wrapper;ON 時組裝用 `chunk_text_marked or chunk_text`(per-chunk / per-sibling
+  fallback,未 re-index 數據自然降級),輸出 key 名不變(`expanded_text` /
+  `parent_section_text`)→ `prompt_builder` dispatch chain 不變。
+- `prompt_builder`:`_format_chunk` 加 `use_marked`(raw 路 + append 模式主段);
+  `build_prompt` 加 `inline_image_markers` → knob-gated **Rule 9**(原位保留
+  `[IMG#...]` / 唔准自創改動 / 唔好喺行文提及標記)append 喺 base system prompt
+  之後 — OFF 時 byte-identical。
+- **wire 五個位**:`query.py` non-stream + stream 兩 route(expand + aggregate 各
+  傳 `use_marked=effective.enable_inline_image_markers`)/ `crag.py` 再合成路
+  (同 fallback 邏輯)/ `synthesizer.py` 兩路(effective_config 讀 knob,getattr
+  因 `ExpansionConfig` protocol 唔含新欄位;legacy `None` fallback global)。
+- `fields["chunk_text"]` 全程不動 — citation 顯示 / RAGAs contexts 繼續乾淨文字
+  (ADR-0055 檢索 + 顯示七消費者不見標記)。
+- Tests 11 條新:prompt_builder 5(OFF 忽略 marked + system byte-identical / ON
+  raw 路 + rule appended / marked 空 fallback / dispatch 優先序不變 / append 主段)
+  + context_expander 2(ON 三段 marked 組裝 + invariant / OFF 乾淨)+
+  parent_doc_retriever 2(ON sibling marked + fallback / OFF 乾淨)+ route 級
+  wire 2(per-KB ON → use_marked=True 到 engine / unset → False)。`_RecordingEngine`
+  stub 同步加 kwarg。F5 相關 suites **125 passed**;ruff 唯一報項係
+  `citation_image_neighbors.py` B905 pre-existing。
+- 下一步:F6 前端最小面(mockup 先行 tuning card 開關行 + 答案顯示 marker strip
+  含 streaming 半截 buffer + H7 fidelity check)。

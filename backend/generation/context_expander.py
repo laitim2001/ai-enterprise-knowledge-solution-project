@@ -141,14 +141,30 @@ def _is_cross_doc_neighbor(neighbor_chunk_id: str, parent_chunk_id: str) -> bool
     return _doc_id_of(neighbor_chunk_id) != _doc_id_of(parent_chunk_id)
 
 
+def _chunk_text_of(fields: dict, *, use_marked: bool) -> str:
+    """W70 / ADR-0055 — pick the marked variant when the knob is on; "" (chunk has
+    no markers OR pre-W70 index) falls back to the clean text. use_marked=False is
+    the pre-W70 read, bit-identical."""
+    text = str(fields.get("chunk_text", ""))
+    if use_marked:
+        return str(fields.get("chunk_text_marked") or "") or text
+    return text
+
+
 async def expand_context(
     reranked_chunks: list[RetrievedChunk],
     kb_id: str,
     searcher: HybridSearcher,
+    *,
+    use_marked: bool = False,
 ) -> tuple[list[ExpandedChunk], ExpansionStats]:
     """Expand top-K reranked chunks with prev/next neighbor text per architecture.md §3.1.
 
     kb_id required per ADR-0018 multi-KB invariant (searcher.fetch_by_chunk_ids needs it).
+
+    use_marked (W70 / ADR-0055): True assembles `expanded_text` from the marked
+    text variants (anchor + neighbours) so inline image markers survive the
+    expansion path. `fields['chunk_text']` is never touched (citation invariant).
 
     Returns (expanded_chunks, stats). Stats useful for V6 Debug View + Langfuse trace
     per ADR-0020 observability requirements.
@@ -179,7 +195,8 @@ async def expand_context(
     if neighbor_ids_needed:
         try:
             neighbors_lookup = await searcher.fetch_by_chunk_ids(
-                list(neighbor_ids_needed), kb_id=kb_id,
+                list(neighbor_ids_needed),
+                kb_id=kb_id,
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020 spec
             logger.warning(
@@ -202,14 +219,14 @@ async def expand_context(
         chunk_id = str(chunk.fields.get("chunk_id", ""))
         prev_id = str(chunk.fields.get("prev_chunk_id") or "")
         next_id = str(chunk.fields.get("next_chunk_id") or "")
-        original_text = str(chunk.fields.get("chunk_text", ""))
+        original_text = _chunk_text_of(chunk.fields, use_marked=use_marked)
 
         # Resolve prev neighbor (None if missing, cross-doc, or lookup miss)
         prev_text: str | None = None
         if prev_id and not _is_cross_doc_neighbor(prev_id, chunk_id):
             prev_fields = neighbors_lookup.get(prev_id)
             if prev_fields:
-                prev_text = str(prev_fields.get("chunk_text", "")) or None
+                prev_text = _chunk_text_of(prev_fields, use_marked=use_marked) or None
         else:
             boundary_skip_count += 1 if not prev_id else 0  # first chunk of doc
 
@@ -218,7 +235,7 @@ async def expand_context(
         if next_id and not _is_cross_doc_neighbor(next_id, chunk_id):
             next_fields = neighbors_lookup.get(next_id)
             if next_fields:
-                next_text = str(next_fields.get("chunk_text", "")) or None
+                next_text = _chunk_text_of(next_fields, use_marked=use_marked) or None
         else:
             boundary_skip_count += 1 if not next_id else 0  # last chunk of doc
 

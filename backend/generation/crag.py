@@ -378,11 +378,18 @@ class CragLoop:
         # ADR-0020 Context Expander: wrap re-retrieved chunks before re-synthesis
         # (parallel pattern to /query route happy path). Graceful degradation: on
         # expand failure fall back to raw chunks for synthesis (no fatal abort).
+        # W70 / ADR-0055 — marker knob threads through the re-synthesis path too
+        # (Settings + EffectiveConfig both carry the field; getattr for the protocol type).
+        _marker_cfg = effective_config if effective_config is not None else get_settings()
+        _use_marked = bool(getattr(_marker_cfg, "enable_inline_image_markers", False))
         try:
-            expanded_new_chunks, _new_expansion_stats = (
-                await self._engine.expand_context_for_chunks(
-                    new_result.chunks, kb_id=kb_id,
-                )
+            (
+                expanded_new_chunks,
+                _new_expansion_stats,
+            ) = await self._engine.expand_context_for_chunks(
+                new_result.chunks,
+                kb_id=kb_id,
+                use_marked=_use_marked,
             )
         except Exception as exc:  # noqa: BLE001 — graceful per ADR-0020 spec
             errors.append(f"context_expansion: {exc}")
@@ -400,16 +407,18 @@ class CragLoop:
         parent_cfg = effective_config if effective_config is not None else get_settings()
         if parent_cfg.enable_parent_doc_retrieval:
             try:
-                expanded_new_chunks, _new_parent_stats = (
-                    await self._engine.aggregate_parent_sections_for_chunks(
-                        expanded_new_chunks,
-                        kb_id=kb_id,
-                        section_depth_offset=parent_cfg.parent_doc_section_depth_offset,
-                        parent_doc_top_k=parent_cfg.parent_doc_top_k,
-                        max_tokens_per_parent=parent_cfg.parent_doc_max_tokens_per_parent,
-                        max_chunks_per_parent=parent_cfg.parent_doc_max_chunks_per_parent,
-                        fallback_to_doc_on_shallow=parent_cfg.parent_doc_fallback_to_doc_on_shallow,
-                    )
+                (
+                    expanded_new_chunks,
+                    _new_parent_stats,
+                ) = await self._engine.aggregate_parent_sections_for_chunks(
+                    expanded_new_chunks,
+                    kb_id=kb_id,
+                    section_depth_offset=parent_cfg.parent_doc_section_depth_offset,
+                    parent_doc_top_k=parent_cfg.parent_doc_top_k,
+                    max_tokens_per_parent=parent_cfg.parent_doc_max_tokens_per_parent,
+                    max_chunks_per_parent=parent_cfg.parent_doc_max_chunks_per_parent,
+                    fallback_to_doc_on_shallow=parent_cfg.parent_doc_fallback_to_doc_on_shallow,
+                    use_marked=_use_marked,  # W70 / ADR-0055
                 )
             except Exception as exc:  # noqa: BLE001 — graceful per ADR-0037
                 errors.append(f"parent_doc_aggregation: {exc}")
@@ -422,8 +431,11 @@ class CragLoop:
             # W32 F1.4 — CRAG re-synth path: pass engine + kb_id to enable engine-fetch
             # citation expansion per (h'). Backward compat: defaults None → expansion no-op.
             new_synth = await self._synthesizer.synthesize(
-                rewrite.rewritten_query, expanded_new_chunks,
-                engine=self._engine, kb_id=kb_id, effective_config=effective_config,
+                rewrite.rewritten_query,
+                expanded_new_chunks,
+                engine=self._engine,
+                kb_id=kb_id,
+                effective_config=effective_config,
                 # CH-006 — keep CRAG re-synthesis on the same per-KB answer detail level.
                 detail_level=(
                     effective_config.answer_detail if effective_config is not None else "concise"
@@ -432,11 +444,15 @@ class CragLoop:
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")
             logger.warning("crag_resynth_error", error=f"{type(exc).__name__}: {exc}")
-            return _fallback_outcome(initial_synth, initial_result.chunks,
-                                     grade=grade, errors=errors,
-                                     rewrite=rewrite,
-                                     extra_retrieval_latency_ms=new_result.total_latency_ms,
-                                     crag_latency_ms=_elapsed_ms(crag_start))
+            return _fallback_outcome(
+                initial_synth,
+                initial_result.chunks,
+                grade=grade,
+                errors=errors,
+                rewrite=rewrite,
+                extra_retrieval_latency_ms=new_result.total_latency_ms,
+                crag_latency_ms=_elapsed_ms(crag_start),
+            )
 
         # Optional second-pass grade for confidence_after — non-fatal if it fails.
         confidence_after: float | None = None

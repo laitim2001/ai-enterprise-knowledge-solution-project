@@ -297,3 +297,80 @@ async def test_expand_context_stats_latency_recorded() -> None:
 
     assert isinstance(stats, ExpansionStats)
     assert stats.fetch_latency_ms >= 0  # non-negative
+
+
+# W70 / ADR-0055 - marked-variant assembly (use_marked threading)
+
+
+@pytest.mark.asyncio
+async def test_w70_use_marked_assembles_expanded_text_from_marked_variants() -> None:
+    """use_marked=True - expanded_text built from chunk_text_marked (anchor +
+    neighbours), falling back per chunk to clean text when the marked field is
+    empty/absent. fields["chunk_text"] stays clean (citation invariant)."""
+    chunks = [
+        RetrievedChunk(
+            score=0.9,
+            fields={
+                "chunk_id": "kb-x_doc-A_chunk-0042",
+                "chunk_text": "Step 3 clean.",
+                "chunk_text_marked": "Step 3 marked. [IMG#aaaa1111]",
+                "prev_chunk_id": "kb-x_doc-A_chunk-0041",
+                "next_chunk_id": "kb-x_doc-A_chunk-0043",
+            },
+        ),
+    ]
+    searcher = MagicMock()
+    searcher.fetch_by_chunk_ids = AsyncMock(
+        return_value={
+            "kb-x_doc-A_chunk-0041": {
+                "chunk_text": "Step 2 clean.",
+                "chunk_text_marked": "Step 2 marked. [IMG#bbbb2222]",
+            },
+            # next neighbour has NO marked field -> falls back to clean text
+            "kb-x_doc-A_chunk-0043": {"chunk_text": "Step 4 clean."},
+        }
+    )
+
+    expanded, _ = await expand_context(
+        chunks,
+        kb_id="x",
+        searcher=searcher,
+        use_marked=True,
+    )
+
+    assert expanded[0].fields["expanded_text"] == (
+        "Step 2 marked. [IMG#bbbb2222]\n\nStep 3 marked. [IMG#aaaa1111]\n\nStep 4 clean."
+    )
+    assert expanded[0].fields["chunk_text"] == "Step 3 clean."  # citation invariant
+
+
+@pytest.mark.asyncio
+async def test_w70_use_marked_false_keeps_pre_w70_clean_assembly() -> None:
+    """Default use_marked=False - expanded_text built from clean text even when
+    marked fields are present (G3 zero-regression)."""
+    chunks = [
+        RetrievedChunk(
+            score=0.9,
+            fields={
+                "chunk_id": "kb-x_doc-A_chunk-0042",
+                "chunk_text": "Step 3 clean.",
+                "chunk_text_marked": "Step 3 marked. [IMG#aaaa1111]",
+                "prev_chunk_id": "kb-x_doc-A_chunk-0041",
+                "next_chunk_id": None,
+            },
+        ),
+    ]
+    searcher = MagicMock()
+    searcher.fetch_by_chunk_ids = AsyncMock(
+        return_value={
+            "kb-x_doc-A_chunk-0041": {
+                "chunk_text": "Step 2 clean.",
+                "chunk_text_marked": "Step 2 marked. [IMG#bbbb2222]",
+            },
+        }
+    )
+
+    expanded, _ = await expand_context(chunks, kb_id="x", searcher=searcher)
+
+    assert expanded[0].fields["expanded_text"] == "Step 2 clean.\n\nStep 3 clean."
+    assert "[IMG#" not in expanded[0].fields["expanded_text"]

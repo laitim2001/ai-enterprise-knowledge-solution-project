@@ -297,18 +297,26 @@ class RetrievalEngine:
         self,
         chunks: list[RetrievedChunk],
         kb_id: str,
+        *,
+        use_marked: bool = False,
     ):
         """Wrap top-K reranked chunks with prev/next neighbor context per ADR-0020.
 
         Delegates to generation.context_expander.expand_context using the engine's
         searcher (encapsulation preserved — caller doesn't need direct searcher access).
+        `use_marked` (W70 / ADR-0055) passes through to assemble the marked variant.
         Returns (list[ExpandedChunk], ExpansionStats) — see context_expander.py for shape.
         """
         # Local import avoids circular dependency: context_expander imports from
         # retrieval.retrieval_engine for RetrievedChunk; engine→expander would cycle.
         from generation.context_expander import expand_context  # noqa: PLC0415
 
-        return await expand_context(chunks, kb_id=kb_id, searcher=self._searcher)
+        return await expand_context(
+            chunks,
+            kb_id=kb_id,
+            searcher=self._searcher,
+            use_marked=use_marked,
+        )
 
     async def aggregate_parent_sections_for_chunks(
         self,
@@ -320,6 +328,7 @@ class RetrievalEngine:
         max_tokens_per_parent: int = 4000,
         max_chunks_per_parent: int = 50,
         fallback_to_doc_on_shallow: bool = True,
+        use_marked: bool = False,
     ):
         """Aggregate parent sections for top-K reranked anchors per ADR-0037 W26 F2.
 
@@ -347,6 +356,7 @@ class RetrievalEngine:
             max_tokens_per_parent=max_tokens_per_parent,
             max_chunks_per_parent=max_chunks_per_parent,
             fallback_to_doc_on_shallow=fallback_to_doc_on_shallow,
+            use_marked=use_marked,
         )
 
     async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:

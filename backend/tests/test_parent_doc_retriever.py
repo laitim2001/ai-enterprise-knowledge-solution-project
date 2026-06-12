@@ -557,3 +557,76 @@ def test_no_aggregation_classmethod_wraps_chunk_without_expansion() -> None:
     assert wrapped.parent_path is None
     assert wrapped.sibling_count == 0
     assert wrapped.truncated is False
+
+
+# W70 / ADR-0055 - marked-variant sibling assembly (use_marked threading)
+
+
+@pytest.mark.asyncio
+async def test_w70_use_marked_assembles_parent_section_from_marked_siblings() -> None:
+    """use_marked=True - parent_section_text concatenates each sibling marked
+    variant, falling back per sibling to clean text when the field is absent."""
+    anchor = _make_chunk(
+        chunk_id="kb-x_doc-A_chunk-0010",
+        doc_id="A",
+        section_path=["Doc", "Ch8", "8.1"],
+        chunk_text="anchor text",
+    )
+    siblings = [
+        _Chunk(
+            score=1.0,
+            fields={
+                "chunk_id": "kb-x_doc-A_chunk-0010",
+                "chunk_text": "sib one clean",
+                "chunk_text_marked": "sib one marked [IMG#aaaa1111]",
+                "chunk_index": 10,
+            },
+        ),
+        _Chunk(  # no marked field -> clean fallback
+            score=1.0,
+            fields={
+                "chunk_id": "kb-x_doc-A_chunk-0011",
+                "chunk_text": "sib two clean",
+                "chunk_index": 11,
+            },
+        ),
+    ]
+    searcher, _ = _searcher_with_fetch({("A", ("Doc", "Ch8")): siblings})
+
+    result, stats = await aggregate_parent_sections(
+        [anchor],
+        kb_id="x",
+        searcher=searcher,
+        use_marked=True,
+    )
+
+    assert result[0].parent_section_text == ("sib one marked [IMG#aaaa1111]\n\nsib two clean")
+    assert stats.siblings_aggregated == 2
+
+
+@pytest.mark.asyncio
+async def test_w70_use_marked_false_keeps_clean_sibling_assembly() -> None:
+    """Default use_marked=False - clean text even when marked fields exist (G3)."""
+    anchor = _make_chunk(
+        chunk_id="kb-x_doc-A_chunk-0010",
+        doc_id="A",
+        section_path=["Doc", "Ch8", "8.1"],
+        chunk_text="anchor text",
+    )
+    siblings = [
+        _Chunk(
+            score=1.0,
+            fields={
+                "chunk_id": "kb-x_doc-A_chunk-0010",
+                "chunk_text": "sib one clean",
+                "chunk_text_marked": "sib one marked [IMG#aaaa1111]",
+                "chunk_index": 10,
+            },
+        ),
+    ]
+    searcher, _ = _searcher_with_fetch({("A", ("Doc", "Ch8")): siblings})
+
+    result, _ = await aggregate_parent_sections([anchor], kb_id="x", searcher=searcher)
+
+    assert result[0].parent_section_text == "sib one clean"
+    assert "[IMG#" not in (result[0].parent_section_text or "")

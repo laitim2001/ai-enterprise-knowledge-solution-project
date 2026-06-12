@@ -355,10 +355,13 @@ async def execute_query_pipeline(
     # ADR-0020 Context Expander: wrap top-K with prev/next neighbor text before synthesis.
     # Synthesizer.synthesize() accepts ExpandedChunk via duck-type (same score+fields shape);
     # prompt_builder reads fields['expanded_text'] if present, else falls back to chunk_text.
+    # W70 / ADR-0055 — use_marked threads the inline-image-markers knob so the
+    # expanded/parent text variants carry [IMG#sha8] markers when the knob is on.
     try:
         expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
             result.chunks,
             kb_id=payload.kb_id,
+            use_marked=effective.enable_inline_image_markers,
         )
     except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020
         logger.warning(
@@ -383,6 +386,7 @@ async def execute_query_pipeline(
                 max_tokens_per_parent=effective.parent_doc_max_tokens_per_parent,
                 max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
                 fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
+                use_marked=effective.enable_inline_image_markers,  # W70 / ADR-0055
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(
@@ -570,10 +574,12 @@ async def query_stream(
         effective = await overlay(_dominant_doc_id(result.chunks))
 
     # ADR-0020 Context Expander parallel to /query happy path (graceful degradation).
+    # W70 / ADR-0055 — use_marked threading parallel to the non-stream path.
     try:
         expanded_chunks, _expansion_stats = await engine.expand_context_for_chunks(
             result.chunks,
             kb_id=payload.kb_id,
+            use_marked=effective.enable_inline_image_markers,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -596,6 +602,7 @@ async def query_stream(
                 max_tokens_per_parent=effective.parent_doc_max_tokens_per_parent,
                 max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
                 fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
+                use_marked=effective.enable_inline_image_markers,  # W70 / ADR-0055
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(

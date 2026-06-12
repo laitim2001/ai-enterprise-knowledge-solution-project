@@ -247,3 +247,70 @@ def test_system_prompt_rule_6_ch005_preserved_non_regression() -> None:
     assert REFUSAL_PHRASE in SYSTEM_PROMPT
     # CH-005 attribution preserved
     assert "(CH-005 — R14 mitigation" in SYSTEM_PROMPT
+
+
+# --- W70 / ADR-0055 - inline image markers (knob-gated marked dispatch + rule) ---
+
+
+def test_w70_off_ignores_marked_field_and_omits_rule() -> None:
+    """G3 zero-regression - default OFF: prompt uses clean chunk_text even when
+    the marked field is present, and the system prompt stays byte-identical."""
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    chunk = _chunk_with_fields(chunk_text_marked="marked text [IMG#aabbccdd]")
+    msgs = build_prompt("test query", [chunk])
+    assert "raw chunk text fallback" in msgs.messages[1]["content"]
+    assert "[IMG#" not in msgs.messages[1]["content"]
+    assert msgs.messages[0]["content"] == SYSTEM_PROMPT
+
+
+def test_w70_on_raw_path_uses_marked_and_appends_rule() -> None:
+    """ON - raw-text path switches to chunk_text_marked; keep-markers rule is
+    appended AFTER the unchanged base system prompt."""
+    from generation.prompt_builder import SYSTEM_PROMPT
+
+    chunk = _chunk_with_fields(chunk_text_marked="marked text [IMG#aabbccdd]")
+    msgs = build_prompt("test query", [chunk], inline_image_markers=True)
+    user_msg = msgs.messages[1]["content"]
+    assert "marked text [IMG#aabbccdd]" in user_msg
+    assert "raw chunk text fallback" not in user_msg
+    system = msgs.messages[0]["content"]
+    assert system.startswith(SYSTEM_PROMPT)
+    assert "[IMG#" in system  # the appended keep-markers rule
+
+
+def test_w70_on_falls_back_to_clean_text_when_marked_empty() -> None:
+    """ON + marker-less chunk ("" marked field / pre-W70 index) -> clean text."""
+    chunk = _chunk_with_fields(chunk_text_marked="")
+    msgs = build_prompt("test query", [chunk], inline_image_markers=True)
+    assert "raw chunk text fallback" in msgs.messages[1]["content"]
+
+
+def test_w70_on_parent_section_text_takes_priority_unchanged() -> None:
+    """ON - dispatch priority unchanged: parent_section_text (assembled marked
+    upstream) still supersedes the raw path."""
+    chunk = _chunk_with_fields(
+        chunk_text_marked="anchor marked [IMG#11223344]",
+        parent_section_text="parent marked sibling [IMG#55667788]",
+    )
+    msgs = build_prompt("test query", [chunk], inline_image_markers=True)
+    user_msg = msgs.messages[1]["content"]
+    assert "parent marked sibling [IMG#55667788]" in user_msg
+    assert "anchor marked [IMG#11223344]" not in user_msg  # replace branch
+
+
+def test_w70_on_append_mode_main_segment_uses_marked() -> None:
+    """ON + append dispatch - the anchor main segment uses the marked variant."""
+    chunk = _chunk_with_fields(
+        chunk_text_marked="anchor marked [IMG#11223344]",
+        parent_section_text="parent siblings text",
+    )
+    msgs = build_prompt(
+        "test query",
+        [chunk],
+        dispatch_mode="append",
+        inline_image_markers=True,
+    )
+    user_msg = msgs.messages[1]["content"]
+    assert "anchor marked [IMG#11223344]" in user_msg
+    assert "parent siblings text" in user_msg

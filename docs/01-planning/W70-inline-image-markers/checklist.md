@@ -26,11 +26,12 @@
 - [x] tests:OFF 繼承 global False / per-KB ON 覆寫 / per-DOC 蓋 per-KB / per-query 最優先 / 舊 config dict 缺 key 解析 None 繼承 OFF(5 條;effective-config + per-KB consumer + config-test suites 73 passed)
 
 ## F5 — prompt 路徑(三條)
-- [ ] `prompt_builder._format_chunk` dispatch:knob ON 用 `chunk_text_marked or chunk_text`
-- [ ] `parent_doc_retriever` parent_section_text 組裝 marked 變體(knob threading)
-- [ ] `context_expander` expanded_text 組裝 marked 變體(knob threading)
-- [ ] system prompt 附加規則(knob-gated):重現步驟時保留 `[IMG#...]` 標記原位
-- [ ] tests:OFF bit-identical / ON 三路徑都帶標記 / system rule 出現條件
+- [x] `prompt_builder._format_chunk` dispatch:knob ON 用 `chunk_text_marked or chunk_text`(append 模式主段都通)
+- [x] `parent_doc_retriever` parent_section_text 組裝 marked 變體(`use_marked` threading;per-sibling fallback)
+- [x] `context_expander` expanded_text 組裝 marked 變體(`use_marked` threading;anchor + 兩 neighbour,per-chunk fallback;`fields["chunk_text"]` 不動 = citation invariant)
+- [x] system prompt 附加規則(knob-gated Rule 9):重現步驟時保留 `[IMG#...]` 標記原位;OFF 時 system prompt byte-identical
+- [x] knob wire:`query.py` 兩 route + `crag.py` 再合成路 + `retrieval_engine` wrapper pass-through + `synthesizer` 兩路由 effective_config 讀(數據面確認:hybrid 三個 fetch 冇 select → marked 欄位自動返)
+- [x] tests:OFF bit-identical / ON 三路徑都帶標記 / system rule 出現條件 / route 級 use_marked wire 雙向(11 條新;F5 suites 125 passed)
 
 ## F6 — 前端(最小面)
 - [ ] mockup 先行:`ekp-page-kb.jsx` tuning card 加開關行

@@ -192,6 +192,7 @@ async def aggregate_parent_sections(
     max_tokens_per_parent: int = 4000,
     max_chunks_per_parent: int = 50,
     fallback_to_doc_on_shallow: bool = True,
+    use_marked: bool = False,
 ) -> tuple[list[ParentSectionChunk], ParentDocStats]:
     """Aggregate parent sections for top-K reranked anchors per ADR-0037 W26 F2.
 
@@ -201,6 +202,12 @@ async def aggregate_parent_sections(
 
     `kb_id` required per ADR-0018 multi-KB invariant (searcher routes per-KB
     index_name dynamically).
+
+    `use_marked` (W70 / ADR-0055): True assembles `parent_section_text` from each
+    sibling's marked text variant (falling back per sibling to clean text) so
+    inline image markers survive the production parent-doc path. False is the
+    pre-W70 read, bit-identical. Token-budget estimation runs on the assembled
+    text either way (markers are real prompt cost).
 
     Returns `(parent_section_chunks, stats)` — see `ParentSectionChunk`
     docstring for dispatch chain semantics + `ParentDocStats` for
@@ -314,6 +321,9 @@ async def aggregate_parent_sections(
         for sibling in siblings:
             sib_fields = dict(getattr(sibling, "fields", {}) or {})
             text = str(sib_fields.get("chunk_text", ""))
+            if use_marked:
+                # W70 / ADR-0055 — marked variant per sibling; "" falls back clean.
+                text = str(sib_fields.get("chunk_text_marked") or "") or text
             if not text:
                 continue
             sib_tokens = _estimate_tokens(text)

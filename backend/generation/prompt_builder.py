@@ -82,6 +82,19 @@ _RULE_3_DETAILED = (
 # Detailed variant: concise prompt with ONLY Rule 3 swapped (CH-006).
 SYSTEM_PROMPT_DETAILED = SYSTEM_PROMPT_CONCISE.replace(_RULE_3_CONCISE, _RULE_3_DETAILED)
 
+# W70 / ADR-0055 — appended as Rule 9 ONLY when inline image markers are active
+# (`build_prompt(inline_image_markers=True)`); the knob-off system prompt stays
+# byte-identical to pre-W70.
+_MARKER_RULE = (
+    "9. Some chunk texts contain inline image markers like [IMG#a1b2c3d4] marking where "
+    "a screenshot appears in the source document. When you reproduce a step or passage "
+    "from a chunk, copy each [IMG#...] marker with it, keeping the marker at its original "
+    "position relative to the surrounding text (immediately after the step it follows in "
+    "the source). NEVER invent, alter, duplicate, or move markers across steps; only emit "
+    "markers that literally appear in the chunks. Do not describe or mention the markers "
+    "in prose."
+)
+
 
 def _system_prompt_for(detail_level: str) -> str:
     """Pick the synthesis system-prompt variant (CH-006).
@@ -100,7 +113,12 @@ class PromptMessages:
     messages: list[dict]
 
 
-def _format_chunk(chunk: RetrievedChunk, *, dispatch_mode: str = "replace") -> str:
+def _format_chunk(
+    chunk: RetrievedChunk,
+    *,
+    dispatch_mode: str = "replace",
+    use_marked: bool = False,
+) -> str:
     """Format a chunk for LLM context.
 
     Dispatch chain (ADR-0037 W26 F2 extends ADR-0020; W27 F1 adds enum branching
@@ -133,6 +151,12 @@ def _format_chunk(chunk: RetrievedChunk, *, dispatch_mode: str = "replace") -> s
     parent_section_text = str(chunk.fields.get("parent_section_text") or "")
     expanded_text = str(chunk.fields.get("expanded_text") or "")
     chunk_text = str(chunk.fields.get("chunk_text", "") or "")
+    if use_marked:
+        # W70 / ADR-0055 — raw-text path switches to the marked variant; "" (chunk
+        # has no markers OR pre-W70 index without the field) falls back to clean
+        # text. parent_section_text / expanded_text are already marked variants
+        # when the knob is on (assembled upstream with use_marked threading).
+        chunk_text = str(chunk.fields.get("chunk_text_marked") or "") or chunk_text
 
     if dispatch_mode == "append" and parent_section_text:
         # W27 F1 append branch — 2-segment render preserves citation invariant.
@@ -154,6 +178,7 @@ def build_prompt(
     *,
     dispatch_mode: str = "replace",
     detail_level: str = "concise",
+    inline_image_markers: bool = False,
 ) -> PromptMessages:
     """Build system+user messages with formatted chunk context.
 
@@ -164,16 +189,27 @@ def build_prompt(
     detail_level: "concise" (default, W2 baseline 150-word system prompt) | "detailed"
     (CH-006 — no-word-cap, full sub-step enumeration). Default preserves existing
     behaviour + system-prompt substring tests.
+
+    inline_image_markers: W70 / ADR-0055 — True switches the raw chunk-text path to
+    `chunk_text_marked` (falling back to clean text per chunk) AND appends the
+    keep-markers system rule. Default False = pre-W70 byte-identical prompts.
     """
     if not chunks:
         chunk_block = "(no chunks retrieved)"
     else:
-        chunk_block = "\n\n".join(_format_chunk(c, dispatch_mode=dispatch_mode) for c in chunks)
+        chunk_block = "\n\n".join(
+            _format_chunk(c, dispatch_mode=dispatch_mode, use_marked=inline_image_markers)
+            for c in chunks
+        )
+
+    system_prompt = _system_prompt_for(detail_level)
+    if inline_image_markers:
+        system_prompt = f"{system_prompt}\n{_MARKER_RULE}"
 
     user_msg = f"Question: {query}\n\nRetrieved chunks:\n{chunk_block}\n\nAnswer with citations."
     return PromptMessages(
         messages=[
-            {"role": "system", "content": _system_prompt_for(detail_level)},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
         ]
     )
