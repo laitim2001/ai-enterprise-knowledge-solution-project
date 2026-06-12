@@ -1,7 +1,7 @@
 ---
 phase: W62
 name: image-recall-supply-side-ab
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "W61 判決指向嘅供給側軸 — upstream 候選供給 ~26–33 係真天花板,量化供給側旋鈕可推幾遠"
@@ -113,3 +113,6 @@ KB = `drive-images-1`,同 W61 env(`SYNTHESIZER_REQUEST_TIMEOUT_S=180` + `HYBRID_
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 用戶拍板差距執行隊列,供給側 A/B 行第一;R6 核實三旋鈕控制路徑(rerank/max_aux per-KB、window global-only env)+ W61 cap60 reports 複用做 A 臂 |
+| 2026-06-12 | **R3 deviation:加 E 臂**(rerank=10 + max_aux=40 + window=**3 default**,×2)| D 臂突破(0.890/0.904)conflate 咗 window(global-only,今日無法 per-KB persist)同 per-KB 兩旋鈕嘅貢獻;E 臂直接回答「淨 per-KB 旋鈕可否保住突破」= persist 決策嘅關鍵實數;零 code、免重啟(F4 已除 window env)、跑完照 F4 再復原 |
+| 2026-06-12 | **R3 deviation:加 F 臂**(max_aux=40 單開,rerank=5 + window=3,×2)| E 臂 ≈ D 臂(0.889)證 window 多餘,但仍 conflate rerank=10 必要性;F 臂完成 rerank × max_aux 2×2 矩陣 → preset 最簡配方(rerank=10 有 synth 延遲代價,若 F ≈ E 就唔需要)|
+| 2026-06-12 | **Phase closed**(F1–F5 + E/F 臂全 done)| 判決:**`citation_neighbour_max_aux_images=18` 係供給 binding 項**(18→40 單旋鈕 = 突破:mean 0.574→0.889–0.904,GT37 全召回 1.00,mega 0.62–0.74,precision 零代價 0.976–0.988);**rerank_k=10 = section 覆蓋穩定性**(Q005 6/6 vs 擲毫,= 差距 ② 起點);**window 多餘**(E≈D);mega 新天花板 returned ~48(下一層箝制未驗);W61「cap≈40 已足」推翻 → preset cap ~50。KB 完全復原 + 零 code 改動 → 無 ADR。persist / preset 待用戶拍板 |

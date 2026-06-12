@@ -269,10 +269,34 @@ C 60 ×2 = 5 runs;每臂 `PATCH /kb/{id}/settings` full replacement + **GET read
   0.28→0→0.38→1.00→0)不可單 run 判;cap=60 首 run 撞 Azure AI Search transient 502 單次重試恢復。詳
   `W61-*/progress.md`「F5」。
 
+**✅ W62 落地(2026-06-12,phase `W62-image-recall-supply-side-ab`,無 ADR per §5.1)**:
+
+供給側 controlled A/B(6 臂 × 11 fresh runs + 複用 W61 cap60 ×2 做 baseline 臂;全程 cap=60 unbind;
+rerank/max_aux 經 per-KB PATCH + GET readback 真 gate;window 經 env + 雙重 gate(offline pydantic
+readback + 同 shell 啟動);跑完 KB 完全復原):
+
+- **🔑 「upstream 供給 ~26–33」(W61)唔係 retrieval 上限,係 `citation_neighbour_max_aux_images=18`
+  收割上限嘅偽裝**。max_aux 18→40 **單一旋鈕**已完整重現突破:mean recall **0.574(cap20)→
+  0.732(cap60)→ 0.889–0.904**;GT37 兩條(Q003/Q038)**全召回 1.00**;mega-query(GT 65–73)
+  0.40–0.51 → **0.62–0.74**;**precision 零代價**(全程 0.976–0.988,對照 3 條持平)。
+- **旋鈕拆解(2×2 矩陣閉合)**:rerank_k=10 單開(B 臂)供給零反應;window=8 單開(C 臂)間歇;
+  max_aux=40 單開(F 臂)= 完整突破 → supply ≈ citations × **min(reach 內圖數, max_aux)**,
+  binding 項一直係 max_aux。**window=8 多餘**(E≈D 逐條)→ persist 唔使碰 global window。
+- **rerank_k=10 嘅真正價值 = section 覆蓋穩定性,非供給**:Q005(雙段 query,section-miss 型)
+  喺 rerank=10 嘅 **6/6 runs = 1.00**;rerank=5 嘅 5 runs = 1.00/0/1.00/0/0 擲毫 → 差距 ②
+  (Q005 診斷)最強起點(假設層,單一 query 待驗證)。
+- **mega-query 新天花板 returned ~47–48**(三條全釘住,cap=60 未 binding)→ 存在下一層箝制
+  (假設:收割範圍內 GT 圖總量 / per-citation budget;未驗證)。
+- **W61「cap≈40 已足」建議推翻**(條件變):新供給達 48 → 圖密 preset cap 應 ~50。
+- **建議 preset(圖密步驟手冊類,per-KB 即日可設零 code 零 ADR,未 persist 待用戶)**:
+  `citation_neighbour_max_aux_images=40` + `default_rerank_k=10` + `max_images_per_answer≈50`。
+- **Caveats**:單一文件類型(AR)9 query;synth latency 未量(實驗 timeout 180s vs production
+  120s per ADR-0053,persist 前要 120s sanity);prose 型未驗。
+
 **未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)= §4.5 唯一剩餘項
-(cap 放寬軸 W61 已做);§4.6 結構性路線現可由實數重評(cap-bound query 天花板 = upstream 供給 ~26–33 ≪ GT,
-mega-query 是主要拖累,**cap 放寬已證不足以填缺口** → 供給側結構路線是 mega-query recall 的唯一出路;DD-4 已解
-section-覆蓋型 miss,cap≈40 已解容量型損耗)。
+(cap 放寬軸 W61 + 供給側軸 W62 已做);§4.6 結構性路線必要性**大幅下降**(W62 證供給側 per-KB 旋鈕已把
+mean 推到 ~0.89 / GT37 全召回;mega-query 剩餘缺口 0.62–0.74 vs GT,係咪仍需 caption 路線取決於用戶
+「成功定義」決策 — 2026-06-12 用戶方向 = 先補完定義無關差距,後評定義)。
 
 ### 4.6 結構性根治路線(僅記錄,不屬現階段)
 
@@ -306,8 +330,11 @@ section-覆蓋型 miss,cap≈40 已解容量型損耗)。
    確 binding 但真天花板 = upstream 候選供給 ~26–33(非 cap);cap=20→40 partial gain +0.09~+0.17 / precision 不崩,
    但 40→60 零增長;mega-query(GT 65–73)即使 cap 無限 recall 上限 ~0.40–0.51 → cap 放寬單獨不足以填缺口,真
    瓶頸 = 供給側(retrieval recall + neighbour attachment 廣度,= §4.6 結構路線)**。亦是 Gap B 與 §4.6 結構性
-   路線的共同判據。**仍未盡**:prose 型第二份 GT(硬依賴用戶提供文件 + 親自標注,延後)= §4.5 唯一剩餘項
-   (詳 §4.5 末「W60 A/B 落地」+「W61 落地」+「未盡部分」)。
+   路線的共同判據。**W62 供給側軸(2026-06-12)**:6 臂 2×2 矩陣判決 — **max_aux=18 係供給 binding 項**
+   (18→40 單旋鈕 = mean 0.574→0.889–0.904,GT37 全召回,mega 0.62–0.74,precision 零代價);
+   rerank_k=10 = section 覆蓋穩定性(Q005 6/6);window 多餘;mega 新天花板 returned ~48;
+   §4.6 caption 路線必要性大幅下降。**仍未盡**:prose 型第二份 GT(硬依賴用戶提供文件 + 親自標注,延後)
+   = §4.5 唯一剩餘項(詳 §4.5 末「W60 A/B 落地」+「W61 落地」+「W62 落地」+「未盡部分」)。
 4. **DD-5 `answer_detail` 試跑預覽** —— ✅ **已完成 2026-06-11**:`DraftRetrievalConfig`(後端 + 前端)
    加 `answer_detail` + `buildDraftConfig()` 帶入;footer caveat mockup + frontend 同步改「已納入試跑草稿」
    (H7 用戶確認)。試跑面板現覆蓋齊全部 per-doc 旋鈕。
