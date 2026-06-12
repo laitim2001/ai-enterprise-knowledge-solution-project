@@ -1,8 +1,30 @@
 # SITUATION EKP — Session Start Prompt(每個新 session 必用)
 
-> **用法**:每個新 session 開始時,整份 copy 入對話框送出,**只需更新最後一節「今天的任務」一行**。其他段落係常駐 onboarding context,唔需要每次改。
+> **用法(已更新 — 改善 A5)**:呢份係 **深度 on-demand 參考**,**唔需要**每 session 整份讀。
+> - 每 session 的 slim 常駐摘要由 **SessionStart hook 自動注入**(`SESSION_SUMMARY.md` + 自動偵測 active phase + git);
+> - 要落手做嘢跟 **`/ekp-session-start`**(跑 CLAUDE.md §10.3 六步);
+> - 本檔**只按需深讀**你實際要嘅 section(見下面 TOC),**唔好**整份 284KB 讀晒(違反 Karpathy §1.2)。
 >
-> **適用範圍**:Tier 1 12-week sprint(W1–W12,2026-04-27 → 2026-07-19 約)。Tier 1 收尾後再決定是否退役 / 改寫 V2 prompt。
+> **適用範圍**:Tier 1,實際 trajectory 已超原 12-week —— W1–W18 base + W19+ rolling JIT(最近 closed = W68;非原本寫嘅 W1–W12。座標易 stale,以 hook 注入嘅 active phase + git log 為準)。
+>
+> ### 導覽 TOC(按需跳)
+> | 部分 | 內容 | 何時讀 |
+> |---|---|---|
+> | 一 | 你正在加入嘅項目 | 全新 onboarding |
+> | 二 | 最高指導原則(Strict Mode) | 全新 onboarding |
+> | 三 | EKP 13 Components(C01–C13) | 碰架構 / component 時 |
+> | 四 | 權威排序 | 衝突判定時 |
+> | 五 | 必讀文件 | 全新 onboarding |
+> | 六 ⭐ | Rolling Phase Planning 紀律(§10 R1–R5) | 開新 phase / multi-day work |
+> | 七 | Task Type Classification | 分類 FEAT/CHANGE/FIX 時 |
+> | 八 | 當前進度自查(git 指令) | 每 session(或用 `/ekp-session-start` 代替) |
+> | 九 | 22 條 OQ 狀態 | 決策依賴 OQ 時 |
+> | 十 | Sprint Awareness timeline | 要 phase 史時(注:此段易 stale,以 git log / active phase folder 為準) |
+> | 十一 | 常駐 Open Items / Carry-overs | phase kickoff / closeout |
+> | 十二 | 常駐 milestones | 要里程碑史時 |
+> | 十三 | 行為規範 | 全新 onboarding |
+> | 十四 | 今天嘅任務(唯一需用戶填) | 每 session |
+> | 附錄 | 本 prompt 自身維護 | 改本檔時 |
 
 ---
 
