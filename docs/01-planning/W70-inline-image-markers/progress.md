@@ -93,3 +93,24 @@
   marked 值 ride-through)。相關 suites 104 passed。
 - 下一步:F4 config 開關(settings default + KbConfig knob + effective_config
   四層解析)。
+
+### F4 — config 開關(四層解析)✅
+- `Settings.enable_inline_image_markers: bool = False`(global default OFF —
+  消費 gate only;ingest 端無條件寫 marked 欄位 per ADR-0055 Decision 3)。
+- `KbConfig.enable_inline_image_markers: bool | None = None`(None = 繼承 global;
+  query-time knob,flip 唔使 re-index,但該 KB index 要有 marked 數據先會出標記
+  — 未 re-index KB 欄位空 → 自然 fallback 乾淨文字)。
+- `DocConfig` 同步加(ADR-0055 Decision 3 寫明四層 per-query > per-DOC > per-KB
+  > global;knob 屬 synthesis prompt 消費 = post-retrieval,符合 ADR-0050
+  per-DOC 層「dominant cited doc 已知先消費」邊界)。
+- `effective_config.py`:`PerQueryOverrides` + `EffectiveConfig`(concrete bool)+
+  `resolve_effective_config` 行 `_resolve(pq, _layer(dc, kb), global)` 標準鏈。
+- `DraftRetrievalConfig`(config-test 試跑 draft)**刻意唔加** — DD-5 precedent
+  係按需加;harness 嘅 counter(citation / figure / latency)反映唔到 marker
+  效果,W71 交織 render 落地先有意義。
+- Tests 5 條新:global OFF 繼承(kb=None + 空 KbConfig 雙 case)/ per-KB ON 覆寫
+  / per-DOC 蓋 per-KB / per-query 最優先 / 舊 config dict 缺 key → None → 繼承
+  OFF(ADR-0028 migration-default precedent)。effective-config 28 + per-KB
+  consumer + config-test 合計 73 passed;ruff 全過。
+- 下一步:F5 三條 prompt 路徑(`prompt_builder._format_chunk` dispatch +
+  `parent_doc_retriever` + `context_expander` marked 變體 + system prompt rule)。

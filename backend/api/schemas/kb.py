@@ -104,6 +104,16 @@ class KbConfig(BaseModel):
     # (NOT a re-index knob — synthesis is read at /query + /query/stream).
     answer_detail: Literal["concise", "detailed"] | None = None
 
+    # W70 (ADR-0055) — per-KB inline image markers gate. `None` = inherit global
+    # `Settings.enable_inline_image_markers` (default False = clean-text prompts,
+    # zero behaviour change). True = this KB's synthesis prompts consume the
+    # `chunk_text_marked` variant ([IMG#sha8] markers) + system rule, so answers
+    # carry position markers for the W70 strip / W71 interleaved render. Query-time
+    # knob (no re-index needed to flip — the marked field is written at ingest
+    # unconditionally, but the KB's index must HAVE the field populated for ON to
+    # surface markers; un-re-indexed KBs degrade gracefully to clean text).
+    enable_inline_image_markers: bool | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

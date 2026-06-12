@@ -392,3 +392,51 @@ def test_cap_dedup_within_one_citation() -> None:
     )
     out = cap_images_per_answer([cite], 10)
     assert [i.checksum_sha256 for i in out[0].embedded_images] == ["sha-0", "sha-1"]
+
+
+# --------------------------------------------------------------------------- #
+# W70 / ADR-0055 - enable_inline_image_markers four-layer resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_w70_markers_global_default_off_inherited() -> None:
+    """G3 zero-regression: global default False; kb_config=None AND an all-None
+    KbConfig both resolve OFF - identical to pre-W70 behaviour."""
+    s = _settings()
+    assert s.enable_inline_image_markers is False
+    assert resolve_effective_config(s, kb_config=None).enable_inline_image_markers is False
+    assert resolve_effective_config(s, kb_config=KbConfig()).enable_inline_image_markers is False
+
+
+def test_w70_markers_per_kb_on_overrides_global_off() -> None:
+    s = _settings()
+    kb = KbConfig(enable_inline_image_markers=True)
+    eff = resolve_effective_config(s, kb_config=kb)
+    assert eff.enable_inline_image_markers is True
+
+
+def test_w70_markers_per_doc_overrides_per_kb() -> None:
+    """Per-DOC layer (ADR-0050) sits between per-query and per-KB."""
+    s = _settings()
+    kb = KbConfig(enable_inline_image_markers=True)
+    dc = DocConfig(enable_inline_image_markers=False)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc)
+    assert eff.enable_inline_image_markers is False
+
+
+def test_w70_markers_per_query_wins_over_all_layers() -> None:
+    s = _settings()
+    kb = KbConfig(enable_inline_image_markers=True)
+    dc = DocConfig(enable_inline_image_markers=True)
+    pq = PerQueryOverrides(enable_inline_image_markers=False)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc, per_query=pq)
+    assert eff.enable_inline_image_markers is False
+
+
+def test_w70_markers_legacy_kb_config_dict_parses_all_none() -> None:
+    """Migration-default (ADR-0028 precedent): a persisted pre-W70 config dict
+    without the new key reconstructs with None -> inherits global OFF."""
+    kb = KbConfig.model_validate({"default_top_k": 50})
+    assert kb.enable_inline_image_markers is None
+    eff = resolve_effective_config(_settings(), kb_config=kb)
+    assert eff.enable_inline_image_markers is False

@@ -54,3 +54,7 @@ class DocConfig(BaseModel):
     # ADR-0047) — consumed at the image-cap / pin stages.
     max_images_per_answer: int | None = None
     enable_chapter_overview_pin: bool | None = None
+
+    # W70 (ADR-0055) — inline image markers gate (consumed at synth prompt build;
+    # post-retrieval, so the per-DOC layer applies).
+    enable_inline_image_markers: bool | None = None

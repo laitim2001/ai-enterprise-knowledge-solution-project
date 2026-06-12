@@ -20,10 +20,10 @@
 - [x] tests:sha8 改寫 / 缺 sha 剝走 / search doc 欄位形狀(`to_search_doc` keys == schema.json field set 對齊 guard)
 
 ## F4 — config 開關
-- [ ] `backend/storage/settings.py` 加 `enable_inline_image_markers: bool = False`
-- [ ] `backend/api/schemas/kb.py` KbConfig 加 knob(`bool | None = None`)
-- [ ] `effective_config.py`:`PerQueryOverrides` + `EffectiveConfig` + `resolve_effective_config` 四層解析
-- [ ] tests:OFF 繼承 global False / per-KB ON 覆寫 / per-query 最優先
+- [x] `backend/storage/settings.py` 加 `enable_inline_image_markers: bool = False`
+- [x] `backend/api/schemas/kb.py` KbConfig 加 knob(`bool | None = None`)+ `api/schemas/doc_config.py` DocConfig 加 per-DOC 層(per ADR-0055 Decision 3 四層)
+- [x] `effective_config.py`:`PerQueryOverrides` + `EffectiveConfig` + `resolve_effective_config` 四層解析(per-query > per-DOC > per-KB > global)
+- [x] tests:OFF 繼承 global False / per-KB ON 覆寫 / per-DOC 蓋 per-KB / per-query 最優先 / 舊 config dict 缺 key 解析 None 繼承 OFF(5 條;effective-config + per-KB consumer + config-test suites 73 passed)
 
 ## F5 — prompt 路徑(三條)
 - [ ] `prompt_builder._format_chunk` dispatch:knob ON 用 `chunk_text_marked or chunk_text`

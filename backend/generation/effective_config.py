@@ -57,6 +57,7 @@ class PerQueryOverrides:
     max_images_per_answer: int | None = None
     enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
     answer_detail: str | None = None  # CH-006 — synthesis detail level override
+    enable_inline_image_markers: bool | None = None  # W70 / ADR-0055
 
 
 @dataclass(slots=True, frozen=True)
@@ -107,6 +108,10 @@ class EffectiveConfig:
     # Synthesizer to pick the prompt_builder system-prompt variant. Always a concrete
     # str after resolution (per-query > per-KB > global Settings.synthesis_answer_detail).
     answer_detail: str
+    # W70 / ADR-0055 — inline image markers consumption gate. True = the synthesis
+    # prompt text paths consume `chunk_text_marked` + the system prompt gains the
+    # keep-markers rule; False = clean text (pre-W70 identical).
+    enable_inline_image_markers: bool
 
 
 def _resolve[T: int](per_query: T | None, kb_value: T | None, global_value: T) -> T:
@@ -281,5 +286,15 @@ def resolve_effective_config(
             or (dc.answer_detail if dc else None)
             or (kb.answer_detail if kb else None)
             or settings.synthesis_answer_detail
+        ),
+        # W70 / ADR-0055 — four-layer chain (per-query > per-DOC > per-KB > global);
+        # consumed at synth prompt build, so the per-DOC layer applies.
+        enable_inline_image_markers=_resolve(
+            pq.enable_inline_image_markers if pq else None,
+            _layer(
+                dc.enable_inline_image_markers if dc else None,
+                kb.enable_inline_image_markers if kb else None,
+            ),
+            settings.enable_inline_image_markers,
         ),
     )

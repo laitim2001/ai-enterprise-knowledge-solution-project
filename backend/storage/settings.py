@@ -150,6 +150,15 @@ class Settings(BaseSettings):
     # procedural answers must reproduce the full source procedure.
     synthesis_answer_detail: str = "concise"
 
+    # W70 (ADR-0055) — inline image markers consumption gate (global default; per-KB
+    # / per-DOC / per-query overridable via the ADR-0040/0050 four-layer resolution).
+    # Ingest writes `chunk_text_marked` unconditionally (pure data); this flag only
+    # gates CONSUMPTION: True = the three synthesis prompt text paths
+    # (parent_section_text / expanded_text / chunk_text) switch to the marked
+    # variant + the system prompt gains the keep-`[IMG#...]`-markers rule. False
+    # (default) = prompts use clean text — behaviour identical to pre-W70.
+    enable_inline_image_markers: bool = False
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →
