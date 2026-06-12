@@ -1,7 +1,7 @@
 ---
 phase: W63
 name: q005-section-miss-diagnosis
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "差距 ② — Q005 型 section-miss(普通問題、答案隨機漏成段 section)嘅機制診斷;W62 假設 = rerank=10 買 section 覆蓋穩定性"
@@ -82,3 +82,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 隊列 ②;W62 rerank=10 穩定性假設做起點;R6 核實 V4 schema + per-query top_k_rerank(CH-007)→ 零 KB 狀態改動設計 |
+| 2026-06-12 | **Phase closed**(F1–F4 全 done,17 runs)| 機制判決:**(a) retrieval 反證**(V4 ×5 逐位元相同,top-5 = AR07×4 + AR06×1 單錨點);**(b) cite 層雙模式證實** — b-1 單錨點位移(LLM 唔 cite 唯一 AR06 → expansion 無錨點,Setup 半邊消失,~1/6)+ b-2 零引用(cits=0,refuse 同族,~1/6);**rerank=10 = 錨點冗餘 fix**(top-10 有 AR06 ×3;連 W62 累計 12/12 零 flip);(c) pin 次要。額外:cap 預算被 expansion aux 重複 ref 食(20 ref = 9 unique;dedup-before-cap 列 H1-adjacent 候選未做)。零 KB 狀態改動、零 code、無 ADR |

@@ -293,10 +293,31 @@ readback + 同 shell 啟動);跑完 KB 完全復原):
 - **Caveats**:單一文件類型(AR)9 query;synth latency 未量(實驗 timeout 180s vs production
   120s per ADR-0053,persist 前要 120s sanity);prose 型未驗。
 
+**✅ W63 落地(2026-06-12,phase `W63-q005-section-miss-diagnosis`,無 ADR per §5.1)**:
+
+Q005 section-miss(0↔32 flip)機制診斷(分層:V4 retrieve-only ×5 + `/query` per-query
+`top_k_rerank` 5/10 各 ×6,**零 KB 狀態改動**):
+
+- **(a) retrieval/rerank 層反證**:V4 ×5 **逐位元相同**(deterministic);GT section 排位極好,
+  但 **top-5 入面 AR06(Setup)只有一條 = 單錨點**。
+- **(b) cite 層雙失敗模式證實**(rerank=5 異常率 ~1/3):**b-1 單錨點位移** — LLM 唔 cite 唯一
+  AR06 → citation_expansion(prefix_depth=1)無錨點可擴 → Setup 半邊連文帶圖消失;
+  **b-2 零引用** — synthesizer 出答案但 cits=0(W25 D4 refuse 同族)= cap=60 嘅 returned 0↔32 真身。
+- **rerank_k=10 = 錨點冗餘 fix**:top-10 有 AR06 ×3 → 必有錨點;6/6 結構一致,連 W62 累計
+  **12/12 零 flip**。風險一般化:跨章節雙段 query(「set up X and then do Y」)當其中一章喺
+  top-k 代表得一條就有 b-1 風險;「section 覆蓋」型指標會直接捕捉。
+- **額外發現(code 核實)**:`cap_images_per_answer` **by design 唔 dedup**(ADR-0040 blunt,
+  citation_enrichment.py:111)→ expansion aux 重複 ref 食 cap 預算(Q005 成功 run 20 ref = 9 unique
+  → cap=20 時 GT 9/32)。候選改善 dedup-before-cap = pipeline 行為改動(H1-adjacent,未做);
+  W62 preset cap≈50 可令其 moot。
+- **圖密 preset 配方(W62+W63 合併實證,未 persist 待用戶)**:`citation_neighbour_max_aux_images=40`
+  + `default_rerank_k=10`(供給 + 錨點冗餘雙效)+ `max_images_per_answer≈50`。
+
 **未盡部分(後續)**:**prose 型第二份 GT**(硬依賴用戶提供 prose 文件 + 親自標注 GT,延後)= §4.5 唯一剩餘項
-(cap 放寬軸 W61 + 供給側軸 W62 已做);§4.6 結構性路線必要性**大幅下降**(W62 證供給側 per-KB 旋鈕已把
-mean 推到 ~0.89 / GT37 全召回;mega-query 剩餘缺口 0.62–0.74 vs GT,係咪仍需 caption 路線取決於用戶
-「成功定義」決策 — 2026-06-12 用戶方向 = 先補完定義無關差距,後評定義)。
+(cap 放寬軸 W61 + 供給側軸 W62 + section-miss 機制 W63 已做);§4.6 結構性路線必要性**大幅下降**(W62 證
+供給側 per-KB 旋鈕已把 mean 推到 ~0.89 / GT37 全召回;mega-query 剩餘缺口 0.62–0.74 vs GT,係咪仍需 caption
+路線取決於用戶「成功定義」決策 — 2026-06-12 用戶方向 = 先補完定義無關差距,後評定義);b-2 零引用模式
+(synthesizer 層,低概率)留 production 觀察。
 
 ### 4.6 結構性根治路線(僅記錄,不屬現階段)
 
