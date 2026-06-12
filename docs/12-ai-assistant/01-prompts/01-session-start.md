@@ -5,7 +5,7 @@
 > - 要落手做嘢跟 **`/ekp-session-start`**(跑 CLAUDE.md §10.3 六步);
 > - 本檔**只按需深讀**你實際要嘅 section(見下面 TOC),**唔好**整份 284KB 讀晒(違反 Karpathy §1.2)。
 >
-> **適用範圍**:Tier 1,實際 trajectory 已超原 12-week —— W1–W18 base + W19+ rolling JIT(最近 closed = W68;非原本寫嘅 W1–W12。座標易 stale,以 hook 注入嘅 active phase + git log 為準)。
+> **適用範圍**:Tier 1,實際 trajectory 已超原 12-week —— W1–W18 base + W19+ rolling JIT(最近 closed = W69;非原本寫嘅 W1–W12。座標易 stale,以 hook 注入嘅 active phase + git log 為準)。
 >
 > ### 導覽 TOC(按需跳)
 > | 部分 | 內容 | 何時讀 |

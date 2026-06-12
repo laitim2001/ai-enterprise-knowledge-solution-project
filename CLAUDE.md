@@ -123,6 +123,7 @@ Multi-step task 要先講 plan:
 | 寫 eval / test | `docs/eval-methodology.md` + `docs/eval-set-v0.yaml`(W1 ready) | RAGAs + 30–50 條 ground truth |
 | 涉及 Dify reference | `references/REFERENCE_USAGE.md`(W1 Day 1 setup) | 嚴禁 copy-paste,只可 layout 借鑒 |
 | Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 22 條 OQ status(Q22 NEW W12 D1 per ADR-0014) |
+| **用戶操作 / 配置 / 調試疑問**(UI 點用、旋鈕做咩、出廠值、benchmark 對照、故障排查)| [`docs/08-user-guide/`](./docs/08-user-guide/README.md)(8 份,2026-06-12 W69-era 快照)| 答用戶操作問題 first stop,唔好憑記憶重新推導旋鈕值;**ADR 改 default 時必須同步其 `03-configuration-reference.md` + `06-benchmarks-and-metrics.md`**(維護規則喺其 README)|
 | 評估 GraphRAG / multi-agent / multi-tenancy | **STOP** — 呢啲係 Tier 2,Tier 1 唔做 | See `docs/architecture.md` §11 trigger matrix |
 
 **Default behavior**:如果你唔確定一個 task 屬邊個 doc 範圍,**ask before guessing**。
