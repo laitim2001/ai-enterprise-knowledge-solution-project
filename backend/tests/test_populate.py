@@ -123,6 +123,30 @@ async def test_upload_payload_uses_to_search_doc_serialization() -> None:
     assert "embedded_images" not in doc  # flattened
 
 
+def test_w70_search_doc_fields_align_with_schema_json() -> None:
+    """ADR-0055 / R2 drift guard — to_search_doc() keys must exactly match the
+    schema.json field set (the model_dump-all-fields upload contract: any field
+    missing from the index schema makes Azure reject the whole batch)."""
+    import json
+    from pathlib import Path
+
+    schema_path = Path(__file__).resolve().parent.parent / "indexing" / "schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema_fields = {f["name"] for f in schema["fields"]}
+
+    doc = _record(idx=0).to_search_doc()
+    assert set(doc.keys()) == schema_fields
+
+
+def test_w70_search_doc_carries_chunk_text_marked() -> None:
+    """ADR-0055 — chunk_text_marked rides to_search_doc via model_dump."""
+    rec = _record(idx=0).model_copy(update={"chunk_text_marked": "body [IMG#aaaaaaaa]"})
+    doc = rec.to_search_doc()
+    assert doc["chunk_text_marked"] == "body [IMG#aaaaaaaa]"
+    # Default stays "" for marker-less records (never None — Edm.String field).
+    assert _record(idx=1).to_search_doc()["chunk_text_marked"] == ""
+
+
 @pytest.mark.asyncio
 async def test_upload_partial_failure_counts_correctly() -> None:
     recs = [_record(idx=i) for i in range(3)]
@@ -155,8 +179,7 @@ async def test_upload_batches_at_1000_doc_limit() -> None:
     def _ok_for(batch_size: int) -> dict:
         return {
             "value": [
-                {"key": f"k{i}", "status": True, "statusCode": 201}
-                for i in range(batch_size)
+                {"key": f"k{i}", "status": True, "statusCode": 201} for i in range(batch_size)
             ],
         }
 
@@ -164,6 +187,7 @@ async def test_upload_batches_at_1000_doc_limit() -> None:
 
     async def _post_capture(url: str, content: str):  # noqa: ARG001
         import json
+
         body = json.loads(content)
         size = len(body["value"])
         call_batches.append(size)
@@ -188,11 +212,14 @@ async def test_upload_retries_on_5xx_then_succeeds() -> None:
     error_response.status_code = 503
     error_response.raise_for_status = MagicMock(
         side_effect=httpx.HTTPStatusError(
-            "503", request=MagicMock(), response=error_response,
+            "503",
+            request=MagicMock(),
+            response=error_response,
         ),
     )
     success_response = _mock_response(
-        200, {"value": [{"key": rec.chunk_id, "status": True, "statusCode": 201}]},
+        200,
+        {"value": [{"key": rec.chunk_id, "status": True, "statusCode": 201}]},
     )
 
     with patch("indexing.populate.httpx.AsyncClient") as MockClient:

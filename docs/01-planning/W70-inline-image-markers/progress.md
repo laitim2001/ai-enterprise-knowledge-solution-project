@@ -66,3 +66,30 @@
   pre-existing)。
 - 下一步:F3 orchestrator sha8 改寫 + `ChunkRecord` 欄位 + `schema.json` +
   drive-images-1 index PUT 遷移(記住先 GET 對照)。
+
+### F3 — orchestrator sha8 改寫 + index schema + live 遷移 ✅
+- orchestrator 新增 module function `_rewrite_image_markers`:`[IMG@<doc_order>]` →
+  `[IMG#<sha8>]`(`position_to_sha` + `sha_to_url` 雙重 lookup,**剝走條件同
+  `ImageRef` 落選條件完全一致** — marker 永遠對應 live 圖);剝走後空段收斂
+  (`\n{3,}` → `\n\n`);無 marker 殘存 → 整欄退化 `""`(維持「有值 = 有標記」)。
+  `extract_embedded_images=False` / `uploader=None` 時 `sha_to_url` 空 → marker
+  全剝 → `""`,同無圖行為自然一致。
+- `ChunkRecord.chunk_text_marked: str = ""` — `to_search_doc` model_dump 自動帶,
+  零 serialization code 改動。
+- `schema.json` 加 `chunk_text_marked`(`searchable: false, retrievable: true`
+  per ADR-0055 — 檢索六消費者唔見標記)。
+- **live 遷移(drive-images-1)**:臨時 script 先 GET `ekp-kb-drive-images-1-v1`
+  定義對照 — 結構 drift **零**(首輪報嘅 4 項係假陽性:local schema.json 對
+  Int32 / DateTimeOffset 冇明寫 `searchable`,Azure GET 回傳 explicit default
+  `False`,PUT 同樣填 default 唔構成衝突);唯一 additive = 新欄位 → PUT 經
+  production path `create_index_for_kb("drive-images-1")` 成功;post-GET 驗證
+  欄位已落(searchable=False / retrievable=True)+ **doc count 369 → 369 不變**。
+  其餘 KB 嘅 index 未遷移(per plan 非目標;re-ingest 前要先 PUT — 已知 gate)。
+- 遷移 script 用 `truststore.inject_into_ssl()`(同 `api/server.py` 一致,
+  corporate TLS interception 環境必須;系統 httpx 直連會 SSL 驗證失敗)。
+- Tests:orchestrator 4 條新(sha8 改寫 / 缺 sha 剝走 + 收斂 / 無 marker 殘存
+  退化 `""` / marker-less passthrough)+ populate 2 條新(`to_search_doc` keys ==
+  schema.json field set **對齊 guard**(R2 drift 防護,以後加欄漏 schema 即紅)/
+  marked 值 ride-through)。相關 suites 104 passed。
+- 下一步:F4 config 開關(settings default + KbConfig knob + effective_config
+  四層解析)。

@@ -10,6 +10,7 @@
     {"name": "chunk_total", "type": "Edm.Int32", "filterable": false, "sortable": false, "retrievable": true, "facetable": false},
     {"name": "chunk_title", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft", "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
     {"name": "chunk_text", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft", "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
+    {"name": "chunk_text_marked", "type": "Edm.String", "searchable": false, "retrievable": true, "filterable": false, "sortable": false, "facetable": false},
     {"name": "chunk_token_count", "type": "Edm.Int32", "filterable": false, "sortable": false, "retrievable": true, "facetable": false},
     {"name": "section_path", "type": "Collection(Edm.String)", "filterable": true, "facetable": true, "retrievable": true, "searchable": false, "sortable": false},
     {"name": "embedded_images_json", "type": "Edm.String", "retrievable": true, "searchable": false, "filterable": false, "sortable": false, "facetable": false},

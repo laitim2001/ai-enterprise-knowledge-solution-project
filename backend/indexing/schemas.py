@@ -74,6 +74,13 @@ class ChunkRecord(BaseModel):
     chunk_total: int
     chunk_title: str
     chunk_text: str
+    # ADR-0055 — marked-text variant: chunk_text with [IMG#<sha8>] markers at
+    # the image's document position (orchestrator rewrites the chunker's
+    # [IMG@<doc_order>] placeholders; markers for non-uploaded images are
+    # stripped). "" when the chunk has no markers. Consumed by the synthesis
+    # prompt path only — index field is searchable:false so retrieval never
+    # sees markers. to_search_doc carries it via model_dump automatically.
+    chunk_text_marked: str = ""
     chunk_token_count: int
     section_path: list[str] = Field(default_factory=list)
     embedded_images: list[ImageRef] = Field(default_factory=list)

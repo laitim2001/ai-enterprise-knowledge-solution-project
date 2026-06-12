@@ -13,11 +13,11 @@
 - [x] 既有 chunker tests 全綠(連 ChunkSpec 消費者 suite 共 75 passed)
 
 ## F3 — orchestrator + index schema
-- [ ] orchestrator `[IMG@n]` → `[IMG#sha8]` 改寫 pass(uploader 跳過嘅圖標記剝走)
-- [ ] `ChunkRecord.chunk_text_marked` 欄位(`to_search_doc` 自動帶)
-- [ ] `schema.json` 加 `chunk_text_marked`(searchable false / retrievable true)
-- [ ] 現存 index PUT 遷移:先 GET 對照,再對 drive-images-1 重發 `create_index_for_kb`
-- [ ] tests:sha8 改寫 / 缺 sha 剝走 / search doc 欄位形狀
+- [x] orchestrator `[IMG@n]` → `[IMG#sha8]` 改寫 pass(uploader 跳過嘅圖標記剝走 + 空段收斂 + 無 marker 殘存 → `""`)
+- [x] `ChunkRecord.chunk_text_marked` 欄位(`to_search_doc` 自動帶)
+- [x] `schema.json` 加 `chunk_text_marked`(searchable false / retrievable true)
+- [x] 現存 index PUT 遷移:先 GET 對照(零 drift,唯一 additive = 新欄位),再對 drive-images-1 重發 `create_index_for_kb`;live 驗證欄位已落 + doc count 369 不變
+- [x] tests:sha8 改寫 / 缺 sha 剝走 / search doc 欄位形狀(`to_search_doc` keys == schema.json field set 對齊 guard)
 
 ## F4 — config 開關
 - [ ] `backend/storage/settings.py` 加 `enable_inline_image_markers: bool = False`

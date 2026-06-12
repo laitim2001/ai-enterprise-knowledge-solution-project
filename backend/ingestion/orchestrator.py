@@ -32,6 +32,7 @@ take, so the existing call sites need no churn.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -49,6 +50,38 @@ from retrieval.contextual import build_contextual_document
 
 logger = structlog.get_logger(__name__)
 _stdlib_logger = logging.getLogger(__name__)
+
+# ADR-0055 — the chunker's marked-text placeholder ([IMG@<doc_order>]); rewritten
+# below to the global-identity form [IMG#<sha8>] (checksum_sha256 first 8 hex).
+_IMG_PLACEHOLDER_RE = re.compile(r"\[IMG@(\d+)\]")
+_EXCESS_NEWLINES_RE = re.compile(r"\n{3,}")
+
+
+def _rewrite_image_markers(
+    marked_text: str,
+    position_to_sha: dict[str, str],
+    sha_to_url: dict[str, str],
+) -> str:
+    """ADR-0055 — rewrite [IMG@<doc_order>] placeholders to [IMG#<sha8>].
+
+    Markers whose image was not uploaded (sha unknown to the parser OR skipped
+    by the uploader) are stripped — the same drop condition the ImageRef list
+    applies, so a marker always corresponds to a live image. Stripping can
+    leave runs of blank paragraphs, collapsed back to a single separator. If
+    no marker survives the text degrades to plain chunk_text — return "" so
+    the field keeps its "non-empty == has markers" semantics.
+    """
+
+    def _sub(match: re.Match[str]) -> str:
+        sha = position_to_sha.get(f"img@{match.group(1)}")
+        if sha is None or sha not in sha_to_url:
+            return ""
+        return f"[IMG#{sha[:8]}]"
+
+    rewritten = _IMG_PLACEHOLDER_RE.sub(_sub, marked_text)
+    if "[IMG#" not in rewritten:
+        return ""
+    return _EXCESS_NEWLINES_RE.sub("\n\n", rewritten).strip()
 
 
 @dataclass(slots=True, frozen=True)
@@ -244,6 +277,17 @@ class IngestionOrchestrator:
                     chunk_total=chunk_total,
                     chunk_title=spec.chunk_title,
                     chunk_text=spec.chunk_text,
+                    # ADR-0055 — sha8 rewrite (or "" passthrough for marker-less
+                    # chunks; _rewrite also returns "" when no marker survives).
+                    chunk_text_marked=(
+                        _rewrite_image_markers(
+                            spec.chunk_text_marked,
+                            position_to_sha,
+                            sha_to_url,
+                        )
+                        if spec.chunk_text_marked
+                        else ""
+                    ),
                     chunk_token_count=spec.chunk_token_count,
                     section_path=list(spec.section_path),
                     embedded_images=image_refs,
