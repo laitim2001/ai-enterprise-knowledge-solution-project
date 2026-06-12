@@ -1,7 +1,7 @@
 ---
 phase: W66
 name: cap-refs-vs-unique-diagnosis
-status: active       # draft | active | closed
+status: closed       # draft | active | closed
 created: 2026-06-12
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "用戶 2026-06-12 拍板成功定義 = 全圖召回 → mega-query 0.62–0.74 缺口要追;W62「returned 釘 48」嘅真因驗證 = 追缺口嘅第一步"
@@ -74,3 +74,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-12 | Initial plan(active)| 用戶拍板成功定義 = 全圖召回 → mega 缺口要追;W63 cap-計-refs + W65 raw=50 撞 cap 實證令「48 plateau」假說可一兩 run 判生死 |
+| 2026-06-12 | **Phase closed**(F1–F4 全 done,3 runs)| **強形式反證**:cap 150 下 refs 即脹滿(150)但 Q001 unique 釘死 48(+90 refs 全重複)/ Q043 +5(53)→ **48–53 = 收割範圍 unique 圖總量真天花板**;漏網 GT 圖喺未-cite 區域(window 已證無效)。dedup-before-cap 降級為邊際項(唔提案)。全圖召回剩餘路徑 = harvest-range 擴展機制(H1)/ caption(H1)/ 接受 0.74 — 用戶決策;建議先做零 code 漏網圖 chunk-level 映射。KB 已復原 W64 值 |
