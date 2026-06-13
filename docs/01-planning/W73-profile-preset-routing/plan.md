@@ -1,7 +1,7 @@
 ---
 phase: W73
 name: profile-preset-routing
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-13 — F1-F4 done;32 pytest pass;routing 保守 auto-write D6 守;production-preserve)
 created: 2026-06-13
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "ADR-0056 層 A 段 ②a+②b — routing 接駁:profiler 接入 ingest flow(parse 後 compute profile)+ backend PROFILE_PRESETS(profile→DocConfig 值 mapping)+ 保守 auto-write per-doc config(D6 守:已有 manual per-doc config → 跳過)。preset 值對齊 ADR-0056 D1 + 已驗 good config(P1=drive-images-1 式高 cap)避退化;production-preserve(現有 KB 唔 re-ingest 完全不受影響)。令 profile 真正自動驅動 per-doc config = 層 A payoff。"
@@ -110,3 +110,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-13 | Initial plan(active)| W72 closeout 後用戶揀段② → 揀「②a+②b routing 接駁先」→ AskUserQuestion 揀「保守 auto-write(D6 守)」。R6 grounding 三 finding:(1) DocConfig 只 post-retrieval 旋鈕;(2) W69 preset=frontend KbConfig 唔可 reuse,routing 要 backend 自定義 profile→DocConfig;(3) 接入點 orchestrator parse 後 + routing caller `_run_ingest_pipeline`。核心風險 R1:per-doc auto preset override per-KB manual → 緩解 preset 對齊 good config + production-preserve。preset 中值未實證 = judgment,段③ UI 可調 |
+| 2026-06-13 | Closeout(closed,PASS)| 用戶 confirm preset 值 → F1-F4 全成,32 pytest pass + mypy/ruff clean(`_engine_or_503` pre-existing)。實作對齊 plan:orchestrator compute(best-effort)+ caller routing policy(`_route_profile_preset` D6 守 / D7 inherit / advisory)。F3 full-HTTP-E2E routing 標 nice-to-have 未做(helper unit + reindex 唔 break 覆蓋核心)。無其他 deviation,無 deferred `[ ]` |
