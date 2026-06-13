@@ -1334,6 +1334,7 @@ function MessageRow({
         {!message.isStreaming && message.content && (
           <FeedbackBar
             traceId={message.id}
+            content={message.content}
             citations={message.citations}
             imageCount={dedupedImages.length}
           />
@@ -1373,6 +1374,14 @@ function preprocessAnswerContent(content: string, citations: Citation[]): string
     // warns via `citation_hallucinated_ids` log).
     return idx >= 0 ? `⟦CIT${idx + 1}⟧` : raw;
   });
+}
+
+// W71 (ADR-0055 / DD-8) — clean prose for the clipboard: drop the [IMG#sha8]
+// image markers (rendered as InlineImageCards, never text) and the [chunk-...]
+// citation markers (rendered as pills), so a copied answer reads like the
+// rendered answer rather than carrying raw marker tokens.
+function answerToCopyText(content: string): string {
+  return stripInlineImageMarkers(content).replace(/\[chunk-[^\]]+\]/g, '');
 }
 
 function splitStringForPills(text: string, citations: Citation[], keyPrefix: string): ReactNode[] {
@@ -2471,15 +2480,31 @@ function PanelSourceCard({
 
 function FeedbackBar({
   traceId,
+  content,
   citations,
   imageCount,
 }: {
   traceId: string;
+  content: string;
   citations: Citation[];
   imageCount: number;
 }) {
   const [rating, setRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null);
   const [showCommentBox, setShowCommentBox] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // W71 (ADR-0055 / DD-8) — copy the rendered prose (markers stripped), not the
+  // raw answer with [IMG#...] / [chunk-...] tokens. Clipboard may be unavailable
+  // (insecure context / denied) → swallow and leave the button unchanged.
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(answerToCopyText(content));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // no-op — clipboard not available
+    }
+  };
 
   return (
     <>
@@ -2492,7 +2517,12 @@ function FeedbackBar({
           flexWrap: 'wrap',
         }}
       >
-        <button type="button" className="btn btn-ghost btn-icon btn-xs" title="Copy answer">
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon btn-xs"
+          title={copied ? 'Copied' : 'Copy answer'}
+          onClick={handleCopy}
+        >
           <Copy size={12} />
         </button>
         <button type="button" className="btn btn-ghost btn-icon btn-xs" title="Regenerate">

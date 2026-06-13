@@ -72,3 +72,27 @@
   `Test timed out in 5000ms`(超載並行 flake,environment setup 795s),逐個隔離 pass
   (register / chat-meta-row 已驗)。
 - 下一步:F3(DD-8 copy 按鈕 wire strip 文字 + backend RAGAs answer 路徑 strip)。
+
+### F3 — DD-8 copy 路徑 ✅
+- **copy 按鈕**(前端):`FeedbackBar` 本來係 unwired stub(只有 `<Copy>` icon,
+  無 onClick)。加 `content` prop + `handleCopy` —
+  `navigator.clipboard.writeText(answerToCopyText(content))`;新 `answerToCopyText`
+  strip `[IMG#…]`(`stripInlineImageMarkers`)+ `[chunk-…]` citation 標記 → copy
+  出乾淨 prose(渲染見到嘅文字,非 raw token)。clipboard 不可用(insecure
+  context / denied)→ try/catch 吞,按鈕不變;`copied` state 令 title 暫轉「Copied」。
+- **RAGAs answer**(backend):新 `backend/generation/inline_image_markers.py`
+  `strip_inline_image_markers`(lenient `\[IMG#[^\]\s]*\]`,與前端
+  `lib/chat/inline-image-markers.ts` 對稱,放 generation 因 marker 係該層概念 +
+  `prompt_builder._MARKER_RULE` 喺度)。入 `ragas_evaluator.py` 兩個評分點:
+  `_ascore_all`(strip 一次 → faithfulness `response` + answer_relevancy
+  `response` + reference fallback 共用)+ config-test `_eval`(strip 後再判空)。
+  knob-ON 答案標記不再當 unsupported claim 污染 faithfulness。
+- **Tests**:backend 7 strip(單/多/畸形/citation 不碰/fast-path/空/marker-only
+  strip 後空)+ ragas_runner 13 = 20 passed;ruff + mypy strict clean。前端 copy
+  render test(streamQuery 答案含 `[IMG#a1b2c3d4]` + `[chunk-chunk-1]` → click
+  copy → `clipboard.writeText` 收文字 `[IMG#`/`[chunk-` 皆無、prose 保留);
+  interleave suite 4 passed;tsc 0 / eslint 0 / prettier clean。
+- **DD-8 close**:DEFERRED_REGISTER 由結構性表移去「已 Close」表(證據記低);
+  export 路徑(目前無 backend export 端點)future 沿用同一 helper,不在此 close 範圍。
+- 下一步:F4(knob ON 實跑 drive-images-1 肉眼核交織 + 九 query report-級 sanity +
+  AC1-AC6 自評)。

@@ -188,4 +188,35 @@ describe('W71 — inline image interleave render', () => {
     expect(screen.getByText('figure 2')).toBeInTheDocument();
     expect(screen.getByText('Referenced screenshots')).toBeInTheDocument();
   });
+
+  it('copies the answer with image AND citation markers stripped (DD-8)', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    streamQuery.mockImplementation(() =>
+      (async function* () {
+        yield {
+          type: 'text-delta',
+          content: 'Open the journal. [IMG#a1b2c3d4] See [chunk-chunk-1] then post.',
+        };
+        yield { type: 'citation', citation: citationWithImage(1, 'a1b2c3d4ffff0000') };
+        yield DONE;
+      })(),
+    );
+
+    renderChat();
+    await sendQuery();
+
+    const copyButton = await screen.findByTitle('Copy answer');
+    fireEvent.click(copyButton);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copied = writeText.mock.calls[0]![0] as string;
+    expect(copied).not.toContain('[IMG#');
+    expect(copied).not.toContain('[chunk-');
+    expect(copied).toContain('Open the journal.');
+    expect(copied).toContain('then post.');
+  });
 });

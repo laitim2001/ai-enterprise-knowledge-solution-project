@@ -14,9 +14,9 @@
 - [x] tsc 0 / eslint 0(唯一 warning = `<img>` pre-existing)/ vitest 74 隔離全綠(planAnchoredImages 7 + interleave render 3 + chat-meta-row img-count 無回歸);full suite 8 fail 全部 `timed out 5000ms` 超載 flake,隔離逐一 pass;H7 fidelity:`InlineImageCard` 元件原樣 reuse、卡擺位對齊 mockup `AnswerBody`(卡喺答案流 block 之間)
 
 ## F3 — DD-8 copy 路徑
-- [ ] copy 按鈕 wire:`navigator.clipboard` + strip 後文字(vitest)
-- [ ] backend RAGAs answer 評分路徑 strip 標記(pytest)
-- [ ] DEFERRED_REGISTER DD-8 → 已 Close(記證據)
+- [x] copy 按鈕 wire:`FeedbackBar` 加 `content` prop + `handleCopy`(`navigator.clipboard.writeText(answerToCopyText)`;`answerToCopyText` strip `[IMG#…]` + `[chunk-…]` → 乾淨 prose;clipboard 不可用 try/catch 吞);render test click → clipboard 收乾淨文字
+- [x] backend RAGAs answer 評分路徑 strip 標記:`backend/generation/inline_image_markers.py` `strip_inline_image_markers`(lenient,與前端對稱)入 `ragas_evaluator.py` `_ascore_all`(faithfulness + answer_relevancy + reference fallback)+ config-test `_eval`;7 strip pytest + mypy strict clean
+- [x] DEFERRED_REGISTER DD-8 → 已 Close(證據:backend 20 passed / 前端 copy render test / tsc 0 / eslint 0;export 路徑 future 同一 helper)
 
 ## F4 — 驗證(knob ON 實跑)
 - [ ] drive-images-1 實跑肉眼核:標記位置出卡 / 末尾無重複 / gallery 全量 / 無爛字無空卡

@@ -30,6 +30,7 @@ from collections.abc import Callable
 import structlog
 
 from eval.ragas_runner import RagasQuerySample
+from generation.inline_image_markers import strip_inline_image_markers
 from storage.settings import Settings
 
 logger = structlog.get_logger(__name__)
@@ -144,13 +145,18 @@ def make_ragas_evaluator(
             return 0.0
 
     async def _ascore_all(sample: RagasQuerySample) -> dict:
-        reference = sample.reference or " ".join(sample.expected_keywords) or sample.answer
+        # W71 (ADR-0055 / DD-8) — strip [IMG#sha8] markers before judging: a
+        # marker-ON answer carries them as text, but they're placement metadata,
+        # not claims, so leaving them in skews faithfulness / answer-relevancy
+        # (and the reference fallback) against the clean contexts.
+        answer = strip_inline_image_markers(sample.answer)
+        reference = sample.reference or " ".join(sample.expected_keywords) or answer
         scores: dict[str, float | int] = {
             "faithfulness": await _ascore_metric(
                 "faithfulness",
                 lambda: faithfulness_m.ascore(
                     user_input=sample.question,
-                    response=sample.answer,
+                    response=answer,
                     retrieved_contexts=sample.contexts,
                 ),
                 sample.query_id,
@@ -159,7 +165,7 @@ def make_ragas_evaluator(
                 "answer_relevancy",
                 lambda: answer_relevancy_m.ascore(
                     user_input=sample.question,
-                    response=sample.answer,
+                    response=answer,
                 ),
                 sample.query_id,
             ),
@@ -236,6 +242,9 @@ def make_faithfulness_evaluator(
     faithfulness_m = Faithfulness(llm=wrapped_llm)
 
     def _eval(question: str, answer: str, contexts: list[str]) -> float | None:
+        # W71 (ADR-0055 / DD-8) — drop [IMG#sha8] markers before judging (see
+        # `_ascore_all`); a marker-only-after-strip answer counts as empty.
+        answer = strip_inline_image_markers(answer)
         # faithfulness needs both an answer to judge and contexts to judge against;
         # a refused/empty answer or an empty retrieval has no meaningful score.
         if not answer.strip() or not contexts:
