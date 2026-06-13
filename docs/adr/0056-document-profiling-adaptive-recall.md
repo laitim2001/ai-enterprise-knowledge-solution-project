@@ -1,13 +1,14 @@
 # ADR-0056: 文件畫像驅動嘅自適應 recall 流程(rule-based profiling + routing,LLM 選用保險)
 
-**Date**: 2026-06-13
-**Status**: Proposed(待 Chris 技術審 + stakeholder scope 拍板 — 涉及產品方向,行 decision-form)
-**Approver**: _pending_ — Chris(技術 Lead,H1/H4 架構)+ Stakeholder(scope / 業務,per `docs/decision-form.md`)
+**Date**: 2026-06-13(Proposed)→ 2026-06-13(Accepted)
+**Status**: Accepted — 用戶 2026-06-13 session 確認(批准範圍 = 層 A 文件畫像 + 路由;層 B conditional 後續、層 C 已由 ADR-0054 / ADR-0055 完成)
+**Approver**: Chris(技術 Lead,H1/H4 架構)+ Stakeholder(scope / 業務)— 用戶 2026-06-13 session 一併確認
 
-> **本 ADR 仍係 `Proposed`**:只 commit 文件 + 勘查 script,**未動任何 production code**。
-> 五輪實證(`scripts/explore_doc_profiling.py` / `explore_doc_profiling_v2.py` /
-> `explore_doc_content.py` / `explore_scan_pdf.py` / `explore_pdf_picture_flag.py`)已跑,
-> 結論支撐方向;落地需 Accept 後另開 phase(rolling JIT)。
+> **本 ADR 已 `Accepted`(2026-06-13)**:五輪實證(`scripts/explore_doc_profiling.py` /
+> `explore_doc_profiling_v2.py` / `explore_doc_content.py` / `explore_scan_pdf.py` /
+> `explore_pdf_picture_flag.py`)支撐方向。落地按 rolling JIT 分 phase 開 — 層 A 內部再拆
+> Profiler engine(純 rule,backend)→ render-side(D8 PDF picture + 方案 A 錨定)→ 三層 UI
+> (待 OQ-B mockup,H7)。**首 phase scope 見落地 plan。**
 >
 > **拍板定調(2026-06-13 cross-session review)**:本 ADR 批准嘅係 **層 A 文件畫像 + 路由**;
 > 層 B(查詢意圖,如跨模組查詢召回寬度)係由層 A 落地後實證 gate 嘅 conditional 後續;層 C
