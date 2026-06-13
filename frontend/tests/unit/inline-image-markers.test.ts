@@ -1,15 +1,21 @@
 /**
- * Unit tests — W70 (ADR-0055) — inline image marker strip for the answer
+ * Unit tests — W70/W71 (ADR-0055) — inline image markers for the answer
  * display layer (`lib/chat/inline-image-markers.ts`).
  *
- * The chat strips `[IMG#<sha8>]` position markers before markdown render
- * (W71 interleaved render will consume them instead). While streaming, a
- * trailing PARTIAL marker is held back so fragments never flash.
+ * W70 strip path: `[IMG#<sha8>]` markers removed before markdown render; while
+ * streaming a trailing PARTIAL marker is held back so fragments never flash.
+ * W71 parse path: the same markers split the final answer into text / image
+ * segments for the interleaved render, with membership + dedup validation.
  */
 
 import { describe, expect, it } from 'vitest';
 
-import { stripInlineImageMarkers } from '@/lib/chat/inline-image-markers';
+import {
+  imageMarkerKey,
+  parseInlineImageMarkers,
+  stripInlineImageMarkers,
+  type InlineSegment,
+} from '@/lib/chat/inline-image-markers';
 
 describe('W70 — stripInlineImageMarkers (complete markers)', () => {
   it('strips a single inline marker', () => {
@@ -64,5 +70,100 @@ describe('W70 — streaming partial-marker hold-back', () => {
     // delta 1: trailing "[" held; delta 2 arrives → "[link]" is not a marker.
     expect(stripInlineImageMarkers('See [', true)).toBe('See ');
     expect(stripInlineImageMarkers('See [the docs](url)', true)).toBe('See [the docs](url)');
+  });
+});
+
+describe('W71 — imageMarkerKey', () => {
+  it('takes the first 8 hex of a checksum', () => {
+    expect(imageMarkerKey('019f36cfdeadbeef00112233')).toBe('019f36cf');
+  });
+
+  it('returns a short checksum unchanged (no padding)', () => {
+    expect(imageMarkerKey('abc')).toBe('abc');
+    expect(imageMarkerKey('')).toBe('');
+  });
+});
+
+describe('W71 — parseInlineImageMarkers (segments)', () => {
+  const VALID = new Set(['a1b2c3d4', 'b2c3d4e5', 'c3d4e5f6']);
+
+  it('returns a single text segment when there are no markers', () => {
+    expect(parseInlineImageMarkers('plain answer', VALID)).toEqual([
+      { type: 'text', text: 'plain answer' },
+    ]);
+  });
+
+  it('returns [] for empty text', () => {
+    expect(parseInlineImageMarkers('', VALID)).toEqual([]);
+  });
+
+  it('anchors a valid marker into text / image / text segments', () => {
+    expect(parseInlineImageMarkers('Click Save. [IMG#a1b2c3d4] Then close.', VALID)).toEqual([
+      { type: 'text', text: 'Click Save. ' },
+      { type: 'image', sha8: 'a1b2c3d4' },
+      { type: 'text', text: ' Then close.' },
+    ]);
+  });
+
+  it('emits no leading empty text segment when a marker is first', () => {
+    expect(parseInlineImageMarkers('[IMG#a1b2c3d4]tail', VALID)).toEqual([
+      { type: 'image', sha8: 'a1b2c3d4' },
+      { type: 'text', text: 'tail' },
+    ]);
+  });
+
+  it('keeps adjacent valid markers as back-to-back image segments', () => {
+    expect(parseInlineImageMarkers('x [IMG#a1b2c3d4][IMG#b2c3d4e5] y', VALID)).toEqual([
+      { type: 'text', text: 'x ' },
+      { type: 'image', sha8: 'a1b2c3d4' },
+      { type: 'image', sha8: 'b2c3d4e5' },
+      { type: 'text', text: ' y' },
+    ]);
+  });
+
+  it('strips a marker not in the surviving set (capped out / decorative) and merges text', () => {
+    // d4e5f6a7 ∉ VALID → no card; surrounding text joins into one run
+    expect(parseInlineImageMarkers('before [IMG#d4e5f6a7] after', VALID)).toEqual([
+      { type: 'text', text: 'before  after' },
+    ]);
+  });
+
+  it('strips a malformed marker body defensively', () => {
+    expect(parseInlineImageMarkers('x [IMG#zz-not-hex!] y', VALID)).toEqual([
+      { type: 'text', text: 'x  y' },
+    ]);
+  });
+
+  it('anchors a sha8 at most once — a repeat marker is stripped', () => {
+    const out = parseInlineImageMarkers('A [IMG#a1b2c3d4] B [IMG#a1b2c3d4] C', VALID);
+    expect(out).toEqual([
+      { type: 'text', text: 'A ' },
+      { type: 'image', sha8: 'a1b2c3d4' },
+      { type: 'text', text: ' B  C' },
+    ]);
+    expect(
+      out.filter((s): s is Extract<InlineSegment, { type: 'image' }> => s.type === 'image'),
+    ).toHaveLength(1);
+  });
+
+  it('with an empty membership set degrades to one stripped text segment', () => {
+    // zero-regression: text of the single segment == stripInlineImageMarkers(text)
+    const text = 'Step 1. [IMG#a1b2c3d4]\n\n[IMG#b2c3d4e5]\n\nStep 2. [IMG#c3d4e5f6]';
+    const segments = parseInlineImageMarkers(text, new Set());
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toEqual({ type: 'text', text: stripInlineImageMarkers(text) });
+  });
+
+  it('leaves citation markers and ordinary brackets untouched', () => {
+    const text = 'Fact. [chunk-kb-a_doc-b_chunk-0001] See [the docs](url).';
+    expect(parseInlineImageMarkers(text, VALID)).toEqual([{ type: 'text', text }]);
+  });
+
+  it('treats a final trailing partial marker as literal text (not streaming)', () => {
+    // a final answer ending in "[IMG#a1b" is malformed-but-final — no closing
+    // bracket, so the complete-marker pattern never matches it (mirrors strip)
+    expect(parseInlineImageMarkers('tail [IMG#a1b', VALID)).toEqual([
+      { type: 'text', text: 'tail [IMG#a1b' },
+    ]);
   });
 });

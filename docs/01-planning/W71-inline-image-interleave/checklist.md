@@ -1,10 +1,10 @@
 # W71 — checklist(inline-image-interleave)
 
 ## F1 — 解析層
-- [ ] `lib/chat/inline-image-markers.ts` 加 `parseInlineImageMarkers(text, survivingSha8)` → segments(text / image)
-- [ ] membership 驗證:sha8 ∉ surviving → strip(無空卡);同一 sha8 第二次出現 → strip(dup dedup)
-- [ ] streaming 行為不變(期間照 strip + 尾部 hold-back;parse 只用於完成態)
-- [ ] vitest:membership / dup / 相鄰標記 / 無標記退化單 text 段 / 現有 strip tests 全綠
+- [x] `lib/chat/inline-image-markers.ts` 加 `parseInlineImageMarkers(text, validSha8)` → `InlineSegment[]`(text / image)+ `imageMarkerKey(checksum)` helper(sha8 = checksum 前 8 hex,keying 集中一處)
+- [x] membership 驗證:sha8 ∉ validSha8 → strip 並合併前後文字(無空卡);同一 sha8 第二次出現 → strip(dup dedup,anchored set);malformed body 同 capped-out 同一條 strip 路
+- [x] streaming 行為不變(`stripInlineImageMarkers` 原封不動;parse 只用於完成態,module note 寫明)
+- [x] vitest 14 新(2 imageMarkerKey + 12 parse:membership / dup 至多 anchored 一次 / 相鄰標記 back-to-back / 無標記退化單 text 段 / 空 membership == strip 結果 / 首標記無空前段 / 完成態尾截當字面);現有 13 strip tests 全綠(共 27 passed);tsc 0 / eslint 0 / prettier clean
 
 ## F2 — render 層(交織)
 - [ ] `AnswerBodyMarkdown` 按 segments 交織:text 段照現有 markdown + citation pipeline,image 段 render 現有 `InlineImageCard`(R1 技術路徑二選一,決定記 progress)
