@@ -1,7 +1,7 @@
 ---
 phase: W75
 name: section-anchored-aux-images
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-14 — F1-F4 done;末尾堆 28-85%→0%;frontend 零改動 H7 唔 trigger;DD-1 browser 肉眼 deferred)
 created: 2026-06-14
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "ADR-0056 段 ②d 方案 A — `P1_sop_imgdense` 文件嘅 section 級錨定。把 post-synthesis attach_neighbour_images 撈嘅 un-anchored aux 圖(永遠冇 marker → 落末尾堆),按 source_section 章節級錨定入答案對應章節。實測 gate 三輪 PASS(末尾堆 22-55% + 章節級可錨率 100%)。"
@@ -123,3 +123,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-14 | Initial plan(active)| 用戶開段②d → push-back 先實測(三輪 gate PASS:末尾堆 22-55% / 章節級可錨率 100%)→ 拍板開 W75。R6 grounding 確認方向 1(backend marker 注入 → frontend 零改動 → H7 唔 trigger);gate via ADR-0040 四層 knob(mirror enable_inline_image_markers);profile gate via W73 PROFILE_PRESETS P1_sop_imgdense |
+| 2026-06-14 | Closeout(closed,PASS)| F1-F4 全成。F1 knob 四層 + F2 inject pure function + /query + /query/stream 兩處 gate wire(stream 經 compose_query_stream 新 answer_post_process callback,done.answer BUG-028 ② replace → frontend 零改動,H7 實證唔 trigger)+ F3 10 inject + 5 resolve test + F4 preset 接駁 + 實測。**實測末尾堆 28-85% → 0%**(3 真實 query 全錨,offline apply on 舊 code /query 答案,零 restart)。mypy 新 code 0 + ruff clean;pytest 51 + 48 + 7 全綠。無 deviation。**deferred**:DD-1 browser 肉眼(W71 同款 headless-only)。**carry-over**:段②d leaf 級精準錨(2-82%,query-dependent)+ 段③ 三層 UI(卡 H7 OQ-B mockup)|

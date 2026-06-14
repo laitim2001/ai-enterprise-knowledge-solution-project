@@ -29,7 +29,7 @@
 
 ## F4 — preset 接駁 + 實測 + 收爐
 
-- [ ] F4.1 `profile_presets.py` P1_sop_imgdense preset 加 `enable_section_anchored_aux_images=True`
-- [ ] F4.2 實測 drive-images-1(per-KB knob ON)/query 末尾堆 22-55% → 大幅縮小驗證
-- [ ] F4.3 memory `project_inline_image_markers_w70.md` append 方案 A 落地
-- [ ] F4.4 closeout:plan status closed + progress retro + 段③ 交棒
+- [x] F4.1 `profile_presets.py` P1_sop_imgdense preset 加 `enable_section_anchored_aux_images=True`(只 P1 圖密;test_profile_routing assert 加;7 passed)
+- [x] F4.2 實測 drive-images-1 真實 /query(舊 code capture answer+citations,offline apply inject)末尾堆 **28-85% → 0%**(3 query 全錨,注入 8-52 圖/query;章節級可錨率 100% 兌現)
+- [x] F4.3 memory `project_inline_image_markers_w70.md` append 方案 A 落地 + MEMORY.md 2 pointer(inline-markers 全弧 + config-vision 段②d)
+- [x] F4.4 closeout:plan status closed + progress retro + 段③/leaf 級交棒

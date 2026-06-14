@@ -22,12 +22,15 @@ from ingestion.profiler import DocProfile
 # 每 profile 套嘅 per-doc 後處理 preset。None = 唔 routing (inherit)。
 PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
     # 圖密結構化 SOP — drive-images-1 已驗 good config (避退化)。
+    # W75 / ADR-0056 段②d — section 級錨定 (方案 A) 只開呢個 profile (結構化 SOP 收益高
+    # 錯位風險低;P2/prose 留 False 避反噬,per ADR-0056 D7 條件式)。
     "P1_sop_imgdense": DocConfig(
         max_images_per_answer=80,
         enable_citation_neighbour_images=True,
         citation_neighbour_max_aux_images=40,
         citation_neighbour_section_path_prefix_depth=1,
         enable_inline_image_markers=True,
+        enable_section_anchored_aux_images=True,
         enable_chapter_overview_pin=True,
         answer_detail="detailed",
     ),
