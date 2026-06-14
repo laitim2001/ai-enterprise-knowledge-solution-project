@@ -171,6 +171,14 @@ class Settings(BaseSettings):
     # structured SOP only; prose / slide stay OFF to avoid misplacement).
     enable_section_anchored_aux_images: bool = False
 
+    # W75 F5 (ADR-0056 段②d) — per-anchor injection cap for section-anchored aux
+    # images. 0 (default) = no cap (every same-section aux image is injected — the
+    # F1-F4 behaviour). N > 0 = inject at most N per chapter (doc_order first N) after
+    # that chapter's last anchored marker; the overflow stays un-injected → frontend
+    # trailing pile. Bounds the章節內 clump (DD-1 measured maxRun=39) at the cost of
+    # some images returning to the trailing pile.
+    section_anchor_max_per_anchor: int = 0
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →

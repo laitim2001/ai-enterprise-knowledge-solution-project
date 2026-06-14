@@ -48,6 +48,7 @@ def inject_section_anchored_markers(
     citations: list[Citation],
     *,
     section_prefix_depth: int = 1,
+    max_per_anchor: int = 0,
 ) -> str:
     """Inject ``[IMG#<sha8>]`` markers for un-anchored aux images at their
     same-section anchored marker.
@@ -60,6 +61,11 @@ def inject_section_anchored_markers(
     so they read in document flow. Un-anchored images with no same-section anchored
     marker are left untouched (they stay in the frontend trailing pile — the
     章節-level可錨率 < 100% residue; we never force a wrong-section anchor).
+
+    W75 F5 — when ``max_per_anchor`` > 0, each chapter injects at most N images
+    (doc_order first N); the overflow stays un-injected (frontend trailing pile),
+    which bounds the章節內 clump (DD-1 measured maxRun=39). 0 = no cap (every
+    same-section aux image injected — the F1-F4 behaviour).
 
     Returns the answer unchanged when there is no marker to anchor against, no
     un-anchored image, or nothing to inject. Pure function; no IO.
@@ -124,6 +130,8 @@ def inject_section_anchored_markers(
     insertions: list[tuple[int, str]] = []
     for section, imgs in by_section.items():
         imgs_sorted = sorted(imgs, key=lambda im: im.doc_order)
+        if max_per_anchor > 0:
+            imgs_sorted = imgs_sorted[:max_per_anchor]  # W75 F5 — cap clump; overflow → trailing
         marker_run = "".join(f"[IMG#{im.checksum_sha256[:8]}]" for im in imgs_sorted)
         insertions.append((last_anchor_end[section], marker_run))
 

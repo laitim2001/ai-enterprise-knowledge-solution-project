@@ -502,7 +502,11 @@ async def execute_query_pipeline(
     answer_text = final_synth.answer
     if effective.enable_section_anchored_aux_images:
         try:
-            answer_text = inject_section_anchored_markers(answer_text, citations)
+            answer_text = inject_section_anchored_markers(
+                answer_text,
+                citations,
+                max_per_anchor=effective.section_anchor_max_per_anchor,
+            )
         except Exception as exc:  # noqa: BLE001 — graceful degradation
             logger.warning(
                 "section_anchor_inject_failed_using_original",
@@ -672,7 +676,11 @@ async def query_stream(
         if not effective.enable_section_anchored_aux_images:
             return answer
         try:
-            return inject_section_anchored_markers(answer, citations)
+            return inject_section_anchored_markers(
+                answer,
+                citations,
+                max_per_anchor=effective.section_anchor_max_per_anchor,
+            )
         except Exception as exc:  # noqa: BLE001 — graceful degradation
             logger.warning(
                 "stream_section_anchor_inject_failed_using_original",

@@ -495,3 +495,31 @@ def test_w75_section_anchor_legacy_kb_config_dict_parses_all_none() -> None:
     assert kb.enable_section_anchored_aux_images is None
     eff = resolve_effective_config(_settings(), kb_config=kb)
     assert eff.enable_section_anchored_aux_images is False
+
+
+# --------------------------------------------------------------------------- #
+# W75 F5 — section_anchor_max_per_anchor four-layer resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_w75_anchor_cap_global_default_zero_inherited() -> None:
+    """Zero-regression: global default 0 (no cap); kb_config=None / all-None resolve 0."""
+    s = _settings()
+    assert s.section_anchor_max_per_anchor == 0
+    assert resolve_effective_config(s, kb_config=None).section_anchor_max_per_anchor == 0
+    assert resolve_effective_config(s, kb_config=KbConfig()).section_anchor_max_per_anchor == 0
+
+
+def test_w75_anchor_cap_per_kb_overrides_global() -> None:
+    s = _settings()
+    kb = KbConfig(section_anchor_max_per_anchor=5)
+    assert resolve_effective_config(s, kb_config=kb).section_anchor_max_per_anchor == 5
+
+
+def test_w75_anchor_cap_per_query_wins_over_all_layers() -> None:
+    s = _settings()
+    kb = KbConfig(section_anchor_max_per_anchor=5)
+    dc = DocConfig(section_anchor_max_per_anchor=8)
+    pq = PerQueryOverrides(section_anchor_max_per_anchor=3)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc, per_query=pq)
+    assert eff.section_anchor_max_per_anchor == 3

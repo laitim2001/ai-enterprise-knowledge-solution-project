@@ -122,6 +122,11 @@ class KbConfig(BaseModel):
     # P1_sop_imgdense (W73 PROFILE_PRESETS).
     enable_section_anchored_aux_images: bool | None = None
 
+    # W75 F5 (ADR-0056 段②d) — per-KB per-anchor injection cap. `None` = inherit global
+    # `Settings.section_anchor_max_per_anchor` (default 0 = no cap). N > 0 caps the
+    # per-chapter injection at N (doc_order first N) to bound clump.
+    section_anchor_max_per_anchor: int | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

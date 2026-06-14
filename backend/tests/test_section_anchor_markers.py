@@ -171,3 +171,35 @@ def test_aux_image_deduped_by_sha8_across_citations() -> None:
     ]
     out = inject_section_anchored_markers(answer, citations)
     assert out == "Intro [IMG#aaaaaaaa][IMG#bbbbbbbb] end."
+
+
+def test_max_per_anchor_caps_injection_per_chapter() -> None:
+    """W75 F5 — max_per_anchor caps each chapter's injection at N (doc_order first N);
+    the overflow stays un-injected (frontend trailing pile)."""
+    answer = "Intro [IMG#aaaaaaaa] end."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=1),   # anchored
+            _img(SHA_B, section=["3"], doc_order=10),  # un-anchored
+            _img(SHA_C, section=["3"], doc_order=20),  # un-anchored
+            _img(SHA_D, section=["3"], doc_order=30),  # un-anchored — overflow at cap=2
+        ]),
+    ]
+    out = inject_section_anchored_markers(answer, citations, max_per_anchor=2)
+    # only B + C (first 2 by doc_order); D overflow stays out
+    assert out == "Intro [IMG#aaaaaaaa][IMG#bbbbbbbb][IMG#cccccccc] end."
+
+
+def test_max_per_anchor_zero_is_no_cap() -> None:
+    """W75 F5 — max_per_anchor=0 (default) = no cap = F1-F4 behaviour (bit-identical)."""
+    answer = "Intro [IMG#aaaaaaaa] end."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=1),
+            _img(SHA_B, section=["3"], doc_order=10),
+            _img(SHA_C, section=["3"], doc_order=20),
+        ]),
+    ]
+    out_zero = inject_section_anchored_markers(answer, citations, max_per_anchor=0)
+    out_default = inject_section_anchored_markers(answer, citations)
+    assert out_zero == out_default == "Intro [IMG#aaaaaaaa][IMG#bbbbbbbb][IMG#cccccccc] end."

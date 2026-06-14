@@ -59,6 +59,7 @@ class PerQueryOverrides:
     answer_detail: str | None = None  # CH-006 — synthesis detail level override
     enable_inline_image_markers: bool | None = None  # W70 / ADR-0055
     enable_section_anchored_aux_images: bool | None = None  # W75 / ADR-0056 段②d
+    section_anchor_max_per_anchor: int | None = None  # W75 F5 / ADR-0056 段②d
 
 
 @dataclass(slots=True, frozen=True)
@@ -118,6 +119,10 @@ class EffectiveConfig:
     # at their same-section anchored marker (frontend renders them inline); False = no
     # injection (trailing pile unchanged, pre-W75 identical).
     enable_section_anchored_aux_images: bool
+    # W75 F5 / ADR-0056 段②d — per-anchor injection cap. 0 = no cap (every same-section
+    # aux image injected); N > 0 = inject doc_order first N per chapter (overflow stays
+    # in the frontend trailing pile), bounding the章節內 clump.
+    section_anchor_max_per_anchor: int
 
 
 def _resolve[T: int](per_query: T | None, kb_value: T | None, global_value: T) -> T:
@@ -312,5 +317,14 @@ def resolve_effective_config(
                 kb.enable_section_anchored_aux_images if kb else None,
             ),
             settings.enable_section_anchored_aux_images,
+        ),
+        # W75 F5 / ADR-0056 段②d — per-anchor injection cap (same four-layer chain).
+        section_anchor_max_per_anchor=_resolve(
+            pq.section_anchor_max_per_anchor if pq else None,
+            _layer(
+                dc.section_anchor_max_per_anchor if dc else None,
+                kb.section_anchor_max_per_anchor if kb else None,
+            ),
+            settings.section_anchor_max_per_anchor,
         ),
     )

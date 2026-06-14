@@ -62,3 +62,6 @@ class DocConfig(BaseModel):
     # W75 (ADR-0056 段②d) — section-anchored aux images gate (consumed post-synthesis
     # at the marker-injection stage; per-DOC layer applies).
     enable_section_anchored_aux_images: bool | None = None
+
+    # W75 F5 (ADR-0056 段②d) — per-anchor injection cap (per-DOC override; 0 = no cap).
+    section_anchor_max_per_anchor: int | None = None
