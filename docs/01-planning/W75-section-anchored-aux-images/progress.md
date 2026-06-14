@@ -100,7 +100,14 @@ trade-off:clump 限 N vs 末尾堆部分回歸,實測 browser 定 N。placement 
   (一 run prose answer 無 anchored marker → 全末尾堆);browser 對比要 same-structure run。**offline apply on 固定 answer 量化更穩**(避 stochastic)。
 - N=5 default 設入 P1 preset(圖密 SOP auto-cap);global default 0(保 F1-F4 bit-identical)+ 四層可 per-KB 調。
 
+**drive-images-1 persistent(2026-06-15,用戶要求「設 per-KB cap=5 做 persistent」)**:PATCH
+`/kb/drive-images-1/settings` full replacement(GET 完整 config + 加 `enable_section_anchored_aux_images=true`
++ `section_anchor_max_per_anchor=5`,保留 max_images=80 / neighbour_max_aux=40 / inline_markers=True)。
+驗證:**restart backend without env 後 GET config 仍在(Postgres backing ADR-0023)+ /query 60 標記確認
+靠 per-KB config 生效,不再靠 env**(per-KB resolve > global per ADR-0040)。demo env 旋鈕已棄,
+drive-images-1 chat 永久方案 A + cap=5。註:PATCH = full replacement,必須 GET 完整 config 先改(kb.py:224)。
+
 **Commits(Day 2)**:
 - `853ce86` docs(planning): W75 reopen 加 F5
 - `5bc9b28` feat(generation): W75 F5 每錨點 cap implement
-- (待 F5 closeout commit)
+- `4d4f871` feat(generation): W75 F5 closeout — P1 preset cap=5
