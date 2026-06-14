@@ -1,7 +1,7 @@
 ---
 phase: W74
 name: pdf-picture-ingestion
-status: active       # draft | active | closed
+status: closed       # draft | active | closed(2026-06-14 — F1-F3 done;23 pass + 7 skip;per-KB thread extract_embedded_images;production-preserve)
 created: 2026-06-14
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "ADR-0057(段 ②c)— per-KB generate_picture_images:thread 現有 `KbConfig.extract_embedded_images` 落 PDF parser,令 born-digital PDF embedded picture 入庫。解 ADR-0056 層 A 嘅 PDF 圖類 profile preset(W73)+ ADR-0055 inline marker 對 PDF 空轉。re-index 按需(W46 機制,唔強制)。production-preserve(`extract_embedded_images=False` bit-identical)。"
@@ -105,3 +105,4 @@ spec_refs:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-14 | Initial plan(active)| 用戶開段②c → STOP(H1)→ AskUserQuestion 揀 per-KB(thread extract_embedded_images)+ 按需 re-index → ADR-0057 Accepted。R6 grounding 已喺 ADR 做齊;關鍵 implement 點:kb_config 讀要移前至 select_parser 之前(現時喺其後);select_parser keyword-only extract_images default False 保零 churn |
+| 2026-06-14 | Closeout(closed,PASS)| F1-F3 全成,23 pass + 7 skip + mypy/ruff clean(7 errors 全 pre-existing docling stub + Protocol doc_format)。實作對齊 plan(parser flag + select_parser thread + kb_config 移前 wire)。real-PDF integration 由 explore_pdf_picture_flag.py 背書代替(EKP convention real-PDF deferred skip)。無 deviation,無 deferred `[ ]` |
