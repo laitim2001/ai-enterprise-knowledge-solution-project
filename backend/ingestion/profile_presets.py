@@ -31,6 +31,7 @@ PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
         citation_neighbour_section_path_prefix_depth=1,
         enable_inline_image_markers=True,
         enable_section_anchored_aux_images=True,
+        section_anchor_max_per_anchor=5,  # W75 F5 — bound clump (DD-1 39 → 6); overflow → trailing
         enable_chapter_overview_pin=True,
         answer_detail="detailed",
     ),

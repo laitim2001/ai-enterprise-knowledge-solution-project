@@ -85,6 +85,22 @@ ADR-0040 四層擴展,非 new ADR。
 F1-F4 bit-identical)+ inject `max_per_anchor` 參數(每章節注入 `doc_order` 前 N,超出不注入回 trailing)。
 trade-off:clump 限 N vs 末尾堆部分回歸,實測 browser 定 N。placement 不變(仍插同章節最後一個 anchored marker 後)。
 
-**Next**:F5.1-F5.7 implement → F5.8 實測 browser 不同 N → F5.9 closeout。
+**F5 implement + 實測(Day 2)**:
+- F5.1-F5.7:`section_anchor_max_per_anchor` 四層 knob + inject `max_per_anchor` 參數(每章節 doc_order 前 N,
+  超出回 trailing)+ query.py 兩處傳 + test。mypy 新 code 0 + ruff 0;pytest 48 passed(cap 截斷 + cap=0 bit-identical + resolve 四層)。
+- **F5.8 實測**:offline probe(原始 answer offline apply inject 不同 N)trade-off — clump maxRun 39→4(N=3)/6(N=5)/
+  9(N=8),末尾堆回歸 0→39/37/34。**browser cap=5 肉眼**:`maxConsecutiveSiblingRun` 39→6,inline 34 + trailing 12,
+  步驟-截圖交織(「Standard view」「Batch job」截圖各跟對應步驟),冇咗 39 連續圖卡一坨,視覺明顯改善。
+- **F5.9 用戶選 N=5**(平衡:clump 6 + 末尾堆 12/46 ~26%)→ P1_sop_imgdense preset 加 `section_anchor_max_per_anchor=5`(test assert 加,7 passed)。
 
-**Commits(Day 2)**:(待 F5)
+**Retro(Day 2)**:
+- **cap 係 clump↔末尾堆 trade-off slider**:N 細 clump 細但末尾堆多。根本權衡:圖密章節(39-52 圖同章節)+ synthesizer
+  只 cite 一個 step → cap 後超出必然回末尾堆;無法同時「圖全在章節 + 零 clump」(要 leaf 級精準錨,可錨率 2-82% tension)。
+- **synthesizer stochastic 教訓**:同一 query 不同 run 答案結構唔同(numbered steps vs prose),影響 inline marker 數
+  (一 run prose answer 無 anchored marker → 全末尾堆);browser 對比要 same-structure run。**offline apply on 固定 answer 量化更穩**(避 stochastic)。
+- N=5 default 設入 P1 preset(圖密 SOP auto-cap);global default 0(保 F1-F4 bit-identical)+ 四層可 per-KB 調。
+
+**Commits(Day 2)**:
+- `853ce86` docs(planning): W75 reopen 加 F5
+- `5bc9b28` feat(generation): W75 F5 每錨點 cap implement
+- (待 F5 closeout commit)

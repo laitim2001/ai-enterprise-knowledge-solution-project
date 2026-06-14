@@ -36,12 +36,12 @@
 
 ## F5 — 每錨點 cap(DD-1 後 clump 優化,reopen)
 
-- [ ] F5.1 `settings.py` 加 `section_anchor_max_per_anchor: int = 0`(0 = 無 cap)
-- [ ] F5.2 `effective_config.py` QueryConfigOverlay(`int | None`)+ EffectiveConfig(`int`)+ _resolve 四層
-- [ ] F5.3 `kb.py` + `doc_config.py` 加 `section_anchor_max_per_anchor: int | None = None`
-- [ ] F5.4 inject 函數加 `max_per_anchor: int = 0` 參數(每章節 doc_order 前 N,超出不注入留 trailing)
-- [ ] F5.5 query.py 兩處傳 `max_per_anchor=effective.section_anchor_max_per_anchor`
-- [ ] F5.6 test:cap 截斷(每章節前 N)+ 0 = bit-identical(無 cap)+ resolve 四層
-- [ ] F5.7 mypy 新 code 0 + ruff 0 + pytest 綠
-- [ ] F5.8 實測 browser:不同 N(如 3/5/8)clump maxRun 改善 + 末尾堆回歸量 + 肉眼確認
-- [ ] F5.9 closeout:plan closed + progress + memory
+- [x] F5.1 `settings.py` 加 `section_anchor_max_per_anchor: int = 0`(0 = 無 cap)
+- [x] F5.2 `effective_config.py` QueryConfigOverlay(`int | None`)+ EffectiveConfig(`int`)+ _resolve 四層
+- [x] F5.3 `kb.py` + `doc_config.py` 加 `section_anchor_max_per_anchor: int | None = None`
+- [x] F5.4 inject 函數加 `max_per_anchor: int = 0` 參數(每章節 doc_order 前 N,超出不注入留 trailing,back-to-front splice)
+- [x] F5.5 query.py 兩處傳 `max_per_anchor=effective.section_anchor_max_per_anchor`
+- [x] F5.6 test:cap 截斷(每章節前 N)+ 0 = bit-identical(無 cap)+ resolve 四層;48 passed
+- [x] F5.7 mypy 新 code 0 + ruff 0 + pytest 綠
+- [x] F5.8 實測:offline probe N=0/3/5/8 trade-off(clump 39→4/6/9,trailing 0→39/37/34)+ **browser cap=5 肉眼 maxRun 39→6,inline 34 + trailing 12,步驟交織視覺改善**
+- [x] F5.9 closeout:用戶選 **N=5** → P1_sop_imgdense preset 加 `section_anchor_max_per_anchor=5`(test assert 加,7 passed)+ plan closed + progress + memory

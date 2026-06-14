@@ -1,7 +1,7 @@
 ---
 phase: W75
 name: section-anchored-aux-images
-status: active       # reopened 2026-06-14 加 F5 每錨點 cap(DD-1 揭示 clump maxRun=39,用戶 trigger 優化)
+status: closed       # 2026-06-14 — F1-F5 done;clump maxRun 39→6(browser cap=5);P1 preset cap=5;DD-1 closed
 created: 2026-06-14
 owner: "Claude (AI) — 技術 Lead Chris 審閱"
 gap: "ADR-0056 段 ②d 方案 A — `P1_sop_imgdense` 文件嘅 section 級錨定。把 post-synthesis attach_neighbour_images 撈嘅 un-anchored aux 圖(永遠冇 marker → 落末尾堆),按 source_section 章節級錨定入答案對應章節。實測 gate 三輪 PASS(末尾堆 22-55% + 章節級可錨率 100%)。"
@@ -133,3 +133,4 @@ spec_refs:
 | 2026-06-14 | Initial plan(active)| 用戶開段②d → push-back 先實測(三輪 gate PASS:末尾堆 22-55% / 章節級可錨率 100%)→ 拍板開 W75。R6 grounding 確認方向 1(backend marker 注入 → frontend 零改動 → H7 唔 trigger);gate via ADR-0040 四層 knob(mirror enable_inline_image_markers);profile gate via W73 PROFILE_PRESETS P1_sop_imgdense |
 | 2026-06-14 | Closeout(closed,PASS)| F1-F4 全成。F1 knob 四層 + F2 inject pure function + /query + /query/stream 兩處 gate wire(stream 經 compose_query_stream 新 answer_post_process callback,done.answer BUG-028 ② replace → frontend 零改動,H7 實證唔 trigger)+ F3 10 inject + 5 resolve test + F4 preset 接駁 + 實測。**實測末尾堆 28-85% → 0%**(3 真實 query 全錨,offline apply on 舊 code /query 答案,零 restart)。mypy 新 code 0 + ruff clean;pytest 51 + 48 + 7 全綠。無 deviation。**deferred**:DD-1 browser 肉眼(W71 同款 headless-only)。**carry-over**:段②d leaf 級精準錨(2-82%,query-dependent)+ 段③ 三層 UI(卡 H7 OQ-B mockup)|
 | 2026-06-14 | Reopen 加 F5(active)| DD-1 browser 肉眼揭示 clump 偏重(每步驟圖卡 [39,1,1,1,1,1,1],maxConsecutiveFigureRun=39)。用戶初選接受現狀,後 trigger「每錨點 cap 試吓改善 clump」→ 重開加 F5。D5 = `section_anchor_max_per_anchor` 四層 knob(global default 0 = 無 cap,保 F1-F4 bit-identical)+ inject `max_per_anchor` 參數(每章節注入 doc_order 前 N,超出回 trailing)。trade-off:clump 限 N vs 末尾堆部分回歸,實測 browser 定 N |
+| 2026-06-14 | F5 Closeout(closed,PASS)| F5 每錨點 cap 全成。四層 knob + inject `max_per_anchor` + query.py 兩處傳 + test(48 passed)。實測 offline probe trade-off(clump 39→4/6/9,末尾堆 0→39/37/34)+ **browser cap=5 肉眼 clump maxRun 39→6,inline 34 + trailing 12,步驟交織視覺明顯改善**。用戶選 **N=5**(平衡)→ P1_sop_imgdense preset 加 `section_anchor_max_per_anchor=5`(test assert,7 passed)。教訓:cap = clump↔末尾堆 slider,圖密章節超出必回末尾堆;synthesizer stochastic(numbered vs prose)令 browser 對比要 same-structure run,offline apply 量化更穩。無 deviation。carry-over:leaf 級精準錨(可錨率 tension)/ 段③ 三層 UI(H7 OQ-B)|
