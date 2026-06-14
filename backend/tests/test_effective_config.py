@@ -440,3 +440,58 @@ def test_w70_markers_legacy_kb_config_dict_parses_all_none() -> None:
     assert kb.enable_inline_image_markers is None
     eff = resolve_effective_config(_settings(), kb_config=kb)
     assert eff.enable_inline_image_markers is False
+
+
+# --------------------------------------------------------------------------- #
+# W75 / ADR-0056 段②d - enable_section_anchored_aux_images four-layer resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_w75_section_anchor_global_default_off_inherited() -> None:
+    """Zero-regression: global default False; kb_config=None AND an all-None KbConfig
+    both resolve OFF - trailing pile unchanged (pre-W75)."""
+    s = _settings()
+    assert s.enable_section_anchored_aux_images is False
+    assert (
+        resolve_effective_config(s, kb_config=None).enable_section_anchored_aux_images is False
+    )
+    assert (
+        resolve_effective_config(
+            s, kb_config=KbConfig()
+        ).enable_section_anchored_aux_images
+        is False
+    )
+
+
+def test_w75_section_anchor_per_kb_on_overrides_global_off() -> None:
+    s = _settings()
+    kb = KbConfig(enable_section_anchored_aux_images=True)
+    eff = resolve_effective_config(s, kb_config=kb)
+    assert eff.enable_section_anchored_aux_images is True
+
+
+def test_w75_section_anchor_per_doc_overrides_per_kb() -> None:
+    """Per-DOC layer (ADR-0050) sits between per-query and per-KB."""
+    s = _settings()
+    kb = KbConfig(enable_section_anchored_aux_images=True)
+    dc = DocConfig(enable_section_anchored_aux_images=False)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc)
+    assert eff.enable_section_anchored_aux_images is False
+
+
+def test_w75_section_anchor_per_query_wins_over_all_layers() -> None:
+    s = _settings()
+    kb = KbConfig(enable_section_anchored_aux_images=True)
+    dc = DocConfig(enable_section_anchored_aux_images=True)
+    pq = PerQueryOverrides(enable_section_anchored_aux_images=False)
+    eff = resolve_effective_config(s, kb_config=kb, doc_config=dc, per_query=pq)
+    assert eff.enable_section_anchored_aux_images is False
+
+
+def test_w75_section_anchor_legacy_kb_config_dict_parses_all_none() -> None:
+    """A persisted pre-W75 config dict without the new key reconstructs with None ->
+    inherits global OFF."""
+    kb = KbConfig.model_validate({"default_top_k": 50})
+    assert kb.enable_section_anchored_aux_images is None
+    eff = resolve_effective_config(_settings(), kb_config=kb)
+    assert eff.enable_section_anchored_aux_images is False

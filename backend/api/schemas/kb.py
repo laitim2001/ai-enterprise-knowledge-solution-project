@@ -114,6 +114,14 @@ class KbConfig(BaseModel):
     # surface markers; un-re-indexed KBs degrade gracefully to clean text).
     enable_inline_image_markers: bool | None = None
 
+    # W75 (ADR-0056 段②d) — per-KB section-anchored aux images gate. `None` = inherit
+    # global `Settings.enable_section_anchored_aux_images` (default False = trailing pile
+    # unchanged). True = this KB's un-anchored neighbour / aux images get a marker injected
+    # at their same-section anchored marker post-synthesis, so the frontend renders them
+    # interleaved (方案 A). Query-time knob (no re-index). Profile-routed ON for
+    # P1_sop_imgdense (W73 PROFILE_PRESETS).
+    enable_section_anchored_aux_images: bool | None = None
+
 
 class KbCreate(BaseModel):
     """POST /kb input (per architecture.md §4.4 #5).

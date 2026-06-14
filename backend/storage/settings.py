@@ -159,6 +159,18 @@ class Settings(BaseSettings):
     # (default) = prompts use clean text — behaviour identical to pre-W70.
     enable_inline_image_markers: bool = False
 
+    # W75 (ADR-0056 段②d, 方案 A) — section-anchored aux images injection gate
+    # (global default; per-KB / per-DOC / per-query overridable via the ADR-0040/0050
+    # four-layer resolution). When ON, post-synthesis the un-anchored neighbour / aux
+    # images (attach_neighbour_images撈 — synthesizer never saw them, so they carry no
+    # `[IMG#sha8]` marker and fall to the trailing pile) get a marker INJECTED into the
+    # answer text at their same-section anchored marker, so the frontend
+    # `planAnchoredImages` renders them interleaved instead of in the end pile. False
+    # (default) = no injection — trailing pile unchanged (behaviour identical to pre-W75).
+    # Profile-routed ON for P1_sop_imgdense via W73 PROFILE_PRESETS (ADR-0056 條件式:
+    # structured SOP only; prose / slide stay OFF to avoid misplacement).
+    enable_section_anchored_aux_images: bool = False
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →

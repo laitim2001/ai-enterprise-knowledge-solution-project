@@ -58,6 +58,7 @@ class PerQueryOverrides:
     enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
     answer_detail: str | None = None  # CH-006 — synthesis detail level override
     enable_inline_image_markers: bool | None = None  # W70 / ADR-0055
+    enable_section_anchored_aux_images: bool | None = None  # W75 / ADR-0056 段②d
 
 
 @dataclass(slots=True, frozen=True)
@@ -112,6 +113,11 @@ class EffectiveConfig:
     # prompt text paths consume `chunk_text_marked` + the system prompt gains the
     # keep-markers rule; False = clean text (pre-W70 identical).
     enable_inline_image_markers: bool
+    # W75 / ADR-0056 段②d — section-anchored aux images injection gate. True =
+    # post-synthesis inject `[IMG#sha8]` markers for un-anchored neighbour / aux images
+    # at their same-section anchored marker (frontend renders them inline); False = no
+    # injection (trailing pile unchanged, pre-W75 identical).
+    enable_section_anchored_aux_images: bool
 
 
 def _resolve[T: int](per_query: T | None, kb_value: T | None, global_value: T) -> T:
@@ -296,5 +302,15 @@ def resolve_effective_config(
                 kb.enable_inline_image_markers if kb else None,
             ),
             settings.enable_inline_image_markers,
+        ),
+        # W75 / ADR-0056 段②d — four-layer chain (per-query > per-DOC > per-KB >
+        # global); consumed post-synthesis at the marker-injection stage.
+        enable_section_anchored_aux_images=_resolve(
+            pq.enable_section_anchored_aux_images if pq else None,
+            _layer(
+                dc.enable_section_anchored_aux_images if dc else None,
+                kb.enable_section_anchored_aux_images if kb else None,
+            ),
+            settings.enable_section_anchored_aux_images,
         ),
     )

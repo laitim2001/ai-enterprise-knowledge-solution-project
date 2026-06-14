@@ -35,6 +35,7 @@ from generation.effective_config import (
     resolve_effective_config,
 )
 from generation.query_reformulator import QueryReformulator
+from generation.section_anchor_markers import inject_section_anchored_markers
 from generation.stream_composer import compose_query_stream
 from generation.synthesizer import Synthesizer
 from kb_management.doc_config_store import DocConfigStore
@@ -496,8 +497,20 @@ async def execute_query_pipeline(
     citations = cap_images_per_answer(citations, effective.max_images_per_answer)
     citations = _proxy_citation_images(citations, request, payload.kb_id)
 
+    # W75 / ADR-0056 段②d — section-anchored aux image injection（方案 A）. Gated;
+    # graceful fallback to the un-injected answer on error (per ADR-0034 §Consequences).
+    answer_text = final_synth.answer
+    if effective.enable_section_anchored_aux_images:
+        try:
+            answer_text = inject_section_anchored_markers(answer_text, citations)
+        except Exception as exc:  # noqa: BLE001 — graceful degradation
+            logger.warning(
+                "section_anchor_inject_failed_using_original",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
     return QueryResponse(
-        answer=final_synth.answer,
+        answer=answer_text,
         citations=citations,
         retrieved_chunks=chunk_previews,
         crag_triggered=crag_triggered,
@@ -651,6 +664,22 @@ async def query_stream(
         # W43 F1.6 — per-KB blunt image cap (parallel to /query path).
         return cap_images_per_answer(augmented, effective.max_images_per_answer)
 
+    def _inject_stream_answer(answer: str, citations: list[Citation]) -> str:
+        # W75 / ADR-0056 段②d — section-anchored aux image injection（方案 A）on the
+        # done frame's canonical answer (the frontend replaces the streamed text with
+        # it per BUG-028 ②, so injected markers render inline with no frontend change).
+        # Gated; graceful fallback to the un-injected answer on error.
+        if not effective.enable_section_anchored_aux_images:
+            return answer
+        try:
+            return inject_section_anchored_markers(answer, citations)
+        except Exception as exc:  # noqa: BLE001 — graceful degradation
+            logger.warning(
+                "stream_section_anchor_inject_failed_using_original",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            return answer
+
     async def event_serializer():
         # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
         # terminal `done` frame's model + token counts flow to Langfuse
@@ -673,6 +702,7 @@ async def query_stream(
                     result,
                     synth_stream,
                     citation_post_process=_augment_stream_citations,
+                    answer_post_process=_inject_stream_answer,
                 ),
                 name="api.query.stream",
                 extra_metadata_fields=("refused", "reranker_used"),
