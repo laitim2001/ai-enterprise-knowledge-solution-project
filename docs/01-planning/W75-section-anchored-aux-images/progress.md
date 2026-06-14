@@ -71,4 +71,20 @@ ADR-0040 四層擴展,非 new ADR。
 **Commits**:
 - `23b3952` docs(planning): W75 kickoff
 - `0b501bd` feat(generation): W75 F1-F3 section-anchored aux image injection
-- (待 F4 commit)
+- `cfbad35` feat(generation): W75 F4 closeout — preset + 實測
+- `6bd5c11` docs(planning): W75 DD-1 browser 肉眼 closed
+
+---
+
+## Day 2 — 2026-06-14(reopen F5 每錨點 cap)
+
+**Context**:DD-1 揭示 clump 偏重(maxConsecutiveFigureRun=39)。用戶初選接受現狀,後 trigger
+「每錨點 cap 試吓改善 clump」→ 重開 W75 加 F5。
+
+**F5 設計(D5)**:新 knob `section_anchor_max_per_anchor`(ADR-0040 四層,global default 0 = 無 cap,保
+F1-F4 bit-identical)+ inject `max_per_anchor` 參數(每章節注入 `doc_order` 前 N,超出不注入回 trailing)。
+trade-off:clump 限 N vs 末尾堆部分回歸,實測 browser 定 N。placement 不變(仍插同章節最後一個 anchored marker 後)。
+
+**Next**:F5.1-F5.7 implement → F5.8 實測 browser 不同 N → F5.9 closeout。
+
+**Commits(Day 2)**:(待 F5)

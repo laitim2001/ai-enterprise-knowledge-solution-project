@@ -33,3 +33,15 @@
 - [x] F4.2 實測 drive-images-1 真實 /query(舊 code capture answer+citations,offline apply inject)末尾堆 **28-85% → 0%**(3 query 全錨,注入 8-52 圖/query;章節級可錨率 100% 兌現)
 - [x] F4.3 memory `project_inline_image_markers_w70.md` append 方案 A 落地 + MEMORY.md 2 pointer(inline-markers 全弧 + config-vision 段②d)
 - [x] F4.4 closeout:plan status closed + progress retro + 段③/leaf 級交棒
+
+## F5 — 每錨點 cap(DD-1 後 clump 優化,reopen)
+
+- [ ] F5.1 `settings.py` 加 `section_anchor_max_per_anchor: int = 0`(0 = 無 cap)
+- [ ] F5.2 `effective_config.py` QueryConfigOverlay(`int | None`)+ EffectiveConfig(`int`)+ _resolve 四層
+- [ ] F5.3 `kb.py` + `doc_config.py` 加 `section_anchor_max_per_anchor: int | None = None`
+- [ ] F5.4 inject 函數加 `max_per_anchor: int = 0` 參數(每章節 doc_order 前 N,超出不注入留 trailing)
+- [ ] F5.5 query.py 兩處傳 `max_per_anchor=effective.section_anchor_max_per_anchor`
+- [ ] F5.6 test:cap 截斷(每章節前 N)+ 0 = bit-identical(無 cap)+ resolve 四層
+- [ ] F5.7 mypy 新 code 0 + ruff 0 + pytest 綠
+- [ ] F5.8 實測 browser:不同 N(如 3/5/8)clump maxRun 改善 + 末尾堆回歸量 + 肉眼確認
+- [ ] F5.9 closeout:plan closed + progress + memory
