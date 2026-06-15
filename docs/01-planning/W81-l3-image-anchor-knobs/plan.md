@@ -1,6 +1,6 @@
 # W81 plan — L3 暴露 inline marker + section 錨定旋鈕(缺口 A,ADR-0060 落地)
 
-**Status**: active
+**Status**: closed(2026-06-15,full PASS — F1 frontend + type-check/lint/build + browser UI 寫端到端 PASS)
 **Kickoff**: 2026-06-15
 **Phase 類型**: frontend feature(H7 design-stage expansion + H1-adjacent;ADR-0060 已 Accepted)
 **ADR**: ADR-0060(L3 image-anchor knobs UI — 用戶揀方案 A 復用既有模式延伸)
@@ -91,3 +91,10 @@ L3 `doc-config-tab.tsx` UI 從未暴露:`enable_inline_image_markers`(W70)/ `ena
 ## §7 Changelog
 - 2026-06-15 kickoff — plan active,F1-F3 scope locked;ADR-0060 Accepted(用戶揀方案 A);落點 ground
   (KNOB_KEYS 自動納入 + 既有 component 復用 + backend 零改動)。
+- 2026-06-15 F1 frontend(commit `0321a43`)— `doc-config.ts` 三欄位 + `doc-config-tab.tsx` 三 key + 新
+  「Inline 圖文錨定」`DocTuneGroup`(復用既有 component)+ docstring ADR-0060 note;type-check 0 + lint
+  零新 warning + build ✓。
+- 2026-06-15 **F2 browser 驗端到端 PASS**(playwright)— L3「Inline 圖文錨定」組 render(視覺零發明,既有
+  component)+ UI 寫 PASS(toggle inline marker → save → `PUT /config` persist)+ DELETE 還原零污染;
+  console errors 全 `/notifications` 404 pre-existing。
+- 2026-06-15 closeout — plan closed full PASS,F1-F3 全 tick。
