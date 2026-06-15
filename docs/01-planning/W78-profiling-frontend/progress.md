@@ -81,7 +81,29 @@
 - **交棒**:browser 肉眼 + 「有 profile」視覺留用戶 trigger 起 infra(可順帶 re-index);現有 KB re-index
   驗自動 persist profile 係獨立 task;write surface(override/threshold persist)需 backend API = 段③後續 phase。
 
+**F6.2 browser 肉眼驗完成(Day 1,DD-1 後補 — 用戶 trigger 起 infra)**:
+- 起全套 infra:azurite(native Plan B)+ backend(venv,startup ~140s)+ frontend dev(:3001);docker
+  postgres+langfuse 已 running 15h。pre-flight 確認無其他 session 在動(無互殺風險)。
+- Azure infra 限制處理:Free tier index 上限 3 已滿(建新 KB 429)+ test KB index 404 → ingest 臨時 doc
+  `n8n-pdt-upgrade-runbook`(P1_sop_text 信心 0.85,clean path 唔衝突)入 drive-images-1(確定有 index)。
+- **playwright 驗 4 處全部 100% 對齊 mockup**:
+  - **L2**(`/kb/drive-images-1`)— Profile 欄:6 DRIVE manuals「未分析」`badge-muted` + n8n「P1 文字SOP 85%」
+    `badge-muted`(高信心非黃旗,label 對齊 PROFILE_LABELS)
+  - **L3**(`/kb/.../docs/n8n.../` config tab)— 文件畫像 card:badge「P1 文字SOP 信心 85%」+ 5 signals
+    `stat-grid`(img_density 0.000 / list_ratio 0.154 / max_depth 2 / headings 14 / paragraphs 292,值對齊
+    backend;pdf 3 項因 pdf_pages=null 正確 conditional 唔 render)+ override select=P1_sop_text + 無低信心 banner
+  - **Settings**(`/settings?tab=doc-profiling`)— 7 tab(deep link active 文件分類規則)+ mapping table 7 行
+    (值對齊 profile_presets.py + W75 cap=5)+ threshold 0.70/0.15/20(對齊 profiler.py)
+  - **L1**(`/kb/.../upload` step 2)— `banner-info`「自動文件分類(W72 profiler)」(揀 file 去 step 2;**冇** click
+    Upload+Ingest 避免污染)
+  - console 唯一 error = pre-existing `/notifications` 404(memory 已記非故障)
+- **清理**:DELETE temp doc → 204,drive-images-1 還原 6 docs(零永久污染)。服務留 running(用戶可繼續用)。
+- **教訓**:Next dev 首次 compile route 喺 OneDrive 路徑慢(>60s,playwright navigate timeout abort);
+  解 = 先用長 timeout curl warm route(compile cached)再 playwright navigate。Azure Free tier 3-index cap +
+  test KB index 不存在 → 驗「有 profile」要 ingest 去確定有 index 嘅 KB(臨時 doc 加刪)。
+
 **Commits**:
 - `c0a9764` docs(planning): W78 kickoff — profiling frontend 實作 plan
 - `1af8f59` feat(frontend): W78 F1-F5 profiling 三層 UI 落地（L1/L2/L3 + Settings tab）
-- (closeout)docs(planning): W78 closeout
+- `c3ffcc0` docs(planning): W78 closeout — WITH DD-1-BROWSER-DEFERRED
+- (本次)docs(planning): W78 F6.2 browser 肉眼驗完成 — DD-1 caveat 解除
