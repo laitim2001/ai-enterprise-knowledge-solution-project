@@ -28,6 +28,10 @@ export interface DocConfig {
   citation_neighbour_section_path_prefix_depth?: number | null;
   max_images_per_answer?: number | null;
   enable_chapter_overview_pin?: boolean | null;
+  // W81 / ADR-0060 — image-anchor knobs (inline markers W70 / section 錨定 W75).
+  enable_inline_image_markers?: boolean | null;
+  enable_section_anchored_aux_images?: boolean | null;
+  section_anchor_max_per_anchor?: number | null;
 }
 
 export const docConfigApi = {

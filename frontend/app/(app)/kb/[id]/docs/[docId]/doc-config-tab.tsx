@@ -12,6 +12,12 @@
  * pin). The retrieval-entry knobs (top_k / rerank / parent_doc) stay per-KB (they
  * drive retrieval before any doc is cited) — surfaced here as an explainer card.
  *
+ * W81 / ADR-0060 — image-anchor knobs (inline markers W70 / section 錨定 + per-anchor
+ * cap W75) added as a design-stage expansion: the mockup has NO doc-level design for
+ * these (section 錨定 post-dates the mockup), so per the user-approved 方案 A they reuse
+ * the existing DocTuneGroup/DocSwitchKnob/DocTuneKnob mockup-aligned components — zero
+ * new visuals. This is the one deliberate departure from strict mockup fidelity above.
+ *
  * Self-contained (DocTune* helpers + config-test card duplicated from the KB
  * SettingsTab pattern rather than extracted) — the KB SettingsTab uses 繼承全域
  * framing, this uses 繼承 KB, and the 3174-line KB page stays untouched
@@ -30,6 +36,7 @@ import {
   RefreshCw,
   Settings,
   Shield,
+  Tag,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -101,6 +108,11 @@ const DOC_TUNE_KNOB_KEYS = [
   'citation_neighbour_section_path_prefix_depth',
   'max_images_per_answer',
   'enable_chapter_overview_pin',
+  // W81 / ADR-0060 — image-anchor knobs (mirror DocConfig; auto-wired into
+  // setKnob / buildDraftConfig / dirty / saveMutation via this key list).
+  'enable_inline_image_markers',
+  'enable_section_anchored_aux_images',
+  'section_anchor_max_per_anchor',
 ] as const;
 
 type DocKnobKey = (typeof DOC_TUNE_KNOB_KEYS)[number];
@@ -466,6 +478,29 @@ function DocConfigEditor({
               label="章節概覽圖置頂(overview pin)"
               value={knobs.enable_chapter_overview_pin as boolean | null}
               onChange={(v) => setKnob('enable_chapter_overview_pin', v)}
+            />
+          </DocTuneGroup>
+
+          {/* W81 / ADR-0060 — image-anchor knobs (design-stage expansion, 方案 A:
+              既有 DocTuneGroup/DocSwitchKnob/DocTuneKnob 復用, 視覺零發明). inline marker
+              做主 toggle (section 錨定靠 marker 機制注入 → 主/進階關係); backend 零改動. */}
+          <DocTuneGroup
+            icon={Tag}
+            title="Inline 圖文錨定(image markers + section 錨定)"
+            desc="答案文字沿原文圖片位置帶 [IMG#…] 標記,令圖文跟原文順序交織顯示。進階:section 錨定把末尾未錨圖注入同章節,並可限每錨點圖數(收斂章節內 clump)。"
+            enabled={knobs.enable_inline_image_markers as boolean | null}
+            onToggle={(v) => setKnob('enable_inline_image_markers', v)}
+            onReset={() => setKnob('enable_inline_image_markers', null)}
+          >
+            <DocSwitchKnob
+              label="section 錨定 aux 圖(末尾堆 → 章節內)"
+              value={knobs.enable_section_anchored_aux_images as boolean | null}
+              onChange={(v) => setKnob('enable_section_anchored_aux_images', v)}
+            />
+            <DocTuneKnob
+              label="每錨點圖片上限(0 = 無 cap)"
+              value={knobs.section_anchor_max_per_anchor as number | null}
+              onChange={(v) => setKnob('section_anchor_max_per_anchor', v)}
             />
           </DocTuneGroup>
         </div>
