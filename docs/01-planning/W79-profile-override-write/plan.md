@@ -1,6 +1,6 @@
 # W79 plan — Profile 人手覆寫 write surface(ADR-0058 落地)
 
-**Status**: active
+**Status**: closed(2026-06-15,full PASS — backend + frontend + browser override 端到端 PASS)
 **Kickoff**: 2026-06-15
 **Phase 類型**: backend + frontend feature(H1 architectural — 新 endpoint + schema;ADR-0058 已 Accepted)
 **ADR**: ADR-0058(profile manual override write surface)— 用戶 confirm scope = ① override only(② threshold 不做)
@@ -95,3 +95,14 @@ config(reuse `preset_for` + ADR-0050)+ `DocProfileInfo` 加 `manual_override` an
 
 ## §7 Changelog
 - 2026-06-15 kickoff — plan active,F1-F3 scope locked;ADR-0058 Accepted(用戶 confirm override only);落點 ground。
+- 2026-06-15 F1 backend(commit `1adf2e0`)— DocProfileInfo.manual_override + PUT /docs/{id}/profile endpoint
+  (套 preset_for 覆蓋 + 記 override + 404/422/503)+ re-ingest preserve + L2 effective(override→confidence null)
+  + test 8 tests。**偏離**:override endpoint 用單獨 store helper(唔用 `_ingestion_deps_or_503`,嗰個 require
+  embedder/populator/chunker 否則 503 — override 唔需 ingestion services)。
+- 2026-06-15 F2 frontend(commit `1adf2e0`)— documents.ts type + overrideProfile API + L3 select wire
+  (onChange → mutation → invalidate + toast)+ effective 顯示 + 已覆寫標示(系統原判保留)。
+- 2026-06-15 **F3.2 browser 驗 override 端到端 PASS** — 起全套 infra + ingest 臨時 doc + L3 揀 P1_sop_imgdense →
+  backend persist(manual_override + preset cap 80 覆蓋 + system auto 保留)+ L3/L2 effective + 系統原判保留。
+  **坑記錄**:backend 改 code 後要重啟先 pick up 新 endpoint(初次撞 404 = running backend 舊 code;TaskStop
+  + 重起後 PASS;store Postgres persist 過 restart)。
+- 2026-06-15 closeout — plan closed full PASS,F1-F3 全 tick。
