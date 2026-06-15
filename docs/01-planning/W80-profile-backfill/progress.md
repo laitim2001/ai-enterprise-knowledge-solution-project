@@ -83,7 +83,8 @@ kwarg)→ 確認 W74/ADR-0057 落地時 `_patch_orchestrator` stub 漏更新,**W
 - **regression 用 `git stash` 科學辨 pre-existing vs net-new**:15 failures 一度似 W80 引入,stash baseline 跑同
   test 同 fail → 確證 pre-existing,避免錯誤 attribute + 順帶清咗 W74 遺留 debt。
 - **交棒**:現有 doc backfill 已完成(drive-images-1 6 docs);其他現有 KB(如 `drive_user_manuals`)同樣可 `POST
-  backfill` 補(rolling JIT,等需求)。② 層查詢意圖 gate(候選 ②)+ ③ D8 PDF/scan robustness(候選 ③)為下一步。
+  backfill` 補(rolling JIT,等需求)。② D8 PDF/scan robustness(profiler 準確度,等真實 backfill 數據判缺口真偽)
+  → ③ 層 B 查詢意圖 gate(全新正交層 conditional)為下一步。
 
 **Commits**:
 - `6a71e14` docs(planning): W80 kickoff + ADR-0059 — profile-only backfill
