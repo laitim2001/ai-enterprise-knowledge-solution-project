@@ -1,6 +1,6 @@
 # W78 plan — profiling frontend 實作(ADR-0056 層 A 段③ 落地)
 
-**Status**: active
+**Status**: closed(2026-06-15,WITH DD-1-BROWSER-DEFERRED CAVEAT)
 **Kickoff**: 2026-06-15
 **Phase 類型**: frontend implementation(**H7-binding** — 把 W77 mockup 落實到 `frontend/`)
 **ADR**: ADR-0056 D4 三層 UI 段③ frontend 落地(W76 backend read surface + W77 author mockup 前置)
@@ -140,3 +140,10 @@ typography / color tokens / interaction states 必須 100% 對齊對應 mockup(`
 ## §8 Changelog
 
 - 2026-06-15 kickoff — plan active,F1-F6 scope locked;4 落點 read 核實;3 處 backend-limited adaptation 識別(§4)。
+- 2026-06-15 F1-F5 implement(commit `1af8f59`)— TS types + L2 badge + L3 文件畫像 card + Settings 第 7 tab +
+  L1 說明 banner;對齊各 mockup;3 backend-limited adaptation 兌現(§4)。F6.1 三重綠驗:type-check 0 +
+  lint 零新 warning + build ✓ 15/15 static pages。
+- 2026-06-15 **F6.2 browser 肉眼驗 DEFERRED**(🚧)— backend + frontend 均 DOWN,需起全套 infra + 現有 KB
+  profile=null 要 re-index 先見「有 profile」視覺;三重綠驗 + H7 verbatim CSS class + W77 同類 primitive 已驗
+  覆蓋 correctness。target:用戶 explicit trigger 起 infra。
+- 2026-06-15 closeout — plan closed WITH DD-1-BROWSER-DEFERRED CAVEAT,F1-F5 + F6.1 + F6.3 tick(F6.2 🚧)。

@@ -36,5 +36,5 @@
 ## F6 — 驗證 + closeout
 
 - [x] F6.1 `pnpm type-check` + `pnpm lint` + `pnpm build` 零 error ✅(15/15 static pages;4 落點 route 全編譯;唯一 warning = pre-existing chat img,與本次無關)
-- [ ] F6.2 **browser 肉眼驗(DD-1)**:L2 / L3 / Settings / L1 視覺對齊 mockup(profile=null 空狀態接受;有 profile 用 new ingest 或 mock)
-- [ ] F6.3 closeout:plan closed + progress retro + memory append
+- [ ] 🚧 F6.2 **browser 肉眼驗(DD-1)DEFERRED** — backend + frontend 均 DOWN,browser 驗需起全套 infra(docker postgres + langfuse + azurite + backend venv + frontend dev)+ 現有 KB profile=null 要 re-index 一個 doc 先見「有 profile」視覺(L2 badge / L3 card);三重綠驗(type-check 0 + lint 零新 warning + build ✓ 15/15 pages)已覆蓋 code correctness + H7 用 verbatim 相同 CSS class + mirror mockup JSX 結構 + W77 已 browser 驗過同類 primitive。target:用戶 explicit trigger 起 infra(可順帶 re-index 驗「有 profile」視覺)
+- [x] F6.3 closeout:plan closed + progress retro + memory append

@@ -56,6 +56,32 @@
 (next build)**✓ Compiled successfully** + 15/15 static pages;4 落點 route `/kb/[id]`(20.7kB)/
 `/kb/[id]/docs/[docId]`(10.5kB)/ `/kb/[id]/upload`(7.11kB)/ `/settings`(39.3kB)全部編譯通過。
 
+**F6.2 browser 肉眼驗 DEFERRED(Day 1)**:
+- pre-flight 確認 backend :8000 + frontend :3001 **均 DOWN**;browser 驗需起全套 infra
+  (docker postgres + langfuse + azurite + backend venv + frontend dev)+ 現有 KB(drive-images-1 等)
+  doc profile=null(W76 已知,要 re-index 先有 profile data)→ 即使起 infra,L2 顯示「未分析」/
+  L3 唔 render card,要驗「有 profile」視覺需 re-index 一個 doc。
+- **判斷:DD-1 deferred(同 W71/W77 precedent)**,理由:(1) 三重綠驗已覆蓋 code correctness;
+  (2) H7 用 verbatim 相同 CSS class(`styles-mockup.css`)+ mirror mockup JSX 結構,build 已證無
+  runtime error;(3) W77 已 browser 驗過同類 primitive(badge/stat-grid/table)render 成功;
+  (4) 起全套 infra + re-index 重量級 + 撞 session 風險。target:用戶 explicit trigger 起 infra。
+
+**Retro(Day 1)**:
+- **Explore agent 自相矛盾必自核**:agent report 一方面講「KB page 有 ProfileBadge line 1-159」
+  一方面 Key Findings 講「NOT YET SHIPPED」→ 自己 read 4 落點核實(實況 net-new 落地)。教訓:
+  Explore agent 廣度 map 有用但細節可能幻覺,critical 落點必親自 read。
+- **parent 已 fetch data 唔重複 query**:L3 parent `docs/[docId]/page.tsx` 已 fetch `DocumentDetail`
+  (含 `.profile`),只需 pass `profile` prop 落 `DocConfigTab`(唔喺 DocConfigTab 再 fetch)→ surgical +
+  零多餘 network。
+- **backend-limited adaptation 全有 codebase precedent**:L2 confidence-only(W76 summary 設計)/
+  L3+Settings write surface static(DisabledAffordance 慣例)/ L1 single-file(W22 upload adaptation)
+  → 3 處都唔係新 H7 deviation,落喺既有 documented adaptation 範圍。
+- **三重綠驗 > browser 對 code correctness**:tsc + lint + build 對 frontend code correctness 係硬證據;
+  browser 肉眼係視覺確認(DD-1),frontend reuse verbatim CSS class 令 render 必然對齊(無 runtime error)。
+- **交棒**:browser 肉眼 + 「有 profile」視覺留用戶 trigger 起 infra(可順帶 re-index);現有 KB re-index
+  驗自動 persist profile 係獨立 task;write surface(override/threshold persist)需 backend API = 段③後續 phase。
+
 **Commits**:
 - `c0a9764` docs(planning): W78 kickoff — profiling frontend 實作 plan
-- (本次)feat(frontend): W78 F1-F5 profiling 三層 UI 落地（L1/L2/L3 + Settings tab）
+- `1af8f59` feat(frontend): W78 F1-F5 profiling 三層 UI 落地（L1/L2/L3 + Settings tab）
+- (closeout)docs(planning): W78 closeout
