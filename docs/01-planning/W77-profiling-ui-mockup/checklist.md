@@ -17,26 +17,26 @@
 
 ## F3 — L3 文件畫像 section(`ekp-page-doc-detail.jsx` `DocConfigTab` line 410)
 
-- [ ] F3.1 讀 DocConfigTab 落點區現有結構
-- [ ] F3.2 config tab 頂加「文件畫像」card:profile + 信心度 badge + signals 透明展示(stat-grid / key-value)
-- [ ] F3.3 override 下拉 `select`(換 profile)+ 低信心 `banner-warning`「待人手確認」
-- [ ] F3.4 reuse `.card`/`.stat`/`.field`/`.select`/`.banner`;放現有 knobs 之上
+- [x] F3.1 讀 DocConfigTab 落點區現有結構(scope banner → tuning card → config-test)
+- [x] F3.2 scope banner 後加「文件畫像」card:`DocProfileBadge`(右上)+ signals 透明展示 `stat-grid`(img_density / list_ratio / max_depth / headings / PDF text-layer / paragraphs)
+- [x] F3.3 override 下拉 `select`(7 類)+ 低信心 `banner-warning`「待人手確認」+ `ProfileSignal` helper
+- [x] F3.4 reuse `.card`/`.stat-grid`/`.stat`/`.field`/`.select`/`.banner-warning`;放 tuning card 之上(解釋「點解套呢個 preset」)
 
 ## F4 — Settings 分類規則 tab(`ekp-page-settings-tabs.jsx` `tabs` line 9-15)
 
-- [ ] F4.1 讀 tabs array + tab body 渲染結構
-- [ ] F4.2 加第 7 tab「文件分類規則」:profile→preset mapping `table`(6 profile)+ threshold `field` + preset knob 摘要
-- [ ] F4.3 reuse `.table`/`.card`/`.field`;對齊其他 tab 佈局
+- [x] F4.1 讀 tabs array(line 9-16)+ tab body switch 結構
+- [x] F4.2 加第 7 tab「文件分類規則」+ `SettingsDocProfiling`:profile→preset mapping `table`(7 profile,值對齊 profile_presets.py + W75 cap=5)+ `ThresholdRow`(confidence 0.70 / img_density 0.15 / too_small 20,對齊 profiler.py)
+- [x] F4.3 reuse `.table`/`.card`/`.field`/`.badge`;對齊其他 tab 佈局;**browser 驗 7 tabs + table render 成功**
 
 ## F5 — L1 上載偵測 banner(`ekp-page-misc.jsx` `PageUploadWizard` StepExecute)
 
-- [ ] F5.1 讀 StepExecute 落點區(line 63)
-- [ ] F5.2 ingest 完成加「偵測為 X,已套 preset」`banner-success` + 即時 override 連結
-- [ ] F5.3 reuse `.banner`;對齊現有 wizard step 視覺
+- [x] F5.1 讀 StepExecute 落點區(line 237)
+- [x] F5.2 加 L1「自動文件分類」`banner-info`(W72 profiler 說明)+ 每 indexed doc row 顯示偵測 profile badge + 信心度「已自動套對應 preset」+ `UPLOAD_PROFILE_LABELS`(用 banner-info 非 success — ingest running 中,非完成)
+- [x] F5.3 reuse `.banner-info`/`.badge`/`.badge-dot`;對齊現有 wizard step 視覺;**disk code grep 確認正確**(L1 browser visual deferred — 見 F6.2)
 
 ## F6 — wire + browser 驗 + closeout
 
-- [ ] F6.1 確認 4 處喺 `EKP Platform.html` render(mock data wire 補如需)
-- [ ] F6.2 **browser 肉眼驗 4 處(DD-1)**:對應 route 視覺對齊現有 UI,無 drift
-- [ ] F6.3 `PAGE_INVENTORY.md` / `DESIGN_README.md` 補 profiling UI 說明(如需)
-- [ ] F6.4 closeout:plan closed + progress retro + memory append
+- [x] F6.1 4 處 jsx auto-load 確認(EKP Platform.html line 26/29/33/34;`#settings`→`PageSettingsRich` line 142);F1 mock data wire
+- [x] F6.2 **browser 肉眼驗(DD-1)**:**L2**(Documents profile badge)/ **L3**(文件畫像 section + signals stat-grid)/ **Settings**(7 tabs + profile→preset mapping table)三處視覺對齊成功 + console 0 error(no-cache server);🚧 **L1(upload banner)browser visual DEFERRED** — browser/babel 頑固緩存 stale StepExecute transform(多次 fresh navigate + no-cache 8089 server 都攞 old),**disk code grep-verified 正確**(const line 238 + banner 266-270 + per-doc 293-294)+ misc.jsx executed 無 syntax error + 同 L3/Settings 同類 banner-info/badge primitive(已驗 render);target:下次 truly-fresh browser session(清 browser profile cache)
+- [ ] 🚧 F6.3 `PAGE_INVENTORY.md` / `DESIGN_README.md` 補 profiling UI 說明 — DEFERRED(optional doc-sync,非阻擋;留 frontend 實作 phase 或 explicit trigger 補;本 phase 核心 = mockup 落地 + 驗證)
+- [x] F6.4 closeout:plan closed + progress retro + memory append

@@ -35,8 +35,46 @@ H4 ✅(層 A)/ H7 ✅(author mockup,reuse design system)/ Karpathy ✅(reuse pri
   unprofiled → `badge-muted`「未分析」opacity 0.65。reuse 現有 badge/badge-dot/mono/muted primitives,
   零 hardcode 顏色。
 
-**Checkpoint(Day 1)**:F1-F2 完成後 browser 驗 L2(早 feedback design 方向),再繼續 F3-F5。
+**Checkpoint(Day 1)**:F1-F2 後 browser 驗 L2(`8088` http.server,playwright 阻 file://)→ Documents
+table profile 欄 render 成功。**用戶 confirm design 方向**(AskUserQuestion):label = 中文縮短(P1 圖密SOP);
+L2 方向 OK,繼續 F3-F5。
+
+**F3-F5 implement(Day 1)**:
+- **F3 L3 文件畫像**(`ekp-page-doc-detail.jsx` DocConfigTab):scope banner 後加「文件畫像」card —
+  `DocProfileBadge`(右上)+ signals 透明展示 `stat-grid`(img_density / list_ratio / max_depth / headings /
+  PDF text-layer / paragraphs)+ override `select`(7 類)+ 低信心 `banner-warning` + `ProfileSignal` helper。
+- **F4 Settings 分類規則**(`ekp-page-settings-tabs.jsx`):加第 7 tab + `SettingsDocProfiling` —
+  profile→preset mapping `table`(7 profile,值對齊 `profile_presets.py` + W75 section cap=5)+ `ThresholdRow`
+  (confidence 0.70 / img_density 0.15 / too_small 20,對齊 `profiler.py`)。
+- **F5 L1 上載偵測**(`ekp-page-misc.jsx` StepExecute):加 L1「自動文件分類」`banner-info` + 每 indexed
+  doc row 顯示偵測 profile badge + 信心度「已自動套對應 preset」+ `UPLOAD_PROFILE_LABELS`。
+
+**F6 browser 驗 + closeout(Day 1)**:
+- **L2 / L3 / Settings 三處 browser 肉眼驗成功**(no-cache `8089` server force fresh):Documents profile 欄 /
+  文件畫像 card + signals stat-grid / Settings 7 tabs + mapping table,全部視覺對齊現有 UI、console 0 error、零 drift。
+- **L1 browser visual DEFERRED**:browser/babel 頑固緩存 stale StepExecute transform(多次 fresh navigate +
+  close page + no-cache 8089 server 都攞 old);**disk code grep-verified 正確**(const + banner + per-doc)+
+  misc.jsx executed 無 syntax error(StepExecute=function / UPLOAD_PROFILE_LABELS=object)+ 同 L3/Settings 同類
+  banner-info/badge primitive(已驗 render)→ 非 code 問題,純 browser 緩存 artifact。
+- **方法論教訓(W22 DD-1 系列延伸)**:design-mockups browser 驗要 **no-cache http.server**(SPA hash 切換 +
+  browser HTTP cache 會頑固 serve stale jsx;8088 標準 server cached old → 6 tabs 假象;8089 no-cache → 7 tabs 真相)。
+  驗證真確性:`window.<Component>.toString()` check edit string 比肉眼可靠(揭穿 cache)。
+
+**Retro(Day 1)**:
+- **cross-file const 唯一命名**:3 個 page jsx 各定義 profile label map(`PROFILE_LABELS` / `DOC_PROFILE_LABELS` /
+  `UPLOAD_PROFILE_LABELS`)+ badge helper(`ProfileBadge` / `DocProfileBadge`)。EKP Platform.html load 全部 jsx
+  入同一 global scope,**同名 const 會 redeclare SyntaxError** → 特登用唯一名避(DRY 讓位 prototype 安全)。
+- **reuse primitives 零發明**:全程用既有 badge/badge-warning/card/stat-grid/select/banner/table,零 hardcode
+  顏色(全 `oklch(var(--token))`)→ 4 處視覺自動對齊現有 UI(H7 一致兌現)。
+- **早 checkpoint 省返工**:F2 後即 browser 驗 + 用戶 confirm label 風格,先做 F3-F5(同風格 propagate)→ 避免
+  做晒 4 處先發現 label 要改。
+- **mock data 同 backend rule 一致**:ekp-data.jsx signals 對齊 profiler rule(P1_imgdense img_density≥0.15 等)→
+  L3 文件畫像顯示 signals 時可信(用戶睇到 0.188 明白點解 P1 圖密)。
+- **交棒**:F6.3 PAGE_INVENTORY 說明 deferred;L1 browser visual 留下次 fresh session;段③ mockup 完成 →
+  frontend 實作(對齊呢套 mockup)係之後 phase。
 
 **Commits**:
 - `8432219` docs(planning): W77 kickoff
-- (本次)feat(design): W77 F1-F2 mock profile data + L2 文件列表 badge
+- `eb0d354` feat(design): W77 F1-F2 mock profile data + L2 文件列表 badge
+- (本次)feat(design): W77 F3-F5 L3 文件畫像 + Settings 分類規則 + L1 上載偵測
+- (closeout)docs(planning): W77 closeout

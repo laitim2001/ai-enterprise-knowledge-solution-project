@@ -1,6 +1,6 @@
 # W77 plan — profiling UI mockup(ADR-0056 層 A 段③ + OQ-B)
 
-**Status**: active
+**Status**: closed(2026-06-15,WITH L1-BROWSER-VISUAL-DEFERRED CAVEAT)
 **Kickoff**: 2026-06-15
 **Phase 類型**: design mockup(author `references/design-mockups/` profiling UI;非 frontend 實作)
 **ADR**: ADR-0056 D4 三層 UI + OQ-B(「profiling UI 需設計 + 加 design-mockups,H7 對齊」)
@@ -104,3 +104,13 @@ dev API ref)。新 mockup reuse 現有 13 primitives(badge/card/field/seg/switch
 ## §7 Changelog
 
 - 2026-06-15 kickoff — plan active,F1-F6 scope locked;4 落點 R6 grep 核實。
+- 2026-06-15 F1-F2 — mock profile data + L2 文件列表 badge(commit `eb0d354`);browser 驗 L2 render 成功;
+  用戶 confirm design 方向(中文縮短 label + L2 OK 繼續)。
+- 2026-06-15 F3-F5 — L3 文件畫像 section + Settings 分類規則 tab + L1 上載偵測 banner;reuse 既有
+  primitives 零 hardcode 顏色(H7 一致);cross-file const 唯一命名避 redeclare。
+- 2026-06-15 **F6.2 L1 browser visual DEFERRED**(🚧)— browser/babel 頑固緩存 stale StepExecute transform;
+  disk code grep-verified 正確 + 無 syntax error + 同類 primitive 已驗;target 下次 fresh browser session。
+- 2026-06-15 **F6.3 PAGE_INVENTORY 說明 DEFERRED**(🚧)— optional doc-sync,留 frontend 實作 phase 或 explicit trigger。
+- 2026-06-15 **F5.2 偏離**:plan 寫 `banner-success`,實作改 `banner-info`(ingest running 中非完成,語義更準);
+  per-doc detect 用 badge inline 取代「即時 override 連結」(連結去 doc-detail 已有,row 顯示偵測更直接)。
+- 2026-06-15 closeout — plan closed WITH L1-BROWSER-VISUAL-DEFERRED CAVEAT,F1-F6 tick(F6.2 L1 + F6.3 🚧),memory append。
