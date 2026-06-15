@@ -52,7 +52,7 @@ from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
 from ingestion.profile_presets import preset_for
-from ingestion.profiler import DocProfile, ProfileResult
+from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
@@ -70,6 +70,10 @@ _DOC_ID_RE = re.compile(r"[^a-z0-9-]+")
 # BUG-010 — screenshot blob names are `{sha256}.{ext}`; gates the proxy route's
 # path param (defence-in-depth alongside `Path(...).name` traversal stripping).
 _SCREENSHOT_BLOB_RE = re.compile(r"^[a-f0-9]{64}\.[a-z0-9]{2,5}$")
+
+# W80 / ADR-0059 — profile-only backfill reuses a stateless pure-rule profiler
+# (same DocumentProfiler the orchestrator holds; multiple instances are harmless).
+_PROFILER = DocumentProfiler()
 
 router = APIRouter()
 
@@ -1044,6 +1048,179 @@ async def run_kb_reindex(
         "skipped_no_source": skipped_no_source,
         "failed": failed,
         "chunks_total": chunks_total,
+    }
+
+
+async def _backfill_one_doc_profile(
+    *,
+    kb_id: str,
+    doc_id: str,
+    data: bytes,
+    filename: str,
+    kb_config: KbConfig | None,
+    profile_store: DocProfileStore,
+    config_store: DocConfigStore | None,
+) -> str:
+    """W80 / ADR-0059 — re-parse one stored doc + compute its profile + persist,
+    WITHOUT re-chunk / re-embed / re-upsert (零 retrieval 影響).
+
+    Mirrors the ingest-time profile persist + route (W73 / W76 / ADR-0058) but skips
+    every retrieval-mutating stage — backfill only writes the advisory profile + its
+    preset (D6 守). Returns the computed profile label. Tempfile cleaned in `finally`.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="ekp-profile-backfill-")
+    try:
+        safe_name = Path(filename.replace("\\", "/")).name or "source"
+        tmp_path = Path(tmp_dir) / safe_name
+        tmp_path.write_bytes(data)
+
+        # 對齊正常 ingest 嘅 img extraction → profiler img_density 信號一致 (ADR-0057):
+        # a KB that extracts PDF/embedded pictures profiles on the same signals it would
+        # at ingest time; a text-only KB pays nothing.
+        parser = select_parser(
+            tmp_path,
+            extract_images=bool(kb_config and kb_config.extract_embedded_images),
+        )
+        result = parser.parse(tmp_path)
+        if result.parse_failed:
+            raise RuntimeError(f"parse failed: {result.parse_error or 'unknown'}")
+        profile = _PROFILER.profile(result, tmp_path)
+
+        now = datetime.now(UTC)
+        # Persist the profile. D6 守 — preserve a prior manual_override (idempotent skip
+        # means there's normally no prior row here, but keep the merge so a future
+        # force-mode backfill never clobbers a human override).
+        fresh = DocProfileInfo.from_result(profile, profiled_at=now.isoformat())
+        prior = await profile_store.get(kb_id, doc_id)
+        if prior is not None and prior.manual_override is not None:
+            fresh = fresh.model_copy(update={"manual_override": prior.manual_override})
+        await profile_store.upsert(kb_id, doc_id, fresh)
+
+        # Route the profile's preset to per-doc config (D6 skip-if-manual config).
+        if config_store is not None:
+            await _route_profile_preset(
+                store=config_store,
+                kb_id=kb_id,
+                doc_id=doc_id,
+                profile=profile,
+            )
+        return profile.profile
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+async def run_kb_profile_backfill(
+    *,
+    kb_id: str,
+    request: Request,
+    service: KBService,
+) -> dict[str, object]:
+    """W80 / ADR-0059 — profile-only backfill: compute + persist a profile for every
+    already-indexed doc in the KB, WITHOUT re-chunking / re-embedding / re-upserting.
+
+    Distinct from `run_kb_reindex` (which re-ingests). The profiler only landed in
+    `orchestrator.ingest()` at W73, so docs ingested before W73 carry no profile —
+    their read surface (DocumentSummary/Detail.profile) is null. This backfill reuses
+    the reindex source path (`download_source_document`) + the standalone profiler +
+    the ingest persist/route, but drops every retrieval-mutating stage → zero impact
+    on retrieval quality / already-tuned per-KB config.
+
+    Per doc:
+      - already has a profile → skip (`skipped_has_profile`, idempotent).
+      - no stored source (pre-W46 ingest, or a failed best-effort persist) → skip
+        (`skipped_no_source` — re-upload via doc-level reindex to make it backfillable).
+      - else re-parse → profile → persist (D6 守 preserve manual_override) + route preset.
+    One doc's failure never aborts the batch (`failed`). Synchronous (Tier 1).
+    """
+    engine = _engine_or_503(request)
+    profile_store = _doc_profile_store(request)
+    if profile_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Doc-profile store not initialized — backfill has nowhere to persist "
+                "profiles (check DATABASE_URL + lifespan wiring)."
+            ),
+        )
+    config_store = getattr(request.app.state, "doc_config_store", None)
+    settings = get_settings()
+
+    # KB-level config read once — all docs share the KB's extract_embedded_images toggle.
+    try:
+        kb_record = await service.get(kb_id)
+        kb_config = kb_record.config
+    except Exception:  # noqa: BLE001 — defensive: fall back to no-config (text-only) profiling
+        kb_config = None
+
+    try:
+        rows = await engine.list_documents(kb_id)
+    except Exception as exc:  # noqa: BLE001 — surface Azure errors as 502
+        _stdlib_logger.exception("profile_backfill_list_failed kb_id=%s", kb_id)
+        raise _api_error(
+            "backfill.list_failed",
+            f"failed to list documents for kb_id={kb_id!r}: {type(exc).__name__}: {exc}",
+            "Check Azure AI Search is reachable + the per-KB index exists.",
+            status.HTTP_502_BAD_GATEWAY,
+        ) from exc
+
+    doc_ids = [str(r["doc_id"]) for r in rows if r.get("doc_id")]
+    profiled: dict[str, str] = {}
+    skipped_has_profile: list[str] = []
+    skipped_no_source: list[str] = []
+    failed: list[dict[str, str]] = []
+
+    for doc_id in doc_ids:
+        # Idempotent — a doc with a profile is left untouched (its manual_override, if
+        # any, is preserved; re-profiling it is the override-aware W79 path, not backfill).
+        if await profile_store.get(kb_id, doc_id) is not None:
+            skipped_has_profile.append(doc_id)
+            continue
+
+        source = await download_source_document(
+            settings.azure_blob_connection_string,
+            kb_id,
+            doc_id,
+        )
+        if source is None:
+            skipped_no_source.append(doc_id)
+            continue
+        data, filename = source
+
+        try:
+            label = await _backfill_one_doc_profile(
+                kb_id=kb_id,
+                doc_id=doc_id,
+                data=data,
+                filename=filename,
+                kb_config=kb_config,
+                profile_store=profile_store,
+                config_store=config_store,
+            )
+            profiled[doc_id] = label
+        except Exception as exc:  # noqa: BLE001 — one doc's failure must not abort the batch
+            _stdlib_logger.exception(
+                "profile_backfill_doc_failed kb_id=%s doc_id=%s", kb_id, doc_id
+            )
+            failed.append({"doc_id": doc_id, "error": f"{type(exc).__name__}: {exc}"})
+
+    logger.info(
+        "kb_profile_backfilled",
+        kb_id=kb_id,
+        documents_total=len(doc_ids),
+        profiled=len(profiled),
+        skipped_has_profile=len(skipped_has_profile),
+        skipped_no_source=len(skipped_no_source),
+        failed=len(failed),
+    )
+    return {
+        "status": "profiled",
+        "kb_id": kb_id,
+        "documents_total": len(doc_ids),
+        "profiled": len(profiled),
+        "skipped_has_profile": skipped_has_profile,
+        "skipped_no_source": skipped_no_source,
+        "failed": failed,
+        "profiles": profiled,
     }
 
 

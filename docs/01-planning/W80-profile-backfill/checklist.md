@@ -4,10 +4,10 @@
 
 ## F1 — backend profile-only backfill endpoint
 
-- [ ] F1.1 新 endpoint `POST /kb/{kb_id}/profiles/backfill` + helper `run_kb_profile_backfill`(`_verify_kb_or_404` + `_refuse_if_archived` + `engine.list_documents` 列 doc + `doc_profile_store` None → 503)
-- [ ] F1.2 per-doc loop(復用 reindex structure 拔重活):已有 profile → `skipped_has_profile` / `download_source_document` None → `skipped_no_source` / parse + `_PROFILER.profile` + persist(D6 守 preserve `manual_override`)+ `_route_profile_preset`(D6 skip-if-manual);單 doc 失敗 → `failed` 不 abort batch;tempfile finally 清理;**無** chunk/embed/upsert/counter
-- [ ] F1.3 回應 shape `{status, kb_id, documents_total, profiled, skipped_has_profile, skipped_no_source, failed, profiles}`
-- [ ] F1.4 test `test_doc_profile_backfill.py`(H6)— 補 profile + skip 已有 + skip 無 source + per-doc 容錯 + D6 preserve manual_override + route preset + 無 populator call(不動 retrieval);ruff 0 + mypy 新 code clean + pytest 無 regression
+- [x] F1.1 新 endpoint `POST /kb/{kb_id}/profiles/backfill`(kb.py `backfill_kb_profiles`,對齊 `reindex_kb` 的 404/archived guard)+ helper `run_kb_profile_backfill`(documents.py,`_engine_or_503` 列 doc + `_doc_profile_store` None → 503)
+- [x] F1.2 per-doc loop(復用 reindex structure 拔重活)+ `_backfill_one_doc_profile` helper:已有 profile → `skipped_has_profile` / `download_source_document` None → `skipped_no_source` / parse + `_PROFILER.profile`(documents.py module-level singleton)+ persist(D6 守 preserve `manual_override`)+ `_route_profile_preset`(D6 skip-if-manual);單 doc 失敗 → `failed` 不 abort batch;tempfile finally 清理;**無** chunk/embed/upsert/counter
+- [x] F1.3 回應 shape `{status:"profiled", kb_id, documents_total, profiled, skipped_has_profile, skipped_no_source, failed, profiles}`
+- [x] F1.4 test `test_doc_profile_backfill.py`(H6)8 tests — 補 profile + skip 已有 + skip 無 source + per-doc 容錯 + D6 route skip-if-manual + `_backfill_one_doc_profile` preserve manual_override + 無 ingestion services(不動 retrieval)+ 503;**ruff 0 + mypy 新 code clean(剩 line 120 `_engine_or_503` pre-existing baseline)+ pytest 16 passed(backfill 8 + override 8 regression)**
 
 ## F2 — 對現有 KB 觸發 backfill + browser 驗
 

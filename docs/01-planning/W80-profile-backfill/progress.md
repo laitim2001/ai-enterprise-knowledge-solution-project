@@ -33,5 +33,27 @@ profile-only backfill**(非 (a) 完整 re-ingest),照 ① → ② → ③ 走。
 
 **Plan 落地**:W80 folder + plan.md(active)+ checklist.md(F1-F3)+ progress.md + ADR-0059 + README index。
 
+**F1 implement(Day 1)**:
+- **documents.py**:import `DocumentProfiler` + module-level `_PROFILER` singleton(stateless 純規則,多 instance
+  無害);`_backfill_one_doc_profile`(re-parse 一個 stored doc → `_PROFILER.profile` → persist D6 守 preserve
+  `manual_override` + `_route_profile_preset` D6 skip-if-manual;tempfile finally;**無** chunk/embed/upsert);
+  `run_kb_profile_backfill`(`_engine_or_503` 列 doc + `_doc_profile_store` None → 503;per-doc:已有 profile →
+  `skipped_has_profile` / 無 source → `skipped_no_source` / 否則 backfill;單 doc 失敗 → `failed` 不 abort batch;
+  KB-level kb_config 讀一次對齊 `extract_embedded_images` img 信號)。
+- **kb.py**:`POST /kb/{kb_id}/profiles/backfill`(`backfill_kb_profiles`,對齊 `reindex_kb` 的 404/archived guard +
+  local import 避 route-module cycle)。
+- **test**:`test_doc_profile_backfill.py` 8 tests(duck-typed `ParserResult` mock 餵真 `_PROFILER` → P1_sop_imgdense;
+  monkeypatch `download_source_document` + `select_parser`;endpoint 經 kb router)。
+
+**F1 驗證**:ruff 0 + mypy 新 code clean(剩 line 120 `_engine_or_503` `return engine` Any = W79 已記 pre-existing
+baseline,加 `_PROFILER` 3 行令 line 116→120 shift)+ pytest **16 passed**(backfill 8 + override 8 regression)。
+
+**設計細節(implement)**:
+- backfill **唔用** `_ingestion_deps_or_503`(嗰個 require embedder/populator/chunker 否則 503)— test
+  `test_backfill_succeeds_without_ingestion_services` 證 backfill 喺零 ingestion services 下成功 = 零 retrieval 依賴。
+- idempotent skip 已有 profile → override doc(W79)走 `skipped_has_profile`,**唔會被重 profile**(D6 守);
+  `_backfill_one_doc_profile` 仍保 manual_override merge(future force-mode parity)。
+
 **Commits**:
 - (kickoff)docs(planning): W80 kickoff + ADR-0059 — profile-only backfill
+- (F1)feat(api): W80 F1 profile-only backfill endpoint (ADR-0059)

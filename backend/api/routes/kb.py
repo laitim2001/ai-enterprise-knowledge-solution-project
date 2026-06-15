@@ -283,6 +283,39 @@ async def reindex_kb(kb_id: str, request: Request, service: KbServiceDep) -> dic
     return await run_kb_reindex(kb_id=kb_id, request=request, service=service)
 
 
+@router.post("/kb/{kb_id}/profiles/backfill", status_code=status.HTTP_202_ACCEPTED)
+async def backfill_kb_profiles(
+    kb_id: str, request: Request, service: KbServiceDep
+) -> dict[str, object]:
+    """W80 / ADR-0059 — profile-only backfill for every doc in the KB.
+
+    The profiler only landed in ingest at W73, so docs ingested before W73 carry no
+    profile (read surface null). This backfills each already-indexed doc — re-parse +
+    compute profile + persist — WITHOUT re-chunk / re-embed / re-upsert (zero retrieval
+    impact + zero disturbance to already-tuned per-KB config). Idempotent (skips a doc
+    that already has a profile); a doc with no stored source (pre-W46 ingest) is reported
+    under `skipped_no_source`. Synchronous (Tier 1). Returns 202 + {status, kb_id,
+    documents_total, profiled, skipped_has_profile, skipped_no_source, failed, profiles}.
+    """
+    try:
+        kb = await service.get(kb_id)  # 404 guard
+    except KBNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    if kb.archived:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"KB '{kb_id}' is archived — re-create the KB to resume ingest",
+        )
+
+    # Local import avoids a documents↔kb route-module import cycle (backfill-only path).
+    from api.routes.documents import run_kb_profile_backfill
+
+    return await run_kb_profile_backfill(kb_id=kb_id, request=request, service=service)
+
+
 @router.patch("/kb/{kb_id}", response_model=KbStatus)
 async def update_kb_metadata(
     kb_id: str,
