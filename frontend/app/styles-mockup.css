@@ -307,7 +307,13 @@ a { color: inherit; text-decoration: none; }
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 28px 40px;
+  /* ADR-0062: responsive max-width — content area caps at 1600px and centres on
+     wide/ultrawide screens (LR padding = (100% - 1600px) / 2), falls back to the
+     28px min on screens narrower than 1600px. padding-clamp (not max-width +
+     margin:auto) because .content is a flex item — auto margin would kill flex-grow
+     and shrink it to intrinsic width. Single knob: change 1600px in both this file
+     and references/design-mockups/styles.css. chat uses its own 3-pane grid (not .content). */
+  padding: 24px max(28px, (100% - 1600px) / 2) 40px;
   background: oklch(var(--background));
 }
 .content-narrow { max-width: 1280px; margin: 0 auto; }

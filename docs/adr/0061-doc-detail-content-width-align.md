@@ -1,8 +1,13 @@
 # ADR-0061: Doc-detail 頁面寬度對齊全站 — `content content-wide`(1600px 置中)→ `content`(貼邊)
 
 **Date**: 2026-06-15
-**Status**: Accepted
+**Status**: Accepted(方向 amended by ADR-0062)
 **Approver**: 用戶(2026-06-15 AskUserQuestion 揀「改貼邊 + 同步 mockup」)
+
+> **Amended by ADR-0062**(同日):本 ADR 把 doc-detail 從 `content-wide`(1600px 上限)改成無上限
+> 貼邊,方向理解錯誤 —— 用戶隨後發現全站「貼邊撐滿」才是真問題。ADR-0062 給**全 app** `.content`
+> 加 responsive 最大寬度(1600px 居中)。doc-detail 仍用 `.content`(本 ADR 的 className 統一成立),
+> 改經全站上限自動居中 → 視覺回到 ~1600px 但全站一致。本 ADR 的「貼邊」意圖被 ADR-0062 取代。
 
 ## Context
 
