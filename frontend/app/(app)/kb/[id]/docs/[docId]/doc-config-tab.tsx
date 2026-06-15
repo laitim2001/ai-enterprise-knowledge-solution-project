@@ -37,7 +37,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { docConfigApi, type DocConfig } from '@/lib/api/doc-config';
-import { type DocProfileInfo } from '@/lib/api/documents';
+import { documentsApi, type DocProfileInfo } from '@/lib/api/documents';
 import {
   configTestApi,
   type ConfigRunSummary,
@@ -57,13 +57,21 @@ const DOC_PROFILE_LABELS: Record<string, string> = {
 };
 
 function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
-  const low = profile.fallback_applied || profile.confidence < 0.7;
+  // W79 / ADR-0058 — effective = manual_override ?? system auto profile.
+  const effective = profile.manual_override ?? profile.profile;
+  const overridden = profile.manual_override != null;
+  // 低信心黃旗只對 system auto;override = 人手確定,唔標低信心。
+  const low = !overridden && (profile.fallback_applied || profile.confidence < 0.7);
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span className={`badge ${low ? 'badge-warning' : 'badge-muted'}`} style={{ fontSize: 11 }}>
-        <span className="badge-dot" /> {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
+        <span className="badge-dot" /> {DOC_PROFILE_LABELS[effective] ?? effective}
       </span>
-      <span className="text-xs muted mono">信心 {Math.round(profile.confidence * 100)}%</span>
+      {overridden ? (
+        <span className="text-xs muted">已人手覆寫</span>
+      ) : (
+        <span className="text-xs muted mono">信心 {Math.round(profile.confidence * 100)}%</span>
+      )}
     </span>
   );
 }
@@ -223,6 +231,22 @@ function DocConfigEditor({
     onError: (e) => toast.error(e instanceof Error ? e.message : '儲存失敗'),
   });
 
+  // W79 / ADR-0058 — 人手覆寫 profile mutation. override → 套對應 preset 落 per-doc config +
+  // 記 manual_override. invalidate doc-detail (badge/select effective) + doc-config (preset 套落).
+  const queryClient = useQueryClient();
+  const overrideMutation = useMutation({
+    mutationFn: (newProfile: string) => documentsApi.overrideProfile(kbId, docId, newProfile),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-detail', docId] });
+      void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-config', docId] });
+      toast.success('已套用 profile + 對應 preset(重載頁面睇更新旋鈕)');
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'profile 覆寫失敗'),
+  });
+
+  // effective profile = manual_override ?? system auto (select 預設 + badge 顯示用).
+  const effectiveProfile = profile ? (profile.manual_override ?? profile.profile) : null;
+
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {/* scope banner */}
@@ -303,8 +327,21 @@ function DocConfigEditor({
               </div>
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label className="label">人手覆寫 profile(override)</label>
-              <select className="select" defaultValue={profile.profile} style={{ maxWidth: 260 }}>
+              <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                人手覆寫 profile(override)
+                {profile.manual_override != null && (
+                  <span className="badge badge-success" style={{ fontSize: 9 }}>
+                    已覆寫 · 系統原判 {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
+                  </span>
+                )}
+              </label>
+              <select
+                className="select"
+                value={effectiveProfile ?? profile.profile}
+                disabled={overrideMutation.isPending}
+                onChange={(e) => overrideMutation.mutate(e.target.value)}
+                style={{ maxWidth: 260 }}
+              >
                 <option value="P1_sop_imgdense">P1 圖密SOP</option>
                 <option value="P1_sop_text">P1 文字SOP</option>
                 <option value="P2_prose">P2 散文</option>
@@ -314,8 +351,8 @@ function DocConfigEditor({
                 <option value="P5_form">P5 表單</option>
               </select>
               <div className="hint">
-                改 profile 會套對應 preset 落下方旋鈕。Admin 覆寫永遠優先於自動偵測(ADR-0056 D6)。
-                <span className="muted"> (覆寫持久化為段③後續)</span>
+                改 profile 即套對應 preset 落下方旋鈕(覆蓋 per-doc 配置)。Admin 覆寫永遠優先於自動偵測
+                (ADR-0056 D6)。{overrideMutation.isPending && ' 套用中…'}
               </div>
             </div>
           </div>

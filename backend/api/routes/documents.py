@@ -29,13 +29,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
-from api.schemas.doc_profile import DocProfileInfo
+from api.schemas.doc_profile import DocProfileInfo, ProfileOverrideRequest
 from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
     DocumentDetail,
@@ -52,7 +52,7 @@ from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
 from ingestion.profile_presets import preset_for
-from ingestion.profiler import ProfileResult
+from ingestion.profiler import DocProfile, ProfileResult
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
@@ -257,8 +257,13 @@ async def list_documents(
         for summary in summaries:
             persisted = profiles.get(summary.doc_id)
             if persisted is not None:
-                summary.profile = persisted.profile
-                summary.profile_confidence = persisted.confidence
+                # ADR-0058 — L2 badge 顯示 effective profile (manual_override 優先於 system auto).
+                # override = human-set → 無 confidence 概念 (L2 badge 唔顯示 % + 唔黃旗);
+                # auto → 顯示 system 信心度 (低信心黃旗).
+                summary.profile = persisted.manual_override or persisted.profile
+                summary.profile_confidence = (
+                    None if persisted.manual_override is not None else persisted.confidence
+                )
     return summaries
 
 
@@ -556,6 +561,69 @@ async def get_document_detail(
     )
 
 
+@router.put("/kb/{kb_id}/docs/{doc_id}/profile", response_model=DocProfileInfo)
+async def override_doc_profile(
+    kb_id: str,
+    doc_id: str,
+    payload: ProfileOverrideRequest,
+    request: Request,
+    service: KbServiceDep,
+) -> DocProfileInfo:
+    """ADR-0058 — 人手覆寫 doc profile: 套對應 preset 落 per-doc config + 記 manual_override.
+
+    Explicit user action — 套 preset **覆蓋** 現有 per-doc config (per ADR-0056 D3「套 preset」,
+    非 merge; user 可之後 L3 逐 knob fine-tune). 唔用 `_route_profile_preset` (嗰個 D6 skip-if-manual
+    係 ingest auto-route 用). system auto profile/confidence/signals 保留 (W76 read-only fact); 只加
+    `manual_override` annotation. UI effective = `manual_override ?? profile`. re-ingest preserve 此
+    annotation (per `_run_ingest_pipeline` ADR-0058 D6 守).
+
+    404 if no stored profile (未 ingest / 未 profiled — 唔可 override 一個未偵測嘅 doc).
+    422 if the target profile has no routable preset (too_small / unknown / invalid label).
+    """
+    await _verify_kb_or_404(kb_id, service)
+    await _refuse_if_archived(kb_id, service)
+
+    # override 唔需 ingestion services (embedder/populator/chunker) — 只需兩個 store
+    # (唔用 `_ingestion_deps_or_503` 嗰個 require ingestion services 否則 503).
+    profile_store = _doc_profile_store(request)
+    config_store: DocConfigStore | None = getattr(request.app.state, "doc_config_store", None)
+    if profile_store is None or config_store is None:
+        raise _api_error(
+            "profile.store_unavailable",
+            "Profile / config store not configured.",
+            "Persistent stores require DATABASE_URL; the in-memory fallback is wired on startup.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    # payload.profile is a free-form str (API boundary); preset_for narrows via dict.get —
+    # an invalid / non-routable label returns None → 422 below. cast for mypy (runtime-safe).
+    preset = preset_for(cast(DocProfile, payload.profile))
+    if preset is None:
+        raise _api_error(
+            "profile.no_preset",
+            f"Profile '{payload.profile}' has no routable preset.",
+            "Use one of P1_sop_imgdense / P1_sop_text / P2_prose / P3_slide_imgdense / "
+            "P3_slide_text / P4_scan_imgdense / P5_form.",
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    existing = await profile_store.get(kb_id, doc_id)
+    if existing is None:
+        raise _api_error(
+            "profile.not_found",
+            f"No profile for doc '{doc_id}' in kb '{kb_id}' — not yet ingested / profiled.",
+            "Re-index the document so the profiler runs before overriding its profile.",
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    # 1. 套對應 preset 落 per-doc config (覆蓋 — explicit user action, ADR-0056 D3).
+    await config_store.upsert(kb_id, doc_id, preset)
+    # 2. 記 manual_override annotation (保 system auto profile/confidence/signals 不變).
+    updated = existing.model_copy(update={"manual_override": payload.profile})
+    await profile_store.upsert(kb_id, doc_id, updated)
+    return updated
+
+
 def _slugify_doc_id(filename_stem: str) -> str:
     """Slugify a filename stem into a doc_id matching Azure index-name rules.
 
@@ -812,11 +880,14 @@ async def _run_ingest_pipeline(
         # ingest (the doc is already indexed; profile just won't show until re-index).
         if result.profile is not None and deps.doc_profile_store is not None:
             try:
-                await deps.doc_profile_store.upsert(
-                    kb_id,
-                    doc_id,
-                    DocProfileInfo.from_result(result.profile, profiled_at=now.isoformat()),
-                )
+                fresh = DocProfileInfo.from_result(result.profile, profiled_at=now.isoformat())
+                # ADR-0058 D6 守 — re-ingest 更新 system detect 信號, 但 preserve 人手 override
+                # annotation (override 後 re-index 唔失人手覆寫;config 端由 _route_profile_preset
+                # D6 skip-if-manual 守).
+                prior = await deps.doc_profile_store.get(kb_id, doc_id)
+                if prior is not None and prior.manual_override is not None:
+                    fresh = fresh.model_copy(update={"manual_override": prior.manual_override})
+                await deps.doc_profile_store.upsert(kb_id, doc_id, fresh)
             except Exception:  # noqa: BLE001 — profile persist is advisory, never fatal
                 _stdlib_logger.exception("profile_persist_failed kb_id=%s doc_id=%s", kb_id, doc_id)
 

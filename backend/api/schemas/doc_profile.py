@@ -51,6 +51,11 @@ class DocProfileInfo(BaseModel):
     fallback_applied: bool = False  # True → low-confidence D7 conservative fallback
     signals: DocProfileSignals
     profiled_at: str  # ISO-8601; stamped by the caller at persist time
+    # ADR-0058 — 人手覆寫 profile annotation. None = 無 override (用 system auto `profile`).
+    # system-detected profile/confidence/signals 保留不變 (W76 read-only fact 分層); UI effective
+    # = `manual_override ?? profile`. 只有 override write endpoint set 此 field; `from_result`
+    # 唔 set (auto-detect → None). re-ingest 須 preserve 此 annotation (ADR-0058 D6 守).
+    manual_override: str | None = None
 
     @classmethod
     def from_result(cls, result: ProfileResult, *, profiled_at: str) -> DocProfileInfo:
@@ -77,3 +82,13 @@ class DocProfileInfo(BaseModel):
             ),
             profiled_at=profiled_at,
         )
+
+
+class ProfileOverrideRequest(BaseModel):
+    """ADR-0058 — 人手覆寫 profile request body for `PUT /kb/{kb_id}/docs/{doc_id}/profile`.
+
+    ``profile`` = target DocProfile label; must have a routable preset (P1..P5 —
+    `too_small` / `unknown` / invalid labels are rejected 422 since they have no preset).
+    """
+
+    profile: str

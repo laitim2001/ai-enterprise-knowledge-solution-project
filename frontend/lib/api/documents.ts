@@ -84,11 +84,14 @@ export interface DocProfileSignals {
 }
 
 export interface DocProfileInfo {
-  profile: string; // DocProfile label (e.g. "P1_sop_imgdense")
+  profile: string; // DocProfile label (e.g. "P1_sop_imgdense") — system auto-detect
   confidence: number; // 0–1
   fallback_applied: boolean; // true → low-confidence D7 conservative fallback
   signals: DocProfileSignals;
   profiled_at: string; // ISO-8601
+  // W79 / ADR-0058 — 人手覆寫 profile annotation. null = 無 override (用 system auto `profile`).
+  // UI effective = manual_override ?? profile.
+  manual_override?: string | null;
 }
 
 export interface DocumentDetail {
@@ -129,5 +132,13 @@ export const documentsApi = {
   getDocDetail: (kbId: string, docId: string): Promise<DocumentDetail> =>
     client.get<DocumentDetail>(
       `/kb/${encodeURIComponent(kbId)}/docs/${encodeURIComponent(docId)}`,
+    ),
+
+  // W79 / ADR-0058 — 人手覆寫 profile: 套對應 preset 落 per-doc config + 記 manual_override.
+  // Returns the updated DocProfileInfo (system auto 保留 + manual_override set).
+  overrideProfile: (kbId: string, docId: string, profile: string): Promise<DocProfileInfo> =>
+    client.put<DocProfileInfo>(
+      `/kb/${encodeURIComponent(kbId)}/docs/${encodeURIComponent(docId)}/profile`,
+      { profile },
     ),
 };
