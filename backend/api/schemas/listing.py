@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from api.schemas.doc_profile import DocProfileInfo
 from api.schemas.query import ImageRef
 
 
@@ -25,6 +26,11 @@ class DocumentSummary(BaseModel):
     last_indexed_at: str  # ISO datetime; max(ingested_at) across observed chunks
     source_url: str | None = None
     tags: list[str] = []
+    # W76 / ADR-0056 層 A 段③ 前置 — lightweight profile surface for the L2 doc-list
+    # badge. Full signals live on DocumentDetail.profile; here only label + confidence
+    # (avoid倒 the 13-field signal bundle into a list payload). None = not profiled.
+    profile: str | None = None  # DocProfile label (e.g. "P1_sop_imgdense")
+    profile_confidence: float | None = None  # 0–1
 
 
 class ChunkSummary(BaseModel):
@@ -146,6 +152,9 @@ class DocumentDetail(BaseModel):
     indexed_at: str                         # from list_documents `last_indexed_at` (ISO-8601 string)
     outline: list[OutlineNode]              # reconstructed from chunks' section_path[] (sorted)
     image_refs: list[ImageRef]              # aggregated from chunks' embedded_images_json (SHA256-deduped)
+    # W76 / ADR-0056 層 A 段③ 前置 — full profile + signals for the L3「文件畫像」
+    # section (transparent signal展示 + override). None = not profiled (re-index to populate).
+    profile: DocProfileInfo | None = None
 
 
 # --------------------------------------------------------------------------- #

@@ -35,6 +35,7 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
+from api.schemas.doc_profile import DocProfileInfo
 from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
     DocumentDetail,
@@ -56,6 +57,7 @@ from ingestion.screenshots.uploader import ScreenshotUploader, download_screensh
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from kb_management.doc_config_store import DocConfigStore
+from kb_management.doc_profile_store import DocProfileStore
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.kb_naming import kb_id_to_screenshot_container
 from storage.settings import get_settings
@@ -96,6 +98,9 @@ class _IngestionDeps:
     # W73 / ADR-0056 層 A — per-doc config store for profile→preset routing
     # (None when the store isn't wired, e.g. some tests → routing skips silently).
     doc_config_store: DocConfigStore | None = None
+    # W76 / ADR-0056 層 A 段③ 前置 — per-doc profile store (persist on ingest for the
+    # read surface). None when not wired → persist skips silently (advisory).
+    doc_profile_store: DocProfileStore | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -109,6 +114,15 @@ def _engine_or_503(request: Request) -> RetrievalEngine:
             ),
         )
     return engine
+
+
+def _doc_profile_store(request: Request) -> DocProfileStore | None:
+    """Resolve the lifespan-wired per-doc profile store (W76 / ADR-0056 層 A 段③ 前置).
+
+    Read paths (list_documents / doc_detail) join the store best-effort — an absent
+    store (unwired, or some tests) just leaves profile fields None (graceful degrade).
+    """
+    return getattr(request.app.state, "doc_profile_store", None)
 
 
 def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
@@ -127,6 +141,8 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     make_chunker = getattr(request.app.state, "make_ingestion_chunker", None)
     # W73 / ADR-0056 層 A — doc-config store for profile→preset auto-write.
     doc_config_store = getattr(request.app.state, "doc_config_store", None)
+    # W76 / ADR-0056 層 A 段③ 前置 — doc-profile store for read-surface persist.
+    doc_profile_store = getattr(request.app.state, "doc_profile_store", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -141,6 +157,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         chunker=chunker,
         make_chunker=make_chunker,
         doc_config_store=doc_config_store,
+        doc_profile_store=doc_profile_store,
     )
 
 
@@ -228,7 +245,21 @@ async def list_documents(
             detail=f"document listing failure: {type(exc).__name__}: {exc}",
         ) from exc
 
-    return [DocumentSummary(**row) for row in rows]
+    summaries = [DocumentSummary(**row) for row in rows]
+    # W76 / ADR-0056 層 A 段③ 前置 — join the persisted profile (label + confidence)
+    # best-effort. Absent store / join failure → profile fields stay None (graceful).
+    store = _doc_profile_store(request)
+    if store is not None:
+        try:
+            profiles = await store.list_for_kb(kb_id)
+        except Exception:  # noqa: BLE001 — advisory join; degrade to None
+            profiles = {}
+        for summary in summaries:
+            persisted = profiles.get(summary.doc_id)
+            if persisted is not None:
+                summary.profile = persisted.profile
+                summary.profile_confidence = persisted.confidence
+    return summaries
 
 
 @router.get("/kb/{kb_id}/images", response_model=KbImagesResponse)
@@ -493,6 +524,15 @@ async def get_document_detail(
     kb_record = await service.get(kb_id)
     chunk_strategy = kb_record.config.chunk_strategy
 
+    # W76 / ADR-0056 層 A 段③ 前置 — join the persisted profile (full signals) best-effort.
+    doc_profile = None
+    profile_store = _doc_profile_store(request)
+    if profile_store is not None:
+        try:
+            doc_profile = await profile_store.get(kb_id, doc_id)
+        except Exception:  # noqa: BLE001 — advisory join; degrade to None
+            doc_profile = None
+
     return DocumentDetail(
         doc_id=doc_id,
         title=str(doc_row.get("doc_title") or ""),
@@ -512,6 +552,7 @@ async def get_document_detail(
         indexed_at=str(doc_row.get("last_indexed_at") or ""),
         outline=outline,
         image_refs=list(seen_images.values()),
+        profile=doc_profile,
     )
 
 
@@ -765,6 +806,19 @@ async def _run_ingest_pipeline(
                 )
             except Exception:  # noqa: BLE001 — profile routing is advisory, never fatal
                 _stdlib_logger.exception("profile_routing_failed kb_id=%s doc_id=%s", kb_id, doc_id)
+
+        # W76 / ADR-0056 層 A 段③ 前置 — persist the profile for the read surface
+        # (DocumentSummary/Detail.profile). Advisory: a persist failure never fails the
+        # ingest (the doc is already indexed; profile just won't show until re-index).
+        if result.profile is not None and deps.doc_profile_store is not None:
+            try:
+                await deps.doc_profile_store.upsert(
+                    kb_id,
+                    doc_id,
+                    DocProfileInfo.from_result(result.profile, profiled_at=now.isoformat()),
+                )
+            except Exception:  # noqa: BLE001 — profile persist is advisory, never fatal
+                _stdlib_logger.exception("profile_persist_failed kb_id=%s doc_id=%s", kb_id, doc_id)
 
         return {
             "doc_id": doc_id,

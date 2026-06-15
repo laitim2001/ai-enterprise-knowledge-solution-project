@@ -28,5 +28,27 @@ H4 ✅(rule label,純結構信號)/ H7 ✅(零 frontend → 唔 trigger)/ H6 ✅
 
 **Plan 落地**:W76 folder + plan.md(active)+ checklist.md(F1-F5)+ progress.md。
 
+**F1-F4 implement(Day 1)**:
+- **F1 schema + store**:`api/schemas/doc_profile.py`(`DocProfileInfo` + `DocProfileSignals` +
+  `from_result` TYPE_CHECKING-only ingestion seam,無 runtime reverse dep)+
+  `kb_management/doc_profile_store.py`(Protocol + InMemory + Postgres table `document_profiles`
+  + factory,verbatim mirror `doc_config_store`)。ruff + mypy --strict 新 code 0。
+- **F2 persist**:server.py lifespan wire `make_doc_profile_store` + `_IngestionDeps.doc_profile_store`
+  field + `_ingestion_deps_or_503` getattr + `_run_ingest_pipeline` best-effort
+  `upsert(from_result(..., profiled_at=now.isoformat()))`(advisory `profile_persist_failed`,唔 fail ingest)。
+- **F3 expose**:`DocumentSummary.profile` + `profile_confidence`(L2 輕量)/ `DocumentDetail.profile`
+  (L3 完整 signals)+ `_doc_profile_store(request)` helper + list(`list_for_kb` map)/ detail(`get`)
+  route best-effort join(缺 → null,純 additive 既有 field bit-identical)。
+- **F4 test**:`test_doc_profile_read_surface.py` 14 test(store CRUD 6 + factory 2 + from_result 2 +
+  API join 4)。**regression 57 passed**(documents-listing / profile-routing / doc-config-store /
+  profiler 零 break)。mypy --strict 新 code 0 + ruff 0。
+- **R3 deviation**:F4.2 e2e ingest persist test 改為元件覆蓋(`from_result` + store upsert,已分別測),
+  inline persist guard 邏輯 trivial(`if profile and store: upsert(...)`),唔 mock Azure orchestrator
+  (Karpathy §1.2 simplicity;e2e ingest 涉 Embedder/IndexPopulator/Azure Search mock 過重)。
+- **驗證註**:ruff `ruff check .` project way 報 67 pre-existing(含 server.py truststore E402 baseline);
+  我新 file 零 ruff error;server.py 我加嘅 import 有 `# noqa: E402` 不增 error。mypy --strict 對
+  transitive import 報 pre-existing(storage / parsers,我冇 touch),exit 非零但新 code 0(git diff 核實)。
+
 **Commits**:
-- (本 entry)docs(planning): W76 kickoff
+- `ff5672b` docs(planning): W76 kickoff
+- (本次)feat(api): W76 profile read surface — persist + expose(F1-F4)
