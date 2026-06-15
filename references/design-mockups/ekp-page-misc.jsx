@@ -234,6 +234,12 @@ function StepDocumentProcessing({ kb, onBack, onNext }) {
   );
 }
 
+// W77 / ADR-0056 層 A 段③ — L1 上載偵測 label(自動分類即時回饋)。
+const UPLOAD_PROFILE_LABELS = {
+  P1_sop_imgdense: "P1 圖密SOP", P1_sop_text: "P1 文字SOP", P2_prose: "P2 散文",
+  P3_slide_imgdense: "P3 圖密簡報", P3_slide_text: "P3 文字簡報",
+  P4_scan_imgdense: "P4 掃描", P5_form: "P5 表單",
+};
 function StepExecute({ kb, onBack, onDone }) {
   const [running, setRunning] = useState(true);
   const docs = window.MOCK_DOCUMENTS.slice(0, 6);
@@ -257,6 +263,15 @@ function StepExecute({ kb, onBack, onDone }) {
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600 }}>67%</div>
         </div>
 
+        {/* W77 / ADR-0056 段③ — L1 自動文件分類即時回饋 */}
+        <div className="banner banner-info" style={{ marginBottom: 16 }}>
+          <IcLayers size={15} style={{ color: "oklch(var(--info))", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13 }}><b>自動文件分類(W72 profiler)</b> — ingest 時偵測每份文件 profile,自動套對應 recall preset。</div>
+            <div className="text-xs muted" style={{ marginTop: 2 }}>偵測錯可去文件詳情頁一鍵覆寫 · ADR-0056 層 A</div>
+          </div>
+        </div>
+
         <div className="col" style={{ gap: 6 }}>
           {docs.map((d, i) => {
             const statuses = ["indexed", "indexed", "indexed", "indexed", "indexing", "failed"];
@@ -273,6 +288,12 @@ function StepExecute({ kb, onBack, onDone }) {
                 <span className={`status-dot ${status === "indexed" ? "ready" : status === "indexing" ? "indexing" : "failed"}`} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</div>
+                  {status === "indexed" && d.profile && (
+                    <div className="text-xs muted" style={{ marginTop: 3, display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                      <span className="badge badge-muted" style={{ fontSize: 9 }}><span className="badge-dot" /> {UPLOAD_PROFILE_LABELS[d.profile.profile] || d.profile.profile}</span>
+                      偵測信心 {Math.round(d.profile.confidence * 100)}% · 已自動套對應 preset
+                    </div>
+                  )}
                   {status === "indexing" && (
                     <div style={{ marginTop: 4 }}>
                       <div className="progress accent" style={{ height: 3 }}>

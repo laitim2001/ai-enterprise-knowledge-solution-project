@@ -402,6 +402,32 @@ function ChunkInspector({ chunk, kb, image }) {
   );
 }
 
+// W77 / ADR-0056 層 A 段③ — 文件畫像(L3)helpers:profile badge + 信號 stat。
+const DOC_PROFILE_LABELS = {
+  P1_sop_imgdense: "P1 圖密SOP", P1_sop_text: "P1 文字SOP", P2_prose: "P2 散文",
+  P3_slide_imgdense: "P3 圖密簡報", P3_slide_text: "P3 文字簡報",
+  P4_scan_imgdense: "P4 掃描", P5_form: "P5 表單",
+};
+function DocProfileBadge({ profile }) {
+  const low = profile.fallback_applied || profile.confidence < 0.7;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span className={`badge ${low ? "badge-warning" : "badge-muted"}`} style={{ fontSize: 11 }}>
+        <span className="badge-dot" /> {DOC_PROFILE_LABELS[profile.profile] || profile.profile}
+      </span>
+      <span className="text-xs muted mono">信心 {Math.round(profile.confidence * 100)}%</span>
+    </span>
+  );
+}
+function ProfileSignal({ label, value }) {
+  return (
+    <div className="stat">
+      <div className="stat-label" style={{ fontSize: 10.5 }}>{label}</div>
+      <div className="stat-value" style={{ fontSize: 17 }}>{value}</div>
+    </div>
+  );
+}
+
 // ── W58 / ADR-0051 — Per-document config tab ────────────────────────────────
 // Consumes the ADR-0050 per-doc CRUD API. Mirrors the KB TabKbSettings tuning
 // pattern (ekp-page-kb.jsx), but: per-DOCUMENT scope, post-retrieval knobs ONLY
@@ -423,6 +449,60 @@ function DocConfigTab({ kb, doc }) {
           </div>
         </div>
       </div>
+
+      {/* W77 / ADR-0056 段③ — 文件畫像(L3:自動偵測 profile + signals 透明展示 + 人手覆寫) */}
+      {doc.profile && (
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">文件畫像(自動偵測)</h3>
+              <div className="card-desc">
+                系統由文件結構信號偵測內容類型,自動套對應 recall 流程 preset。偵測錯 → 下方一鍵覆寫。
+                <span className="mono"> W72 profiler · ADR-0056 層 A</span>
+              </div>
+            </div>
+            <DocProfileBadge profile={doc.profile} />
+          </div>
+          <div className="card-body" style={{ display: "grid", gap: 14 }}>
+            {(doc.profile.fallback_applied || doc.profile.confidence < 0.7) && (
+              <div className="banner banner-warning">
+                <IcShield size={15} style={{ color: "oklch(var(--warning))", flexShrink: 0 }} />
+                <div className="text-xs" style={{ flex: 1, lineHeight: 1.5 }}>
+                  <b>低信心偵測</b>(結構信號矛盾)— 已 fallback 保守 preset。建議人手確認下方 profile。
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="label" style={{ marginBottom: 8 }}>偵測信號(點解判呢個 profile)</div>
+              <div className="stat-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
+                <ProfileSignal label="圖密度 img_density" value={doc.profile.signals.img_density.toFixed(3)} />
+                <ProfileSignal label="列表比例 list_ratio" value={doc.profile.signals.list_ratio.toFixed(3)} />
+                <ProfileSignal label="標題深度 max_depth" value={doc.profile.signals.max_depth} />
+                <ProfileSignal label="標題數 headings" value={doc.profile.signals.headings} />
+                {doc.profile.signals.pdf_pages != null && (<>
+                  <ProfileSignal label="PDF 頁數" value={doc.profile.signals.pdf_pages} />
+                  <ProfileSignal label="text-layer 空比例" value={doc.profile.signals.pdf_empty_ratio.toFixed(2)} />
+                  <ProfileSignal label="平均字元/頁" value={Math.round(doc.profile.signals.pdf_avg_chars)} />
+                </>)}
+                <ProfileSignal label="段落數 paragraphs" value={doc.profile.signals.paragraphs} />
+              </div>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">人手覆寫 profile(override)</label>
+              <select className="select" defaultValue={doc.profile.profile} style={{ maxWidth: 260 }}>
+                <option value="P1_sop_imgdense">P1 圖密SOP</option>
+                <option value="P1_sop_text">P1 文字SOP</option>
+                <option value="P2_prose">P2 散文</option>
+                <option value="P3_slide_imgdense">P3 圖密簡報</option>
+                <option value="P3_slide_text">P3 文字簡報</option>
+                <option value="P4_scan_imgdense">P4 掃描</option>
+                <option value="P5_form">P5 表單</option>
+              </select>
+              <div className="hint">改 profile 會套對應 preset 落下方旋鈕。Admin 覆寫永遠優先於自動偵測(ADR-0056 D6)。</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Per-doc advanced tuning — post-retrieval knobs only */}
       <div className="card">
