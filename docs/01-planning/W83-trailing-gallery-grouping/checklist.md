@@ -2,14 +2,14 @@
 
 > Atomic items per deliverable。每日 tick。Source of truth = `plan.md`。
 
-## F1 — `groupTrailingBySection` helper + unit test
-- [ ] F1.1 `citation-images.ts` 加 `groupTrailingBySection(trailing)` + `TrailingSectionGroup` type
-  - [ ] 用 `imageSectionPath` 取每圖 section,按完整 `section_path` 分組
-  - [ ] 組順序 = 第一次出現（doc_order 自然序）；組內保留順序
-  - [ ] `sectionLabel` = section leaf；section 空 → fallback「Other」
-  - [ ] 不改 `figureIdx`（連續編號保留）
-- [ ] F1.2 unit test（`tests/unit/citation-images.test.ts`）：分組正確 / 組順序 doc_order / figureIdx 連續 / 空 → `[]` / 單組 / section 缺 fallback
-- [ ] F1 gate：type-check 0 + vitest 綠
+## F1 — `groupTrailingBySection` helper + unit test ✅
+- [x] F1.1 `citation-images.ts` 加 `groupTrailingBySection(trailing)` + `TrailingSectionGroup` type
+  - [x] 用 `imageSectionPath` 取每圖 section,按完整 `section_path` 分組
+  - [x] 組順序 = 第一次出現（doc_order 自然序）；組內保留順序
+  - [x] `sectionLabel` = section leaf；section 空 → fallback「Other」
+  - [x] 不改 `figureIdx`（連續編號保留）
+- [x] F1.2 unit test（`tests/unit/citation-images.test.ts`）：分組正確 / 組順序 doc_order（first-appearance）/ figureIdx 連續 / 空 → `[]` / 單組 / 非連續 run rejoin / section 缺 fallback（7 新 test）
+- [x] F1 gate：type-check 0 + vitest **42 passed**（原 35 + 新 7）
 
 ## F2 — chat page trailing render 改分組
 - [ ] F2.1 `chat/page.tsx` 1299-1309：`trailingImages.map` → `groupTrailingBySection` 外層 map（章節 header 復用 `muted mono text-xs` uppercase + `badge badge-muted` + 組內 `InlineImageCard`）

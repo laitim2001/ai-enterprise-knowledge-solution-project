@@ -210,6 +210,54 @@ export function imageSectionPath(image: ImageRef, citation: Citation): string[] 
     : citation.section_path;
 }
 
+/** W83 (ADR-0064) — a trailing-pile group whose images share one section. */
+export interface TrailingSectionGroup {
+  /** The shared section_path (image's own source_section, citing fallback). */
+  sectionPath: string[];
+  /** Display label = the section leaf (deepest heading), or 'Other' when empty. */
+  sectionLabel: string;
+  /** The group's trailing images, in their original (document) order. */
+  items: PlacedImage[];
+}
+
+/**
+ * W83 (ADR-0064) — group the trailing (non-anchored) images by the section they
+ * visually belong to (`imageSectionPath`), so the end-of-answer pile renders as a
+ * labelled "section appendix" (each image knows its step-chapter) instead of one
+ * undifferentiated wall of screenshots.
+ *
+ * Why (root cause, verified 2026-06-16 on drive-images-1): a "per-field
+ * screenshot" manual section (FA §2.1.3 — 633 chars / ~12 steps but 47 field
+ * screenshots) has FAR more images than the answer has step sentences to anchor
+ * [IMG#] markers at, so ~35 field screenshots fall to the trailing pile with no
+ * surrounding text. Grouping by section gives each a chapter heading.
+ *
+ * Group order follows first appearance in `trailing` (already document-ordered by
+ * `dedupeCitationImages`), so groups read start→end; items keep their order WITHIN
+ * a group. `figureIdx` is NOT touched — the continuous inline→trailing numbering is
+ * preserved; this only partitions the render. Returns [] for empty trailing, so a
+ * marker-less / fully-anchored answer renders the same (zero groups) as pre-W83.
+ *
+ * Pure function; no IO; testable in isolation without mocks.
+ */
+export function groupTrailingBySection(trailing: PlacedImage[]): TrailingSectionGroup[] {
+  const groups: TrailingSectionGroup[] = [];
+  const byKey = new Map<string, TrailingSectionGroup>();
+  for (const placed of trailing) {
+    const sectionPath = imageSectionPath(placed.entry.image, placed.entry.citation);
+    const key = sectionPath.join(' / ');
+    let group = byKey.get(key);
+    if (!group) {
+      const leaf = sectionPath.length > 0 ? sectionPath[sectionPath.length - 1] : '';
+      group = { sectionPath, sectionLabel: leaf || 'Other', items: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(placed);
+  }
+  return groups;
+}
+
 /**
  * The best human label for an image (BUG-026). Prefers the real figure caption
  * (`alt_text`), then the leaf of the image's own section (C-ii — so distinct

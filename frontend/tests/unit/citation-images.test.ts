@@ -13,11 +13,13 @@ import type { Citation, ImageRef } from '@/lib/api/query';
 import {
   DECORATIVE_MIN_PX,
   dedupeCitationImages,
+  groupTrailingBySection,
   imageSectionPath,
   imageTitle,
   planAnchoredImages,
   selectInlineImages,
   type DedupedCitationImage,
+  type PlacedImage,
 } from '@/lib/chat/citation-images';
 
 function imageRef(over: Partial<ImageRef> = {}): ImageRef {
@@ -449,5 +451,86 @@ describe('planAnchoredImages (W71 — ADR-0055 interleave partition)', () => {
       ['aaaaaaaa1111', 2],
       ['cccccccc3333', 3],
     ]);
+  });
+});
+
+describe('groupTrailingBySection (W83 — ADR-0064 trailing section grouping)', () => {
+  // A trailing PlacedImage: a deduped image carried at a continuous figure index.
+  function placedImg(
+    sha: string,
+    section: string[],
+    figureIdx: number,
+    citationIdx = 1,
+  ): PlacedImage {
+    const image = imageRef({ checksum_sha256: sha, source_section: section });
+    return { entry: { citation: citation(citationIdx, [image]), image, citationIdx }, figureIdx };
+  }
+
+  const FA_3 = ['2 FA01. Fixed Asset Registration', '2.1.3 System Instruction for each step'];
+  const FA_4 = ['2 FA01. Fixed Asset Registration', '2.1.4 System Instruction for each step'];
+
+  it('returns an empty list for empty trailing (marker-less / fully-anchored = pre-W83)', () => {
+    expect(groupTrailingBySection([])).toEqual([]);
+  });
+
+  it('groups one section into a single group, items in order', () => {
+    const groups = groupTrailingBySection([
+      placedImg('a', FA_3, 1),
+      placedImg('b', FA_3, 2),
+      placedImg('c', FA_3, 3),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.sectionLabel).toBe('2.1.3 System Instruction for each step');
+    expect(groups[0]!.items.map((p) => p.entry.image.checksum_sha256)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('splits distinct sections into groups in first-appearance (document) order', () => {
+    const groups = groupTrailingBySection([
+      placedImg('a3', FA_3, 1),
+      placedImg('b3', FA_3, 2),
+      placedImg('a4', FA_4, 3),
+    ]);
+    expect(groups.map((g) => g.sectionLabel)).toEqual([
+      '2.1.3 System Instruction for each step',
+      '2.1.4 System Instruction for each step',
+    ]);
+    expect(groups[0]!.items.map((p) => p.entry.image.checksum_sha256)).toEqual(['a3', 'b3']);
+    expect(groups[1]!.items.map((p) => p.entry.image.checksum_sha256)).toEqual(['a4']);
+  });
+
+  it('groups by section identity, not contiguous run (a re-appearing section rejoins)', () => {
+    // trailing is document-ordered so interleaving is rare, but grouping must key on
+    // section identity — a §2.1.3 image after a §2.1.4 image rejoins the §2.1.3 group.
+    const groups = groupTrailingBySection([
+      placedImg('a3', FA_3, 1),
+      placedImg('a4', FA_4, 2),
+      placedImg('b3', FA_3, 3),
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]!.sectionLabel).toBe('2.1.3 System Instruction for each step');
+    expect(groups[0]!.items.map((p) => p.entry.image.checksum_sha256)).toEqual(['a3', 'b3']);
+  });
+
+  it('preserves figureIdx unchanged (continuous inline→trailing numbering)', () => {
+    // Anchored figures took 1-2; trailing starts at 3 — grouping must not renumber.
+    const groups = groupTrailingBySection([placedImg('a', FA_3, 3), placedImg('b', FA_4, 4)]);
+    expect(groups.flatMap((g) => g.items.map((p) => p.figureIdx))).toEqual([3, 4]);
+  });
+
+  it('exposes the full sectionPath + leaf label', () => {
+    const groups = groupTrailingBySection([placedImg('a', FA_3, 1)]);
+    expect(groups[0]!.sectionPath).toEqual(FA_3);
+    expect(groups[0]!.sectionLabel).toBe('2.1.3 System Instruction for each step');
+  });
+
+  it("falls back to 'Other' label when the image has no section signal (defensive)", () => {
+    const image = imageRef({ checksum_sha256: 'x', source_section: [] });
+    const cit = citation(1, [image]);
+    cit.section_path = []; // source_section empty AND citing chunk section empty
+    const groups = groupTrailingBySection([
+      { entry: { citation: cit, image, citationIdx: 1 }, figureIdx: 1 },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.sectionLabel).toBe('Other');
   });
 });
