@@ -10,10 +10,10 @@
 - [x] F1.5 回歸：profiler + documents route 既有 test 全綠（helper 復用零行為改變）
 - [x] F1 gate：**pytest 70 passed**（含新 10 test）+ ruff All checks passed + mypy profiler Success；mypy documents 唯一 error = `_engine_or_503` line 124 no-any-return（`git stash` 證 pre-existing baseline，非 W84 引入）
 
-## F2 — Frontend force UI
-- [ ] F2.1 `kb.ts` `uploadDoc(kbId, file, forceScan = false)` + `?force_scan=` + 422 解析 `scan_requires_confirm` → typed error / sentinel
-- [ ] F2.2 `upload/page.tsx` 接 `scan_requires_confirm` → 警告 banner（`banner-warning` 復用視覺零發明）+ 「仍要繼續」按鈕 → `uploadDoc(..., true)` 重試
-- [ ] F2 gate：type-check 0 + lint 零新 warning + build ✓
+## F2 — Frontend force UI ✅
+- [x] F2.1 `kb.ts` `uploadDoc(kbId, file, forceScan = false)` + `?force_scan=` + 422 解析 `scan_requires_confirm` → typed error / sentinel（`ScanRequiresConfirmError` + `SCAN_REQUIRES_CONFIRM_CODE` export；422 parse `error.code` 比對 → throw typed，否則 generic）
+- [x] F2.2 `upload/page.tsx` 接 `scan_requires_confirm` → 警告 banner（`banner-warning` 復用視覺零發明）+ 「仍要繼續」按鈕 → `uploadDoc(..., true)` 重試（新 `scan-confirm` status：`badge-warning` + `status-dot.queued` + `banner-warning` + force primary btn，全既有 primitive）
+- [x] F2 gate：**type-check 0** + **lint 零新 warning**（唯一 `chat/page.tsx:1882 <img>` = pre-existing，非本次 file）+ **build ✓**（15/15 static pages，`/kb/[id]/upload` 7.51 kB）
 
 ## F3 — Browser 驗（playwright）
 - [ ] F3.1 upload scan PDF（`scanned_pdf_sample/`）→ reject 路徑秒級判 P4 → 警告 banner + 「仍要繼續」按鈕出現

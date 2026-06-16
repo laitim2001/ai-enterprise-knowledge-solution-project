@@ -37,7 +37,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Fragment, useState, type ChangeEvent, type DragEvent } from 'react';
 
-import { kbApi, type KbConfig, type KbStatus } from '@/lib/api/kb';
+import {
+  kbApi,
+  ScanRequiresConfirmError,
+  type KbConfig,
+  type KbStatus,
+} from '@/lib/api/kb';
 
 type Step = 0 | 1 | 2;
 type SourceKind = 'upload' | 'sharepoint' | 'drive' | 'url';
@@ -63,7 +68,10 @@ export default function KbUploadPage() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (f: File) => kbApi.uploadDoc(params.id, f),
+    // W84 (ADR-0065) — forceScan flows through so the "仍要繼續" force-confirm retry
+    // can re-run the same upload past the backend P4 scan guard.
+    mutationFn: (vars: { file: File; forceScan: boolean }) =>
+      kbApi.uploadDoc(params.id, vars.file, vars.forceScan),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['kb', params.id] });
       void queryClient.invalidateQueries({ queryKey: ['kb'] });
@@ -210,7 +218,10 @@ export default function KbUploadPage() {
             error={uploadMutation.error as Error | null}
             onBack={() => setStep(1)}
             onRun={() => {
-              if (file) uploadMutation.mutate(file);
+              if (file) uploadMutation.mutate({ file, forceScan: false });
+            }}
+            onForceRun={() => {
+              if (file) uploadMutation.mutate({ file, forceScan: true });
             }}
             onDone={() => router.push(`/kb/${params.id}`)}
           />
@@ -664,6 +675,7 @@ function StepExecute({
   error,
   onBack,
   onRun,
+  onForceRun,
   onDone,
 }: {
   kbId: string;
@@ -674,15 +686,24 @@ function StepExecute({
   error: Error | null;
   onBack: () => void;
   onRun: () => void;
+  onForceRun: () => void;
   onDone: () => void;
 }) {
-  const status: 'idle' | 'running' | 'indexed' | 'failed' = isPending
-    ? 'running'
-    : isSuccess
-      ? 'indexed'
-      : error
-        ? 'failed'
-        : 'idle';
+  // W84 (ADR-0065) — a ScanRequiresConfirmError is NOT a failure: the backend P4
+  // guard wants the user to confirm OCR (~8–9.5 min). Surface it as its own
+  // "scan-confirm" state (warning banner + "仍要繼續" force button), not a red FAILED.
+  const isScanConfirm =
+    !isPending && !isSuccess && error instanceof ScanRequiresConfirmError;
+  const status: 'idle' | 'running' | 'indexed' | 'failed' | 'scan-confirm' =
+    isPending
+      ? 'running'
+      : isSuccess
+        ? 'indexed'
+        : isScanConfirm
+          ? 'scan-confirm'
+          : error
+            ? 'failed'
+            : 'idle';
 
   return (
     <div className="card">
@@ -693,6 +714,7 @@ function StepExecute({
             {status === 'idle' && 'Ready to upload + ingest'}
             {status === 'running' && 'Pipeline running…'}
             {status === 'indexed' && 'Document indexed — KB ready'}
+            {status === 'scan-confirm' && '掃描件需確認 — OCR 需時較長'}
             {status === 'failed' && 'Upload failed — see error below'}
           </div>
         </div>
@@ -704,6 +726,11 @@ function StepExecute({
         {status === 'indexed' && (
           <span className="badge badge-success">
             <span className="badge-dot" /> INDEXED
+          </span>
+        )}
+        {status === 'scan-confirm' && (
+          <span className="badge badge-warning">
+            <span className="badge-dot" /> 需確認
           </span>
         )}
         {status === 'failed' && (
@@ -723,6 +750,26 @@ function StepExecute({
               <div className="text-xs muted mono">
                 Docling → {kb?.config.chunk_strategy ?? 'auto'} → embed-3-large →
                 ekp-kb-{kbId}-v1 upsert
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* W84 / ADR-0065 — P4 scan pre-parse guard. The backend 422'd before the
+            slow OCR parse; surface a warning + 「仍要繼續」force button (banner-warning
+            primitive 復用視覺零發明 per plan §3-4). */}
+        {status === 'scan-confirm' && (
+          <div className="banner banner-warning" style={{ marginBottom: 16 }}>
+            <AlertTriangle
+              size={15}
+              style={{ color: 'oklch(var(--warning))', flexShrink: 0 }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>
+                {file?.name ?? '此文件'} 似乎是掃描件(無文字層)
+              </div>
+              <div className="text-xs muted" style={{ marginTop: 2 }}>
+                需 OCR 辨識,同步處理約需 8–9.5 分鐘,期間此頁會持續等待。確認後按下方「仍要繼續」。
               </div>
             </div>
           </div>
@@ -763,7 +810,9 @@ function StepExecute({
                 background:
                   status === 'failed'
                     ? 'oklch(var(--destructive) / 0.04)'
-                    : 'oklch(var(--card))',
+                    : status === 'scan-confirm'
+                      ? 'oklch(var(--warning) / 0.04)'
+                      : 'oklch(var(--card))',
               }}
             >
               <span
@@ -774,7 +823,9 @@ function StepExecute({
                       ? 'indexing'
                       : status === 'failed'
                         ? 'failed'
-                        : ''
+                        : status === 'scan-confirm'
+                          ? 'queued'
+                          : ''
                 }`}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -817,10 +868,13 @@ function StepExecute({
                       ? 'badge-info'
                       : status === 'failed'
                         ? 'badge-error'
-                        : 'badge-muted'
+                        : status === 'scan-confirm'
+                          ? 'badge-warning'
+                          : 'badge-muted'
                 }`}
               >
-                <span className="badge-dot" /> {status.toUpperCase()}
+                <span className="badge-dot" />{' '}
+                {status === 'scan-confirm' ? '需確認' : status.toUpperCase()}
               </span>
             </div>
           )}
@@ -867,6 +921,15 @@ function StepExecute({
             onClick={onDone}
           >
             Continue to KB <ChevronRight size={13} />
+          </button>
+        )}
+        {status === 'scan-confirm' && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={onForceRun}
+          >
+            <Upload size={13} /> 仍要繼續(約 8–9.5 分鐘)
           </button>
         )}
         {status === 'failed' && (

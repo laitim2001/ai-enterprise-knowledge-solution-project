@@ -9,6 +9,21 @@ import { ApiClient, buildAuthHeader, getCsrfHeaders } from '../api-client';
 
 const client = new ApiClient();
 
+// W84 (ADR-0065) — backend P4 scan pre-parse guard. A scanned PDF needs Docling
+// OCR which blocks the SYNCHRONOUS ingest 8–9.5 min/file. The backend 422s with
+// envelope `{"error":{"code":"ingest.scan_requires_confirm",...}}` BEFORE the slow
+// parse; `uploadDoc` surfaces it as this typed error so the upload page can show a
+// force-confirm banner and retry with forceScan=true.
+export const SCAN_REQUIRES_CONFIRM_CODE = 'ingest.scan_requires_confirm';
+
+export class ScanRequiresConfirmError extends Error {
+  readonly code = SCAN_REQUIRES_CONFIRM_CODE;
+  constructor(message: string) {
+    super(message);
+    this.name = 'ScanRequiresConfirmError';
+  }
+}
+
 export interface KbConfig {
   embedding_model: string;
   embedding_dimension: number;
@@ -227,19 +242,48 @@ export const kbApi = {
   listAcl: (kbId: string): Promise<KbAclListResponse> =>
     client.get<KbAclListResponse>(`/kb/${kbId}/acl`),
 
-  uploadDoc: async (kbId: string, file: File): Promise<{ doc_id: string }> => {
+  uploadDoc: async (
+    kbId: string,
+    file: File,
+    forceScan = false,
+  ): Promise<{ doc_id: string }> => {
     const form = new FormData();
     form.append('file', file);
     // Browser fetch goes through Next.js server-side rewrite (per api-client.ts
     // top docstring). NEXT_PUBLIC_API_URL is server-side only.
-    const response = await fetch(`/api/backend/kb/${kbId}/documents`, {
+    // W84 (ADR-0065) — forceScan=true bypasses the backend P4 scan guard after the
+    // user confirms via the upload UI's "仍要繼續" button (OCR is slow but accepted).
+    const qs = forceScan ? '?force_scan=true' : '';
+    const response = await fetch(`/api/backend/kb/${kbId}/documents${qs}`, {
       method: 'POST',
       credentials: 'include',
       headers: { ...buildAuthHeader(), ...getCsrfHeaders() },
       body: form,
     });
     if (!response.ok) {
-      throw new Error(`upload failed: ${response.status} ${await response.text()}`);
+      const body = await response.text();
+      if (response.status === 422) {
+        // W84 (ADR-0065) — the P4 scan guard 422s with code
+        // `ingest.scan_requires_confirm`; surface it as a typed error so the
+        // upload page shows a force-confirm banner instead of a generic failure.
+        let code: string | undefined;
+        let message: string | undefined;
+        try {
+          const parsed = JSON.parse(body) as {
+            error?: { code?: string; message?: string };
+          };
+          code = parsed.error?.code;
+          message = parsed.error?.message;
+        } catch {
+          // body wasn't JSON — fall through to the generic error below
+        }
+        if (code === SCAN_REQUIRES_CONFIRM_CODE) {
+          throw new ScanRequiresConfirmError(
+            message ?? 'This looks like a scanned PDF — OCR will take several minutes.',
+          );
+        }
+      }
+      throw new Error(`upload failed: ${response.status} ${body}`);
     }
     return response.json() as Promise<{ doc_id: string }>;
   },

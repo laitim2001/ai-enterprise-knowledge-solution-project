@@ -36,8 +36,19 @@ W83 收尾後用戶問「是否繼續推進層 C」→ 我建議 hold（無 prec
 | Hash | Subject | Checklist |
 |---|---|---|
 | `59d05e2` | W84 kickoff + ADR-0065 | plan/ADR |
-| F1 | backend `is_scan_pdf` helper + ingest guard + `force_scan` flag + test（70 passed） | F1.1-F1.5 |
+| `636699b` | backend `is_scan_pdf` helper + ingest guard + `force_scan` flag + test（70 passed） | F1.1-F1.5 |
+| F2 | frontend `ScanRequiresConfirmError` + `uploadDoc(forceScan)` + upload `scan-confirm` 警告態 | F2.1-F2.2 |
+
+### F2 frontend（完成）
+
+- **`kb.ts`**：export `SCAN_REQUIRES_CONFIRM_CODE` + `ScanRequiresConfirmError`；`uploadDoc(kbId, file, forceScan = false)`
+  加 `?force_scan=true`；422 時 parse envelope `error.code` 比對 → throw typed（否則 generic Error）。
+- **`upload/page.tsx`**：`uploadMutation` mutationFn 改收 `{ file, forceScan }`；新 `onForceRun`（force 重試）；
+  `StepExecute` 加 `scan-confirm` status（`error instanceof ScanRequiresConfirmError`）→ `banner-warning` 警告
+  （掃描件 + OCR ~8–9.5 分鐘）+ `badge-warning` +「仍要繼續」primary 按鈕。**全用既有 primitive，H7 視覺零發明**。
+- **gate**：type-check 0 / lint 零新 warning（唯一 `chat/page.tsx:1882 <img>` pre-existing）/ build ✓（15/15）。
 
 ### 下一步
 
-- F2 frontend force UI（`uploadDoc` 帶 `force_scan` + 接 422 → `banner-warning` + 「仍要繼續」force 重試）。
+- F3 browser 驗（playwright）：upload scan PDF → reject 路徑秒級判 P4 → `banner-warning` +「仍要繼續」render；
+  born-digital / docx → 無警告正常。**需先重啟 dev server**（F2 build 已停 port 3001 dev）。
