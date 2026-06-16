@@ -51,13 +51,14 @@ from ingestion.chunker.heading_aware import HeadingAwareChunker
 from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
-from ingestion.profile_presets import preset_for
+from ingestion.profile_presets import resolve_preset
 from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
 from kb_management.doc_config_store import DocConfigStore
 from kb_management.doc_profile_store import DocProfileStore
+from kb_management.preset_override_store import PresetOverrideStore
 from retrieval.retrieval_engine import RetrievalEngine
 from storage.kb_naming import kb_id_to_screenshot_container
 from storage.settings import get_settings
@@ -105,6 +106,9 @@ class _IngestionDeps:
     # W76 / ADR-0056 層 A 段③ 前置 — per-doc profile store (persist on ingest for the
     # read surface). None when not wired → persist skips silently (advisory).
     doc_profile_store: DocProfileStore | None = None
+    # W82 / ADR-0063 層 A 段③ 缺口 B — global preset-override store. None when unwired →
+    # `_route_profile_preset` resolves the factory preset (production-preserve).
+    preset_override_store: PresetOverrideStore | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -129,6 +133,15 @@ def _doc_profile_store(request: Request) -> DocProfileStore | None:
     return getattr(request.app.state, "doc_profile_store", None)
 
 
+def _preset_override_store(request: Request) -> PresetOverrideStore | None:
+    """Resolve the lifespan-wired global preset-override store (W82 / ADR-0063).
+
+    Absent (unwired, or some tests) → routing / override fall back to the factory
+    preset via `resolve_preset(profile, None)` (production-preserve, graceful degrade).
+    """
+    return getattr(request.app.state, "preset_override_store", None)
+
+
 def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     """Resolve the lifespan-wired ingestion services or 503.
 
@@ -147,6 +160,8 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     doc_config_store = getattr(request.app.state, "doc_config_store", None)
     # W76 / ADR-0056 層 A 段③ 前置 — doc-profile store for read-surface persist.
     doc_profile_store = getattr(request.app.state, "doc_profile_store", None)
+    # W82 / ADR-0063 層 A 段③ 缺口 B — global preset-override store for effective routing.
+    preset_override_store = getattr(request.app.state, "preset_override_store", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -162,6 +177,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         make_chunker=make_chunker,
         doc_config_store=doc_config_store,
         doc_profile_store=doc_profile_store,
+        preset_override_store=preset_override_store,
     )
 
 
@@ -599,9 +615,13 @@ async def override_doc_profile(
             status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    # payload.profile is a free-form str (API boundary); preset_for narrows via dict.get —
-    # an invalid / non-routable label returns None → 422 below. cast for mypy (runtime-safe).
-    preset = preset_for(cast(DocProfile, payload.profile))
+    # payload.profile is a free-form str (API boundary); resolve_preset narrows via
+    # preset_for's dict.get — an invalid / non-routable label returns None → 422 below.
+    # W82 / ADR-0063 — resolve_preset overlays the admin-edited global mapping so a
+    # manual override applies the EDITED preset (None store → factory). cast for mypy.
+    preset = await resolve_preset(
+        cast(DocProfile, payload.profile), _preset_override_store(request)
+    )
     if preset is None:
         raise _api_error(
             "profile.no_preset",
@@ -875,6 +895,7 @@ async def _run_ingest_pipeline(
                     kb_id=kb_id,
                     doc_id=doc_id,
                     profile=result.profile,
+                    preset_override_store=deps.preset_override_store,
                 )
             except Exception:  # noqa: BLE001 — profile routing is advisory, never fatal
                 _stdlib_logger.exception("profile_routing_failed kb_id=%s doc_id=%s", kb_id, doc_id)
@@ -912,14 +933,19 @@ async def _route_profile_preset(
     kb_id: str,
     doc_id: str,
     profile: ProfileResult,
+    preset_override_store: PresetOverrideStore | None = None,
 ) -> None:
     """W73 / ADR-0056 層 A — conservatively auto-write the profile's per-doc preset.
 
     D6 admin override 守: if the doc already has a manual per-doc DocConfig, skip
     (never overwrite). D7 保守: a profile with no preset (too_small / unknown) inherits
     the per-KB / global config — no per-doc row is written.
+
+    W82 / ADR-0063 — the preset is resolved via `resolve_preset` so an admin-edited
+    global mapping override (`preset_override_store`) takes effect here. ``None`` store
+    (unwired) → factory preset (production-preserve, bit-identical to pre-W82).
     """
-    preset = preset_for(profile.profile)
+    preset = await resolve_preset(profile.profile, preset_override_store)
     if preset is None:
         return  # too_small / unknown — inherit (D7)
     existing = await store.get(kb_id, doc_id)
@@ -1060,6 +1086,7 @@ async def _backfill_one_doc_profile(
     kb_config: KbConfig | None,
     profile_store: DocProfileStore,
     config_store: DocConfigStore | None,
+    preset_override_store: PresetOverrideStore | None = None,
 ) -> str:
     """W80 / ADR-0059 — re-parse one stored doc + compute its profile + persist,
     WITHOUT re-chunk / re-embed / re-upsert (零 retrieval 影響).
@@ -1103,6 +1130,7 @@ async def _backfill_one_doc_profile(
                 kb_id=kb_id,
                 doc_id=doc_id,
                 profile=profile,
+                preset_override_store=preset_override_store,
             )
         return profile.profile
     finally:
@@ -1143,6 +1171,8 @@ async def run_kb_profile_backfill(
             ),
         )
     config_store = getattr(request.app.state, "doc_config_store", None)
+    # W82 / ADR-0063 — effective preset routing honours the admin-edited global mapping.
+    preset_override_store = _preset_override_store(request)
     settings = get_settings()
 
     # KB-level config read once — all docs share the KB's extract_embedded_images toggle.
@@ -1195,6 +1225,7 @@ async def run_kb_profile_backfill(
                 kb_config=kb_config,
                 profile_store=profile_store,
                 config_store=config_store,
+                preset_override_store=preset_override_store,
             )
             profiled[doc_id] = label
         except Exception as exc:  # noqa: BLE001 — one doc's failure must not abort the batch

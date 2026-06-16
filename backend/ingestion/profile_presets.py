@@ -112,7 +112,7 @@ def preset_for(profile: DocProfile) -> DocConfig | None:
 
 
 async def resolve_preset(
-    profile: DocProfile, store: PresetOverrideStore
+    profile: DocProfile, store: PresetOverrideStore | None
 ) -> DocConfig | None:
     """Return the EFFECTIVE preset for ``profile``: admin override else factory.
 
@@ -122,14 +122,17 @@ async def resolve_preset(
     returned (same contract as `preset_for`) so callers / the in-memory store never
     share an instance.
 
-    Production-preserve: with no override stored, this is bit-identical to
-    `preset_for(profile)` — so the ingest-route / manual-override / backfill call
-    sites behave unchanged until an admin edits the mapping.
+    Production-preserve: with no override stored — OR ``store is None`` (unwired, e.g.
+    a test that only sets the doc-config store) — this is bit-identical to
+    `preset_for(profile)`, so the ingest-route / manual-override / backfill call sites
+    behave unchanged until an admin edits the mapping. The ``None`` store path mirrors
+    how every other store in this codebase degrades gracefully when not wired.
 
-    ``None`` only when there is neither an override nor a factory preset
+    ``None`` return only when there is neither an override nor a factory preset
     (``too_small`` / ``unknown``) → inherit per-KB / global.
     """
-    override = await store.get(profile)
-    if override is not None:
-        return override.model_copy()
+    if store is not None:
+        override = await store.get(profile)
+        if override is not None:
+            return override.model_copy()
     return preset_for(profile)

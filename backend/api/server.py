@@ -36,6 +36,7 @@ from api.routes import (
     kb,
     kb_acl,
     observability,
+    profile_presets,
     query,
     retrieval_test,
     roles,
@@ -58,6 +59,7 @@ from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
 from kb_management.doc_config_store import make_doc_config_store  # noqa: E402
 from kb_management.doc_profile_store import make_doc_profile_store  # noqa: E402
+from kb_management.preset_override_store import make_preset_override_store  # noqa: E402
 from observability.langfuse_tracer import flush_tracer, init_tracer
 from retrieval.hybrid import HybridSearcher
 from retrieval.reranker.base import Reranker
@@ -122,6 +124,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # doc_config_store / make_kb_backend pattern). Persisted best-effort on ingest;
     # read by DocumentSummary.profile (L2 badge) + DocumentDetail.profile (L3 signals).
     app.state.doc_profile_store = make_doc_profile_store(settings)
+
+    # W82 / ADR-0063 層 A 段③ 缺口 B — global profile→preset override store. Postgres
+    # table `profile_preset_overrides` when DATABASE_URL is set, else in-memory (mirrors
+    # the doc_profile_store pattern). Read via `resolve_preset` on the ingest-route /
+    # manual-override / backfill paths; written by the Settings 文件分類規則 admin surface.
+    app.state.preset_override_store = make_preset_override_store(settings)
 
     # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
     # Both factories pick lazy-imported production impls only when their env
@@ -348,6 +356,7 @@ app.include_router(retrieval_test.router, tags=["retrieval-test"], dependencies=
 app.include_router(config_test.router, tags=["config-test"], dependencies=_auth)
 # W57 / ADR-0050 — per-document config CRUD (platform P2a / Gap A).
 app.include_router(doc_config.router, tags=["doc-config"], dependencies=_auth)
+app.include_router(profile_presets.router, tags=["profile-presets"], dependencies=_auth)
 app.include_router(eval_routes.router, tags=["eval"], dependencies=_auth)
 app.include_router(debug.router, tags=["debug"], dependencies=_auth)
 app.include_router(screenshots.router, tags=["screenshots"], dependencies=_auth)

@@ -12,13 +12,13 @@
 - [x] F1.3 unit test:InMemory CRUD + `resolve_preset` fallthrough(無 override == `preset_for` bit-identical / 有 override 用 override)→ `test_preset_override_store.py` 14 passed
 - [x] F1 gate:mypy strict(`Success: no issues found in 2 source files`)+ ruff(`All checks passed`)+ pytest 14 passed
 
-## F2 — Backend write API + call-site migrate
-- [ ] F2.1 新 `backend/api/routes/profile_presets.py`(GET / PUT / DELETE)
-- [ ] F2.2 `server.py` wire store + router(mirror doc_profile_store DI)
-- [ ] F2.3 三 call site `preset_for` → `resolve_preset`(`_route_profile_preset` / `PUT …/profile` / backfill)
-- [ ] F2.4 pytest:GET effective + PUT upsert + DELETE 還原 + 422 非法 profile + 三 call-site 用 effective preset
-- [ ] F2.5 回歸:無 override 時三 call site 行為 bit-identical(production-preserve)
-- [ ] F2 gate:mypy strict + ruff clean + 全 backend test 綠
+## F2 — Backend write API + call-site migrate ✅
+- [x] F2.1 新 `backend/api/routes/profile_presets.py`(GET / PUT / DELETE + `PresetMappingItem` schema)
+- [x] F2.2 `server.py` wire store(`make_preset_override_store`)+ router(`include_router`,mirror doc_profile_store DI)
+- [x] F2.3 三 call site `preset_for` → `resolve_preset`(`_route_profile_preset`+ingest / `override_doc_profile` / backfill `_backfill_one_doc_profile`)+ `_IngestionDeps.preset_override_store` + `_preset_override_store(request)` helper
+- [x] F2.4 pytest:GET effective + PUT upsert + DELETE 還原 + 422 非法 profile(parametrize ×4)+ 503 unwired + `_route_profile_preset` 認 override 整合 → `test_profile_presets_routes.py`
+- [x] F2.5 回歸:無 override 時三 call site bit-identical(`test_route_preset_production_preserve_without_override` + `resolve_preset(None)` fallback)+ routing/override/backfill 既有 test 全綠
+- [x] F2 gate:mypy strict(4 module clean;唯一 error = `_engine_or_503` no-any-return `git stash` 證 baseline pre-existing)+ ruff clean(non-server「All checks passed」;server.py E402=40 baseline 零新增)+ pytest 50 passed
 
 ## F3 — Frontend wire
 - [ ] F3.1 新 `frontend/lib/api/profile-presets.ts`(TS types + GET/PUT/DELETE client)

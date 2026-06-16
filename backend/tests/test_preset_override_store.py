@@ -113,6 +113,14 @@ def test_resolve_no_override_none_profiles_stay_none() -> None:
     assert asyncio.run(resolve_preset("unknown", store)) is None
 
 
+def test_resolve_none_store_falls_back_to_factory() -> None:
+    # W82 F2 — an unwired store (None) degrades to the factory preset (production-
+    # preserve for call sites whose preset_override_store isn't wired, e.g. some tests).
+    for profile in ("P1_sop_imgdense", "P2_prose"):
+        assert asyncio.run(resolve_preset(profile, None)) == preset_for(profile)
+    assert asyncio.run(resolve_preset("too_small", None)) is None
+
+
 def test_resolve_override_wins_over_factory() -> None:
     store = InMemoryPresetOverrideStore()
     custom = DocConfig(max_images_per_answer=999, answer_detail="concise")
