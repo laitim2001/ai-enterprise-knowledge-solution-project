@@ -107,3 +107,10 @@ F0 PASS 才開：ADR-0066（H1）+ ingest-time profile preset（profile→chunk_
   （profile 在 chunk 前可用 / chunker parse 前選死 / 只 2 chunker class 選擇空間小 / OCR 已自動非缺口 / W53 live
   runner 不存在 + self-retrievability confounded）→ F0 方法論定為「結構分析為主 + self-retrievability 佐證」;
   F1 框架 conditional on F0 PASS（屆時開 ADR-0066）。
+- 2026-06-16 **PIVOT（R3 plan deviation）** — F0.1 結構對比結論:heading vs layout 對不同 profile **無顯著差異**
+  （圖分布相同 + 結構差 3-27% + heading 賣點在圖密 SOP 失效）→ 真缺口不是「路由現有 chunker」而是「2 chunker 本質
+  太相似選擇空間不足」。**用戶揀 pivot 到「造差異化 chunker」** → 把缺口①由「profile→chunk_strategy 路由」**重新
+  界定**為「先診斷哪個 profile 真需要本質不同切法（如表單 table-row / 圖密 SOP image-grouped）→ 再決定造不造」。
+  **scope 調整**:原 F0.2（self-retrievability recall）**取消**（路由已否決,recall 佐證無意義）;新增 **F0.3 差異化
+  chunker 診斷**;原 F1（profile→strategy 路由框架）**取代**為「造差異化 chunker」（仍 conditional on F0.3 gate，
+  屆時 H1 ADR-0066）。
