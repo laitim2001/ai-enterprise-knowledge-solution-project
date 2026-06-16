@@ -48,7 +48,29 @@ W83 收尾後用戶問「是否繼續推進層 C」→ 我建議 hold（無 prec
   （掃描件 + OCR ~8–9.5 分鐘）+ `badge-warning` +「仍要繼續」primary 按鈕。**全用既有 primitive，H7 視覺零發明**。
 - **gate**：type-check 0 / lint 零新 warning（唯一 `chat/page.tsx:1882 <img>` pre-existing）/ build ✓（15/15）。
 
+### F3 browser 驗（完成 — 含 stale-backend 根因修正）
+
+| Hash | Subject | Checklist |
+|---|---|---|
+| F3 | playwright reject 路徑驗 + stale backend 重啟 + born-digital probe | F3.1-F3.2 + gate |
+
+**坑：首跑未 trigger guard（stale backend）**
+- 首次 browser upload `01_USD_clean_baseline.pdf` → 進入 RUNNING（正常 ingest），guard 未攔。
+- 查根因：running backend（pid 20568/58432，**13:53 啟動**）早於 F1 commit `636699b`（**17:24**）3.5h，
+  且 `reload=False` → server 跑 **stale code 無 guard**。F1 pytest 70 passed 是獨立 `python -m pytest`，不經 running server。
+- 修正：pre-flight infra 全綠（Langfuse 200 / Postgres 1 row / Azurite LISTEN / 無陌生 backend）→ 殺 dual-process
+  → venv 重啟載入 F1 → `/health` 200（~60s）。中斷的 in-flight OCR 未污染 KB（doc count 6 不變）。
+
+**重驗 PASS**
+- **F3.1 reject 路徑**：curl 直打 backend → HTTP 422 `ingest.scan_requires_confirm` in **2.22s**（秒級不 OCR），
+  envelope `{"error":{"code","message","actionable_hint"}}` 正是 `kb.ts` 解析格式。browser 重 upload → scan-confirm
+  UI 完整 render（`banner-warning`「掃描件(無文字層)」+ AlertTriangle + 需確認 badge + status-dot.queued
+  +「仍要繼續(約 8–9.5 分鐘)」按鈕）。截圖 H7 fidelity 視覺驗 PASS（amber warning 色 + 既有 primitive 視覺零發明）。
+- **F3.2 production-preserve**：`is_scan_pdf` 真檔驗 — scan 7/7 判 True（攔）+ born-digital 3/3 判 False（放行）
+  → R2 born-digital 誤判風險反證；docx 跳 probe 由 F1 route test 覆蓋。不做 browser 真 ingest（避免污染 KB）。
+- **F3 gate**：console 僅 pre-existing `/notifications` 404 + backend 重啟 transient（CONNECTION_REFUSED/500）
+  + expected 422（guard），零 frontend code error。
+
 ### 下一步
 
-- F3 browser 驗（playwright）：upload scan PDF → reject 路徑秒級判 P4 → `banner-warning` +「仍要繼續」render；
-  born-digital / docx → 無警告正常。**需先重啟 dev server**（F2 build 已停 port 3001 dev）。
+- F4 closeout：plan closed + retro + ADR-0065 README index + DEFERRED DD-9 收窄（只剩 OCR 慢 Tier 2）+ memory。
