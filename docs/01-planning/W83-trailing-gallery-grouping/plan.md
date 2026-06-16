@@ -1,6 +1,6 @@
 # W83 plan — 末尾無錨圖 gallery 章節分組（B,ADR-0064）
 
-**Status**: active（kickoff 2026-06-16）
+**Status**: closed（2026-06-16，full PASS — F1 helper + unit test（42 passed）+ F2 chat 分組 render + F3 browser 驗 35 張分 2 章節組 + clean build exit 0）
 **Kickoff**: 2026-06-16
 **Phase 類型**: frontend-only 呈現層 feature（純 chat render；零 backend / 零 retrieval 改動；
 H7 design-stage expansion edit — mockup 無分組 gallery 設計；ADR-0064 Accepted）
@@ -127,3 +127,12 @@ H7 design-stage expansion edit — mockup 無分組 gallery 設計；ADR-0064 Ac
 - 2026-06-16 kickoff — plan active,F1-F4 scope locked;ADR-0064 Accepted（用戶揀方案 1 復用既有 gallery primitive）；
   層 C confirm defer（實證無效）+ A 調 max_aux 實證否決;落點 ground（`trailingImages` render 1299-1309 +
   `imageSectionPath` 分組 key + ImageGallery header primitive 復用）。
+- 2026-06-16 F1（commit `a4cfa17`）— `groupTrailingBySection` 純函數 + `TrailingSectionGroup` type（`citation-images.ts`）+
+  unit test；vitest **42 passed**（原 35 + 新 7）+ type-check 0。
+- 2026-06-16 F2（commit `25ef5ad`）— `chat/page.tsx` trailing render 改分組（`<section>` wrapper + 章節 header 復用
+  ImageGallery `muted mono` + `badge badge-muted` primitive）+ import `groupTrailingBySection`；type-check 0 +
+  lint 零新 warning（pre-existing `no-img-element` 行號位移）。
+- 2026-06-16 F3 browser 驗 PASS（playwright，FA query）— 末尾 **35 張** trailing 分 §2.1.4（13）+ §2.1.5（22）兩組 +
+  章節小標 + 圖數 badge（DOM evaluate + screenshot 雙驗）；inline 10 張不受影響；console 全 pre-existing `/notifications` 404。
+- 2026-06-16 F4 closeout — **clean build exit 0**（停 dev 後跑，`/chat` 46.8 kB / 209 kB，15/15 static pages）+ 重啟 dev；
+  plan closed **full PASS**，F1-F4 全 tick；ADR-0064 README index + DEFERRED DD-12（kickoff 已落）；memory 更新。

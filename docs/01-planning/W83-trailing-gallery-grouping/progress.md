@@ -46,8 +46,32 @@
 |---|---|---|
 | `5df7dc8` | W83 kickoff + ADR-0064 + 層C/A 收斂 | plan/ADR |
 | `a4cfa17` | F1 `groupTrailingBySection` helper + unit test（42 passed） | F1.1-F1.2 |
-| F2 | chat trailing render 改分組（章節 header 復用 ImageGallery primitive） | F2.1-F2.2 |
+| `25ef5ad` | F2 chat trailing render 改分組（章節 header 復用 ImageGallery primitive） | F2.1-F2.2 |
+| （F4 一併）| F3 browser 驗 PASS — 末尾 35 張分 §2.1.4(13)+§2.1.5(22)組 | F3.1-F3.2 |
 
-### 下一步
+### F3 browser 驗結果（playwright，FA query）
 
-- F3 browser 驗（playwright FA query — 末尾 35 張按 §2.1.x 分組 + 章節小標）。
+- 末尾 **35 張** trailing 圖（吻合診斷 FA 35）由一片無序 → **2 分章節組**：§2.1.4（13）+ §2.1.5（22），各帶章節小標 + 圖數 badge。
+- inline 交織圖 10 張在 answer body **不受影響**；本 run 總圖 45（vs 診斷 48，正常 LLM variance）。
+- console 4 errors 全 pre-existing `/api/backend/notifications` 404；我 component 零 error。
+- 視覺：章節 header（uppercase muted mono + badge）對齊 ImageGallery「Referenced screenshots」primitive。
+
+### F4 closeout（2026-06-16）
+
+- **clean build exit 0**（停 frontend dev 7868/48236 → `pnpm build` → wipe `.next` + 重啟 dev `b4m78p4tu`）；
+  `/chat` 46.8 kB / 209 kB，15/15 static pages。F2 gate build clean-exit confirmed。
+- plan closed **full PASS**（F1-F4 全 tick）；ADR-0064 README index + DEFERRED DD-12（kickoff 已落）；memory 更新。
+
+### Retro
+
+- **層 C「圖片按相關性揀」三 query live 診斷 → 推翻前提 → 收斂到 B**：診斷揭兩個原始前提皆過時（per-image
+  metadata 早已 populate + 文字-relevance 已 ADR-0046 Decision#3 revert），真因 = anchoring 失配（圖粒度 >
+  文字步驟粒度），非 relevance。誠實收斂 = 層 C defer + A 調 max_aux 乾淨 A/B 否決（40 vs 80 都 40）+ 唯一真實
+  改善 = B 末尾分組。
+- **B 純前端呈現層、視覺零發明、零 backend**：`groupTrailingBySection` 純函數 + chat render 外層 map 復用既有
+  ImageGallery primitive，最低 H7 風險（用戶揀方案 1）。production-preserve（trailing 空 bit-identical）。
+- **教訓**：(1) vision 某層可能在執行過程被後續工作吸收/否決（層 C 同層 B/DD-10 模式）—— 先 live 診斷確認真缺口，
+  別照舊描述開工，避免幻影工作。(2) 圖召回 A/B 必須控 variance（單次 max_aux=60 答案暴跌 10982→2195 字成
+  variance 假象，乾淨 6-run 才揭 max_aux 非上限）。(3) helper 純函數驅動 → unit test 易、render 改動 surgical。
+- 後續（rolling JIT）：ImageGallery 縮圖 grid 分組（本期保 flat 總覽）/ mockup 補分組 gallery 設計（獨立 design
+  sync）/ 層 C 若現「不相關圖混入」precision 痛點再議（DD-12 close 條件）。
