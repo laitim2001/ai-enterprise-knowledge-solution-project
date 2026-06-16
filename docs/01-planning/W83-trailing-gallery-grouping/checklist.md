@@ -11,10 +11,10 @@
 - [x] F1.2 unit test（`tests/unit/citation-images.test.ts`）：分組正確 / 組順序 doc_order（first-appearance）/ figureIdx 連續 / 空 → `[]` / 單組 / 非連續 run rejoin / section 缺 fallback（7 新 test）
 - [x] F1 gate：type-check 0 + vitest **42 passed**（原 35 + 新 7）
 
-## F2 — chat page trailing render 改分組
-- [ ] F2.1 `chat/page.tsx` 1299-1309：`trailingImages.map` → `groupTrailingBySection` 外層 map（章節 header 復用 `muted mono text-xs` uppercase + `badge badge-muted` + 組內 `InlineImageCard`）
-- [ ] F2.2 production-preserve：trailing 空 → 0 組無渲染 bit-identical
-- [ ] F2 gate：type-check 0 + lint 零新 warning + build ✓
+## F2 — chat page trailing render 改分組 ✅（code；build clean-exit 待 F4 停 dev 後跑）
+- [x] F2.1 `chat/page.tsx` `trailingImages.map` → `groupTrailingBySection` 外層 map（`<section>` wrapper + 章節 header 復用 `muted mono text-xs` uppercase + `badge badge-muted` + 組內 `InlineImageCard` props 不變）+ import 加 `groupTrailingBySection`
+- [x] F2.2 production-preserve：trailing 空 → `groupTrailingBySection` 回 `[]` → 0 組無渲染 bit-identical
+- [x] F2 gate（code）：type-check 0 + lint 零新 warning（唯一 = pre-existing `no-img-element` 行號由 1858→1882 位移）；build clean-exit 受並行 `next dev` `.next` race 阻 → F4 停 dev 後 confirm（dev compile chat route 已覆蓋 compile 驗證）
 
 ## F3 — Browser 驗（playwright）
 - [ ] F3.1 chat `drive-images-1` 跑 FA query → 末尾 35 張 trailing 按 §2.1.x 分組 + 章節小標

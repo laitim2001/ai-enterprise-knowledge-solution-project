@@ -45,8 +45,9 @@
 | Hash | Subject | Checklist |
 |---|---|---|
 | `5df7dc8` | W83 kickoff + ADR-0064 + 層C/A 收斂 | plan/ADR |
-| F1 | `groupTrailingBySection` helper + unit test（42 passed） | F1.1-F1.2 |
+| `a4cfa17` | F1 `groupTrailingBySection` helper + unit test（42 passed） | F1.1-F1.2 |
+| F2 | chat trailing render 改分組（章節 header 復用 ImageGallery primitive） | F2.1-F2.2 |
 
 ### 下一步
 
-- F2 chat page trailing render 改分組（`groupTrailingBySection` 外層 map + 章節 header）。
+- F3 browser 驗（playwright FA query — 末尾 35 張按 §2.1.x 分組 + 章節小標）。

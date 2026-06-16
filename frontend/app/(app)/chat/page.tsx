@@ -114,6 +114,7 @@ import { streamQuery, type Citation, type ImageRef, type SseEvent } from '@/lib/
 import {
   dedupeCitationImages,
   formatRelevance,
+  groupTrailingBySection,
   imageSectionPath,
   imageTitle,
   planAnchoredImages,
@@ -1290,22 +1291,45 @@ function MessageRow({
         {/* Trailing image cards — mockup ekp-page-chat.jsx:470-498 (per
             imageCitation inline rendering in answer body). Restored by BUG-019;
             BUG-026 Finding A dedupes one card per distinct image. W71 (ADR-0055)
-            — these are now the images NOT anchored inline at a marker position
+            — these are the images NOT anchored inline at a marker position
             (`trailingImages` = capped minus anchored): an anchored image renders
             within the answer flow (AnswerBodyMarkdown) and must NOT repeat here.
-            Figure numbers continue after the inline ones. With the knob off (no
-            markers) trailingImages == all capped, so this is bit-identical to
-            pre-W71. */}
+            Figure numbers continue after the inline ones.
+            W83 (ADR-0064) — group the trailing pile by source_section so a
+            "per-field screenshot" section (FA §2.1.3 — 圖粒度 > 文字步驟粒度: ~35
+            field screenshots with no step sentence to anchor) renders under its
+            step-chapter heading (a labelled appendix) instead of one
+            undifferentiated wall. The header reuses the ImageGallery "Referenced
+            screenshots" primitive (muted mono + badge), 視覺零發明; group order +
+            figureIdx are unchanged (groupTrailingBySection keeps doc-order). Empty
+            trailing → 0 groups → bit-identical to pre-W83 (and knob-off pre-W71). */}
         {!message.isStreaming &&
-          trailingImages.map(({ entry, figureIdx }) => (
-            <InlineImageCard
-              key={`${entry.citation.chunk_id}-${entry.image.checksum_sha256 || entry.image.blob_url}`}
-              citation={entry.citation}
-              image={entry.image}
-              citationIdx={entry.citationIdx}
-              figureIdx={figureIdx}
-              onOpen={() => onOpenScreenshot(entry.citation, entry.image)}
-            />
+          groupTrailingBySection(trailingImages).map((group) => (
+            <section key={group.sectionPath.join(' / ') || 'other'} style={{ marginTop: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span
+                  className="muted mono text-xs"
+                  style={{
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                  }}
+                >
+                  {group.sectionLabel}
+                </span>
+                <span className="badge badge-muted">{group.items.length}</span>
+              </div>
+              {group.items.map(({ entry, figureIdx }) => (
+                <InlineImageCard
+                  key={`${entry.citation.chunk_id}-${entry.image.checksum_sha256 || entry.image.blob_url}`}
+                  citation={entry.citation}
+                  image={entry.image}
+                  citationIdx={entry.citationIdx}
+                  figureIdx={figureIdx}
+                  onOpen={() => onOpenScreenshot(entry.citation, entry.image)}
+                />
+              ))}
+            </section>
           ))}
 
         {/* Image gallery — mockup ekp-page-chat.jsx:621-664 ("Referenced
