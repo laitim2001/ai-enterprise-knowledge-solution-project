@@ -2,13 +2,13 @@
 
 > Atomic items per deliverable。每日 tick。Source of truth = `plan.md`。
 
-## F1 — Backend `is_scan_pdf` helper + ingest guard + force flag
-- [ ] F1.1 `profiler.py` 抽 module-level `is_scan_pdf(source_path) -> bool`（復用 `_probe_pdf_text_layer` + P4 threshold）+ profiler 自身復用（零行為改變）
-- [ ] F1.2 `_run_ingest_pipeline` 加 `force_scan` 參數 + guard（`.pdf` + `is_scan_pdf` + 非 force → 422 `ingest.scan_requires_confirm`，插 tmpfile 後 / select_parser 前）
-- [ ] F1.3 `upload_document` + reindex endpoint 加 `force_scan: bool = False` query 參數 → 傳落 pipeline
-- [ ] F1.4 pytest：scan 無 force → 422 / scan + force → 跳 guard / born-digital PDF → 照常 / docx → 跳 probe；`is_scan_pdf` unit test（scan / born-digital / 非 PDF）
-- [ ] F1.5 回歸：profiler 既有 test 全綠（helper 復用零行為改變）
-- [ ] F1 gate：mypy strict + ruff clean + pytest 綠
+## F1 — Backend `is_scan_pdf` helper + ingest guard + force flag ✅
+- [x] F1.1 `profiler.py` 抽 module-level `_probe_pdf_text_layer` + `is_scan_pdf(source_path) -> bool`（復用 probe + P4 threshold）+ `_extract_signals` 改 call module-level（profiler 零行為改變）
+- [x] F1.2 `_run_ingest_pipeline` 加 `force_scan` 參數 + guard（tmpfile 後 / select_parser 前：`.pdf` + `is_scan_pdf` + 非 force → 422 `ingest.scan_requires_confirm`）
+- [x] F1.3 `upload_document` + `reindex_document` 加 `force_scan: bool = False` query 參數 → 傳落 pipeline；batch `run_kb_reindex` `force_scan=True`（trusted 現有 doc）
+- [x] F1.4 pytest：scan 無 force → 422 + ingest 不 await / scan + force → 跳 guard 202 / born-digital → 照常 202 / docx → 跳 probe（4 route test）；`is_scan_pdf` unit test（empty / thin / born-digital / probe-fail / 兩 threshold 邊界 = 6 test）
+- [x] F1.5 回歸：profiler + documents route 既有 test 全綠（helper 復用零行為改變）
+- [x] F1 gate：**pytest 70 passed**（含新 10 test）+ ruff All checks passed + mypy profiler Success；mypy documents 唯一 error = `_engine_or_503` line 124 no-any-return（`git stash` 證 pre-existing baseline，非 W84 引入）
 
 ## F2 — Frontend force UI
 - [ ] F2.1 `kb.ts` `uploadDoc(kbId, file, forceScan = false)` + `?force_scan=` + 422 解析 `scan_requires_confirm` → typed error / sentinel

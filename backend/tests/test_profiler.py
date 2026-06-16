@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+import ingestion.profiler as profiler_mod
 from ingestion.parsers.base import (
     DocFormat,
     EmbeddedImage,
@@ -27,7 +28,7 @@ from ingestion.parsers.base import (
     ParserResult,
     Table,
 )
-from ingestion.profiler import DocumentProfiler, ProfileSignals
+from ingestion.profiler import DocumentProfiler, ProfileSignals, is_scan_pdf
 
 PROFILER = DocumentProfiler()
 
@@ -253,3 +254,44 @@ def test_pdf_probe_real_scan_is_p4() -> None:
     assert r.profile == "P4_scan_imgdense"
     assert r.signals.pdf_empty_ratio is not None
     assert r.signals.pdf_empty_ratio >= 0.5
+
+
+# --------------------------------------------------------------------------- #
+# ADR-0065 — is_scan_pdf pre-parse guard helper (reuses the profiler probe)
+# --------------------------------------------------------------------------- #
+
+
+def test_is_scan_pdf_empty_text_layer_is_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # empty-page ratio >= 0.5 → scan (mirrors _classify_pdf_preocr P4 branch).
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (10, 0.8, 5.0))
+    assert is_scan_pdf(Path("x.pdf")) is True
+
+
+def test_is_scan_pdf_thin_text_layer_is_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # avg chars/page < 200 (empty ratio low) → scan.
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (10, 0.1, 150.0))
+    assert is_scan_pdf(Path("x.pdf")) is True
+
+
+def test_is_scan_pdf_born_digital_is_not_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # dense text layer → not scan (production-preserve: born-digital PDF proceeds).
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (10, 0.0, 2000.0))
+    assert is_scan_pdf(Path("x.pdf")) is False
+
+
+def test_is_scan_pdf_probe_failure_is_not_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # probe failed (all None) → False: the guard only blocks CONFIDENT scans.
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (None, None, None))
+    assert is_scan_pdf(Path("x.pdf")) is False
+
+
+def test_is_scan_pdf_empty_ratio_at_threshold_is_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # empty_ratio == 0.5 (>=) → scan.
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (10, 0.5, 1000.0))
+    assert is_scan_pdf(Path("x.pdf")) is True
+
+
+def test_is_scan_pdf_thin_avg_at_threshold_is_not_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # avg_chars == 200 (NOT < 200) + low empty ratio → not scan.
+    monkeypatch.setattr(profiler_mod, "_probe_pdf_text_layer", lambda _p: (10, 0.1, 200.0))
+    assert is_scan_pdf(Path("x.pdf")) is False

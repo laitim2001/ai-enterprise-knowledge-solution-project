@@ -67,6 +67,51 @@ _PDF_SLIDE_AVG_CHARS = 600.0  # born-digital PDF 每頁 < 此 → 簡報傾向 (
 _TICKBOX_RE = re.compile(r"[□☐☑☒★]|\bQ\d+[.):]|your answer|answer\s*:", re.IGNORECASE)
 
 
+def _probe_pdf_text_layer(
+    source_path: Path,
+) -> tuple[int | None, float | None, float | None]:
+    """pypdfium2 pre-OCR text-layer probe (秒級,唔 OCR;per explore_scan_pdf.py).
+
+    Returns (pages, empty_page_ratio, avg_chars_per_page). All None on failure so
+    callers degrade to structural signals — probing MUST NOT abort profiling / ingest.
+
+    W84 / ADR-0065 — promoted from a `DocumentProfiler` method to module-level so the
+    ingest guard (`is_scan_pdf`) can reuse the SAME pre-OCR probe without instantiating
+    a profiler. `DocumentProfiler._extract_signals` calls this; behaviour is identical.
+    """
+    try:
+        pdf = pdfium.PdfDocument(str(source_path))
+        n = len(pdf)
+        if n == 0:
+            return 0, None, None
+        char_counts = [
+            len((pdf[i].get_textpage().get_text_range() or "").strip()) for i in range(n)
+        ]
+        empty = sum(1 for c in char_counts if c < _PDF_EMPTY_CHAR_THRESHOLD)
+        return n, empty / n, sum(char_counts) / n
+    except Exception:  # noqa: BLE001 — probe failure must not abort profiling / ingest
+        logger.warning("pdf text-layer probe failed", extra={"path": str(source_path)})
+        return None, None, None
+
+
+def is_scan_pdf(source_path: Path) -> bool:
+    """Pre-parse P4 (scan) detection — pypdfium2 text-layer probe, NO OCR (ADR-0065).
+
+    True when the PDF's text layer is empty/thin enough to be a scan that needs OCR —
+    mirrors the profiler's `_classify_pdf_preocr` P4 branch (empty-page ratio ≥
+    `_PDF_SCAN_EMPTY_RATIO` OR avg chars/page < `_PDF_SCAN_THIN_AVG`). The ingest guard
+    uses it to short-circuit BEFORE the slow Docling OCR parse (8–9.5 min/file).
+
+    Probe failure (all None) → False: the guard only blocks CONFIDENT scans, so an
+    unreadable / non-PDF path lets ingest proceed (parser surfaces real errors). Caller
+    should invoke only for `.pdf` (other formats have no text-layer to probe).
+    """
+    _pages, empty_ratio, avg_chars = _probe_pdf_text_layer(source_path)
+    if empty_ratio is not None and empty_ratio >= _PDF_SCAN_EMPTY_RATIO:
+        return True
+    return avg_chars is not None and avg_chars < _PDF_SCAN_THIN_AVG
+
+
 @dataclass(slots=True)
 class ProfileSignals:
     """Transparent signal bundle — 後續 UI 段 L3「文件畫像」section 直接消費。"""
@@ -133,7 +178,7 @@ class DocumentProfiler:
         pdf_empty_ratio: float | None = None
         pdf_avg_chars: float | None = None
         if pr.doc_format == "pdf":
-            pdf_pages, pdf_empty_ratio, pdf_avg_chars = self._probe_pdf_text_layer(source_path)
+            pdf_pages, pdf_empty_ratio, pdf_avg_chars = _probe_pdf_text_layer(source_path)
 
         return ProfileSignals(
             paragraphs=paras,
@@ -150,28 +195,6 @@ class DocumentProfiler:
             pdf_empty_ratio=pdf_empty_ratio,
             pdf_avg_chars=pdf_avg_chars,
         )
-
-    def _probe_pdf_text_layer(
-        self, source_path: Path
-    ) -> tuple[int | None, float | None, float | None]:
-        """pypdfium2 pre-OCR text-layer probe (秒級,唔 OCR;per explore_scan_pdf.py).
-
-        Returns (pages, empty_page_ratio, avg_chars_per_page). All None on failure so
-        classify degrades to structural signals — probing MUST NOT abort profiling.
-        """
-        try:
-            pdf = pdfium.PdfDocument(str(source_path))
-            n = len(pdf)
-            if n == 0:
-                return 0, None, None
-            char_counts = [
-                len((pdf[i].get_textpage().get_text_range() or "").strip()) for i in range(n)
-            ]
-            empty = sum(1 for c in char_counts if c < _PDF_EMPTY_CHAR_THRESHOLD)
-            return n, empty / n, sum(char_counts) / n
-        except Exception:  # noqa: BLE001 — probe failure must not abort profiling
-            logger.warning("pdf text-layer probe failed", extra={"path": str(source_path)})
-            return None, None, None
 
     # --- classify (rule v3) ---
 

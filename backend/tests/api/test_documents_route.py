@@ -210,6 +210,13 @@ def _docx_files(
     }
 
 
+def _pdf_files(
+    filename: str = "doc-a.pdf", content: bytes = b"%PDF-1.4 fake",
+) -> dict[str, tuple[str, bytes, str]]:
+    """Multipart `files=` payload helper for a PDF upload (ADR-0065 guard tests)."""
+    return {"file": (filename, content, "application/pdf")}
+
+
 # =========================================================================== #
 # POST /kb/{kb_id}/documents — AC1-AC7, AC10, AC22
 # =========================================================================== #
@@ -1055,4 +1062,90 @@ async def test_get_screenshot_proxy_rejects_bad_blob_name(
     resp = TestClient(app).get("/kb/drive_user_manuals/screenshots/not-a-valid-sha.png")
     assert resp.status_code == 422
     download.assert_not_awaited()
+
+
+# =========================================================================== #
+# ADR-0065 — P4 scan ingest pre-parse guard + force override
+# =========================================================================== #
+
+
+@pytest.mark.asyncio
+async def test_upload_scan_pdf_without_force_returns_422_before_ocr(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0065 — a scanned PDF (is_scan_pdf True) without force_scan → 422, OCR never runs."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    monkeypatch.setattr(documents_routes, "is_scan_pdf", lambda _path: True)
+    populator = _populator_mock()
+    engine = _engine_mock(list_docs=[])  # no dup
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    client = TestClient(app)
+
+    resp = client.post("/kb/drive_user_manuals/documents", files=_pdf_files("scanned-invoice.pdf"))
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["detail"]["code"] == "ingest.scan_requires_confirm"
+    # Guard fired BEFORE the slow Docling OCR — the orchestrator never ran.
+    ingest_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_upload_scan_pdf_with_force_skips_guard_and_ingests(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0065 — force_scan=true bypasses the guard → normal ingest (user accepts the wait)."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    monkeypatch.setattr(documents_routes, "is_scan_pdf", lambda _path: True)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    client = TestClient(app)
+
+    resp = client.post(
+        "/kb/drive_user_manuals/documents?force_scan=true",
+        files=_pdf_files("scanned-invoice.pdf"),
+    )
+    assert resp.status_code == 202, resp.text
+    ingest_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_born_digital_pdf_proceeds_without_guard(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0065 production-preserve — a born-digital PDF (is_scan_pdf False) ingests normally."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    monkeypatch.setattr(documents_routes, "is_scan_pdf", lambda _path: False)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    client = TestClient(app)
+
+    resp = client.post("/kb/drive_user_manuals/documents", files=_pdf_files("report.pdf"))
+    assert resp.status_code == 202, resp.text
+    ingest_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_docx_skips_scan_probe_entirely(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0065 — the guard only probes `.pdf`; a docx upload never calls is_scan_pdf."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+
+    def _boom(_path: Path) -> bool:
+        raise AssertionError("is_scan_pdf must NOT be called for a .docx upload")
+
+    monkeypatch.setattr(documents_routes, "is_scan_pdf", _boom)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    client = TestClient(app)
+
+    resp = client.post("/kb/drive_user_manuals/documents", files=_docx_files("manual.docx"))
+    assert resp.status_code == 202, resp.text
+    ingest_mock.assert_awaited_once()
 

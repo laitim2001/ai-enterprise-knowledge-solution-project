@@ -52,7 +52,7 @@ from ingestion.embedding.base import Embedder
 from ingestion.orchestrator import IngestionOrchestrator
 from ingestion.parsers import select_parser
 from ingestion.profile_presets import resolve_preset
-from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult
+from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult, is_scan_pdf
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
@@ -705,6 +705,7 @@ async def _run_ingest_pipeline(
     doc_id: str,
     deps: _IngestionDeps,
     service: KBService,
+    force_scan: bool = False,
 ) -> dict[str, object]:
     """The shared ingest pipeline used by BOTH POST upload + POST reindex.
 
@@ -742,6 +743,20 @@ async def _run_ingest_pipeline(
         tmp_path = Path(tmp_dir) / safe_name
         with tmp_path.open("wb") as tmp:
             shutil.copyfileobj(upload_file.file, tmp)
+
+        # ADR-0065 — P4 scan pre-parse guard. A scanned PDF needs Docling OCR which
+        # blocks the SYNCHRONOUS ingest 8–9.5 min/file. The pypdfium2 pre-OCR probe
+        # (秒級, no OCR) detects it BEFORE the slow parse; without force_scan we 422 so
+        # the user can confirm via the upload UI's "仍要繼續" button. born-digital PDF
+        # probes non-scan → proceeds (production-preserve); docx/pptx skip the probe.
+        if ext == ".pdf" and not force_scan and is_scan_pdf(tmp_path):
+            raise _api_error(
+                "ingest.scan_requires_confirm",
+                f"{filename!r} looks like a scanned PDF (empty text layer) — OCR will "
+                "take ~8–9.5 minutes and block this request.",
+                "Retry with force_scan=true to ingest it anyway (the request will be slow).",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
         # W20 F4.2 — read the KB's KbConfig so the orchestrator honours the
         # ADR-0028 Step-4 multimodal toggles (`extract_embedded_images`, etc).
@@ -1049,6 +1064,10 @@ async def run_kb_reindex(
                 doc_id=doc_id,
                 deps=deps,
                 service=service,
+                # ADR-0065 — KB-level reindex re-ingests EXISTING docs (already indexed);
+                # a scan doc force-ingested before must not be blocked by the guard
+                # mid-batch, so force here (trusted, user-initiated bulk reindex).
+                force_scan=True,
             )
             reindexed.append(doc_id)
             emitted = body.get("chunks_emitted", 0)
@@ -1261,6 +1280,7 @@ async def upload_document(
     request: Request,
     service: KbServiceDep,
     file: UploadFile,
+    force_scan: bool = False,
 ) -> dict[str, object]:
     """Upload + ingest a document into a KB (per architecture.md §3.3 + ADR-0018).
 
@@ -1318,6 +1338,7 @@ async def upload_document(
         doc_id=doc_id,
         deps=deps,
         service=service,
+        force_scan=force_scan,
     )
     return {"status": "indexed", **body}
 
@@ -1385,6 +1406,7 @@ async def reindex_document(
     request: Request,
     service: KbServiceDep,
     file: UploadFile,
+    force_scan: bool = False,
 ) -> dict[str, object]:
     """Re-index a doc — atomic replace per CH-001 Decision A = (ii) replace-in-place.
 
@@ -1471,6 +1493,7 @@ async def reindex_document(
             doc_id=doc_id,
             deps=deps,
             service=service,
+            force_scan=force_scan,
         )
     except HTTPException as exc:
         # Re-wrap the pipeline error to flag the "partial failure" (mid-replace).

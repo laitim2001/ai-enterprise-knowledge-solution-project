@@ -35,8 +35,9 @@ W83 收尾後用戶問「是否繼續推進層 C」→ 我建議 hold（無 prec
 
 | Hash | Subject | Checklist |
 |---|---|---|
-| （本 entry）| W84 kickoff + ADR-0065 | plan/ADR |
+| `59d05e2` | W84 kickoff + ADR-0065 | plan/ADR |
+| F1 | backend `is_scan_pdf` helper + ingest guard + `force_scan` flag + test（70 passed） | F1.1-F1.5 |
 
 ### 下一步
 
-- F1 backend `is_scan_pdf` helper + `_run_ingest_pipeline` guard + `force_scan` flag + test。
+- F2 frontend force UI（`uploadDoc` 帶 `force_scan` + 接 422 → `banner-warning` + 「仍要繼續」force 重試）。
