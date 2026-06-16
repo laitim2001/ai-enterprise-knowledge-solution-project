@@ -20,13 +20,13 @@
 - [x] F2.5 回歸:無 override 時三 call site bit-identical(`test_route_preset_production_preserve_without_override` + `resolve_preset(None)` fallback)+ routing/override/backfill 既有 test 全綠
 - [x] F2 gate:mypy strict(4 module clean;唯一 error = `_engine_or_503` no-any-return `git stash` 證 baseline pre-existing)+ ruff clean(non-server「All checks passed」;server.py E402=40 baseline 零新增)+ pytest 50 passed
 
-## F3 — Frontend wire
-- [ ] F3.1 新 `frontend/lib/api/profile-presets.ts`(TS types + GET/PUT/DELETE client)
-- [ ] F3.2 `settings-doc-profiling.tsx` 硬編碼 `PRESETS` → fetch `GET /profile-presets`(TanStack Query)
-- [ ] F3.3 解 disabled「編輯」→ edit form(復用既有 Settings form primitive,視覺零發明)
-- [ ] F3.4 儲存 → `PUT` + confirm + invalidate + toast;每 row「還原預設」→ `DELETE` + confirm
-- [ ] F3.5 threshold card 維持唯讀 / disabled 不變(scope 排除,明確不動)
-- [ ] F3 gate:type-check 0 + lint 零新 warning + build ✓
+## F3 — Frontend wire ✅(code;F4 browser 驗待重啟後)
+- [x] F3.1 新 `frontend/lib/api/profile-presets.ts`(`PresetMappingItem` + reuse `DocConfig` + GET/PUT/DELETE client)
+- [x] F3.2 `settings-doc-profiling.tsx` 硬編碼 `PRESETS` → fetch `GET /profile-presets`(`useQuery`;effective view + 已覆寫 黃旗 badge)
+- [x] F3.3 解 disabled「編輯」→ edit `Dialog`(復用 `dialog.tsx` primitive + `.field/.input/.switch/.seg`,視覺零發明;full-config draft 保 hidden 欄)
+- [x] F3.4 儲存 → `PUT`(Dialog + warning banner = 儲存確認 gate)+ invalidate + `toast`;每 row「還原預設」→ `DELETE`(可逆 undo,如 L3)+ toast
+- [x] F3.5 threshold card 維持唯讀 / disabled 不變(verbatim 保留 + disabled title 更新指 W79/ADR-0058)
+- [x] F3 gate(code):type-check 0 + lint 零新 warning(唯一 = pre-existing `chat:1858`)+ build **compile + type 驗證通過**(clean-exit 受並行 `next dev` `.next` race 阻,重啟後 confirm)
 
 ## F4 — Browser 驗(playwright)
 - [ ] F4.1 起 infra(`ekp-restart`)+ pre-flight health check
