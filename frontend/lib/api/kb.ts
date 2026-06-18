@@ -83,6 +83,17 @@ export const DEFAULT_KB_CONFIG: KbConfig = {
   return_images_in_chat: false,
 };
 
+// W69 — 圖密步驟手冊 image-recall 實證配方 (per ADR-0054). 三值出處: W62 供給側 A/B
+// (neighbour max_aux 18→40 = binding 項) + W63 (rerank_k=10 錨點冗餘) + W68 ADR-0054
+// dedup-before-cap (max_images=80 = unique 預算語義) — image-recall 0.574 → ~1.00
+// (drive-images-1 9-query GT). Shared by the KB Detail Settings 「套用配方」row AND the
+// /kb/new wizard Multimodal step so the two stay in lockstep (single source of truth).
+export const IMAGE_DENSE_PRESET = {
+  default_rerank_k: 10,
+  citation_neighbour_max_aux_images: 40,
+  max_images_per_answer: 80,
+} as const;
+
 export interface KbCreatePayload {
   kb_id: string;
   name: string;

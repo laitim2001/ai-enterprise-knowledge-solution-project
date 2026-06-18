@@ -49,6 +49,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react';
 
 import {
   DEFAULT_KB_CONFIG,
+  IMAGE_DENSE_PRESET,
   kbApi,
   type KbConfig,
   type KbCreatePayload,
@@ -79,11 +80,18 @@ interface WizardForm {
   captioning_model: CaptioningModel;
   low_value_threshold: number;
   render_pdf_pages: boolean;
+  // Apply the W69 image-dense recall preset (IMAGE_DENSE_PRESET) at create time.
+  // Expanded into the KbConfig on POST /kb; off = leave those knobs at default.
+  image_dense_preset: boolean;
 }
 
 type UpdateFn = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => void;
 
-const KB_ID_PATTERN = /^[a-z0-9_-]+$/;
+// Blob-container-safe — matches the backend KbCreate validator: lowercase alnum
+// separated by SINGLE dashes (no underscores, no leading/trailing/consecutive
+// dashes). Manual-id entry is checked against this so it can't drift from the
+// auto-derive slugify; both now reject exactly what Azure Blob would reject.
+const KB_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const STEPS: ReadonlyArray<{ id: number; label: string; hint: string }> = [
   { id: 0, label: 'Identity', hint: 'Name + kb_id' },
@@ -119,6 +127,7 @@ export default function KbNewPage() {
     captioning_model: 'off',
     low_value_threshold: 0.3,
     render_pdf_pages: false,
+    image_dense_preset: false,
   });
 
   const update: UpdateFn = (key, value) => {
@@ -158,7 +167,18 @@ export default function KbNewPage() {
       dedup_strategy: form.dedup_strategy,
       return_images_in_chat: form.return_images_in_chat,
       default_top_k: form.default_top_k,
-      default_rerank_k: form.default_rerank_k,
+      // W69 image-dense preset overrides rerank_k + adds the two image-recall knobs
+      // (neighbour max aux images, max images/answer). Off = leave them at default/null.
+      default_rerank_k: form.image_dense_preset
+        ? IMAGE_DENSE_PRESET.default_rerank_k
+        : form.default_rerank_k,
+      ...(form.image_dense_preset
+        ? {
+            citation_neighbour_max_aux_images:
+              IMAGE_DENSE_PRESET.citation_neighbour_max_aux_images,
+            max_images_per_answer: IMAGE_DENSE_PRESET.max_images_per_answer,
+          }
+        : {}),
     };
     try {
       const created = await createMutation.mutateAsync({
@@ -950,6 +970,16 @@ function StepMultimodal({
                 ? 'Triples ingestion time and Blob storage cost'
                 : null
             }
+          />
+          {/* W69 image-recall preset — same IMAGE_DENSE_PRESET as the KB Detail
+              Settings 「套用配方」row, surfaced at create time so an image-heavy
+              manual gets full image recall without a post-create Settings trip. */}
+          <OptionRow
+            checked={form.image_dense_preset}
+            onToggle={(v) => update('image_dense_preset', v)}
+            title="套用圖密召回配方 (image-recall preset)"
+            desc="Rerank top-k 10 · Neighbour max aux images 40 · Max images/answer 80 — image-recall 0.574 → ~1.00 (W62–W68 實證, ADR-0054). 圖密步驟手冊適用;建立後仍可喺 KB Settings 調整。"
+            badge="實證配方"
           />
         </div>
 

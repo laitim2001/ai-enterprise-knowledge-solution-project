@@ -64,7 +64,13 @@ import {
 } from '@/lib/api/config-test';
 import { ApiError } from '@/lib/api-client';
 import { documentsApi, type ChunkSummary, type DocumentSummary } from '@/lib/api/documents';
-import { kbApi, type KbConfig, type KbImageItem, type KbStatus } from '@/lib/api/kb';
+import {
+  IMAGE_DENSE_PRESET,
+  kbApi,
+  type KbConfig,
+  type KbImageItem,
+  type KbStatus,
+} from '@/lib/api/kb';
 import {
   retrievalTestApi,
   type RetrievalMode,
@@ -1779,15 +1785,8 @@ const TUNE_KNOB_KEYS: TuneKnobKey[] = TUNE_GROUPS.flatMap((g) => [
   ...g.knobs.map((k) => k.key),
 ]);
 
-// W69 — 實證配方 preset(圖密步驟手冊)。三值出處:W62 供給側 A/B(max_aux 18→40 =
-// binding 項)+ W63 Q005 機制(rerank_k=10 錨點冗餘)+ W68 ADR-0054 dedup-before-cap
-// (cap=80 = unique 預算語義)— image-recall 0.574 → ~1.00(drive-images-1 9-query GT)。
-// 套用只填草稿(行現有 dirty → 試跑 → 儲存流程),persist 路徑唯一不變。
-const IMAGE_DENSE_PRESET = {
-  default_rerank_k: 10,
-  citation_neighbour_max_aux_images: 40,
-  max_images_per_answer: 80,
-} as const;
+// IMAGE_DENSE_PRESET moved to lib/api/kb.ts so the /kb/new wizard can apply the
+// same W69 image-dense recall preset at create time (single source of truth).
 
 // One number knob. null = inherit (empty input + 繼承全域 placeholder); a value =
 // per-KB override (badge + ↺ 還原全域). The env-driven global default value isn't
