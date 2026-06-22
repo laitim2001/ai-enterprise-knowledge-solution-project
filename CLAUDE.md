@@ -617,6 +617,7 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 | Tier 1 / Tier 2 邊界模糊 | Default to Tier 2(out of scope),ask if uncertain |
 | Performance vs simplicity trade-off | Tier 1 階段:simplicity wins(2K chunks 無 perf 壓力) |
 | Quality vs delivery time trade-off | 4 metric target 唔可以 compromise;UI polish 可以後補 |
+| **圖文 recall / 呈現衝突**(原文圖跟隨文字、答案點還原、末尾孤兒圖點處理)| **以原文檔還原為準**(north-star,見 §15)— 原文某段本來有圖跟隨 → recall 嗰段時圖還原到對應位;**唔係圖文 1:1 配對**;**勿以答案文字為中心無腦退底部**(= 改錯方向);末尾孤兒圖**退底部 / 收納前先分甲 / 乙 / 丙**(甲=原文有文字且在答案→還原段旁;乙=答案濃縮冇寫→係答案還原唔夠;丙=逐欄截圖無獨立句→還原章節位)。詳見 memory `principle_source_fidelity_recall` |
 
 ---
 
@@ -637,10 +638,29 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 
 ---
 
+## 15. North-Star Principle — 圖文還原度(Source Fidelity Recall)
+
+> **用戶 2026-06-20 確立嘅 RAG / 知識系統最根本目的準則。** 同 §1 Behavioral Baseline 一樣 universal,適用於**所有** recall / 圖文呈現 / 完整度相關決策。
+
+**核心**:答案要**忠實還原原文檔本來嘅圖文關係** —— 原文檔某段內容本來有相關圖片跟隨,當嗰段內容被 recall 入答案,嗰啲圖亦應**盡可能還原到答案對應位置**。衡量嘅係「對原文檔圖文鄰接關係嘅還原度 / 忠實度」,**唔係**「每段文字都配圖」(圖文 1:1),亦**唔係**排版美觀。「盡可能」= 唔追求 100%,追求忠實。同理適用純文字:忠實還原原文內容結構,唔好過度濃縮。
+
+**Why**:做到忠實還原,**高完整度 + 準確度係自然結果**,唔係另一個獨立要追嘅 KPI(亦呼應反對「追 100% 完美」—— 要追嘅係忠實還原)。
+
+**執行紀律**:
+- 出發點**以原文檔為中心**(原文圖跟邊段 → 答案還原嗰段時圖都還原),**唔好以答案文字為中心**(「有冇答案錨點 → 冇就退底部」會破壞還原 = 改錯方向,用戶 2026-06-20 明確警告)。
+- 末尾 / 孤兒圖喺**退底部 / 收納 / 分層呈現之前,必先逐圖分辨**:
+  - **甲** 原文有對應文字 + 嗰文字在答案 → 還原到嗰段旁(錨定精度問題,例如現 section-anchor `depth=1` 章節級太粗 → 要 leaf 級)
+  - **乙** 原文有對應文字 + 答案冇寫嗰段(synthesizer 濃縮) → 根因 = 答案還原度 < 圖召回度,要令答案更完整重現原文,唔係掃走圖
+  - **丙** 原文本來逐欄截圖、無獨立句 → 還原到表格 / 章節標題位即可
+- 詳細 + 現狀座標(文字 recall ≈0.97 / 圖召回 ≈1.0 / 圖-文關係靠 W71 marker + W75 section-anchor)見 memory `principle_source_fidelity_recall`。
+
+---
+
 ## Appendix A: Quick Reference Card(印出嚟 stick 喺 monitor)
 
 ```
 EKP Tier 1 — Strict Mode
+├─ North-star (RAG 目的, §15): 忠實還原原文檔圖文關係 — 原文段有圖跟隨→recall 嗰段時圖還原對應位; 非1:1; 勿無腦退底部
 ├─ Behavioral baseline: §1 Karpathy (think → simple → surgical → goal)
 ├─ Spec: docs/architecture.md (frozen v6)
 ├─ Stack: Azure AI Search + OpenAI + Cohere + Next.js + FastAPI
@@ -658,6 +678,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 2.1 — 2026-06-20 North-Star Principle 圖文還原度 promote**(用戶確立 RAG / 知識系統最根本目的準則:答案忠實還原原文檔本來嘅圖文關係,非圖文 1:1,做到還原自然得高完整度 + 準確度)。具體變動:新增 **§15 North-Star Principle**(universal,同 §1 同層,適用所有 recall / 圖文呈現決策)+ §13 When in Doubt 加「圖文 recall / 呈現衝突」row(以原文檔還原為準,末尾孤兒圖退底部前先分甲 / 乙 / 丙)+ Appendix A Quick Reference Card 加 north-star line + memory `principle_source_fidelity_recall` 新建。**Why**:用戶 2026-06-20 explicit「需要一直都有同步的準則…這是最根本目的準則」+ 揀「升格入 CLAUDE.md」。
 **Version 2.0 — 2026-05-25 中文紀律 binding strict rule promote**(W27 D3 第 4 次違反觸發 user explicit「強調保持使用中文對答」request)。具體變動:
 - §11 Output / Communication Conventions 第 1 條 bullet rewrite — 由 single-line 描述 expand 為 **multi-section binding rule** 包含:6 類唯一可保留原文範圍 / Phase Gate verdict word 例外 / 常違反 mapping(Next/Status/Done/pending/ticked/verdict/hypothesis/validated/refuted/lessons learned/priority queue locked/recovery)/ **Hard enforcement gate**(每段 reply 之前 + 完成後 mandatory self-check) / **violation binding level = H7 design fidelity 同層**(broken project signal)/ memory reset 唔再依賴
 - §11 H1-H6 改 H1-H7(對齊 v1.7 H7 promotion)
