@@ -1,0 +1,13 @@
+#!/bin/sh
+# EKP pre-push hook — backend pytest (per CLAUDE.md H6 critical pipeline coverage).
+# 啟用一次: git config core.hooksPath scripts/hooks
+# 緊急跳過: git push --no-verify
+set -e
+
+echo "[pre-push] running backend pytest (~1-2 min)..."
+cd backend
+.venv/Scripts/python.exe -m pytest -q --no-header -p no:cacheprovider || {
+  echo "[pre-push] TESTS FAILED — 修好先 push (急可 --no-verify)"
+  exit 1
+}
+echo "[pre-push] backend tests OK"
