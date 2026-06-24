@@ -131,11 +131,14 @@ def _build_smoke_app(
 
     # Override auth Depends with a fixed mock user — keeps test focused on
     # E1/E5/E12 rather than re-litigating mock_msal.
+    # role="admin" so the W90 P2.0 assert_kb_access("query") guard passes without
+    # a wired rbac_backend (admins clear it before the backend is read).
     app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
         oid="smoke-user-001",
         tid="smoke-tenant",
         preferred_username="smoke@ekp.local",
         is_mock=True,
+        role="admin",
     )
 
     app.state.retrieval_engine = _MockEngine(chunks)

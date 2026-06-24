@@ -20,6 +20,9 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
+from api.middleware.acl import assert_kb_access
 from api.routes.documents import screenshot_proxy_url
 from api.schemas.kb import KbConfig
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
@@ -216,6 +219,7 @@ async def query(
     payload: QueryRequest,
     request: Request,
     service: KbServiceDep,
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ) -> QueryResponse:
     """Main RAG query — hybrid → (rerank) → synthesis → citations.
 
@@ -228,6 +232,9 @@ async def query(
     `execute_query_pipeline` (shared with the W43 F2 config-test harness so the
     harness runs the IDENTICAL pipeline).
     """
+    # W90 P2.0 (ADR-0066 G1) — KB-level query authorization. kb_id is in the body,
+    # so require_kb_acl (path-based) can't gate this; assert_kb_access does.
+    await assert_kb_access(request, payload.kb_id, current_user, "query")
     settings = get_settings()
     kb_config = await _get_kb_config(service, payload.kb_id)
     per_query = _per_query_from_payload(payload)
@@ -532,6 +539,7 @@ async def query_stream(
     payload: QueryRequest,
     request: Request,
     service: KbServiceDep,
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ) -> StreamingResponse:
     """SSE streaming variant of /query (W3 D3 F4).
 
@@ -543,6 +551,8 @@ async def query_stream(
     W43 F1.4 (ADR-0040) — per-KB tunable config resolved at entry (`effective`)
     and threaded through the same wire points as `/query`.
     """
+    # W90 P2.0 (ADR-0066 G1) — KB-level query authorization (kb_id in body).
+    await assert_kb_access(request, payload.kb_id, current_user, "query")
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
     if synthesizer is None:

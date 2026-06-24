@@ -83,20 +83,39 @@ def require_kb_acl(min_role: str) -> Callable[..., Awaitable[AuthenticatedUser]]
         request: Request,
         current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     ) -> AuthenticatedUser:
-        if current_user.role == "admin":
-            return current_user
-        backend = getattr(request.app.state, "rbac_backend", None)
-        if backend is None:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="rbac_backend not initialized — check lifespan logs",
-            )
-        access = await backend.get_kb_access(kb_id, current_user.oid)
-        if access is None or _KB_ACL_RANK[access] < _KB_ACL_RANK[min_role]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"This action requires '{min_role}' access to this KB.",
-            )
+        await assert_kb_access(request, kb_id, current_user, min_role)
         return current_user
 
     return _guard
+
+
+async def assert_kb_access(
+    request: Request,
+    kb_id: str,
+    current_user: AuthenticatedUser,
+    min_role: str,
+) -> None:
+    """Body-aware KB ACL check — same policy as `require_kb_acl`, but callable
+    from a handler where `kb_id` lives in the request body, not the path.
+
+    `require_kb_acl` (path-based dependency) can't gate `POST /query` +
+    `/query/stream` because their `kb_id` is in `QueryRequest`, not the route
+    path (W90 P2.0 / ADR-0066 G1). Those handlers take `get_current_user` + call
+    this. Workspace admins pass unconditionally (ADR-0027); everyone else needs a
+    `kb_acl` grant at `min_role` or higher. Raises 403 (authenticated but
+    under-privileged) / 503 (rbac_backend unwired).
+    """
+    if current_user.role == "admin":
+        return
+    backend = getattr(request.app.state, "rbac_backend", None)
+    if backend is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="rbac_backend not initialized — check lifespan logs",
+        )
+    access = await backend.get_kb_access(kb_id, current_user.oid)
+    if access is None or _KB_ACL_RANK[access] < _KB_ACL_RANK[min_role]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"This action requires '{min_role}' access to this KB.",
+        )

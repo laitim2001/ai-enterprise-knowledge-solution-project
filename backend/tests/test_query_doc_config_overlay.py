@@ -21,6 +21,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from api.routes import query as query_route
 from api.schemas.doc_config import DocConfig
 from api.schemas.kb import KbConfig, KbCreate
@@ -148,6 +150,11 @@ def _app(
             asyncio.run(store.upsert("kb", doc_id, doc_config))
         app.state.doc_config_store = store
     app.dependency_overrides[get_kb_service] = lambda: service
+    # W90 P2.0 — /query + /query/stream now assert_kb_access("query")-guarded;
+    # admin clears it without a wired rbac_backend.
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="test-admin", tid="test-tid", preferred_username="admin@test.local", role="admin"
+    )
     app.include_router(query_route.router)
     return app, synth
 

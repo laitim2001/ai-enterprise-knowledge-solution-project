@@ -119,9 +119,11 @@ def _build_app(
     register_error_handlers(app)
     app.add_middleware(RateLimitMiddleware, settings=settings, protected_prefixes=("/query",))
     app.add_middleware(AuditLogMiddleware, settings=settings, protected_prefixes=("/query",))
+    # role="admin" so the W90 P2.0 assert_kb_access("query") guard passes without
+    # a wired rbac_backend (admins clear it before the backend is read).
     app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
         oid="test-oid", tid="test-tid",
-        preferred_username="t@ekp.local", is_mock=True,
+        preferred_username="t@ekp.local", is_mock=True, role="admin",
     )
     app.state.retrieval_engine = _MockEngine(chunks)
     app.state.synthesizer = synth
@@ -228,10 +230,11 @@ def test_query_route_signature_preserved_for_fastapi_depends() -> None:
 
     sig = inspect.signature(query_route.query)
     params = list(sig.parameters)
-    # W43 F1.3 — signature gained `service: KbServiceDep` so the route can resolve
-    # the per-KB EffectiveConfig (ADR-0040). FastAPI introspection must still see
-    # all three params through the @observe_async __wrapped__ chain.
-    assert params == ["payload", "request", "service"], f"signature drift: {sig}"
+    # W43 F1.3 — signature gained `service: KbServiceDep` (per-KB EffectiveConfig,
+    # ADR-0040). W90 P2.0 — gained `current_user` (assert_kb_access("query") guard,
+    # ADR-0066 G1). FastAPI introspection must still see ALL params through the
+    # @observe_async __wrapped__ chain, else the new Depends wouldn't fire.
+    assert params == ["payload", "request", "service", "current_user"], f"signature drift: {sig}"
 
 
 def test_query_route_traceback_not_leaked_on_engine_failure() -> None:

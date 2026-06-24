@@ -8,6 +8,7 @@ itself is not exercised here (no live Entra) — only the role-extraction helper
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Annotated
 
 import pytest
@@ -18,7 +19,7 @@ from fastapi.testclient import TestClient
 from api.auth.mock_msal import authenticate_mock
 from api.auth.models import AuthenticatedUser
 from api.auth.msal_provider import _role_from_claims
-from api.middleware.acl import require_kb_acl, require_role
+from api.middleware.acl import assert_kb_access, require_kb_acl, require_role
 from storage.rbac_storage import InMemoryRbacBackend
 from storage.settings import Settings, get_settings
 
@@ -194,3 +195,39 @@ def test_require_kb_acl_503_when_backend_unwired() -> None:
     with TestClient(app) as client:
         r = client.get("/kb/kb-1/probe", headers={"Authorization": "Bearer dev-token"})
     assert r.status_code == 503
+
+
+# ---- W90 P2.0 — assert_kb_access (body-aware KB ACL for /query) -------------
+
+
+def _req(backend: InMemoryRbacBackend | None) -> SimpleNamespace:
+    """Minimal Request stand-in carrying app.state.rbac_backend."""
+    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(rbac_backend=backend)))
+
+
+def test_assert_kb_access_admits_admin_without_backend() -> None:
+    # admin clears the guard before the backend is read (None is fine).
+    asyncio.run(assert_kb_access(_req(None), "kb-1", _user("admin"), "query"))
+
+
+def test_assert_kb_access_rejects_no_grant() -> None:
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(assert_kb_access(_req(InMemoryRbacBackend()), "kb-1", _user("editor"), "query"))
+    assert exc.value.status_code == 403
+
+
+def test_assert_kb_access_admits_sufficient_grant() -> None:
+    backend = InMemoryRbacBackend()
+    asyncio.run(
+        backend.add_kb_acl(
+            kb_id="kb-1", principal_type="user", principal_id="oid-1",
+            access_role="query", granted_by="admin",
+        )
+    )
+    asyncio.run(assert_kb_access(_req(backend), "kb-1", _user("editor"), "query"))
+
+
+def test_assert_kb_access_503_when_backend_unwired() -> None:
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(assert_kb_access(_req(None), "kb-1", _user("editor"), "query"))
+    assert exc.value.status_code == 503
