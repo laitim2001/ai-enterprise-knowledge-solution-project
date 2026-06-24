@@ -55,5 +55,14 @@
   - console 3 errors 全係既有 `/api/backend/notifications` 404(非故障 per memory),同 F3 無關。
 - **F3 正式收尾** ✅。
 
-### Carry-over → F4
-- F4:`/users` 寫操作接通(改角色 / 邀請 / 停用)+ 前端錯誤態。
+### F4 調查 + 路徑(2026-06-24)
+- **調查**:backend 寫 endpoints 全已實作(`POST /users/invite`、`POST /users/{oid}/suspend`、`PATCH /users/{oid}/role`);前端 `/users` mockup 係 presentational(Invite button L88 + 每行 ⋯ More L183 有按鈕視覺,**交互未設計**)。F4 = 純前端接通。
+- **H7 trigger**:寫操作交互(邀請 form / 改角色 menu / 停用確認)mockup 未設計 → STOP+ask → **用戶選「先補 mockup 設計再對齊」**(最正統 H7 路徑)。
+- **F4 下一步(fresh turn,避免 context 緊下硬做 H7-sensitive 設計)**:
+  ① 讀 mockup `ekp-page-users.jsx` 全結構 + `DESIGN_SYSTEM.md §4`(Modal / PopMenu / OptionRow)
+  ② propose 三個交互佈局(邀請 form modal / 改角色 PopMenu / 停用確認)畀用戶確認
+  ③ 寫入 mockup → ④ 前端 1:1 對齊實作 + H7 verify。
+
+### 本輪(Day 1)收結
+- **完成 F1 + F2 + F3**(3 commits:`d5c2006` / `e3809e1` / `b4cfceb`);重啟 backend 驗 F2 端到端;playwright 驗 F3 兩處 badge。
+- **F4 路徑已定**(補 mockup 設計),fresh turn 開工。F5(KB ACL,純 backend)+ F6(Gate)未開始。
