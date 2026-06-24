@@ -67,6 +67,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { RoleBadge } from '@/components/users/role-badge';
+import { useRole } from '@/lib/hooks/use-role';
 import { useCurrentUser } from '@/lib/providers/auth-provider';
 
 const SIDEBAR_COLLAPSED_KEY = 'ekp-sidebar-collapsed';
@@ -515,6 +517,7 @@ function SidebarLink({
 
 function SidebarFooter({ collapsed }: { collapsed: boolean }) {
   const user = useCurrentUser();
+  const role = useRole();
   const displayName = user?.preferredUsername ?? 'Signing in…';
   const localPart = displayName.split('@')[0] ?? displayName;
   const initials = (
@@ -544,7 +547,9 @@ function SidebarFooter({ collapsed }: { collapsed: boolean }) {
         </div>
         <div className="user-chip-info">
           <b>{localPart}</b>
-          <span>Workspace Admin</span>
+          {/* W88 P0 F3 — real RBAC role chip (was hard-coded). RoleBadge =
+              mockup-grounded four-tier visual; hidden while /auth/me loads. */}
+          {role && <RoleBadge role={role} />}
         </div>
       </div>
       <button

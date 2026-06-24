@@ -30,6 +30,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RoleBadge } from '@/components/users/role-badge';
+import { useRole } from '@/lib/hooks/use-role';
 import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
 
 function getInitials(username: string): string {
@@ -43,6 +45,7 @@ function getInitials(username: string): string {
 
 export function UserMenu() {
   const user = useCurrentUser();
+  const role = useRole();
   const signOut = useAuthStore((s) => s.signOut);
 
   if (!user) {
@@ -104,7 +107,10 @@ export function UserMenu() {
               {user.isMock ? ' [mock]' : ''}
             </div>
             <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-              <span className="badge badge-accent">Workspace Admin</span>
+              {/* W88 P0 F3 — real RBAC role chip (was hard-coded "Workspace
+                  Admin"). RoleBadge = the mockup-grounded four-tier role visual
+                  (ekp-page-users.jsx); hidden while /auth/me is in flight. */}
+              {role && <RoleBadge role={role} />}
             </div>
           </div>
         </div>

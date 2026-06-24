@@ -39,6 +39,21 @@
 - **測試**:`test_auth_self_register.py` 加 5 個(首用戶→admin / 次用戶→user / 無 admin 升+verify / 有 admin no-op / 空 store no-op)。
 - **驗證**:self-register 58 passed;廣測試(auth/users/rbac/acl/group)**224 passed / 8 skipped / 0 failed**,零 regression;`users_repo.py` ruff clean,`server.py` 回 30(既有 baseline)。
 
-### Carry-over → F2 端到端
-- ⏳ **重啟 backend**(reload=False,`ensure_admin_bootstrap` 要重啟先跑)→ 驗 `admin@example.com` 升 admin + verified=t + `/auth/me` 回 admin。重啟 heavy(50-120s)+ 多 session 風險,待用戶確認時機。
-- F2 code + 單元測試已 commit;端到端驗證後 F2 正式收尾。
+### F2 端到端驗證(2026-06-24 ✅ 完成)
+- 重啟 backend(殺 dual-process 12104/46164 → venv python 啟新,READY ~104s,新 server 進程 27628)。
+- **startup log 確認 `admin_bootstrap_promoted`**:`{oid:u-IQh-6IRLT-4tXfAS, email:admin@example.com}`。
+- **DB `users` 驗證**:`admin@example.com` role `user`→**`admin`** + verified `f`→**`t`**。經 application layer(`set_user_role`/`mark_verified`),**不裸改 DB**(H5)。
+- **F2 正式收尾** ✅(code + 單元測試 + 端到端三層全綠)。
+
+### F3 前端 badge 讀真 role(2026-06-24 ✅ 完成)
+- **H7 trigger + 用戶拍板**:mockup `ekp-shell.jsx` 兩處(line 208 UserMenu header / line 336 sidebar footer)寫死「Workspace Admin」,未定義非 admin role 視覺 → STOP+ask → 用戶選**複用 RoleBadge**。
+- **改動**:`user-menu.tsx`(L107)+ `app-shell.tsx`(L547)兩處硬編 → `{role && <RoleBadge role={role} />}`;role 由 `useRole()`(canonical `/auth/me`)攞;role null(loading)隱藏。
+- **驗證**:ESLint clean、`tsc --noEmit` F3 檔案 0 type error。
+- **browser H7 fidelity check**(playwright,:3001 mock auto sign-in admin):
+  - sidebar footer RoleBadge "Workspace Admin" ✅(snapshot ref=e276)
+  - user-menu header dropdown RoleBadge "Workspace Admin" ✅(snapshot ref=e470)
+  - console 3 errors 全係既有 `/api/backend/notifications` 404(非故障 per memory),同 F3 無關。
+- **F3 正式收尾** ✅。
+
+### Carry-over → F4
+- F4:`/users` 寫操作接通(改角色 / 邀請 / 停用)+ 前端錯誤態。

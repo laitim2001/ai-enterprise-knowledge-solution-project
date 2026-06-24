@@ -14,12 +14,12 @@
 - [x] 修正令空 DB 第一個用戶 role=admin → `register()` first-user bootstrap + `ensure_admin_bootstrap()` self-heal
 - [x] DB role 值域對齊 RoleKey 四級 → bootstrap 只寫 admin/user,既有 admin@example.com(user)四級內
 - [x] 單元測試覆蓋 → 5 個新測試,廣測 224 passed 零 regression
-- [ ] 端到端:重啟 backend 驗 `admin@example.com` 升 admin + verified(⏳ 待重啟)
+- [x] 端到端:重啟後 startup reconcile 觸發,`admin@example.com` 升 admin + verified=t(DB 確認 + startup log)
 
 ## F3 前端硬編 badge → 讀真角色
-- [ ] 定位前端硬編 "Workspace Admin"
-- [ ] 改讀 `/auth/me` 真角色
-- [ ] H7 對齊 mockup(不同角色 badge)
+- [x] 定位 → user-menu.tsx:107 + app-shell.tsx:547(mockup ekp-shell.jsx:208/336 同樣寫死)
+- [x] 改讀真角色 → useRole() + 複用 RoleBadge(H7 用戶拍板,mockup-grounded);role null 隱藏
+- [x] H7 對齊 mockup → RoleBadge(ekp-page-users.jsx 四級);ESLint + tsc clean + browser 兩處 badge 驗證渲染
 
 ## F4 /users 寫操作接通
 - [ ] 改角色接通
