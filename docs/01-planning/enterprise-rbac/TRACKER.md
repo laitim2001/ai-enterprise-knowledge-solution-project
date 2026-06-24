@@ -13,7 +13,7 @@
 |---|---|---|---|
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
 | **P0** | 基礎校正 + W24c 收尾 | ✅ **完成** | 2026-06-24 F1-F6 + F5b + F6b 全綠(209 pytest + live smoke);2 待決均 resolve |
-| P1 | 威脅模型 + 目標架構 + ADR-0066 | 🔲 未開始 | 依賴 P0 |
+| **P1** | 威脅模型 + 目標架構 + ADR-0066 | 🟡 **進行中** | 2026-06-24 kickoff(W89);設計 phase,DG4 Tier 邊界 + DG5 ADR Accept 待 Chris |
 | P2 | 檢索層文件級存取控制 | 🔲 未開始 | 依賴 P1;可能係上線先決 |
 | P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
 | P4 | 群組存取(成員 + 繼承) | 🔲 未開始 | 真實同步隨 SSO 延後 |
@@ -49,11 +49,11 @@
 - [x] P0 closeout + 更新本 TRACKER + `FINDINGS.md` 基準
 - **2 待決均 resolve(2026-06-24)**:① documents.py 守衛已補(F5b)② live smoke 已做(F6b)
 
-### P1 — 威脅模型 + 目標架構 + ADR-0066(🔲 未開始)
-- [ ] 威脅模型 + 需求(資料分類 / 用戶類型 / 合規 / 租戶數)
-- [ ] 目標授權模型(資源層級 / RBAC+ABAC 邊界 / 索引結構)
-- [ ] 撰寫 ADR-0066 + Chris approve
-- [ ] 建立 W{NN} P1 phase folder
+### P1 — 威脅模型 + 目標架構 + ADR-0066(🟡 進行中 2026-06-24 → 細項見 [`../W89-rbac-p1-threat-model-arch/checklist.md`](../W89-rbac-p1-threat-model-arch/checklist.md))
+- [x] 建立 W89 P1 phase folder(三件套,rolling JIT)
+- [ ] F1 威脅模型 + 需求(資料分類 / 用戶類型 / 合規 / 租戶數;DG1-DG3 default 推進)
+- [ ] F2 目標授權模型(資源層級 / RBAC+ABAC 邊界 / 索引結構,次序鐵律 1)
+- [ ] F3 撰寫 ADR-0066(Proposed)+ **DG4 Tier 邊界 + DG5 Chris approve**(H1+H4 硬閘)
 
 ### P2 — 檢索層文件級存取控制(🔲 未開始,最關鍵)
 - [ ] 索引結構加 ACL / 密級欄位
