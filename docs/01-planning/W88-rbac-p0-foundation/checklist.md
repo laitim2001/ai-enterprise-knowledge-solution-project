@@ -22,10 +22,11 @@
 - [x] H7 對齊 mockup → RoleBadge(ekp-page-users.jsx 四級);ESLint + tsc clean + browser 兩處 badge 驗證渲染
 
 ## F4 /users 寫操作接通
-- [ ] 改角色接通
-- [ ] 邀請接通
-- [ ] 停用接通
-- [ ] 前端錯誤態處理
+- [x] 改角色接通 → RowActionMenu CHANGE ROLE → `changeUserRole` mutation
+- [x] 邀請接通 → InviteDialog → `inviteUser` mutation
+- [x] 停用接通 → SuspendDialog → `suspendUser` mutation
+- [x] 前端錯誤態處理 → mutation onError → sonner toast;disabled 態(空 email / isPending)
+- [x] ①讀 mockup+DESIGN_SYSTEM ②設計確認 ③寫 mockup ④前端對齊 + browser H7 verify 三交互渲染正確
 
 ## F5 KB 端點補接 require_kb_acl
 - [ ] 盤點 KB 寫端點守衛覆蓋

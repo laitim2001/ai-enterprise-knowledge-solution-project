@@ -74,5 +74,12 @@
 - **③ browser 驗證**(http.server + playwright):mockup users 頁 0 JS errors;三個交互全部渲染正確(邀請 form Power User T2 disabled / row menu admin ✓ + Suspend red / suspend confirm user 插值 + destructive)。
 - **P0 scope**:Reactivate / Resend invite backend 無 endpoint → out of scope。
 
-### Carry-over → F4 ④
-- ④ 前端 1:1 對齊實作:`frontend/app/(app)/users/page.tsx` 接通三個交互(shadcn/Tailwind + 接 backend invite/role/suspend + 錯誤態)+ browser H7 verify。fresh turn。
+### F4 ④ — 前端 1:1 對齊實作(2026-06-24 ✅ 完成)
+- **實作**:`frontend/app/(app)/users/page.tsx` 加三個 component(`InviteDialog` / `RowActionMenu` / `SuspendDialog`)+ wire `usersApi`(inviteUser / changeUserRole / suspendUser,本已現成)+ react-query `useMutation` + sonner toast + invalidate `['users','list']`;Invite button + row ⋯ + Suspend 接通。
+- **對齊**:shadcn Dialog(Radix a11y)+ mockup `.field`/`.btn` class;row menu row-anchored inline style(對齊 mockup `RowActionMenu`)+ 透明 backdrop click-outside。
+- **驗證**:ESLint clean + `tsc --noEmit` page.tsx 0 type error。
+- **browser H7 verify**(playwright,:3001 mock admin):三個交互全部渲染正確 —— InviteDialog(email/display_name/role + Power User T2 disabled + hint)/ RowActionMenu(CHANGE ROLE + 當前 admin ✓ + Suspend red)/ SuspendDialog(title + user 插值「Chris Lai (admin@example.com)」+ Suspend red)。**只驗渲染唔 click confirm = 冇改 DB**。console 3 errors 全係既有 `/notifications` 404(非 F4)。
+- **F4 正式收尾** ✅(①讀 ②設計確認 ③mockup ④前端對齊,全綠)。
+
+### Carry-over → F5
+- F5:KB endpoints 補接 `require_kb_acl`(純 backend,無 H7)+ F6 Phase Gate。

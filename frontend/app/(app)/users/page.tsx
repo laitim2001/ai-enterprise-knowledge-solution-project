@@ -51,15 +51,26 @@ import {
   useCallback,
   useMemo,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ErrorBoundary } from '@/components/error/error-boundary';
 import { TabErrorState } from '@/components/settings/tab-error-state';
 import { RoleBadge } from '@/components/users/role-badge';
 import {
   adminApi,
+  EKP_ROLE_LABELS,
   type AuditLogPage,
   type EkpRoleKey,
   type IdentityConfig,
@@ -154,6 +165,7 @@ function UsersPageInner() {
   const [tab, setTab] = useState<TabId>(
     initialTab && VALID_TABS.has(initialTab) ? initialTab : 'members',
   );
+  const [inviteOpen, setInviteOpen] = useState(false); // F4 — invite member dialog
 
   // `/users` is Workspace-Admin-only (ADR-0027 permissions matrix —
   // `cfg.manage_users`). Skip the admin-gated `GET /users` fetch for
@@ -254,7 +266,11 @@ function UsersPageInner() {
             <button type="button" className="btn btn-secondary btn-sm">
               <Download size={13} aria-hidden="true" /> Export CSV
             </button>
-            <button type="button" className="btn btn-primary btn-sm">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => setInviteOpen(true)}
+            >
               <Plus size={13} aria-hidden="true" /> Invite member
             </button>
           </div>
@@ -336,6 +352,8 @@ function UsersPageInner() {
           </TabBoundary>
         )}
       </div>
+      {/* F4 — invite member dialog */}
+      {inviteOpen && <InviteDialog onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }
@@ -357,6 +375,9 @@ function UsersTab({
 }) {
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [search, setSearch] = useState('');
+  // F4 — which row's ⋯ menu is open + the suspend-confirm target
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [suspendUser, setSuspendUser] = useState<UserSummary | null>(null);
 
   const visible = useMemo(() => {
     let rows = users;
@@ -544,14 +565,37 @@ function UsersTab({
                       </span>
                     )}
                   </td>
-                  <td className="col-shrink">
+                  <td className="col-shrink" style={{ position: 'relative' }}>
                     <button
                       type="button"
                       className="btn btn-ghost btn-icon btn-xs"
                       aria-label="Row actions"
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpenId === u.oid}
+                      onClick={() =>
+                        setMenuOpenId(menuOpenId === u.oid ? null : u.oid)
+                      }
                     >
                       <MoreHorizontal size={13} aria-hidden="true" />
                     </button>
+                    {menuOpenId === u.oid && (
+                      <>
+                        {/* transparent backdrop — click-outside closes the menu */}
+                        <div
+                          style={{ position: 'fixed', inset: 0, zIndex: 25 }}
+                          onClick={() => setMenuOpenId(null)}
+                          aria-hidden="true"
+                        />
+                        <RowActionMenu
+                          user={u}
+                          onClose={() => setMenuOpenId(null)}
+                          onSuspend={() => {
+                            setMenuOpenId(null);
+                            setSuspendUser(u);
+                          }}
+                        />
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -559,7 +603,276 @@ function UsersTab({
           </table>
         </div>
       )}
+      {/* F4 — suspend confirm dialog */}
+      {suspendUser && (
+        <SuspendDialog user={suspendUser} onClose={() => setSuspendUser(null)} />
+      )}
     </div>
+  );
+}
+
+// ============================================================================
+// F4 — /users write interactions (invite / role change / suspend)
+// Canonical visual spec: mockup `ekp-page-users.jsx` InviteModal / RowActionMenu
+// / SuspendModal (W88 P0 F4). Backend: usersApi.inviteUser / changeUserRole /
+// suspendUser. shadcn Dialog (Radix a11y) + mockup .field / .btn classes for
+// fidelity; row menu is row-anchored inline-style (NOT the topbar PopMenu §4.1).
+// ============================================================================
+
+function InviteDialog({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [roleValue, setRoleValue] = useState<EkpRoleKey>('user');
+
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      usersApi.inviteUser({
+        email: email.trim(),
+        role: roleValue,
+        display_name: displayName.trim() || null,
+      }),
+    onSuccess: (u) => {
+      toast.success(`Invited ${u.email}`);
+      void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
+      onClose();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Invite failed'),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invite member</DialogTitle>
+          <DialogDescription>
+            Pre-authorise an email + workspace role. An invite record is created
+            (status = invited) and a verification email is sent.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="field">
+          <label className="label" htmlFor="invite-email">
+            Email address{' '}
+            <span style={{ color: 'oklch(var(--destructive))' }}>*</span>
+          </label>
+          <input
+            id="invite-email"
+            className="input"
+            type="email"
+            placeholder="name@ricoh.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="invite-name">
+            Display name
+          </label>
+          <input
+            id="invite-name"
+            className="input"
+            placeholder="Optional — derived from email if left blank"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="invite-role">
+            Workspace role
+          </label>
+          <select
+            id="invite-role"
+            className="select"
+            value={roleValue}
+            onChange={(e) => setRoleValue(e.target.value as EkpRoleKey)}
+          >
+            <option value="admin">Workspace Admin</option>
+            <option value="editor">Knowledge Editor</option>
+            <option value="user">End User</option>
+            <option value="power" disabled>
+              Power User · Tier 2
+            </option>
+          </select>
+          <div className="hint">
+            Power User is a Tier 2 role — not assignable in Tier 1.
+          </div>
+        </div>
+        <DialogFooter>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={!email.trim() || inviteMutation.isPending}
+            onClick={() => inviteMutation.mutate()}
+          >
+            <Plus size={13} aria-hidden="true" /> Send invite
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RowActionMenu({
+  user,
+  onClose,
+  onSuspend,
+}: {
+  user: UserSummary;
+  onClose: () => void;
+  onSuspend: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const tier1Roles: EkpRoleKey[] = ['admin', 'editor', 'user'];
+  const itemStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    padding: '7px 12px',
+    fontSize: 12.5,
+    textAlign: 'left',
+    background: 'transparent',
+    border: 0,
+    cursor: 'pointer',
+  };
+
+  const roleMutation = useMutation({
+    mutationFn: (role: EkpRoleKey) => usersApi.changeUserRole(user.oid, role),
+    onSuccess: (u) => {
+      toast.success(`${u.display_name} is now ${EKP_ROLE_LABELS[u.role]}`);
+      void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
+      onClose();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Role change failed'),
+  });
+
+  return (
+    <div
+      role="menu"
+      style={{
+        position: 'absolute',
+        right: 8,
+        top: '100%',
+        marginTop: 4,
+        width: 210,
+        background: 'oklch(var(--popover))',
+        border: '1px solid oklch(var(--border))',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-lg)',
+        zIndex: 30,
+        overflow: 'hidden',
+        animation: 'pop-in 0.14s var(--ease)',
+      }}
+    >
+      <div
+        style={{
+          padding: '8px 12px 4px',
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          color: 'oklch(var(--muted-foreground))',
+        }}
+      >
+        Change role
+      </div>
+      {tier1Roles.map((rk) => (
+        <button
+          key={rk}
+          type="button"
+          role="menuitem"
+          style={{ ...itemStyle, color: 'oklch(var(--foreground))' }}
+          disabled={roleMutation.isPending}
+          onClick={() => (user.role === rk ? onClose() : roleMutation.mutate(rk))}
+        >
+          <span style={{ width: 14, display: 'inline-flex', flexShrink: 0 }}>
+            {user.role === rk && (
+              <Check size={12} style={{ color: 'oklch(var(--accent))' }} />
+            )}
+          </span>
+          {EKP_ROLE_LABELS[rk]}
+        </button>
+      ))}
+      <div
+        style={{
+          height: 1,
+          background: 'oklch(var(--border))',
+          margin: '4px 0',
+        }}
+      />
+      <button
+        type="button"
+        role="menuitem"
+        style={{ ...itemStyle, color: 'oklch(var(--destructive))' }}
+        onClick={onSuspend}
+      >
+        <span style={{ width: 14, display: 'inline-flex', flexShrink: 0 }}>
+          <Shield size={12} />
+        </span>
+        Suspend member
+      </button>
+    </div>
+  );
+}
+
+function SuspendDialog({
+  user,
+  onClose,
+}: {
+  user: UserSummary;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const suspendMutation = useMutation({
+    mutationFn: () => usersApi.suspendUser(user.oid),
+    onSuccess: () => {
+      toast.success(`Suspended ${user.display_name}`);
+      void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
+      onClose();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Suspend failed'),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Suspend member?</DialogTitle>
+          <DialogDescription>
+            <b>{user.display_name}</b> ({user.email}) will lose access to all KBs
+            and can no longer sign in. Re-invite to restore access.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{ background: 'oklch(var(--destructive))', color: '#fff' }}
+            disabled={suspendMutation.isPending}
+            onClick={() => suspendMutation.mutate()}
+          >
+            Suspend member
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
