@@ -157,6 +157,7 @@ async def expand_context(
     searcher: HybridSearcher,
     *,
     use_marked: bool = False,
+    user_principals: list[str] | None = None,
 ) -> tuple[list[ExpandedChunk], ExpansionStats]:
     """Expand top-K reranked chunks with prev/next neighbor text per architecture.md §3.1.
 
@@ -197,6 +198,7 @@ async def expand_context(
             neighbors_lookup = await searcher.fetch_by_chunk_ids(
                 list(neighbor_ids_needed),
                 kb_id=kb_id,
+                user_principals=user_principals,
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020 spec
             logger.warning(

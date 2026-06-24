@@ -193,6 +193,7 @@ async def aggregate_parent_sections(
     max_chunks_per_parent: int = 50,
     fallback_to_doc_on_shallow: bool = True,
     use_marked: bool = False,
+    user_principals: list[str] | None = None,
 ) -> tuple[list[ParentSectionChunk], ParentDocStats]:
     """Aggregate parent sections for top-K reranked anchors per ADR-0037 W26 F2.
 
@@ -268,6 +269,7 @@ async def aggregate_parent_sections(
                 parent_path=list(parent_tuple),
                 doc_id=doc_id,
                 kb_id=kb_id,
+                user_principals=user_principals,
                 max_chunks=max_chunks_per_parent,
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020 precedent

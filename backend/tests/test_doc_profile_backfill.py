@@ -22,6 +22,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from api.routes import documents as documents_routes
 from api.routes import kb as kb_routes
 from api.schemas.doc_config import DocConfig
@@ -134,6 +136,12 @@ def _build_app(
     app = FastAPI()
     app.include_router(kb_routes.router)
     app.dependency_overrides[get_kb_service] = lambda: kb_service
+    # W88 P0 F5 — POST /kb/{id}/profiles/backfill now gates on require_kb_acl("edit").
+    # Override with an admin so the guard passes without a wired rbac_backend (admin
+    # is unconditional per ADR-0027); the route's own 503/skip logic is unaffected.
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="oid-admin", tid="t", preferred_username="admin@ricoh.com", role="admin"
+    )
     if engine is not None:
         app.state.retrieval_engine = engine
     if profile_store is not None:

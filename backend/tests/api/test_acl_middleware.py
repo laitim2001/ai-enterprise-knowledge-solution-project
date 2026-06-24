@@ -21,6 +21,7 @@ from api.auth.models import AuthenticatedUser
 from api.auth.msal_provider import _role_from_claims
 from api.middleware.acl import (
     assert_kb_access,
+    principals_for_user,
     require_kb_acl,
     require_role,
     resolve_kb_principals,
@@ -276,3 +277,18 @@ def test_resolve_kb_principals_returns_all_grant_principals() -> None:
     )
     principals = asyncio.run(resolve_kb_principals(backend, "kb-1"))
     assert sorted(principals) == ["grp-eng", "oid-reader"]
+
+
+# ---- W90 P2.2 — principals_for_user (retrieval-layer ACL subject) -----------
+
+
+def test_principals_for_user_admin_bypasses_acl_with_none() -> None:
+    # admin → None: the retrieval ACL filter is skipped entirely (sees all),
+    # mirroring assert_kb_access where admin passes unconditionally.
+    assert principals_for_user(_user("admin")) is None
+
+
+def test_principals_for_user_non_admin_is_oid_list() -> None:
+    # editor / user → [oid]: trimmed to chunks whose allowed_principals include it.
+    assert principals_for_user(_user("editor")) == ["oid-1"]
+    assert principals_for_user(_user("user")) == ["oid-1"]

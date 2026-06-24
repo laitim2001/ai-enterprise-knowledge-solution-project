@@ -112,6 +112,8 @@ class _Engine:
         chunks: list[_Chunk],
         *,
         kb_id: str,
+        use_marked: bool = False,
+        user_principals: list[str] | None = None,
     ) -> tuple[list[_Chunk], dict]:
         return chunks, {}
 
@@ -126,6 +128,7 @@ class _MockSynth:
         kb_id: str | None = None,
         effective_config: object = None,
         detail_level: str = "concise",  # CH-006 — route passes this; mock must accept it
+        user_principals: list[str] | None = None,  # W90 P2.2
     ) -> _Synth:
         return _Synth(
             answer="ans [chunk-a][chunk-b]",

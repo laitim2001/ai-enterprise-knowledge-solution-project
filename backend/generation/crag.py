@@ -300,6 +300,7 @@ class CragLoop:
         initial_synth: SynthesisResult,
         kb_id: str,
         effective_config: EffectiveConfig | None = None,
+        user_principals: list[str] | None = None,
     ) -> CragOutcome:
         """Apply L2 correction if initial chunks insufficient; else return initial.
 
@@ -366,6 +367,7 @@ class CragLoop:
                 query=rewrite.rewritten_query,
                 kb_id=kb_id,
                 top_k=self._expanded_top_k,
+                user_principals=user_principals,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-retrieve: {exc}")
@@ -390,6 +392,7 @@ class CragLoop:
                 new_result.chunks,
                 kb_id=kb_id,
                 use_marked=_use_marked,
+                user_principals=user_principals,
             )
         except Exception as exc:  # noqa: BLE001 — graceful per ADR-0020 spec
             errors.append(f"context_expansion: {exc}")
@@ -419,6 +422,7 @@ class CragLoop:
                     max_chunks_per_parent=parent_cfg.parent_doc_max_chunks_per_parent,
                     fallback_to_doc_on_shallow=parent_cfg.parent_doc_fallback_to_doc_on_shallow,
                     use_marked=_use_marked,  # W70 / ADR-0055
+                    user_principals=user_principals,
                 )
             except Exception as exc:  # noqa: BLE001 — graceful per ADR-0037
                 errors.append(f"parent_doc_aggregation: {exc}")
@@ -440,6 +444,7 @@ class CragLoop:
                 detail_level=(
                     effective_config.answer_detail if effective_config is not None else "concise"
                 ),
+                user_principals=user_principals,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"re-synthesize: {exc}")

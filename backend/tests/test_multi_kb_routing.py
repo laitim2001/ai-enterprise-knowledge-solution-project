@@ -21,6 +21,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from ingestion.embedding.base import EmbeddingResult
 from retrieval.hybrid import HybridSearcher
 from retrieval.retrieval_engine import RetrievalEngine
@@ -56,6 +58,13 @@ def _build_app_with_engine(engine: RetrievalEngine) -> FastAPI:
     app.state.retrieval_engine = engine
     app.state.synthesizer = None  # retrieval-only fallback
     app.state.crag_loop = None
+    # W90 P2.0 — /query now requires auth (assert_kb_access). Override with an admin
+    # so the KB-level guard passes without a wired rbac_backend; admin →
+    # principals_for_user None → NO ACL clause, so the kb_id-scope filter assertions
+    # below stay byte-identical to the pre-P2.0/P2.2 baseline.
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="oid-admin", tid="t", preferred_username="admin@ricoh.com", role="admin"
+    )
     app.include_router(router)
     return app
 

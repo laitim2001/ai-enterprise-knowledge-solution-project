@@ -104,6 +104,7 @@ def _searcher_with_fetch(
         kb_id: str,
         *,
         max_chunks: int = 50,
+        user_principals: list[str] | None = None,
     ) -> list[object]:
         if side_effect is not None:
             raise side_effect

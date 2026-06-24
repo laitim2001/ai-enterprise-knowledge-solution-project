@@ -133,6 +133,7 @@ class Synthesizer:
         kb_id: str | None = None,
         effective_config: ExpansionConfig | None = None,
         detail_level: str = "concise",
+        user_principals: list[str] | None = None,
     ) -> SynthesisResult:
         """W32 F1.1.a — `engine + kb_id` keyword-only optional params enable post-hoc
         citation expansion via async `engine.list_chunks` full-doc fetch (mirror W25 F5 D1
@@ -198,6 +199,7 @@ class Synthesizer:
                 engine=engine,
                 kb_id=kb_id,
                 settings=effective_config if effective_config is not None else get_settings(),
+                user_principals=user_principals,
             )
         expand_citations_latency_ms = int((time.perf_counter() - expand_citations_start) * 1000)
 
@@ -243,6 +245,7 @@ class Synthesizer:
         kb_id: str | None = None,
         effective_config: ExpansionConfig | None = None,
         detail_level: str = "concise",
+        user_principals: list[str] | None = None,
     ) -> AsyncIterator[dict]:
         """Stream chat.completions tokens; yield SSE events for stream_composer.
 
@@ -323,6 +326,7 @@ class Synthesizer:
                 engine=engine,
                 kb_id=kb_id,
                 settings=effective_config if effective_config is not None else get_settings(),
+                user_principals=user_principals,
             )
 
         logger.info(

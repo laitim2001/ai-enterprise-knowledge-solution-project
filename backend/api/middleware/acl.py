@@ -147,3 +147,18 @@ async def resolve_kb_principals(
         return []
     entries = await rbac_backend.list_kb_acl(kb_id)
     return [entry.principal_id for entry in entries]
+
+
+def principals_for_user(user: AuthenticatedUser) -> list[str] | None:
+    """The principal list to trim retrieval by (ADR-0066 / W90 P2.2), or None for
+    an unfiltered (admin) search.
+
+    Workspace admins bypass the retrieval-layer ACL filter (None) — they see every
+    chunk, mirroring `assert_kb_access` where admin passes unconditionally
+    (ADR-0027). Every other user is trimmed to chunks whose `allowed_principals`
+    include their oid. Group principals fold in once P4 group-member sync lands;
+    today the list is just the oid (threat-model F1 — P4 deferred).
+    """
+    if user.role == "admin":
+        return None
+    return [user.oid]

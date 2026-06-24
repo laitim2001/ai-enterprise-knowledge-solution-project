@@ -220,6 +220,7 @@ async def test_refine_triggers_correction_when_confidence_below_threshold() -> N
         query="rewritten question with more keywords",
         kb_id="drive_user_manuals",
         top_k=20,
+        user_principals=None,  # W90 P2.2 — refine threads ACL (None in this test)
     )
     # W32 F1.4 — CRAG re-synth path passes engine + kb_id kwargs for engine-fetch
     # citation expansion (h') per W32 plan §2 F1.4.

@@ -172,6 +172,7 @@ async def expand_citations(
     engine: RetrievalEngine,
     kb_id: str,
     settings: ExpansionConfig,
+    user_principals: list[str] | None = None,
 ) -> tuple[str, list[str], list[RetrievedChunk]]:
     """Auto-add neighbor chunk citations to answer_text via engine.list_chunks full-doc fetch。
 
@@ -239,7 +240,10 @@ async def expand_citations(
     list_chunks_batch_start = _time.perf_counter()
     doc_ids = sorted(cited_by_doc.keys())
     fetched_chunks = await asyncio.gather(
-        *(engine.list_chunks(kb_id, did) for did in doc_ids),
+        *(
+            engine.list_chunks(kb_id, did, user_principals=user_principals)
+            for did in doc_ids
+        ),
         return_exceptions=True,
     )
     list_chunks_batch_latency_ms = int((_time.perf_counter() - list_chunks_batch_start) * 1000)

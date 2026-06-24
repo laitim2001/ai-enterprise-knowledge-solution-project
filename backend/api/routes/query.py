@@ -22,7 +22,7 @@ from fastapi.responses import StreamingResponse
 
 from api.auth.dependency import get_current_user
 from api.auth.models import AuthenticatedUser
-from api.middleware.acl import assert_kb_access
+from api.middleware.acl import assert_kb_access, principals_for_user
 from api.routes.documents import screenshot_proxy_url
 from api.schemas.kb import KbConfig
 from api.schemas.query import ChunkPreview, Citation, QueryRequest, QueryResponse
@@ -255,6 +255,9 @@ async def query(
         effective,
         settings,
         doc_overlay=overlay,
+        # W90 P2.2 (ADR-0066) — retrieval-layer ACL trimming. admin → None (sees
+        # all, mirroring the KB-level assert_kb_access bypass); others → [oid].
+        user_principals=principals_for_user(current_user),
     )
 
 
@@ -264,6 +267,7 @@ async def execute_query_pipeline(
     effective: EffectiveConfig,
     settings: Settings,
     doc_overlay: DocOverlayResolver | None = None,
+    user_principals: list[str] | None = None,
 ) -> QueryResponse:
     """W43 F2 — the shared `/query` full pipeline (retrieve → context-expand →
     parent-doc → synth → CRAG → citations → neighbour-images → image-cap),
@@ -304,6 +308,7 @@ async def execute_query_pipeline(
                 per_variant_overfetch=settings.query_expansion_per_variant_overfetch,
                 mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
                 overfetch=effective.default_top_k,
+                user_principals=user_principals,  # W90 P2.2 — ACL trim
             )
             result: RetrievalResult = fused.as_retrieval_result()
             logger.info(
@@ -321,6 +326,7 @@ async def execute_query_pipeline(
                 top_k=effective.default_rerank_k,
                 overfetch=effective.default_top_k,
                 mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
+                user_principals=user_principals,  # W90 P2.2 — ACL trim
             )
     except Exception as exc:  # noqa: BLE001 — surface downstream Azure errors as 502
         raise HTTPException(
@@ -370,6 +376,7 @@ async def execute_query_pipeline(
             result.chunks,
             kb_id=payload.kb_id,
             use_marked=effective.enable_inline_image_markers,
+            user_principals=user_principals,  # W90 P2.2 — ACL trim
         )
     except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0020
         logger.warning(
@@ -395,6 +402,7 @@ async def execute_query_pipeline(
                 max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
                 fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
                 use_marked=effective.enable_inline_image_markers,  # W70 / ADR-0055
+                user_principals=user_principals,  # W90 P2.2 — ACL trim
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(
@@ -415,6 +423,7 @@ async def execute_query_pipeline(
             kb_id=payload.kb_id,
             effective_config=effective,
             detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
+            user_principals=user_principals,  # W90 P2.2 — ACL trim (citation expansion)
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
@@ -437,6 +446,7 @@ async def execute_query_pipeline(
             synth,
             kb_id=payload.kb_id,
             effective_config=effective,
+            user_principals=user_principals,  # W90 P2.2 — ACL trim (CRAG re-retrieve)
         )
         crag_triggered = outcome.triggered
         crag_iterations = outcome.iterations
@@ -553,6 +563,8 @@ async def query_stream(
     """
     # W90 P2.0 (ADR-0066 G1) — KB-level query authorization (kb_id in body).
     await assert_kb_access(request, payload.kb_id, current_user, "query")
+    # W90 P2.2 (ADR-0066) — retrieval-layer ACL trimming (admin → None bypass).
+    user_principals = principals_for_user(current_user)
     engine = _engine_or_503(request)
     synthesizer: Synthesizer | None = getattr(request.app.state, "synthesizer", None)
     if synthesizer is None:
@@ -587,6 +599,7 @@ async def query_stream(
             top_k=effective.default_rerank_k,
             overfetch=effective.default_top_k,
             mode=payload.mode,  # W39 F2 — propagate Path A additive mode field
+            user_principals=user_principals,  # W90 P2.2 — ACL trim
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
@@ -607,6 +620,7 @@ async def query_stream(
             result.chunks,
             kb_id=payload.kb_id,
             use_marked=effective.enable_inline_image_markers,
+            user_principals=user_principals,  # W90 P2.2 — ACL trim
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -630,6 +644,7 @@ async def query_stream(
                 max_chunks_per_parent=effective.parent_doc_max_chunks_per_parent,
                 fallback_to_doc_on_shallow=effective.parent_doc_fallback_to_doc_on_shallow,
                 use_marked=effective.enable_inline_image_markers,  # W70 / ADR-0055
+                user_principals=user_principals,  # W90 P2.2 — ACL trim
             )
         except Exception as exc:  # noqa: BLE001 — graceful degradation per ADR-0037
             logger.warning(
@@ -714,6 +729,7 @@ async def query_stream(
                 kb_id=payload.kb_id,
                 effective_config=effective,
                 detail_level=effective.answer_detail,  # CH-006 per-KB answer detail
+                user_principals=user_principals,  # W90 P2.2 — ACL trim (citation expansion)
             )
             observed = observe_streaming(
                 compose_query_stream(

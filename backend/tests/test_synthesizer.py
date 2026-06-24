@@ -375,7 +375,7 @@ async def test_synthesize_invokes_engine_fetch_expansion_when_engine_and_kb_id_p
     assert "0046" in result.citation_ids
     assert "0048" in result.citation_ids
     assert "[chunk-0044][chunk-0046][chunk-0048]" in result.answer
-    mock_engine.list_chunks.assert_called_once_with("kb1", "doc-A")
+    mock_engine.list_chunks.assert_called_once_with("kb1", "doc-A", user_principals=None)
 
 
 @pytest.mark.asyncio

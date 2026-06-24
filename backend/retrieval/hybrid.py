@@ -57,6 +57,37 @@ _DEFAULT_IMAGE_WEIGHT = 0.7
 logger = structlog.get_logger(__name__)
 
 
+def _build_acl_filter(user_principals: list[str] | None) -> str | None:
+    """ADR-0066 / W90 P2.2 — fail-open retrieval-layer ACL filter clause (G2/G4).
+
+    `user_principals is None` → None: NO ACL filter applied. This is the BC path
+    for callers that don't pass principals (internal tooling, the existing test
+    suite, the V4 retrieval-test surface) — retrieval stays unfiltered by ACL. The
+    authenticated query pipeline always passes a list (≥ the user's oid), so None
+    only happens off that path.
+
+    A list (even empty) → the fail-open OData disjunction::
+
+        (not allowed_principals/any()
+         or allowed_principals/any(p: search.in(p, '{principals}', ',')))
+
+    A chunk with EMPTY allowed_principals (indexed before the P2.2 rebuild, or a KB
+    with no ACL grant) matches the first disjunct → public (production-preserve
+    fail-open, plan §6). A STAMPED chunk matches only when one of the user's
+    principals is in its allowed list. An empty `user_principals` list → the second
+    disjunct matches nothing, so the user sees only public chunks.
+    """
+    if user_principals is None:
+        return None
+    # OData: escape single quotes by doubling. search.in's delimiter is ',' — oid /
+    # group keys never contain commas, so the comma-joined list is unambiguous.
+    escaped = ",".join(p.replace("'", "''") for p in user_principals)
+    return (
+        "(not allowed_principals/any()"
+        f" or allowed_principals/any(p: search.in(p, '{escaped}', ',')))"
+    )
+
+
 @dataclass(slots=True, frozen=True)
 class HybridSearchHit:
     """One result from /docs/search. score + raw fields dict from index."""
@@ -154,6 +185,7 @@ class HybridSearcher:
         self,
         chunk_ids: list[str],
         kb_id: str,
+        user_principals: list[str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Batch fetch chunks by chunk_id list (no ranking) per ADR-0020 Context Expander.
 
@@ -175,6 +207,11 @@ class HybridSearcher:
         kb_filter = kb_id_filter_clause(kb_id)
         chunk_id_filter = f"search.in(chunk_id, '{','.join(chunk_ids)}', ',')"
         full_filter = f"{kb_filter} and {chunk_id_filter}"
+        # ADR-0066 / W90 P2.2 — context expansion must trim too (else G4 confused
+        # deputy leaks via expanded neighbours). None = no-op for BC callers.
+        acl_filter = _build_acl_filter(user_principals)
+        if acl_filter is not None:
+            full_filter = f"{full_filter} and {acl_filter}"
 
         url = (
             f"{self.endpoint}/indexes/{index_name}"
@@ -225,6 +262,7 @@ class HybridSearcher:
         kb_id: str,
         *,
         max_chunks: int = 50,
+        user_principals: list[str] | None = None,
     ) -> list[HybridSearchHit]:
         """Fetch all chunks within a doc whose section_path contains every segment in parent_path.
 
@@ -278,6 +316,11 @@ class HybridSearcher:
                 *section_filters,
             ]
         )
+        # ADR-0066 / W90 P2.2 — parent-doc aggregation must trim too (else G4 leaks
+        # via sibling chunks pulled by section). None = no-op for BC callers.
+        acl_filter = _build_acl_filter(user_principals)
+        if acl_filter is not None:
+            full_filter = f"{full_filter} and {acl_filter}"
 
         url = (
             f"{self.endpoint}/indexes/{index_name}"
@@ -331,6 +374,7 @@ class HybridSearcher:
         top_k: int = 50,
         filter_clause: str | None = _DEFAULT_FILTER,
         mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
+        user_principals: list[str] | None = None,
     ) -> list[HybridSearchHit]:
         """Retrieval — `mode` selects BM25 / vector / hybrid (per ADR-0021).
 
@@ -354,6 +398,11 @@ class HybridSearcher:
         # ADR-0018: prepend kb_id eq clause to filter (multi-KB scoping mandatory)
         kb_filter = kb_id_filter_clause(kb_id)
         full_filter = f"{kb_filter} and {filter_clause}" if filter_clause else kb_filter
+        # ADR-0066 / W90 P2.2 — AND the fail-open ACL clause (None = no-op for BC
+        # callers). Trims chunks the user has no principal for, at the search layer.
+        acl_filter = _build_acl_filter(user_principals)
+        if acl_filter is not None:
+            full_filter = f"{full_filter} and {acl_filter}"
 
         url = (
             f"{self.endpoint}/indexes/{index_name}"
@@ -497,7 +546,13 @@ class HybridSearcher:
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
     )
-    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict[str, Any]]:
+    async def list_chunks(
+        self,
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         """W16 F5.1.2 — list all chunks of a doc (kb_id + doc_id filter;
         ordered by chunk_index ascending).
 
@@ -521,6 +576,12 @@ class HybridSearcher:
         # OData escapes single quotes by doubling — defensive against doc_id with quote
         doc_id_escaped = doc_id.replace("'", "''")
         full_filter = f"{kb_filter} and doc_id eq '{doc_id_escaped}'"
+        # ADR-0066 / W90 P2.2 — citation expansion pulls a doc's neighbour chunks via
+        # this method (citation_expansion.expand_citations); trim them too (else G4
+        # leaks). None = no-op for the GET listing routes (P2 = query-path trimming).
+        acl_filter = _build_acl_filter(user_principals)
+        if acl_filter is not None:
+            full_filter = f"{full_filter} and {acl_filter}"
 
         url = (
             f"{self.endpoint}/indexes/{index_name}"

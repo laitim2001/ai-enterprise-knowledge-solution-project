@@ -88,6 +88,7 @@ async def fused_retrieve(
     per_variant_overfetch: int = 2,
     mode: str = "hybrid",
     overfetch: int | None = None,
+    user_principals: list[str] | None = None,
 ) -> FusedRetrievalResult:
     """Run hybrid retrieve per variant in parallel, fuse via RRF, return top-K.
 
@@ -128,6 +129,7 @@ async def fused_retrieve(
                 top_k=fetch_k_per_variant,
                 mode=mode,  # W39 F2 — propagate mode from /query route per request
                 overfetch=overfetch,  # CH-007 — per-KB default_top_k candidate-pool override
+                user_principals=user_principals,  # W90 P2.2 — ACL trim per variant
             )
             for variant in variants
         ),

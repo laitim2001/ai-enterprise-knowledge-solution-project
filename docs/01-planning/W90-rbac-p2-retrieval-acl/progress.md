@@ -33,12 +33,33 @@
 - **測試**(7 新):`test_populate`(ChunkRecord ACL default + to_search_doc 帶 2 欄位)/ `test_orchestrator`(stamp 每 chunk + list 不共享 + BC fail-open default)/ `test_acl_middleware`(resolve None→[] / 空 KB→[] / 全 grant + 跨 KB 不洩漏)。
 - **驗證**:71 passed(orchestrator/populate/acl/kb_reindex/query_route_acl)+ 67 passed(documents_route/contextual/ch009/doc_profile caller BC)+ ruff clean + mypy(acl/orchestrator 自身 0 error,17 全係既有 api/auth + ingestion/parsers transitive debt)。
 
-### 下一步 → P2.2(🔴 高風險)
-- 檢索 filter 注入 `allowed_principals/any(p: search.in(p, '{principals}', ','))`(`hybrid.py`)+ 重建現有索引一次(W46 機制)。
-- **north-star §15 硬閘**:必須 eval 驗 W43-85 圖文還原 + 問答品質不退,任何退化 = STOP。
-- 動檢索主路徑前先 surface eval 基準 + 重建索引風險,等用戶拍板。
+## Day 1 cont — 2026-06-24(P2.2a filter 注入 + P2.2c 端到端 wiring)
+
+### think-before-coding 三發現(Karpathy §1.1,記 plan changelog)
+1. **洩漏面 4 個 hybrid 方法**(非 3):citation expansion 經 `list_chunks` 撈整 doc neighbor 餵答案,亦要 trim,否則 G4 confused deputy 從 expansion/parent-doc/citation 洩漏。
+2. **fail-open 令現有 KB filter 注入係 no-op**:drive-images-1 無 ACL grant → 全 chunk `allowed_principals=[]` → fail-open filter 第一 disjunct `not any()` 放行 → 檢索 bit-identical。north-star §15 eval = 證 filter 正確(no-op),非擔心退化。
+3. **重建 drive-images-1 亦 no-op**(無 grant → 重建後仍 `[]`)。真 trimming 驗證需有 grant KB。
+
+### 用戶 2 決策(AskUserQuestion)
+- **即時重建 drive-images-1**(非延後;承擔一次 re-ingest + eval 重驗 W43-85)。
+- **造測試 fixture 端到端驗 trimming**(admin grant userA → userA 見、userB 剔除)。
+
+### P2.2a filter 注入 + 11 層 threading(✅)
+- `hybrid._build_acl_filter` fail-open OData:`None → None`(BC);`list → (not allowed_principals/any() or allowed_principals/any(p: search.in(p,'{principals}',',')))`。注入 4 方法(search / fetch_by_chunk_ids / fetch_chunks_by_section_path / list_chunks)。
+- `user_principals: list[str] | None` **explicit threading**(非 contextvars,安全:漏層 type-check 暴露)經 11 函數:`principals_for_user`(admin → None bypass)→ query/query_stream → execute_query_pipeline(6 call)→ fused_retrieve / retrieval_engine(5 方法)/ context_expander / parent_doc_retriever / citation_expansion / synthesizer(2)/ crag.refine(4 call)→ 4 hybrid 終點。
+- **新測試**:`test_retrieval_acl_filter.py`(12)+ `test_query_route_acl_trimming.py`(3,P2.2c)+ `test_acl_middleware` principals_for_user(2)。
+
+### 測試修復(threading 影響既有 fake/assert)
+- **17 fake 簽名/assert 更新**(全 test-fixture,非 production):fake `synthesize`/`expand_context_for_chunks`/`aggregate_parent_sections_for_chunks`/`_fetch`/`_list_chunks` 加 `user_principals` kwarg(test_query_per_kb_config / test_config_test_route / test_e1_e5_e12_smoke / test_observe_query_route / test_query_doc_config_overlay / test_parent_doc_retriever / test_citation_expansion);assert_*_with 加 `user_principals=None`(test_crag / test_synthesizer / test_citation_expansion)。
+- **連帶發現 P0/P2.0 遺留 auth 缺口**(targeted run 未 catch,全套先暴露):`test_multi_kb_routing`(P2.0 /query auth)+ `test_doc_profile_backfill`(P0 F5 backfill `require_kb_acl`)嘅 `_build_app` 補 admin auth override。**非 P2.2 引入,但同批修復**。
+- **驗證**:全套 **1547 passed**(原 1530 + 新 17)/ 25 skip / 0 fail + ruff clean。
+
+### 下一步 → P2.2b(🔴 north-star §15 硬閘,待執行)
+- 即時重建 drive-images-1(schema PUT + W46 reindex stamp)+ eval 驗 W43-85 不退 + 真端到端 trimming live smoke。
+- **動檢索主路徑前先 surface eval 基準等用戶拍板**(需 running backend + Azure)。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W90 P2 phase artifacts
 - feat(api): P2.0 query endpoint KB-level guard
-- (本 entry)feat(api): P2.1 index ACL schema + ingestion stamp
+- feat(api): P2.1 index ACL schema + ingestion stamp
+- (本 entry)feat(retrieval): P2.2a retrieval-layer ACL filter + threading + P2.2c trimming fixture

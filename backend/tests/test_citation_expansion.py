@@ -316,7 +316,7 @@ async def test_happy_path_engine_fetch_finds_section_neighbors() -> None:
     # Closer 2 walkthrough neighbors by distance (0046 dist 2 + 0048 dist 4) inserted
     assert "[chunk-0044][chunk-0046][chunk-0048]" in expanded_text
     assert expanded_ids == ["0044", "0046", "0048"]
-    engine.list_chunks.assert_called_once_with("kb1", "doc-A")
+    engine.list_chunks.assert_called_once_with("kb1", "doc-A", user_principals=None)
 
 
 @pytest.mark.asyncio
@@ -329,7 +329,9 @@ async def test_multiple_cited_chunks_from_different_docs_independent_expansion()
         _chunk("0020", doc_id="doc-B", chunk_index=20, chunk_title="2. Doc B intro"),
     ]
 
-    async def _list_chunks(kb_id: str, doc_id: str) -> list[dict]:
+    async def _list_chunks(
+        kb_id: str, doc_id: str, top: int = 1000, user_principals: list[str] | None = None
+    ) -> list[dict]:
         if doc_id == "doc-A":
             return [_doc_chunk("0011", 11, "1.1 Doc A detail")]
         if doc_id == "doc-B":
@@ -375,7 +377,9 @@ async def test_per_doc_fetch_exception_graceful_degradation() -> None:
         _chunk("0020", doc_id="doc-B", chunk_index=20, chunk_title="2. B intro"),
     ]
 
-    async def _list_chunks(kb_id: str, doc_id: str) -> list[dict]:
+    async def _list_chunks(
+        kb_id: str, doc_id: str, top: int = 1000, user_principals: list[str] | None = None
+    ) -> list[dict]:
         if doc_id == "doc-A":
             raise RuntimeError("Azure Search 500")
         if doc_id == "doc-B":

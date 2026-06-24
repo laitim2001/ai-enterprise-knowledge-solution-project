@@ -67,6 +67,8 @@ class _Engine:
         chunks: list[_Chunk],
         *,
         kb_id: str,
+        use_marked: bool = False,
+        user_principals: list[str] | None = None,
     ) -> tuple[list[_Chunk], dict]:
         return chunks, {}
 
@@ -86,6 +88,7 @@ class _RecordingSynth:
         kb_id: str | None = None,
         effective_config: object = None,
         detail_level: str = "concise",
+        user_principals: list[str] | None = None,  # W90 P2.2
     ) -> _Synth:
         self.detail_levels.append(detail_level)
         return _Synth(
@@ -105,6 +108,7 @@ class _RecordingSynth:
         kb_id: str | None = None,
         effective_config: object = None,
         detail_level: str = "concise",
+        user_principals: list[str] | None = None,  # W90 P2.2
     ):
         self.detail_levels.append(detail_level)
         yield {"type": "text-delta", "content": "ok"}

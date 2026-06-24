@@ -127,6 +127,7 @@ class RetrievalEngine:
         mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
         rerank: bool = True,
         overfetch: int | None = None,
+        user_principals: list[str] | None = None,
     ) -> RetrievalResult:
         """Embed query + search (mode-selectable) + optional rerank; ordered chunks + timings.
 
@@ -176,6 +177,7 @@ class RetrievalEngine:
             filter_clause=filter_clause if filter_clause is not None
             else "enabled eq true",  # per ADR-0035 W25 F5 D2 (was: + " and low_value_flag eq false")
             mode=mode,
+            user_principals=user_principals,
         )
         search_latency_ms = int((time.perf_counter() - search_start) * 1000)
 
@@ -299,6 +301,7 @@ class RetrievalEngine:
         kb_id: str,
         *,
         use_marked: bool = False,
+        user_principals: list[str] | None = None,
     ):
         """Wrap top-K reranked chunks with prev/next neighbor context per ADR-0020.
 
@@ -316,6 +319,7 @@ class RetrievalEngine:
             kb_id=kb_id,
             searcher=self._searcher,
             use_marked=use_marked,
+            user_principals=user_principals,
         )
 
     async def aggregate_parent_sections_for_chunks(
@@ -329,6 +333,7 @@ class RetrievalEngine:
         max_chunks_per_parent: int = 50,
         fallback_to_doc_on_shallow: bool = True,
         use_marked: bool = False,
+        user_principals: list[str] | None = None,
     ):
         """Aggregate parent sections for top-K reranked anchors per ADR-0037 W26 F2.
 
@@ -357,6 +362,7 @@ class RetrievalEngine:
             max_chunks_per_parent=max_chunks_per_parent,
             fallback_to_doc_on_shallow=fallback_to_doc_on_shallow,
             use_marked=use_marked,
+            user_principals=user_principals,
         )
 
     async def list_documents(self, kb_id: str, max_chunks: int = 1000) -> list[dict]:
@@ -367,20 +373,38 @@ class RetrievalEngine:
         """
         return await self._searcher.list_documents(kb_id, max_chunks=max_chunks)
 
-    async def list_chunks(self, kb_id: str, doc_id: str, top: int = 1000) -> list[dict]:
+    async def list_chunks(
+        self,
+        kb_id: str,
+        doc_id: str,
+        top: int = 1000,
+        user_principals: list[str] | None = None,
+    ) -> list[dict]:
         """W16 F5.1.2 — delegate to searcher.list_chunks (encapsulation preserved).
 
         Returns chunk-level metadata for kb_id+doc_id-scoped chunks ordered by
-        chunk_index. See HybridSearcher.list_chunks for shape.
+        chunk_index. See HybridSearcher.list_chunks for shape. `user_principals`
+        (W90 P2.2) threads ACL trimming for the citation-expansion query path; None
+        (GET listing routes) = no ACL filter.
         """
-        return await self._searcher.list_chunks(kb_id, doc_id, top=top)
+        return await self._searcher.list_chunks(
+            kb_id, doc_id, top=top, user_principals=user_principals
+        )
 
-    async def fetch_by_chunk_ids(self, chunk_ids: list[str], kb_id: str) -> dict[str, dict]:
+    async def fetch_by_chunk_ids(
+        self,
+        chunk_ids: list[str],
+        kb_id: str,
+        user_principals: list[str] | None = None,
+    ) -> dict[str, dict]:
         """W52 — delegate to searcher.fetch_by_chunk_ids (encapsulation preserved).
 
         Batch-fetch chunks by id (no ranking) returning FULL fields incl.
         chunk_text — used by the synthetic-QA recall harness to read sampled
         chunks' text (list_chunks omits chunk_text by design for the Beta client).
         See HybridSearcher.fetch_by_chunk_ids for shape + ADR-0020/ADR-0018 notes.
+        `user_principals` (W90 P2.2) threads ACL trimming; None = no ACL filter.
         """
-        return await self._searcher.fetch_by_chunk_ids(chunk_ids, kb_id)
+        return await self._searcher.fetch_by_chunk_ids(
+            chunk_ids, kb_id, user_principals=user_principals
+        )
