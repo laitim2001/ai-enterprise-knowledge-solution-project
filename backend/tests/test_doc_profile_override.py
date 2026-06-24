@@ -17,6 +17,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.auth.dependency import get_current_user
+from api.auth.models import AuthenticatedUser
 from api.routes import documents as documents_routes
 from api.schemas.doc_config import DocConfig
 from api.schemas.doc_profile import DocProfileInfo
@@ -96,6 +98,11 @@ def _build_app(
     app = FastAPI()
     app.include_router(documents_routes.router)
     app.dependency_overrides[get_kb_service] = lambda: kb_service
+    # W88 P0 F5 — PUT .../docs/{id}/profile is now require_kb_acl("edit")-guarded;
+    # override auth with a workspace admin (admins pass before the rbac_backend read).
+    app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
+        oid="test-admin", tid="test-tid", preferred_username="admin@test.local", role="admin"
+    )
     if engine is not None:
         app.state.retrieval_engine = engine
     if profile_store is not None:

@@ -209,6 +209,55 @@ def test_backfill_editor_without_grant_forbidden() -> None:
     assert r.status_code == 403
 
 
+# ---- documents.py write endpoints — require_kb_acl("edit") (W88 P0 F5b) -----
+
+
+def test_upload_document_editor_without_grant_forbidden() -> None:
+    with TestClient(_app("editor")) as client:
+        r = client.post(
+            f"/kb/{_EXISTING_KB}/documents",
+            files={"file": ("t.docx", b"x", "application/octet-stream")},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 403
+
+
+def test_delete_document_editor_without_grant_forbidden() -> None:
+    with TestClient(_app("editor")) as client:
+        r = client.delete(f"/kb/{_EXISTING_KB}/documents/doc-1", headers=_HEADERS)
+    assert r.status_code == 403
+
+
+def test_reindex_document_editor_without_grant_forbidden() -> None:
+    with TestClient(_app("editor")) as client:
+        r = client.post(
+            f"/kb/{_EXISTING_KB}/documents/doc-1/reindex",
+            files={"file": ("t.docx", b"x", "application/octet-stream")},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 403
+
+
+def test_override_profile_editor_without_grant_forbidden() -> None:
+    with TestClient(_app("editor")) as client:
+        r = client.put(
+            f"/kb/{_EXISTING_KB}/docs/doc-1/profile",
+            json={"profile": "P1_sop_imgdense"},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 403
+
+
+def test_document_write_editor_with_edit_grant_clears_guard() -> None:
+    """An edit grant clears the guard — the handler then resolves on its own
+    (404/503, never 403). Proves the guard, not the handler."""
+    rbac = InMemoryRbacBackend()
+    _grant(rbac, "editor-oid", "edit")
+    with TestClient(_app("editor", oid="editor-oid", rbac=rbac)) as client:
+        r = client.delete(f"/kb/{_EXISTING_KB}/documents/doc-1", headers=_HEADERS)
+    assert r.status_code != 403  # guard passed
+
+
 # ---- Read endpoints stay ungated (P2 trimming, out of P0 scope) ------------
 
 

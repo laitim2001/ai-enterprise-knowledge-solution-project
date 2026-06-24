@@ -17,6 +17,12 @@ CH-001 (2026-05-12) — closes CO_F3a fully:
     7 error codes (validation.unsupported_format / kb.not_found /
     azure.config_missing / ingestion.{parse,embed,index}_failed /
     document.duplicate / reindex.{doc_id_mismatch,partial_failure}).
+
+W88 P0 F5 (2026-06-24) — the 4 write endpoints (upload / delete / reindex /
+profile-override) now gate on require_kb_acl("edit"): per-KB document content
+mutations follow the kb.edit_config / kb.trigger_reindex matrix lane (admin +
+editor with an edit grant). Workspace admins pass unconditionally (ADR-0027);
+GET listing / outline / image-proxy routes stay ungated (P2 retrieval trimming).
 """
 
 import io
@@ -35,6 +41,7 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
+from api.middleware.acl import require_kb_acl
 from api.schemas.doc_profile import DocProfileInfo, ProfileOverrideRequest
 from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
@@ -581,7 +588,11 @@ async def get_document_detail(
     )
 
 
-@router.put("/kb/{kb_id}/docs/{doc_id}/profile", response_model=DocProfileInfo)
+@router.put(
+    "/kb/{kb_id}/docs/{doc_id}/profile",
+    response_model=DocProfileInfo,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def override_doc_profile(
     kb_id: str,
     doc_id: str,
@@ -1274,7 +1285,11 @@ async def run_kb_profile_backfill(
     }
 
 
-@router.post("/kb/{kb_id}/documents", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/kb/{kb_id}/documents",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def upload_document(
     kb_id: str,
     request: Request,
@@ -1343,7 +1358,11 @@ async def upload_document(
     return {"status": "indexed", **body}
 
 
-@router.delete("/kb/{kb_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/kb/{kb_id}/documents/{doc_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def delete_document(
     kb_id: str,
     doc_id: str,
@@ -1399,7 +1418,11 @@ async def delete_document(
     logger.info("doc_deleted", kb_id=kb_id, doc_id=doc_id, chunks_deleted=deleted_count)
 
 
-@router.post("/kb/{kb_id}/documents/{doc_id}/reindex", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/kb/{kb_id}/documents/{doc_id}/reindex",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_kb_acl("edit"))],
+)
 async def reindex_document(
     kb_id: str,
     doc_id: str,
