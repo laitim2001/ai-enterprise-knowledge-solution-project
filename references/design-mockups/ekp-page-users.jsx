@@ -62,6 +62,7 @@ const PERMISSIONS_MATRIX = [
 function PageUsers({ onNavigate, tweaks }) {
   const [tab, setTab] = useState("members");
   const [filter, setFilter] = useState("all");
+  const [inviteOpen, setInviteOpen] = useState(false); // F4 — invite member modal
   const counts = {
     all: MOCK_USERS.length,
     admin:  MOCK_USERS.filter((u) => u.role === "admin").length,
@@ -85,7 +86,7 @@ function PageUsers({ onNavigate, tweaks }) {
           </div>
           <div className="page-actions">
             <button className="btn btn-secondary btn-sm"><IcDownload size={13} /> Export CSV</button>
-            <button className="btn btn-primary btn-sm"><IcPlus size={13} /> Invite member</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setInviteOpen(true)}><IcPlus size={13} /> Invite member</button>
           </div>
         </div>
 
@@ -108,11 +109,16 @@ function PageUsers({ onNavigate, tweaks }) {
         {tab === "groups"  && <GroupsTab />}
         {tab === "audit"   && <AuditTab />}
       </div>
+      {/* F4 — invite member modal (per DESIGN_SYSTEM §4.5) */}
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }
 
 function UsersTab({ filter, setFilter, counts, filtered, onNavigate }) {
+  // F4 — which row's ⋯ menu is open + the suspend-confirm target (null = none)
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [suspendUser, setSuspendUser] = useState(null);
   return (
     <div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
@@ -180,11 +186,124 @@ function UsersTab({ filter, setFilter, counts, filtered, onNavigate }) {
                   {u.status === "invited"   && <span className="badge badge-info"><span className="badge-dot" /> INVITED</span>}
                   {u.status === "suspended" && <span className="badge badge-error"><span className="badge-dot" /> SUSPENDED</span>}
                 </td>
-                <td className="col-shrink"><button className="btn btn-ghost btn-icon btn-xs"><IcMore size={13} /></button></td>
+                <td className="col-shrink" style={{ position: "relative" }}>
+                  <button
+                    className="btn btn-ghost btn-icon btn-xs"
+                    onClick={() => setMenuOpenId(menuOpenId === u.id ? null : u.id)}
+                  >
+                    <IcMore size={13} />
+                  </button>
+                  {/* F4 — row action menu: inline role change + suspend */}
+                  {menuOpenId === u.id && (
+                    <RowActionMenu
+                      user={u}
+                      onClose={() => setMenuOpenId(null)}
+                      onSuspend={() => { setMenuOpenId(null); setSuspendUser(u); }}
+                    />
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      {/* F4 — suspend confirm modal (per DESIGN_SYSTEM §4.5, destructive per §5) */}
+      {suspendUser && <SuspendModal user={suspendUser} onClose={() => setSuspendUser(null)} />}
+    </div>
+  );
+}
+
+// F4 — invite member modal (DESIGN_SYSTEM §4.5). Presentational: shows the form
+// shape the real /users page wires to POST /users/invite (email + role +
+// display_name). Power User is Tier 2 → disabled option (DisabledAffordance §4.4).
+function InviteModal({ onClose }) {
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Invite member</h2>
+          <p className="modal-desc">Pre-authorise an email + workspace role. An invite record is created (status = invited) and a verification email is sent.</p>
+        </div>
+        <div className="modal-body">
+          <div className="field">
+            <label className="label">Email address <span style={{ color: "oklch(var(--destructive))" }}>*</span></label>
+            <input className="input" type="email" placeholder="name@ricoh.com" />
+          </div>
+          <div className="field">
+            <label className="label">Display name</label>
+            <input className="input" placeholder="Optional — derived from email if left blank" />
+          </div>
+          <div className="field">
+            <label className="label">Workspace role</label>
+            <select className="select" defaultValue="user">
+              <option value="admin">Workspace Admin</option>
+              <option value="editor">Knowledge Editor</option>
+              <option value="user">End User</option>
+              <option value="power" disabled>Power User · Tier 2</option>
+            </select>
+            <div className="hint">Power User is a Tier 2 role — not assignable in Tier 1.</div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary btn-sm" onClick={onClose}><IcPlus size={13} /> Send invite</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// F4 — row action menu: row-anchored dropdown (NOT the topbar PopMenu §4.1 —
+// that one is viewport-anchored). CHANGE ROLE lists the three Tier 1 roles
+// inline (current marked ✓) → PATCH /users/{oid}/role; Suspend (destructive)
+// opens the confirm modal. Reactivate / resend-invite have no backend endpoint
+// yet → out of P0 scope.
+function RowActionMenu({ user, onClose, onSuspend }) {
+  const TIER1_ROLES = ["admin", "editor", "user"];
+  const itemStyle = {
+    display: "flex", alignItems: "center", gap: 8, width: "100%",
+    padding: "7px 12px", fontSize: 12.5, textAlign: "left",
+    background: "transparent", border: 0, cursor: "pointer",
+  };
+  return (
+    <div style={{
+      position: "absolute", right: 8, top: "100%", marginTop: 4, width: 210,
+      background: "oklch(var(--popover))", border: "1px solid oklch(var(--border))",
+      borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg)",
+      zIndex: 30, overflow: "hidden", animation: "pop-in 0.14s var(--ease)",
+    }}>
+      <div style={{ padding: "8px 12px 4px", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "oklch(var(--muted-foreground))" }}>Change role</div>
+      {TIER1_ROLES.map((rk) => (
+        <button key={rk} style={{ ...itemStyle, color: "oklch(var(--foreground))" }} onClick={onClose}>
+          <span style={{ width: 14, display: "inline-flex", flexShrink: 0 }}>
+            {user.role === rk && <IcCheck size={12} style={{ color: "oklch(var(--accent))" }} />}
+          </span>
+          {ROLES[rk].label}
+        </button>
+      ))}
+      <div style={{ height: 1, background: "oklch(var(--border))", margin: "4px 0" }} />
+      <button style={{ ...itemStyle, color: "oklch(var(--destructive))" }} onClick={onSuspend}>
+        <span style={{ width: 14, display: "inline-flex", flexShrink: 0 }}><IcShield size={12} /></span>
+        Suspend member
+      </button>
+    </div>
+  );
+}
+
+// F4 — suspend confirm modal (DESIGN_SYSTEM §4.5, destructive per §5).
+// POST /users/{oid}/suspend (no body).
+function SuspendModal({ user, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Suspend member?</h2>
+          <p className="modal-desc"><b>{user.name}</b> ({user.email}) will lose access to all KBs and can no longer sign in. Re-invite to restore access.</p>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+          <button className="btn btn-sm" style={{ background: "oklch(var(--destructive))", color: "#fff" }} onClick={onClose}>Suspend member</button>
+        </div>
       </div>
     </div>
   );

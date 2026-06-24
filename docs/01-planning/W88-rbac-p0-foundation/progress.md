@@ -66,3 +66,13 @@
 ### 本輪(Day 1)收結
 - **完成 F1 + F2 + F3**(3 commits:`d5c2006` / `e3809e1` / `b4cfceb`);重啟 backend 驗 F2 端到端;playwright 驗 F3 兩處 badge。
 - **F4 路徑已定**(補 mockup 設計),fresh turn 開工。F5(KB ACL,純 backend)+ F6(Gate)未開始。
+
+### F4 ①②③ — 補 mockup 設計(2026-06-24 續)
+- **① 讀**:mockup `ekp-page-users.jsx` 全結構 + `DESIGN_SYSTEM.md §4`(§4.5 Modal / §4.1 PopMenu / §5 destructive color)+ backend contract(invite: email/role/display_name;role: PATCH role;suspend: 無 body;⚠️ 無 reactivate/resend endpoint)。
+- **② propose + 用戶確認**:三個交互;用戶選改角色形式 = **row dropdown + inline 列三個 role**(當前 ✓ + Suspend destructive)。
+- **③ 寫入 mockup**:`InviteModal`(§4.5,email/display_name/role,Power User Tier 2 disabled)+ `RowActionMenu`(row-anchored dropdown,CHANGE ROLE inline 三 role + Suspend)+ `SuspendModal`(§4.5 destructive)+ state wiring。121 insertions。
+- **③ browser 驗證**(http.server + playwright):mockup users 頁 0 JS errors;三個交互全部渲染正確(邀請 form Power User T2 disabled / row menu admin ✓ + Suspend red / suspend confirm user 插值 + destructive)。
+- **P0 scope**:Reactivate / Resend invite backend 無 endpoint → out of scope。
+
+### Carry-over → F4 ④
+- ④ 前端 1:1 對齊實作:`frontend/app/(app)/users/page.tsx` 接通三個交互(shadcn/Tailwind + 接 backend invite/role/suspend + 錯誤態)+ browser H7 verify。fresh turn。
