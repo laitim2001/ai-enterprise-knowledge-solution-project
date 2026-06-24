@@ -17,13 +17,13 @@
 - [x] 文件 ACL 來源(5.1 KB 繼承=P2 起點 / 5.2 文件級表=P3)+ ingestion stamp 機制 + P2.0-P2.3 落地分段
 
 ## F3 ADR-0066 草擬 + Accept
-- [ ] 撰寫 `docs/adr/0066-*.md`(Context / Decision / Alternatives / Consequences,Status: Proposed)
-- [ ] 更新 `docs/adr/README.md` index
-- [ ] **DG4 Tier 邊界拍板**(P2 檢索層 = Tier 1 上線先決 vs Tier 2)→ Chris
-- [ ] **DG5 ADR-0066 Accept**(Chris approve,H1 + H4 硬閘)→ Status: Accepted
+- [x] 撰寫 `docs/adr/0066-enterprise-retrieval-layer-document-acl.md`(Context / Decision / Alternatives / Consequences / References,**Status: Proposed**)
+- [x] 更新 `docs/adr/README.md` index(0066 Proposed + next → 0067)
+- [x] **DG4 Tier 邊界**(P2 = Tier 1 上線先決)→ 用戶 2026-06-24 代定方向(正式 Tier 邊界拍板隨 DG5 ADR Accept)
+- [ ] 🚧 **DG5 ADR-0066 Accept**(Chris approve,H1 + H4 硬閘)→ Status: Accepted。**待 Chris**:P2+ implementation 喺 Accept 前不可開工(次序鐵律 5)
 
 ## Phase Gate(收尾)
-- [ ] F1-F3 文檔完成 + decision gate 狀態明確
-- [ ] ADR-0066 至少 Proposed(Accept 視 Chris)
-- [ ] 更新 TRACKER P1 + FINDINGS(若需)
-- [ ] P1 closeout + P2 kickoff 前置條件清單(DG4/DG5 gate)
+- [x] F1-F3 文檔完成 + decision gate 狀態明確(DG1/DG2/DG4 用戶定,DG3 default,DG5 待 Chris)
+- [x] ADR-0066 至少 Proposed(Accept 視 Chris = DG5)
+- [x] 更新 TRACKER P1 + FINDINGS(若需)
+- [x] P1 closeout + P2 kickoff 前置條件 = DG5 ADR-0066 Accept(Chris)

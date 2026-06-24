@@ -40,11 +40,22 @@
 - 檢索 filter 機制 + 文件 ACL 來源(5.1 KB 繼承=P2 起點 / 5.2 文件級表=P3)+ ingestion stamp + **P2.0-P2.3 落地分段**。
 - **次序鐵律 1**:索引加 2 欄位 = ADR-0066 核心拍板;H2 唔撞(Azure 原生)。
 
+### F3 ADR-0066 草擬(2026-06-24 ✅ Proposed)→ `docs/adr/0066-enterprise-retrieval-layer-document-acl.md`
+- 撰寫 ADR-0066(Context F1 G1-G5 + Decision 選項 A 索引擴 `allowed_principals`+`classification` + 檢索 filter security trimming + 5.1 KB 繼承 + query `require_kb_acl("query")` + P2.0-P2.3 分段 + Tier 定位;Alternatives B/C/政策引擎/chunk級;Consequences;References)。
+- 更新 `docs/adr/README.md` index(0066 Proposed + next 0067)。
+- **Status: Proposed** — DG5 ADR Accept 待 Chris(H1+H4 硬閘);**P2+ implementation 喺 Accept 前不可開工**(次序鐵律 5)。
+
+### P1 核心完成(F1-F3 + DG closeout)
+- F1 威脅模型 + F2 目標架構 + F3 ADR-0066(Proposed)全完成。DG1/DG2/DG4 用戶定,DG3 default,**DG5 ADR Accept 待 Chris**。
+- **P2 kickoff 前置條件 = DG5 ADR-0066 Accept(Chris)**。Accept 後 P2.0(query 守衛快補)→ P2.1(schema+stamp)→ P2.2(filter+重建索引)→ P2.3(classification)。
+
 ### 下一步
-- F3 撰寫 ADR-0066(Proposed):拍板選項 A 索引結構 + 5.1 KB 繼承起點 + P2.0-P2.3 分段 + Tier 定位(DG4);→ DG5 Chris Accept。
+- **待 Chris review + Accept ADR-0066**(DG5)。Accept 後 kickoff P2(檢索層文件級 ACL implementation)。
+- 期間可選:G1 query 端點 KB 層守衛快補(P2.0,獨立於文件級工程)。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W89 P1 phase artifacts(`284e9f0`)
 - docs(planning): record P1 DG1/DG2/DG4 resolution(`2d3138b`)
 - docs(planning): W89 P1 F1 threat model(`294080f`)
-- (本 entry)docs(planning): W89 P1 F2 target architecture
+- docs(planning): W89 P1 F2 target architecture(`fc704a0`)
+- (本 entry)docs(planning): W89 P1 F3 ADR-0066 Proposed + P1 closeout

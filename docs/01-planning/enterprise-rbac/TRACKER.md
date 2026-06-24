@@ -13,7 +13,7 @@
 |---|---|---|---|
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
 | **P0** | 基礎校正 + W24c 收尾 | ✅ **完成** | 2026-06-24 F1-F6 + F5b + F6b 全綠(209 pytest + live smoke);2 待決均 resolve |
-| **P1** | 威脅模型 + 目標架構 + ADR-0066 | 🟡 **進行中** | 2026-06-24 kickoff(W89);設計 phase,DG4 Tier 邊界 + DG5 ADR Accept 待 Chris |
+| **P1** | 威脅模型 + 目標架構 + ADR-0066 | 🟡 **核心完成** | 2026-06-24 F1-F3 完成 + ADR-0066 **Proposed**;DG5 Accept 待 Chris(P2 前置) |
 | P2 | 檢索層文件級存取控制 | 🔲 未開始 | 依賴 P1;可能係上線先決 |
 | P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
 | P4 | 群組存取(成員 + 繼承) | 🔲 未開始 | 真實同步隨 SSO 延後 |
@@ -51,9 +51,10 @@
 
 ### P1 — 威脅模型 + 目標架構 + ADR-0066(🟡 進行中 2026-06-24 → 細項見 [`../W89-rbac-p1-threat-model-arch/checklist.md`](../W89-rbac-p1-threat-model-arch/checklist.md))
 - [x] 建立 W89 P1 phase folder(三件套,rolling JIT)
-- [ ] F1 威脅模型 + 需求(資料分類 / 用戶類型 / 合規 / 租戶數;DG1-DG3 default 推進)
-- [ ] F2 目標授權模型(資源層級 / RBAC+ABAC 邊界 / 索引結構,次序鐵律 1)
-- [ ] F3 撰寫 ADR-0066(Proposed)+ **DG4 Tier 邊界 + DG5 Chris approve**(H1+H4 硬閘)
+- [x] F1 威脅模型 + 需求(`threat-model.md`,5 缺口 G1-G5 + confused deputy + DG-derived 需求)
+- [x] F2 目標授權模型(`target-architecture.md`,選項 A 索引 ACL 推薦 + 檢索 filter + 5.1 KB 繼承 + P2.0-P2.3 分段)
+- [x] F3 撰寫 ADR-0066(**Proposed**,`docs/adr/0066-enterprise-retrieval-layer-document-acl.md`)+ DG4 用戶定方向
+- [ ] 🚧 **DG5 ADR-0066 Accept**(Chris approve,H1+H4 硬閘)→ P2+ 開工前置(次序鐵律 5)
 
 ### P2 — 檢索層文件級存取控制(🔲 未開始,最關鍵)
 - [ ] 索引結構加 ACL / 密級欄位
@@ -83,7 +84,7 @@
 ## 三、里程碑
 
 - [x] **M1** P0 核心完成 — 地基活(登入正常 / 角色正確 / 寫操作可用且受守衛)✅ 2026-06-24(live smoke + documents 守衛 2 項 surface 待決)
-- [ ] **M2** ADR-0066 Accepted — 目標架構 + Tier scope 拍板
+- [ ] **M2** ADR-0066 Accepted — 目標架構 + Tier scope 拍板(2026-06-24 **Proposed**,待 Chris Accept = DG5)
 - [ ] **M3** P2 完成 — 檢索層文件級安全(企業安全先決達成)
 - [ ] **M4** 細粒度授權 + 群組(P3+P4)可用
 - [ ] **M5** 治理層(P5)可用 — 達企業級營運水平
@@ -123,6 +124,7 @@
 | 2026-06-24 | P0 flip active(用戶批准)+ 重建 W88 三件套(OneDrive 吞文件後)+ 修 broken reference;F1 環境基準實測(disk `rbac.py` 已自愈追上 HEAD) | P0 開工 |
 | 2026-06-24 | **P0 F1-F6 核心完成** — F5 KB 寫端點補 RBAC 守衛(映射 permission matrix)+ F6 Phase Gate(209 RBAC/auth pytest 全綠 + ruff + mypy)+ closeout;M1 達成。2 待決 surface(documents 守衛擴充 / 端到端 live smoke) | P0 核心完成 |
 | 2026-06-24 | **P0 完全完成** — F5b documents.py 4 寫端點補 `require_kb_acl("edit")`(commit `a333884`)+ F6b 重啟 backend 端到端 live smoke(7 case 驗守衛 live 生效);2 待決均 resolve | P0 完成 |
+| 2026-06-24 | **P1 核心完成** — kickoff(`284e9f0`)+ DG1/DG2/DG4 resolution(`2d3138b`)+ F1 威脅模型(`294080f`)+ F2 目標架構(`fc704a0`)+ F3 **ADR-0066 Proposed**;DG5 Accept 待 Chris(P2 前置,次序鐵律 5) | P1 核心完成 |
 
 ---
 
