@@ -9,11 +9,12 @@
 - [x] 檢索層洩漏路徑(5 缺口 G1-G5 + file:line 證據;**G1 query 端點連 KB 層守衛都無** = 獨立 P0-style 缺口可快補,G2-G4 文件級 = P2 主體)
 - [x] 需求收集 + DG1-DG3(§6 需求表;DG1/DG2 用戶定,DG3 default)
 
-## F2 目標授權模型
-- [ ] 資源層級設計(KB → 資料夾 → 文件 → chunk 授權維度)
-- [ ] RBAC + ABAC 邊界(角色 vs 屬性,邊個層用邊個)
-- [ ] 索引 ACL 結構選項(Azure AI Search `filter` 落地方式 + 多選項 trade-off,次序鐵律 1)
-- [ ] 對齊 H2 vendor lock(Azure AI Search S1 原生 `filter`,唔撞)
+## F2 目標授權模型 → [`target-architecture.md`](./target-architecture.md)
+- [x] 資源層級設計(KB → 文件 → chunk 繼承;P1 設計到文件級,單租戶無 tenant 維度)
+- [x] RBAC + ABAC 邊界(RBAC 粗:role+kb_acl / 文件 ACL+classification 細:檢索層 trimming;唔用全 ABAC 政策引擎 = P6)
+- [x] 索引 ACL 結構選項(A `allowed_principals` Collection + classification **推薦** / B 只 classification 唔夠 / C 外部 post-filter 違原則;Azure `any()` filter,次序鐵律 1)
+- [x] 對齊 H2 vendor lock(Azure AI Search S1 原生 Collection + `any()` filter,唔加 vendor)
+- [x] 文件 ACL 來源(5.1 KB 繼承=P2 起點 / 5.2 文件級表=P3)+ ingestion stamp 機制 + P2.0-P2.3 落地分段
 
 ## F3 ADR-0066 草擬 + Accept
 - [ ] 撰寫 `docs/adr/0066-*.md`(Context / Decision / Alternatives / Consequences,Status: Proposed)

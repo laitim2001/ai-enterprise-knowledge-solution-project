@@ -33,11 +33,18 @@
 - 攻擊情景(員工/經理分層)+ 需求表(DG-derived)+ P2 設計含義(索引加 `allowed_principals` + `classification`,檢索 filter 注入,單租戶簡化)。
 - **結論**:檢索層文件級安全完全未實現;G1 即時可補,G2-G4 = P2 主體(索引重建,次序鐵律 1)。
 
+### F2 目標授權模型(2026-06-24 ✅ 完成)→ `target-architecture.md`
+- 資源層級:KB → 文件 → chunk 繼承(P1 到文件級,單租戶無 tenant 維度)。
+- RBAC+ABAC 邊界:RBAC 粗(role+kb_acl)/ 文件 ACL+classification 細(檢索層 trimming);唔用全政策引擎(P6)。
+- **索引 ACL 結構(核心,3 選項)**:A `allowed_principals` Collection + classification = **推薦**(Azure `any()` filter,檢索層真 trimming,單次解決)/ B 只 classification 唔夠(無 principal 級)/ C 外部 post-filter 違「檢索之前/之中」原則。
+- 檢索 filter 機制 + 文件 ACL 來源(5.1 KB 繼承=P2 起點 / 5.2 文件級表=P3)+ ingestion stamp + **P2.0-P2.3 落地分段**。
+- **次序鐵律 1**:索引加 2 欄位 = ADR-0066 核心拍板;H2 唔撞(Azure 原生)。
+
 ### 下一步
-- F2 目標授權模型:設計索引 ACL 結構(`allowed_principals` + `classification`)+ 檢索 filter 機制 + 文件 ACL 來源(KB 繼承 vs 文件級表)+ 多選項 trade-off(次序鐵律 1 核心)。
-- F3 草擬 ADR-0066(Proposed)→ DG5 Chris Accept。
+- F3 撰寫 ADR-0066(Proposed):拍板選項 A 索引結構 + 5.1 KB 繼承起點 + P2.0-P2.3 分段 + Tier 定位(DG4);→ DG5 Chris Accept。
 
 ### Commits
 - (kickoff)docs(planning): kickoff W89 P1 phase artifacts(`284e9f0`)
 - docs(planning): record P1 DG1/DG2/DG4 resolution(`2d3138b`)
-- (本 entry)docs(planning): W89 P1 F1 threat model
+- docs(planning): W89 P1 F1 threat model(`294080f`)
+- (本 entry)docs(planning): W89 P1 F2 target architecture
