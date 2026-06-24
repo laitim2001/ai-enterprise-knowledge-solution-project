@@ -81,5 +81,26 @@
 - **browser H7 verify**(playwright,:3001 mock admin):三個交互全部渲染正確 —— InviteDialog(email/display_name/role + Power User T2 disabled + hint)/ RowActionMenu(CHANGE ROLE + 當前 admin ✓ + Suspend red)/ SuspendDialog(title + user 插值「Chris Lai (admin@example.com)」+ Suspend red)。**只驗渲染唔 click confirm = 冇改 DB**。console 3 errors 全係既有 `/notifications` 404(非 F4)。
 - **F4 正式收尾** ✅(①讀 ②設計確認 ③mockup ④前端對齊,全綠)。
 
-### Carry-over → F5
-- F5:KB endpoints 補接 `require_kb_acl`(純 backend,無 H7)+ F6 Phase Gate。
+### F5 KB 端點補接 ACL 守衛(2026-06-24 ✅ 完成)
+- **盤點**:`api/routes/kb.py` 9 端點全無 RBAC 守衛(7 寫 + 2 讀 GET);`grep require_kb_acl` 確認 kb.py 不在覆蓋名單。**相鄰發現**:`api/routes/documents.py` 4 個寫端點(`PUT .../docs/{id}/profile`、`POST .../documents`、`DELETE .../documents/{id}`、`POST .../documents/{id}/reindex`)亦全無守衛 → surface 留決(見下「待決」)。
+- **守衛映射(依 canonical permission matrix `storage/rbac_storage.py:85-90` Knowledge bases area)**:
+  - `POST /kb`(create,kb_id 在 body 非 path)→ `require_role("admin","editor")`(matrix kb.create=admin+editor;`require_kb_acl` 不適用 — 新 KB 未有 ACL)
+  - `DELETE /kb/{id}` + `POST /kb/{id}/archive`(destructive)→ `require_kb_acl("manage")`(matrix kb.delete=admin-only;非 admin 需該 KB manage grant)
+  - `PATCH /kb/{id}` + `/settings` + `POST /kb/{id}/reindex` + `/profiles/backfill`(內容操作)→ `require_kb_acl("edit")`(matrix kb.edit_config / kb.trigger_reindex=admin+editor)
+  - 讀端點 `GET /kb` + `GET /kb/{id}` 不守衛 → list / 檢索層 trimming 屬 P2(out of P0 scope)
+- **設計依據**:`require_kb_acl` 對 workspace admin 在讀 backend 前無條件放行(acl.py:86-87),其他人需該 KB 明確 grant(ADR-0027);per-endpoint opt-in 正是 acl.py docstring + W24c 計劃 §4 R-W24c-3 留待「as each endpoint lands」之收尾。**不 trigger H1**(opt-in 收尾,ADR-0027 已涵蓋,無新架構/新 vendor;純加授權閘不改檢索邏輯 per plan §4 風險)。
+- **測試**:新增 `tests/api/test_kb_route_acl.py` 18 測試(admin pass / editor+grant pass / 無 grant 403 / user create 403 / 401 無憑證 / edit<manage 階級 / 讀端點不守衛);4 個受影響整合測試(test_kb_archive / test_kb_metadata_patch / test_kb_reindex / test_documents_route)`_build_app` override `get_current_user`=workspace admin(admin 在 backend 讀取前放行 → 免 wire rbac_backend)。
+- **驗證**:F5 範圍 46 passed(新 18 + acl_middleware 23 + kb_acl_route ~5)+ 受影響 64 passed,零 regression;ruff clean。
+
+### F6 Phase Gate + 端到端驗證(2026-06-24 ✅ 完成)
+- **G6 RBAC/auth 全集**:209 passed / 8 skipped(postgres 無 DB)/ 0 failed,**遠超 ≥160 baseline**;覆蓋 acl_middleware / kb_acl_route / **kb_route_acl(新)** / roles / users / groups / rbac_storage / auth_*(cookie/endpoints/routes/self_register/postgres)/ kb_archive / kb_metadata / kb_reindex。
+- **G1-G5 回顧驗**:G1 環境一致(F1)✅ / G2 bootstrap + 角色值 + 測試(F2)✅ / G3 前端 badge 讀真 role + H7(F3)✅ / G4 `/users` 寫操作端到端(F4)✅ / G5 KB 端點守衛無缺口 + 測試(F5)✅。
+- **ruff clean**(kb.py + acl.py + 全測試改動)。
+- **端到端 live smoke**:pytest 209 已充分覆蓋守衛行為(admin pass / 非 admin 擋 / grant 階級);running backend 加守衛需重啟先 pick up(per `project_stale_backend_no_reload`,reload=False)→ **live 重啟 smoke surface 給用戶決定**(重啟屬大動作 + pytest 已證,不自行重啟)。
+
+### 待決(surface 給用戶)
+1. **documents.py 4 寫端點守衛**:相鄰同類缺口(文件級上傳/刪除/reindex/profile 無 ACL)。plan F5 字面=「KB 端點」(kb.py),按 R3 不自行擴範圍 → 建議納入 P0 F5 補完(`require_kb_acl("edit")` 直接適用 + test_documents_route 已 wire admin override 低成本)或留 P1,等用戶一句話定。
+2. **端到端 live smoke**:是否重啟 backend 做 live 驗證(pytest 已充分,重啟是大動作)。
+
+### Carry-over
+- 上述兩待決 + TRACKER/FINDINGS 基準更新(closeout 同步)。

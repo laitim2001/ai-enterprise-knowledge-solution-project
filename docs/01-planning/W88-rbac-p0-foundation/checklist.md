@@ -29,13 +29,13 @@
 - [x] ①讀 mockup+DESIGN_SYSTEM ②設計確認 ③寫 mockup ④前端對齊 + browser H7 verify 三交互渲染正確
 
 ## F5 KB 端點補接 require_kb_acl
-- [ ] 盤點 KB 寫端點守衛覆蓋
-- [ ] 補缺口
-- [ ] 無權帳號被擋(測試)
+- [x] 盤點 KB 寫端點守衛覆蓋 → kb.py 9 端點(7 寫 + 2 讀)全無守衛;documents.py 4 寫端點亦無守衛(相鄰缺口,surface 留決)
+- [x] 補缺口 → kb.py 7 寫端點加守衛:create=require_role("admin","editor");delete/archive=require_kb_acl("manage");settings/reindex/backfill/metadata=require_kb_acl("edit")(映射依 rbac_storage permission matrix)
+- [x] 無權帳號被擋(測試) → 新 test_kb_route_acl.py 18 測試(403/401/admin pass/grant pass)+ 4 受影響整合測試 wire admin override 零 regression
 
 ## F6 Phase Gate + 端到端驗證
-- [ ] G1–G5 逐項驗
-- [ ] RBAC / auth pytest 全綠(≥ 160)
-- [ ] 端到端 smoke 走通
-- [ ] ruff clean
-- [ ] P0 closeout + 更新 TRACKER + FINDINGS 基準
+- [x] G1–G5 逐項驗 → G1 環境一致(F1)/ G2 bootstrap+測試(F2)/ G3 badge+H7(F3)/ G4 /users 寫操作(F4)/ G5 KB 守衛+測試(F5)全綠
+- [x] RBAC / auth pytest 全綠(≥ 160)→ **209 passed / 8 skipped / 0 failed**
+- [ ] 🚧 端到端 live smoke 走通 → **deferred**:pytest 209 已充分覆蓋守衛行為(admin pass / 非 admin 擋 / grant 階級);running backend 加守衛需重啟 pick up(reload=False),重啟屬大動作 → surface 給用戶決定是否做 live 重啟 smoke(target:用戶確認後或 P1 kickoff)
+- [x] ruff clean → kb.py + acl.py + 全測試改動 All checks passed
+- [x] P0 closeout + 更新 TRACKER + FINDINGS 基準

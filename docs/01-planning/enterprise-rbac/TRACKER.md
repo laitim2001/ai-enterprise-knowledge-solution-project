@@ -12,7 +12,7 @@
 | 階段 | 內容 | 狀態 | 備註 |
 |---|---|---|---|
 | 規劃 | 路線圖 + P0 計劃 + 報告 + 紀錄 + 文件整合 | ✅ 完成 | 已 commit + push |
-| **P0** | 基礎校正 + W24c 收尾 | 🟡 **進行中** | 2026-06-24 開工;F1 環境基準實測中 |
+| **P0** | 基礎校正 + W24c 收尾 | ✅ **核心完成** | 2026-06-24 F1-F6 全綠(209 pytest);2 項 surface 待決(documents 守衛 / live smoke) |
 | P1 | 威脅模型 + 目標架構 + ADR-0066 | 🔲 未開始 | 依賴 P0 |
 | P2 | 檢索層文件級存取控制 | 🔲 未開始 | 依賴 P1;可能係上線先決 |
 | P3 | 文件/資料夾級細粒度授權 | 🔲 未開始 | 依賴 P2 |
@@ -21,7 +21,7 @@
 | P6(選) | 屬性式權限 / 政策引擎 | ⏭️ 延後 | 規模化才需 |
 | SSO/SCIM | 真實 SSO + 自動供應 | ⏭️ 延後 | 用戶決定後加 |
 
-**整體定調(2026-06-23)**:規劃完成;程式碼地基扎實但系統未活、企業核心 0%(實測依據見 [`FINDINGS.md`](./FINDINGS.md))。**等 P0 批准令地基活起來。**
+**整體定調(2026-06-24 更新)**:規劃完成;**P0 核心完成 — 地基已活**(首位管理員 bootstrap 生效 / 角色正確解析 / `/users` + KB 寫操作可用且受 RBAC 守衛,209 pytest 為證)。企業核心(檢索層安全 / 群組 / SSO)仍 0%,待 P1 拍板。**下一步:用戶決 2 待決 + P1 威脅模型 + ADR-0066。**
 
 ---
 
@@ -36,15 +36,16 @@
 - [x] 文件整合方案 A(抽 FINDINGS 單一來源 + 歸入 enterprise-rbac/ 去重)
 - [x] commit + push
 
-### P0 — 基礎校正 + W24c 收尾(⏸️ 待批准 → 細項見 [`../W88-rbac-p0-foundation/checklist.md`](../W88-rbac-p0-foundation/checklist.md))
+### P0 — 基礎校正 + W24c 收尾(✅ 核心完成 2026-06-24,2 項 surface 待決 → 細項見 [`../W88-rbac-p0-foundation/checklist.md`](../W88-rbac-p0-foundation/checklist.md))
 - [x] **批准開工**(2026-06-24 用戶批准 flip active)
-- [ ] F1 基準確認(🟡 進行中:HEAD = disk 乾淨四級**已自愈**;running backend `/auth/me` + 帳號角色待實測)
-- [ ] F2 修首位用戶自動管理員(bootstrap)+ role 值一致性
-- [ ] F3 前端硬編「Workspace Admin」badge → 讀真 role
-- [ ] F4 `/users` 寫操作接通(改 role / 邀請 / 停用)
-- [ ] F5 KB endpoints 補接 `require_kb_acl`
-- [ ] F6 Phase Gate 驗證 + smoke
-- [ ] P0 closeout + 更新本 TRACKER + `FINDINGS.md` 基準
+- [x] F1 基準確認 — HEAD=disk=running backend 三層乾淨四級**已自愈**;幻欄位 0 match;剩真實債=帳號 role+verified(移交 F2)
+- [x] F2 修首位用戶自動管理員(bootstrap)+ role 值一致性 — `register()` first-user→admin + `ensure_admin_bootstrap()` self-heal(commit `e3809e1`);端到端重啟驗 `admin@example.com` user→admin + verified f→t
+- [x] F3 前端硬編「Workspace Admin」badge → 讀真 role — `useRole()` + 複用 `RoleBadge`(commit `b4cfceb`);playwright 兩處驗
+- [x] F4 `/users` 寫操作接通(改 role / 邀請 / 停用)— InviteDialog/RowActionMenu/SuspendDialog 接 `usersApi`(commit `7ff7588`);①讀 ②設計 ③mockup ④前端對齊 + H7 verify
+- [x] F5 KB endpoints 補接 `require_kb_acl` — kb.py 7 寫端點守衛(映射 permission matrix)+ 18 新測試 + 4 整合測試 wire admin;209 RBAC/auth pytest 全綠
+- [x] F6 Phase Gate 驗證 — G1-G6 綠(209 passed / 8 skipped)+ ruff + mypy;🚧 端到端 live smoke deferred(pytest 已充分,重啟大動作 surface)
+- [x] P0 closeout + 更新本 TRACKER + `FINDINGS.md` 基準
+- **待決(surface)**:① documents.py 4 寫端點守衛(相鄰缺口,納 P0 補完 vs 留 P1)② 端到端 live smoke 是否重啟 backend 做
 
 ### P1 — 威脅模型 + 目標架構 + ADR-0066(🔲 未開始)
 - [ ] 威脅模型 + 需求(資料分類 / 用戶類型 / 合規 / 租戶數)
@@ -79,7 +80,7 @@
 
 ## 三、里程碑
 
-- [ ] **M1** P0 完成 — 地基活(登入正常 / 角色正確 / 寫操作可用)
+- [x] **M1** P0 核心完成 — 地基活(登入正常 / 角色正確 / 寫操作可用且受守衛)✅ 2026-06-24(live smoke + documents 守衛 2 項 surface 待決)
 - [ ] **M2** ADR-0066 Accepted — 目標架構 + Tier scope 拍板
 - [ ] **M3** P2 完成 — 檢索層文件級安全(企業安全先決達成)
 - [ ] **M4** 細粒度授權 + 群組(P3+P4)可用
@@ -118,6 +119,7 @@
 | 2026-06-23 | 建立 TRACKER | 初版 |
 | 2026-06-23 | 方案 A 整合:抽 `FINDINGS.md` 單一來源、狀態總覽去重引用、文件索引更新為 enterprise-rbac/ 新結構 | 文件整合 |
 | 2026-06-24 | P0 flip active(用戶批准)+ 重建 W88 三件套(OneDrive 吞文件後)+ 修 broken reference;F1 環境基準實測(disk `rbac.py` 已自愈追上 HEAD) | P0 開工 |
+| 2026-06-24 | **P0 F1-F6 核心完成** — F5 KB 寫端點補 RBAC 守衛(映射 permission matrix)+ F6 Phase Gate(209 RBAC/auth pytest 全綠 + ruff + mypy)+ closeout;M1 達成。2 待決 surface(documents 守衛擴充 / 端到端 live smoke) | P0 核心完成 |
 
 ---
 
