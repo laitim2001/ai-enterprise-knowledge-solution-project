@@ -27,8 +27,19 @@
 - **DG-P3-C Tier 定位**:**推薦 Tier 1.5 post-launch enhancement**(P2 已達 launch 安全 DG4;P3 等真實 doc-level driver 落 implementation)。
 - **re-stamp**:doc_acl 改 → restamp 該文件(復用 P2.3 search-then-merge);group member 改 → 零 restamp;順帶補 P2 遺留(kb_acl ingest 後改未 restamp)。
 
+### DG resolution(用戶 2026-06-24 AskUserQuestion,3 個全採推薦)
+- **DG-P3-A = replace 取代**(doc 有 doc_acl → 只用之,無 → 繼承 KB)。
+- **DG-P3-B = 手動 admin 管理**(復用 `group_members` 表,真 SCIM = Tier 2)。
+- **DG-P3-C = Tier 1.5 post-launch enhancement**(設計即做,impl 等真實 doc-level driver)。
+
+### F3 ADR-0067 草擬(✅ Proposed,`docs/adr/0067-document-level-acl-override-and-group-inheritance.md`)
+- Context / Decision(7 點,反映 3 DG)/ Alternatives(additive / allow+deny / Entra-sync / member-oid-in-chunk / chunk 級全 reject 或 defer)/ Consequences / References 齊。
+- README summary log 加 0067 Proposed + next NNNN → 0068。
+- **Status: Proposed** —— 待用戶以 decision owner 身份 **Accept**(H1+H4 硬閘,次序鐵律 5)→ P3-impl 解鎖。Accept 前唔開任何 implementation。
+
 ### 待續(本 phase)
-- **surface DG-P3-A/B/C 推薦畀 decision owner 拍板** → F3 ADR-0067 Proposed(反映 DG resolution)→ decision owner Accept(H1+H4 硬閘)→ P3-impl 解鎖。
+- **decision owner Accept ADR-0067**(用戶拍板)→ 更新 Status Proposed→Accepted → P3-impl(P3a doc_acl 表+API+restamp / P3b group 展開)另期 kickoff。
 
 ### Commits
-- (本 entry)docs(planning): W91 P3 kickoff + F1 威脅模型 + F2 目標架構(doc_acl override + 群組繼承)
+- `f7758d1` docs(planning): W91 P3 kickoff + F1 威脅模型 + F2 目標架構
+- (本 entry)docs(adr): ADR-0067 文件級 ACL override + 群組繼承(Proposed)

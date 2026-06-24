@@ -16,9 +16,9 @@
 - [x] 每 fork 列選項 + trade-off + 推薦(對齊 ADR-0066 選項分析風格)
 
 ## F3 ADR-0067 草擬 + Accept
-- [ ] `docs/adr/0067-*.md` 撰寫(Context / Decision / Alternatives / Consequences / References)→ **Status: Proposed**
-- [ ] DG-P3-A/B/C resolution 寫入 ADR Decision
-- [ ] decision owner review → **Accept**(H1+H4 硬閘)→ 更新 ADR Status + README index
+- [x] `docs/adr/0067-document-level-acl-override-and-group-inheritance.md` 撰寫(Context / Decision / Alternatives / Consequences / References)→ **Status: Proposed** + README summary log 加 0067 + next NNNN → 0068
+- [x] DG-P3-A/B/C resolution 寫入 ADR Decision(用戶 2026-06-24 AskUserQuestion 拍板:replace / 手動 admin group / Tier 1.5 post-launch)
+- [ ] 🚧 decision owner review → **Accept**(H1+H4 硬閘)→ 更新 ADR Status Proposed→Accepted + README — **待用戶以 decision owner 身份 Accept**(次序鐵律 5,P3-impl 解鎖前置)
 
 ## Phase Gate(收尾)
 - [ ] F1+F2+F3 完成 + ADR-0067 Accepted
