@@ -392,6 +392,100 @@ class IndexPopulator:
         logger.info("doc_chunks_deleted", kb_id=kb_id, doc_id=doc_id, count=deleted)
         return deleted
 
+    @_azure_lifecycle_retry
+    async def update_doc_classification(
+        self, kb_id: str, doc_id: str, classification: str
+    ) -> int:
+        """Merge-update the `classification` field on every chunk of (kb_id, doc_id).
+
+        W90 P2.3 / ADR-0066 — tag a document `internal` / `restricted` in the live
+        index WITHOUT a re-ingest. Same two-step shape as `delete_doc`, but the second
+        step uses Azure's `merge` action (not `delete`) with only `{chunk_id,
+        classification}`, so it updates that ONE field and leaves content / vectors /
+        ACL / image markers untouched:
+
+        1. POST /docs/search filter `kb_id eq X and doc_id eq Y`, select=chunk_id — collect
+           the chunk_ids (Tier 1: < 1000 chunks/doc, same assumption as `delete_doc`).
+        2. POST /docs/index `@search.action: "merge"` per chunk_id, setting classification.
+
+        Returns the count of chunks restamped. 0 when no chunks matched (the route
+        surfaces this as 404 `document.not_found`). `merge` requires the doc to exist —
+        a missing chunk_id would fail that item, but step 1 only returns existing ones.
+        """
+        assert self._client is not None, "use 'async with' to manage populator lifecycle"
+        index_name = self._resolve_index_name(kb_id)
+        api_version = self.api_version
+
+        # Step 1 — collect chunk_ids matching (kb_id, doc_id).
+        search_url = f"{self.endpoint}/indexes/{index_name}/docs/search?api-version={api_version}"
+        filter_clause = f"{kb_id_filter_clause(kb_id)} and doc_id eq '{doc_id}'"
+        search_payload = {
+            "search": "*",
+            "filter": filter_clause,
+            "select": "chunk_id",
+            "top": _AZURE_BATCH_LIMIT,
+        }
+        search_response = await self._client.post(search_url, content=json.dumps(search_payload))
+        if search_response.status_code == 404:
+            logger.warning(
+                "restamp_doc_index_missing", kb_id=kb_id, doc_id=doc_id, index=index_name
+            )
+            return 0
+        if search_response.status_code != 200:
+            logger.error(
+                "restamp_doc_search_failed",
+                kb_id=kb_id,
+                doc_id=doc_id,
+                status_code=search_response.status_code,
+                body=search_response.text[:2000],
+            )
+            search_response.raise_for_status()
+
+        rows = search_response.json().get("value", [])
+        chunk_ids: list[str] = [r["chunk_id"] for r in rows if "chunk_id" in r]
+        if not chunk_ids:
+            return 0
+
+        # Step 2 — batch-merge the classification field by key.
+        merge_url = f"{self.endpoint}/indexes/{index_name}/docs/index?api-version={api_version}"
+        restamped = 0
+        for i in range(0, len(chunk_ids), _AZURE_BATCH_LIMIT):
+            batch = chunk_ids[i : i + _AZURE_BATCH_LIMIT]
+            payload = {
+                "value": [
+                    {
+                        "chunk_id": chunk_id,
+                        "classification": classification,
+                        "@search.action": "merge",
+                    }
+                    for chunk_id in batch
+                ],
+            }
+            response = await self._client.post(merge_url, content=json.dumps(payload))
+            if response.status_code not in (200, 207):
+                logger.error(
+                    "restamp_doc_index_failed",
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    status_code=response.status_code,
+                    body=response.text[:2000],
+                )
+                response.raise_for_status()
+
+            body = response.json()
+            for item in body.get("value", []):
+                if item.get("status") is True or 200 <= int(item.get("statusCode", 0)) < 300:
+                    restamped += 1
+
+        logger.info(
+            "doc_classification_restamped",
+            kb_id=kb_id,
+            doc_id=doc_id,
+            classification=classification,
+            count=restamped,
+        )
+        return restamped
+
 
 @lru_cache(maxsize=1)
 def _load_index_schema() -> dict[str, Any]:

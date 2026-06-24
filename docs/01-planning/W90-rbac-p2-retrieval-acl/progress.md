@@ -88,3 +88,29 @@
 - feat(api): P2.1 index ACL schema + ingestion stamp
 - feat(retrieval): P2.2a retrieval-layer ACL filter + threading + P2.2c trimming fixture
 - (本 entry)chore(ops): P2.2b rebuild ops scripts + eval reports(north-star §15 PASS)
+
+## Day 1 cont — 2026-06-24(P2.3 classification clearance,DG1)
+
+### 用戶 2 決策(AskUserQuestion)
+- **clearance 來源 = 由 workspace role 推導**(admin = restricted-cleared / 非 admin = internal)。
+- **文件標記 = 完整閉環 admin-only `PATCH .../classification`**(merge-restamp 索引 + 持久化,無 re-ingest)。
+
+### think-before-coding 關鍵 simplification(Karpathy §1.1/§1.2,plan changelog)
+- clearance 由 role 推導且只有 admin = restricted-cleared,而 `principals_for_user(admin)` 已返 `None`(完全 bypass)→ **「principals 是 None」⟺「admin」⟺「restricted-cleared」**。classification clause **唔需要再 threading 第二個 `user_clearance` param 落 11 層** —— filter 側改動完全 self-contained(零 re-threading,surgical §1.3)。隱式 coupling 失敗模式 = over-restriction(fail-safe)非洩漏 → 可接受 + 強 docstring 標 P3 per-user clearance 須改 explicit。
+
+### 實作(讀側 + 寫側)
+- **讀側**:`_build_acl_filter` 非 None list append `(classification eq 'internal' or classification eq null)`;None 不加。`null` disjunct = production-preserve fail-open(未重建 KB classification null → internal 可見,對稱 `allowed_principals` 空集)。**零 11 層 re-threading**。
+- **寫側(完整閉環)**:
+  1. `kb_management/doc_classification_store.py`(新,Protocol + InMemory + Postgres `document_classifications` 表 + factory,mirror `doc_profile_store`,存單一 `str`,只記 exception = restricted)。
+  2. `api/schemas/doc_classification.py`(`ClassificationUpdateRequest` Literal[internal/restricted] + `DocClassificationInfo`)。
+  3. `IndexPopulator.update_doc_classification`(C03,mirror `delete_doc` search-then-merge,第二步 `@search.action: merge` 只更新 classification 欄位,無 re-ingest)。
+  4. `PATCH /kb/{kb_id}/docs/{doc_id}/classification`(documents.py,`require_role("admin")` — security 控制 admin-only,P3 可放寬 KB manage)→ 持久化先(防 re-ingest race)→ merge-restamp 索引。
+  5. `_run_ingest_pipeline` 讀持久化 classification → 傳 `orchestrator.ingest(classification=...)`:**restricted 文件 re-ingest/reindex/backfill 不退回 internal**(安全屬性)。
+  6. server.py lifespan wire `app.state.doc_classification_store`。
+
+### 測試 + 驗證
+- 新測試:`test_doc_classification_store.py`(9 CRUD + factory)/ `test_doc_classification_route.py`(9:200 標記持久化+restamp / revert / 403 非 admin / 422 invalid / 404 doc / 404 KB / 403 archived / 503 無 store)/ `test_populate.py` 加 3(restamp merge / 0-match / index-missing fail-soft)/ `test_retrieval_acl_filter.py` 加 P2.3 clause 斷言 / `test_documents_route.py` 加 re-ingest 保留 restricted / `test_query_route_acl_trimming.py` 加 route 層 clearance 斷言。
+- **針對性 pytest 96 passed**;**全套待綠**;ruff clean(我嘅檔全過;server.py 30 E402 = pre-existing 缺 noqa,非我引入,Karpathy §1.3 唔掂);mypy 改動 production 檔自身 0 error(transitive debt pre-existing)。
+
+### Commits
+- (本 entry)feat(api): P2.3 classification clearance filter + admin tag endpoint + persist

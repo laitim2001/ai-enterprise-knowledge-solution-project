@@ -109,6 +109,8 @@ async def test_granted_user_principal_reaches_search_filter() -> None:
     assert "kb_id eq 'kb-1'" in filter_str  # KB scope preserved
     assert "allowed_principals/any(p: search.in(p, 'oid-alice', ','))" in filter_str
     assert "not allowed_principals/any()" in filter_str  # fail-open disjunct
+    # P2.3 — the non-admin route query also carries the classification clearance clause.
+    assert "classification eq 'internal'" in filter_str
 
 
 @pytest.mark.asyncio

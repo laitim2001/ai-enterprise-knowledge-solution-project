@@ -1,13 +1,16 @@
-"""Retrieval-layer ACL filter injection tests (ADR-0066 / W90 P2.2).
+"""Retrieval-layer ACL + classification filter injection tests (ADR-0066 / W90 P2.2+P2.3).
 
-The fail-open `allowed_principals` OData clause is threaded into every search path
-that feeds the synthesizer (search / fetch_by_chunk_ids / fetch_chunks_by_section_path
-/ list_chunks). Covers:
+The fail-open `allowed_principals` OData clause (P2.2) + the classification-clearance
+clause (P2.3) are threaded into every search path that feeds the synthesizer (search /
+fetch_by_chunk_ids / fetch_chunks_by_section_path / list_chunks). Covers:
 
-- `_build_acl_filter` shape: None → None (BC); list → fail-open disjunction;
-  empty list (no principals → public-only); single-quote escaping
-- Each method's `filter` payload gains the ACL clause when user_principals passed
-- BC: user_principals=None → filter byte-identical to pre-P2.2 (no ACL clause)
+- `_build_acl_filter` shape: None → None (BC + admin = restricted-cleared, no filter);
+  list → fail-open ACL disjunction ANDed with the classification clause; empty list
+  (no principals → public-only); single-quote escaping
+- P2.3 classification clearance: a non-None list (non-admin = internal clearance) always
+  appends `(classification eq 'internal' or classification eq null)`; None never does
+- Each method's `filter` payload gains both clauses when user_principals passed
+- BC: user_principals=None → filter byte-identical to pre-P2.2 (no ACL/classification)
 
 Per CLAUDE.md §5.6 H6 — retrieval critical pipeline test coverage.
 """
@@ -53,26 +56,34 @@ def _filter_of(post_mock: AsyncMock) -> str:
 # ── _build_acl_filter unit ────────────────────────────────────────────────────
 
 
+# P2.3 — the classification-clearance clause every non-None list appends.
+_CLEARANCE = "(classification eq 'internal' or classification eq null)"
+
+
 def test_build_acl_filter_none_is_no_op() -> None:
-    # None = BC path (internal tooling / tests / V4) → no ACL filter at all.
+    # None = BC path (internal tooling / tests / V4) AND admin (restricted-cleared) →
+    # no ACL filter AND no classification restriction (admins see restricted chunks).
     assert _build_acl_filter(None) is None
 
 
-def test_build_acl_filter_list_is_fail_open_disjunction() -> None:
+def test_build_acl_filter_list_is_fail_open_disjunction_with_clearance() -> None:
     clause = _build_acl_filter(["oid-a", "grp-eng"])
     assert clause == (
         "(not allowed_principals/any()"
         " or allowed_principals/any(p: search.in(p, 'oid-a,grp-eng', ',')))"
+        f" and {_CLEARANCE}"
     )
 
 
 def test_build_acl_filter_empty_list_sees_only_public() -> None:
     # A user with zero principals: the second disjunct's search.in('') matches
-    # nothing, so only empty-allowed_principals (public) chunks survive.
+    # nothing, so only empty-allowed_principals (public) chunks survive — plus the
+    # P2.3 internal-clearance restriction.
     clause = _build_acl_filter([])
     assert clause == (
         "(not allowed_principals/any()"
         " or allowed_principals/any(p: search.in(p, '', ',')))"
+        f" and {_CLEARANCE}"
     )
 
 
@@ -80,6 +91,26 @@ def test_build_acl_filter_escapes_single_quotes() -> None:
     clause = _build_acl_filter(["o'brien"])
     assert clause is not None
     assert "search.in(p, 'o''brien', ',')" in clause
+
+
+# ── P2.3 classification clearance ─────────────────────────────────────────────
+
+
+def test_build_acl_filter_non_admin_restricts_to_internal() -> None:
+    # A non-admin (non-None list = internal clearance) only sees internal / unclassified
+    # (null) chunks; restricted chunks are excluded by the appended clearance clause.
+    clause = _build_acl_filter(["oid-a"])
+    assert clause is not None
+    assert clause.endswith(f" and {_CLEARANCE}")
+    assert "classification eq 'internal'" in clause
+    assert "classification eq null" in clause  # fail-open: null = not-yet-classified
+
+
+def test_build_acl_filter_admin_none_has_no_classification_clause() -> None:
+    # Admins reach the None branch (principals_for_user → None) → NO classification
+    # restriction → they see restricted chunks too. Guards against accidentally
+    # appending the clearance clause to the admin/BC path.
+    assert _build_acl_filter(None) is None
 
 
 # ── search() main retrieval ───────────────────────────────────────────────────
@@ -99,11 +130,13 @@ async def test_search_injects_acl_clause_when_principals_passed() -> None:
     assert "enabled eq true" in filter_str  # default filter preserved
     assert "allowed_principals/any(p: search.in(p, 'oid-a', ','))" in filter_str
     assert "not allowed_principals/any()" in filter_str  # fail-open disjunct
+    # P2.3 — non-admin caller gets the internal-clearance restriction too.
+    assert "classification eq 'internal'" in filter_str
 
 
 @pytest.mark.asyncio
 async def test_search_no_acl_clause_when_principals_none_bc() -> None:
-    # BC: admin / internal callers pass None → filter has NO ACL clause (byte-identical).
+    # BC: admin / internal callers pass None → filter has NO ACL / classification clause.
     searcher, post_mock = await _searcher_with_post(_mock_response(200, {"value": []}))
     await searcher.search(
         query_text="q",
@@ -113,6 +146,7 @@ async def test_search_no_acl_clause_when_principals_none_bc() -> None:
     )
     filter_str = _filter_of(post_mock)
     assert "allowed_principals" not in filter_str
+    assert "classification" not in filter_str  # P2.3 — admin/BC sees restricted too
     assert filter_str == "kb_id eq 'drive_user_manuals' and enabled eq true"
 
 

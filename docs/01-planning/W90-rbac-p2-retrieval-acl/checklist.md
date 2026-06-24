@@ -31,9 +31,16 @@
 - [x] **eval 驗圖文還原不退(north-star §15)**:before recall **1.000**/prec 0.988 → after recall **1.000(完全保留)**/prec 0.954;**recall = 全圖召回(ADR-0054 成功定義)零退化**;precision -0.034 = re-ingest 多抓 1-7 張 section 圖(良性,多圖非少圖,**非 filter 退化** —— eval admin bypass 證 filter no-op)。**用戶判決 PASS**
 - [x] 真端到端 trimming live smoke:`scripts/acl_trimming_live_smoke.py`(self-cleaning 合成 restrictive chunk)→ alice(列入)見=1 / bob(未列入)**被 Azure 剔除=0** / bob fail-open 見 369 空-ACL chunk 全放行 → **Azure server-side 真 drop 驗證 PASS**
 
-## P2.3 classification clearance(DG1)
-- [ ] `classification` clearance 比對(internal/restricted)
-- [ ] restricted 文件只 restricted clearance 用戶可見 + internal 用戶被擋(測試)
+## P2.3 classification clearance(DG1)(✅ 完成 2026-06-24)
+### 讀側 — filter clearance clause(零 re-threading)
+- [x] `_build_acl_filter` 加 classification clause:非 None list(非 admin = internal clearance)append `(classification eq 'internal' or classification eq null)`;None(admin / 工具 / V4)乜都唔加 → **clearance 由 role 推導,principals 是 None ⟺ admin = restricted-cleared,無需 threading 第二個 param**(think-before simplification,plan changelog)
+- [x] `null` disjunct = production-preserve fail-open(未重建 KB classification null → 視為 internal 可見,同 `allowed_principals` 空集 fail-open 對稱)
+- [x] 單元測試:`test_retrieval_acl_filter.py` 加 P2.3(非 admin 限 internal + null / admin None 無 clause / 主 search path 含 clause)+ `test_query_route_acl_trimming.py` 加 route 層 clearance clause 斷言
+### 寫側 — 完整閉環標記端點(用戶決策)
+- [x] `PATCH /kb/{kb_id}/docs/{doc_id}/classification` admin-only(`require_role("admin")`)→ 持久化(`doc_classification_store`)先 + merge-restamp 索引(`IndexPopulator.update_doc_classification`,search-then-merge 只更新 classification 欄位,無 re-ingest)
+- [x] 新 `kb_management/doc_classification_store.py`(Protocol + InMemory + Postgres + factory,mirror `doc_profile_store`)+ `api/schemas/doc_classification.py`(`ClassificationUpdateRequest` Literal + `DocClassificationInfo`)+ server.py lifespan wire `app.state.doc_classification_store`
+- [x] `_run_ingest_pipeline` 讀持久化 classification → 傳 `orchestrator.ingest(classification=...)`:**restricted 文件 re-ingest/reindex/backfill 不退回 internal**(安全屬性)
+- [x] restricted 文件只 restricted clearance(admin)可見 + internal 用戶被擋:`test_doc_classification_route.py`(7:200 標記+持久化+restamp / revert / 403 非 admin / 422 invalid / 404 doc / 404 KB / 403 archived / 503 無 store)+ `test_doc_classification_store.py`(9 CRUD)+ `test_populate.py`(3 restamp)+ `test_documents_route.py`(re-ingest 保留 restricted)
 
 ## Phase Gate(收尾)
 - [ ] G-P2.0 ~ G-P2.3 逐項驗

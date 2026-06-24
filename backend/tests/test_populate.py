@@ -362,6 +362,71 @@ async def test_create_index_for_kb_does_not_retry_on_quota_429() -> None:
     assert instance.put.await_count == 1  # quota 429 is a hard limit — not retried
 
 
+# ─── W90 P2.3 / ADR-0066 — update_doc_classification (merge-restamp) ──────────
+
+
+@pytest.mark.asyncio
+async def test_update_doc_classification_merges_field_for_each_chunk() -> None:
+    """Two-step search-then-merge: collect chunk_ids, then `merge` the classification
+    field only (no re-ingest). Returns the restamped count."""
+    import json
+
+    search_body = {"value": [{"chunk_id": "kb-d-0"}, {"chunk_id": "kb-d-1"}]}
+    merge_body = {
+        "value": [
+            {"key": "kb-d-0", "status": True, "statusCode": 200},
+            {"key": "kb-d-1", "status": True, "statusCode": 200},
+        ]
+    }
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(
+            side_effect=[_mock_response(200, search_body), _mock_response(200, merge_body)]
+        )
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "ekp-kb-drive-v1") as pop:
+            count = await pop.update_doc_classification("drive_user_manuals", "d", "restricted")
+
+    assert count == 2
+    assert instance.post.await_count == 2  # search + one merge batch
+    merge_payload = json.loads(instance.post.await_args_list[1].kwargs["content"])
+    assert all(item["@search.action"] == "merge" for item in merge_payload["value"])
+    assert all(item["classification"] == "restricted" for item in merge_payload["value"])
+    # merge carries ONLY the key + the field being updated (leaves content/vectors/ACL).
+    assert set(merge_payload["value"][0]) == {"chunk_id", "classification", "@search.action"}
+
+
+@pytest.mark.asyncio
+async def test_update_doc_classification_no_chunks_returns_zero_no_merge() -> None:
+    """No chunks matched (doc absent) → returns 0, no merge call (route → 404)."""
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(200, {"value": []}))
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "ekp-kb-drive-v1") as pop:
+            count = await pop.update_doc_classification("drive_user_manuals", "ghost", "restricted")
+
+    assert count == 0
+    assert instance.post.await_count == 1  # search only, no merge
+
+
+@pytest.mark.asyncio
+async def test_update_doc_classification_index_missing_returns_zero() -> None:
+    """A 404 on the search step (index never created) → 0 (fail-soft, same as delete_doc)."""
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(return_value=_mock_response(404))
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "ekp-kb-drive-v1") as pop:
+            count = await pop.update_doc_classification("missing_kb", "d", "restricted")
+
+    assert count == 0
+    assert instance.post.await_count == 1
+
+
 def test_make_chunk_id_sanitizes_forbidden_chars() -> None:
     """Azure AI Search keys: [A-Za-z0-9_=-] only. Spaces / parens / dots → `_`."""
     cid = make_chunk_id(

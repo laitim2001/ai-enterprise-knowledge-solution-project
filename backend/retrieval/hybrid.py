@@ -58,34 +58,52 @@ logger = structlog.get_logger(__name__)
 
 
 def _build_acl_filter(user_principals: list[str] | None) -> str | None:
-    """ADR-0066 / W90 P2.2 — fail-open retrieval-layer ACL filter clause (G2/G4).
+    """ADR-0066 / W90 P2.2+P2.3 — fail-open retrieval-layer ACL + classification filter (G2/G4).
 
-    `user_principals is None` → None: NO ACL filter applied. This is the BC path
-    for callers that don't pass principals (internal tooling, the existing test
-    suite, the V4 retrieval-test surface) — retrieval stays unfiltered by ACL. The
-    authenticated query pipeline always passes a list (≥ the user's oid), so None
-    only happens off that path.
+    `user_principals is None` → None: NO filter applied. This is the BC path for
+    callers that don't pass principals (internal tooling, the existing test suite,
+    the V4 retrieval-test surface) — AND the admin path: `principals_for_user`
+    returns None for workspace admins, so an admin's retrieval is unfiltered (sees
+    every chunk, including `restricted`). The authenticated NON-admin query pipeline
+    always passes a list (≥ the user's oid), so None only happens off that path.
 
-    A list (even empty) → the fail-open OData disjunction::
+    A list (even empty) → the fail-open ACL disjunction ANDed with the P2.3
+    classification-clearance clause::
 
         (not allowed_principals/any()
          or allowed_principals/any(p: search.in(p, '{principals}', ',')))
+        and (classification eq 'internal' or classification eq null)
 
-    A chunk with EMPTY allowed_principals (indexed before the P2.2 rebuild, or a KB
-    with no ACL grant) matches the first disjunct → public (production-preserve
-    fail-open, plan §6). A STAMPED chunk matches only when one of the user's
-    principals is in its allowed list. An empty `user_principals` list → the second
-    disjunct matches nothing, so the user sees only public chunks.
+    ACL disjunction: a chunk with EMPTY allowed_principals (indexed before the P2.2
+    rebuild, or a KB with no ACL grant) matches the first disjunct → public
+    (production-preserve fail-open, plan §6). A STAMPED chunk matches only when one
+    of the user's principals is in its allowed list. An empty `user_principals` list
+    → the second disjunct matches nothing, so the user sees only public chunks.
+
+    Classification clause (P2.3, DG1 2-level): under the role-derived clearance model
+    (admin = restricted-cleared, everyone else = internal-cleared), reaching THIS
+    branch with a non-None list ⟺ a non-admin caller ⟺ internal clearance — so we
+    always restrict to `internal` (or not-yet-classified `null`, the production-
+    preserve fail-open for chunks indexed before a restricted doc was tagged). Admins
+    reach the `None` branch above (no filter) → they see `restricted` chunks too. The
+    coupling is intentional + exact for P2.3; its only failure mode is OVER-restriction
+    (fail-safe), never leakage. P3 per-user clearance grants (a cleared NON-admin) will
+    need an EXPLICIT clearance flag threaded here — until then no non-admin can be
+    restricted-cleared, so inferring from `None`-vs-list is correct.
     """
     if user_principals is None:
         return None
     # OData: escape single quotes by doubling. search.in's delimiter is ',' — oid /
     # group keys never contain commas, so the comma-joined list is unambiguous.
     escaped = ",".join(p.replace("'", "''") for p in user_principals)
-    return (
+    acl = (
         "(not allowed_principals/any()"
         f" or allowed_principals/any(p: search.in(p, '{escaped}', ',')))"
     )
+    # P2.3 classification clearance — internal + null (fail-open) only; restricted
+    # excluded for the non-admin caller that reaches here (see docstring).
+    clearance = "(classification eq 'internal' or classification eq null)"
+    return f"{acl} and {clearance}"
 
 
 @dataclass(slots=True, frozen=True)

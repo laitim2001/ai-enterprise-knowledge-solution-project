@@ -58,6 +58,9 @@ from generation.synthesizer import Synthesizer
 from indexing.populate import IndexPopulator  # noqa: E402 — truststore-after-imports
 from ingestion.chunker.layout_aware import LayoutAwareChunker  # noqa: E402
 from ingestion.embedding.azure_openai_embedder import AzureOpenAIEmbedder
+from kb_management.doc_classification_store import (  # noqa: E402
+    make_doc_classification_store,
+)
 from kb_management.doc_config_store import make_doc_config_store  # noqa: E402
 from kb_management.doc_profile_store import make_doc_profile_store  # noqa: E402
 from kb_management.preset_override_store import make_preset_override_store  # noqa: E402
@@ -131,6 +134,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # the doc_profile_store pattern). Read via `resolve_preset` on the ingest-route /
     # manual-override / backfill paths; written by the Settings 文件分類規則 admin surface.
     app.state.preset_override_store = make_preset_override_store(settings)
+
+    # ADR-0066 / W90 P2.3 — per-document security-classification store. Postgres table
+    # `document_classifications` when DATABASE_URL is set, else in-memory (mirrors the
+    # doc_profile_store pattern). Read by `_run_ingest_pipeline` to preserve a doc's
+    # restricted tag across re-ingest; written by the admin tag endpoint (which also
+    # merge-restamps the live index).
+    app.state.doc_classification_store = make_doc_classification_store(settings)
 
     # W24-wave-c1 F1 + F2 — Key Vault provider + admin provider config backend.
     # Both factories pick lazy-imported production impls only when their env

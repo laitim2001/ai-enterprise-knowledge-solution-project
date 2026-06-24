@@ -37,6 +37,7 @@ from api.schemas.kb import KbConfig, KbCreate
 from ingestion.orchestrator import FailureRecord as IngFailureRecord
 from ingestion.orchestrator import IngestionResult
 from kb_management import KBService, get_kb_service
+from kb_management.doc_classification_store import InMemoryDocClassificationStore
 from kb_management.storage import InMemoryKBBackend
 
 # --------------------------------------------------------------------------- #
@@ -256,6 +257,33 @@ async def test_upload_happy_path_returns_202_indexed(
     }
     ingest_mock.assert_awaited_once()
     populator.upload.assert_awaited_once()
+    # ADR-0066 / W90 P2.3 — no classification store wired → default "internal".
+    assert ingest_mock.await_args.kwargs["classification"] == "internal"
+
+
+@pytest.mark.asyncio
+async def test_reingest_preserves_persisted_restricted_classification(
+    kb_service_with_drive: KBService, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0066 / W90 P2.3 — a doc tagged `restricted` keeps that classification when
+    re-ingested: `_run_ingest_pipeline` reads the persisted value from the
+    doc_classification_store and re-stamps it (else a re-ingest would silently
+    de-classify a restricted doc — a security regression)."""
+    ingest_mock = _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    store = InMemoryDocClassificationStore()
+    await store.upsert("drive_user_manuals", "vendor-manual", "restricted")
+    app.state.doc_classification_store = store
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+    # The persisted restricted tag rode into orchestrator.ingest → re-stamped on chunks.
+    assert ingest_mock.await_args.kwargs["classification"] == "restricted"
 
 
 @pytest.mark.asyncio

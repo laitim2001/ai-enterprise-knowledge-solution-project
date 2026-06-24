@@ -41,7 +41,11 @@ import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
 
-from api.middleware.acl import require_kb_acl, resolve_kb_principals
+from api.middleware.acl import require_kb_acl, require_role, resolve_kb_principals
+from api.schemas.doc_classification import (
+    ClassificationUpdateRequest,
+    DocClassificationInfo,
+)
 from api.schemas.doc_profile import DocProfileInfo, ProfileOverrideRequest
 from api.schemas.kb import FailureRecord, KbConfig
 from api.schemas.listing import (
@@ -63,6 +67,7 @@ from ingestion.profiler import DocProfile, DocumentProfiler, ProfileResult, is_s
 from ingestion.screenshots.uploader import ScreenshotUploader, download_screenshot
 from ingestion.source_store import download_source_document, upload_source_document
 from kb_management import KBNotFoundError, KBService, get_kb_service
+from kb_management.doc_classification_store import DocClassificationStore
 from kb_management.doc_config_store import DocConfigStore
 from kb_management.doc_profile_store import DocProfileStore
 from kb_management.preset_override_store import PresetOverrideStore
@@ -122,6 +127,10 @@ class _IngestionDeps:
     # `resolve_kb_principals` returns [] → chunks stamp no principals (fail-open
     # transition, the P2.2 filter treats empty as public). production-preserve.
     rbac_backend: RbacBackend | None = None
+    # ADR-0066 / W90 P2.3 — per-doc classification store. None when unwired → ingest
+    # stamps the default `internal` (a restricted tag won't survive re-ingest until
+    # the store is wired); the admin tag endpoint 503s without it. production-preserve.
+    doc_classification_store: DocClassificationStore | None = None
 
 
 def _engine_or_503(request: Request) -> RetrievalEngine:
@@ -155,6 +164,15 @@ def _preset_override_store(request: Request) -> PresetOverrideStore | None:
     return getattr(request.app.state, "preset_override_store", None)
 
 
+def _doc_classification_store(request: Request) -> DocClassificationStore | None:
+    """Resolve the lifespan-wired per-doc classification store (W90 P2.3 / ADR-0066).
+
+    Absent (unwired, or some tests) → the tag endpoint 503s and ingest stamps the
+    default `internal` (a restricted tag won't survive re-ingest). production-preserve.
+    """
+    return getattr(request.app.state, "doc_classification_store", None)
+
+
 def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     """Resolve the lifespan-wired ingestion services or 503.
 
@@ -178,6 +196,9 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
     # ADR-0066 / W90 P2.1 — RBAC backend for retrieval-layer ACL stamping (optional;
     # None → resolve_kb_principals returns [] = fail-open transition).
     rbac_backend = getattr(request.app.state, "rbac_backend", None)
+    # ADR-0066 / W90 P2.3 — per-doc classification store (optional; None → ingest stamps
+    # default internal, tag endpoint 503s).
+    doc_classification_store = getattr(request.app.state, "doc_classification_store", None)
     if embedder is None or populator is None or chunker is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -195,6 +216,7 @@ def _ingestion_deps_or_503(request: Request) -> _IngestionDeps:
         doc_profile_store=doc_profile_store,
         preset_override_store=preset_override_store,
         rbac_backend=rbac_backend,
+        doc_classification_store=doc_classification_store,
     )
 
 
@@ -669,6 +691,70 @@ async def override_doc_profile(
     return updated
 
 
+@router.patch(
+    "/kb/{kb_id}/docs/{doc_id}/classification",
+    response_model=DocClassificationInfo,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def set_doc_classification(
+    kb_id: str,
+    doc_id: str,
+    payload: ClassificationUpdateRequest,
+    request: Request,
+    service: KbServiceDep,
+) -> DocClassificationInfo:
+    """ADR-0066 / W90 P2.3 — admin-only: tag a doc internal/restricted + restamp index.
+
+    DG1 2-level classification. Persists to `doc_classification_store` FIRST (so the tag
+    survives a later re-ingest via `_run_ingest_pipeline`), THEN merge-restamps every
+    chunk's `classification` field in the live index with NO re-ingest
+    (`IndexPopulator.update_doc_classification`). The P2.3 retrieval filter then drops
+    `restricted` chunks for non-admin (internal-clearance) callers; admins bypass the
+    filter entirely (`principals_for_user` → None), so they keep seeing restricted.
+
+    Guard = `require_role("admin")` (workspace admin only) — classification is a security
+    control, so admin-only is the conservative Tier-1 default (P3 may relax to
+    `require_kb_acl("manage")` if KB managers need to classify their own docs).
+
+    404 if the KB is missing / the doc has no chunks. 403 if the KB is archived. 503 if
+    the classification store isn't wired (it backs the persist-on-tag + re-stamp seam).
+    """
+    await _verify_kb_or_404(kb_id, service)
+    await _refuse_if_archived(kb_id, service)
+
+    deps = _ingestion_deps_or_503(request)
+    store = deps.doc_classification_store
+    if store is None:
+        raise _api_error(
+            "classification.store_unavailable",
+            "Classification store not configured.",
+            "The in-memory fallback is wired on startup; check lifespan logs.",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    engine = _engine_or_503(request)
+    if not await _doc_exists_in_kb(engine, kb_id, doc_id):
+        raise _api_error(
+            "document.not_found",
+            f"No document '{doc_id}' in kb '{kb_id}' — nothing to classify.",
+            "Upload / index the document before tagging its classification.",
+            status.HTTP_404_NOT_FOUND,
+        )
+
+    # 1. Persist first — so a re-ingest racing this restamp can't lose the tag.
+    await store.upsert(kb_id, doc_id, payload.classification)
+    # 2. Merge-restamp the live index's classification field (no re-ingest).
+    restamped = await deps.populator.update_doc_classification(
+        kb_id, doc_id, payload.classification
+    )
+    return DocClassificationInfo(
+        kb_id=kb_id,
+        doc_id=doc_id,
+        classification=payload.classification,
+        chunks_restamped=restamped,
+    )
+
+
 def _slugify_doc_id(filename_stem: str) -> str:
     """Slugify a filename stem into a doc_id matching Azure index-name rules.
 
@@ -818,9 +904,17 @@ async def _run_ingest_pipeline(
             # ADR-0066 / W90 P2.1 — resolve the KB's principals (5.1 KB inheritance)
             # so every emitted chunk carries the retrieval-layer ACL. fail-open: a
             # backend-less ingest resolves to [] → the P2.2 filter treats empty as
-            # public (production-preserve). classification stays "internal" until
-            # restricted docs are tagged (P2.3).
+            # public (production-preserve).
             allowed_principals = await resolve_kb_principals(deps.rbac_backend, kb_id)
+            # ADR-0066 / W90 P2.3 — preserve a doc's restricted tag across re-ingest /
+            # reindex / backfill: read the persisted classification (admin-set via the
+            # tag endpoint) and re-stamp it. No row → default "internal". Without the
+            # store wired → default "internal" (production-preserve).
+            classification = "internal"
+            if deps.doc_classification_store is not None:
+                stored = await deps.doc_classification_store.get(kb_id, doc_id)
+                if stored is not None:
+                    classification = stored
             result = await orchestrator.ingest(
                 source=tmp_path,
                 kb_id=kb_id,
@@ -828,6 +922,7 @@ async def _run_ingest_pipeline(
                 source_url=f"upload://{filename}",
                 kb_config=kb_config,
                 allowed_principals=allowed_principals,
+                classification=classification,
             )
 
         now = datetime.now(UTC)
