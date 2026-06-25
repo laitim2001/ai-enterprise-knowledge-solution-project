@@ -175,6 +175,37 @@ Image Assoc = (count of queries where cited screenshots ⊆ ground_truth.expecte
 
 ---
 
+### 2.5 Answer Completeness(Nugget Coverage)— W96
+
+> **乙類 over-summarisation 偵測**(對齊 CLAUDE.md §15 北極星)。把「答案把原文段落濃縮掉」操作化為 nugget coverage recall(方法線:FineSurE ACL 2024 / AutoNuggetizer SIGIR 2025 / CRUX EMNLP 2025;見 `docs/09-analysis/source_fidelity_recall_external_research_20260625.md`)。**唔用 RAGAs**(RAGAs faithfulness ≠ completeness,研究實證兩者獨立軸)。
+
+**定義**:synthesizer 手上有(餵入嘅檢索 context)嘅 query 相關事實,有幾多 survive 入答案?
+
+**Formula**:
+
+```
+answer_coverage = |context nuggets present in answer| / |context nuggets|
+```
+
+- nugget = query-conditioned atomic 事實/步驟,由 judge(`gpt-5.4-mini`)從**檢索 context** 抽(非答案 cite 嘅 chunk —— 否則 synthesizer 丟成個 chunk 就唔被 cite → 掩蓋 drop)。
+- query-conditioned 抽取 → synthesizer 正確過濾 irrelevant context **唔**當 drop。
+- 分母 = `QueryResponse.retrieved_chunks[].chunk_text`(reranked,餵 synthesizer 嗰批)→ 隔離合成層(CRUX「retrieved but not answered」)。
+
+**Pipeline 點 measure**(`scripts/run_completeness.py` → `backend/eval/completeness_coverage.py` + `completeness_judge.py`):
+1. per query → `/query` → 攞 `answer` + `retrieved_chunks`。
+2. judge 抽 query-conditioned nugget(`_parse_nuggets`)。
+3. judge 逐 nugget 判 present(`_parse_presence`,text-aligned;dropped nugget = absent)。
+4. `compute_metrics` → `answer_coverage` + `missed` list;`aggregate` → mean。
+
+**⚠️ 可靠度紀律(MANDATORY — 違反就誤用)**:此 metric **只可信於 run/system-level aggregate**,**per-answer 不可靠**。W96 F4 三 run 實證 per-query 擺幅極大(同一 query C003 0.18↔0.88、C005 0.25↔1.00),源於三重 variance 疊加(檢索 context 變 → nugget 數變 / synthesizer stochastic / judge stochastic)。研究亦明證 per-topic Kendall τ≈0.30-0.44。因此:
+- **唔可以**用單 run 嘅單條 query coverage 判「呢條答案爛」。
+- 用作 config A/B gate 需:(a) ≥20-30 query 穩定 mean;**和/或 (b) fixed-context paired A/B 模式**(每 query 檢索一次 + 抽 nugget 一次,A/B 兩臂用同一 context + 同一 nugget set 各自生成 → 去掉檢索 + nugget variance,只剩 prompt 效果;precedent = `controlled_comparison.py` shared frozen set);和/或 (c) 每 config 平均 N run。
+- W96 5-query × 單 run 嘅 mean 仍擺 0.08 → **未夠做可靠 gate**,屬可靠度 envelope 證據,非 production threshold。
+
+**Target**:無固定 threshold(係 **relative A/B** 比較 metric,非硬閘)。緩解(coverage prompt)前必須先把 gate 加 fixed-context A/B + 擴 query set。
+
+---
+
 ## 3. Eval Set Schema
 
 Eval set 用 **YAML format**(human-readable + git-diff-friendly,優於 JSON)。

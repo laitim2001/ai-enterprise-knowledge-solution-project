@@ -1,0 +1,27 @@
+metadata:
+  eval_set: completeness W96 F4 (construct validity + baseline)
+  kb_id: drive-user-manual-kb-20260618
+  note: >-
+    No ground_truth needed — the completeness driver auto-extracts query-conditioned
+    nuggets from each answer's retrieved context (gpt-5.4-mini) and scores how many
+    survive into the answer. C001 is the construct-validity case: the GL "post journal
+    entry" query that the 2026-06-20 analysis (conversation 583fa20…) showed drops the
+    RMS/RSP petty-cash variant段 + the GL03 Overview段 (乙類). It should score a
+    visibly LOWER answer_coverage than the cleaner AR queries (C002-C005).
+queries:
+- query_id: C001
+  query_text: How do I post a journal entry in General Ledger?
+  kb_id: drive-user-manual-kb-20260618
+  note: construct-validity — known 乙類 (expect lower coverage; missed = RMS/RSP variant + Overview)
+- query_id: C002
+  query_text: How do I record a payment collection from a customer?
+  kb_id: drive-user-manual-kb-20260618
+- query_id: C003
+  query_text: What is the procedure to write off a receivable?
+  kb_id: drive-user-manual-kb-20260618
+- query_id: C004
+  query_text: How to generate a customer account statement?
+  kb_id: drive-user-manual-kb-20260618
+- query_id: C005
+  query_text: How to create an aging period definition for receivables?
+  kb_id: drive-user-manual-kb-20260618
