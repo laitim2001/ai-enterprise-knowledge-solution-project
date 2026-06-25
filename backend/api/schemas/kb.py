@@ -115,6 +115,13 @@ class KbConfig(BaseModel):
     # surface markers; un-re-indexed KBs degrade gracefully to clean text).
     enable_inline_image_markers: bool | None = None
 
+    # W97 (ADR-0069) — per-KB coverage-oriented synthesis gate. `None` = inherit global
+    # `Settings.enable_complete_coverage` (default False = pre-W97 prompt). True = when
+    # this KB's `answer_detail` resolves to "detailed", the synthesis prompt gains the
+    # additive COVERAGE rule (enumerate conditional variants / branches / scenarios).
+    # Query-time knob (no re-index). Primary A/B lever for the W96 completeness gate.
+    enable_complete_coverage: bool | None = None
+
     # W75 (ADR-0056 段②d) — per-KB section-anchored aux images gate. `None` = inherit
     # global `Settings.enable_section_anchored_aux_images` (default False = trailing pile
     # unchanged). True = this KB's un-anchored neighbour / aux images get a marker injected

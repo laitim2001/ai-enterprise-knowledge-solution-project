@@ -158,12 +158,17 @@ class Synthesizer:
         # hence getattr). Legacy callers (effective_config=None) fall back to global.
         _marker_cfg = effective_config if effective_config is not None else get_settings()
         inline_image_markers = bool(getattr(_marker_cfg, "enable_inline_image_markers", False))
+        # W97 / ADR-0069 — coverage knob read off the same resolved config (getattr
+        # so legacy ExpansionConfig-only callers fall back to OFF). No-op unless
+        # detail_level == "detailed" (gate enforced inside build_prompt).
+        complete_coverage = bool(getattr(_marker_cfg, "enable_complete_coverage", False))
         prompt = build_prompt(
             query,
             chunks,
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
             detail_level=detail_level,
             inline_image_markers=inline_image_markers,
+            complete_coverage=complete_coverage,
         )
         prompt_build_latency_ms = int((time.perf_counter() - prompt_build_start) * 1000)
 
@@ -266,7 +271,8 @@ class Synthesizer:
         """
         assert self._client is not None, "use 'async with' to manage Synthesizer lifecycle"
 
-        # W70 / ADR-0055 — same marker-knob read as the non-stream path.
+        # W70 / ADR-0055 + W97 / ADR-0069 — same marker + coverage knob reads as the
+        # non-stream path.
         _marker_cfg = effective_config if effective_config is not None else get_settings()
         prompt = build_prompt(
             query,
@@ -274,6 +280,7 @@ class Synthesizer:
             dispatch_mode=get_settings().parent_doc_dispatch_mode,
             detail_level=detail_level,
             inline_image_markers=bool(getattr(_marker_cfg, "enable_inline_image_markers", False)),
+            complete_coverage=bool(getattr(_marker_cfg, "enable_complete_coverage", False)),
         )
         start = time.perf_counter()
         accumulated = ""

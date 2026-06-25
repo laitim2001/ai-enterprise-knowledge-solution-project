@@ -59,6 +59,10 @@ class DocConfig(BaseModel):
     # post-retrieval, so the per-DOC layer applies).
     enable_inline_image_markers: bool | None = None
 
+    # W97 (ADR-0069) — coverage-oriented synthesis gate (consumed at synth prompt
+    # build; post-retrieval, so the per-DOC layer applies).
+    enable_complete_coverage: bool | None = None
+
     # W75 (ADR-0056 段②d) — section-anchored aux images gate (consumed post-synthesis
     # at the marker-injection stage; per-DOC layer applies).
     enable_section_anchored_aux_images: bool | None = None

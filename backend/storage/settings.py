@@ -169,6 +169,17 @@ class Settings(BaseSettings):
     # (default) = prompts use clean text — behaviour identical to pre-W70.
     enable_inline_image_markers: bool = False
 
+    # W97 (ADR-0069) — coverage-oriented synthesis gate (乙類 over-summarisation
+    # mitigation). False (default) = synthesis prompt identical to pre-W97
+    # (production-preserve). True = when `answer_detail=detailed`, the system prompt
+    # gains an additive COVERAGE rule telling the LLM to ALSO enumerate conditional
+    # variants / alternative branches / scenario sub-procedures (not just main-line
+    # steps), so那些 branch 段 + 其跟隨圖 are restored (§15 北極星). No-op under concise.
+    # Query-time knob (no re-index); default OFF until a W96-gate A/B shows a clear
+    # positive completeness delta (research-refuted「prompt removes position bias」,
+    # so effect is unproven until measured).
+    enable_complete_coverage: bool = False
+
     # W75 (ADR-0056 段②d, 方案 A) — section-anchored aux images injection gate
     # (global default; per-KB / per-DOC / per-query overridable via the ADR-0040/0050
     # four-layer resolution). When ON, post-synthesis the un-anchored neighbour / aux
