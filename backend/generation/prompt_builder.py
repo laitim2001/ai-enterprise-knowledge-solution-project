@@ -95,6 +95,29 @@ _MARKER_RULE = (
     "in prose."
 )
 
+# W97 / ADR-0069 — appended ONLY when `build_prompt(complete_coverage=True)` AND
+# `detail_level == "detailed"` (no-op under concise). Targets 乙類 over-summarisation:
+# the detailed prompt already enumerates main-line steps but drops CONDITIONAL VARIANTS
+# / ALTERNATIVE BRANCHES / SCENARIO sub-procedures (W96 gate F8 C003 dropped 9 nuggets,
+# all of this kind). The rule is additive (mirror `_MARKER_RULE`); the knob-off prompt
+# stays byte-identical to pre-W97. Labelled (not digit-numbered) so it composes after
+# the optional Rule 9 marker rule without a numbering collision. It also calibrates the
+# Rule 3 DEDUP clause so a genuine variant is never folded away as a「duplicate」.
+_COVERAGE_RULE = (
+    "COVERAGE — beyond the main-line procedure, the retrieved chunks often describe "
+    "CONDITIONAL VARIANTS, ALTERNATIVE BRANCHES, and SCENARIO sub-procedures (e.g. "
+    "'for a single customer', 'for multiple customers', 'for RMS only', 'for the approval "
+    "workflow', 'if the journal is reversed'). You MUST enumerate EVERY such variant / "
+    "branch / scenario that appears in the chunks — render each as its own bold branch "
+    "title followed by its steps — even when it is optional, parallel, or an exception "
+    "path, and even when it shares its opening steps with the main path. Do NOT collapse "
+    "distinct branches into one, and do NOT silently pick only the most common path. This "
+    "REFINES the DEDUP rule: DEDUP removes only restatements of the SAME step (a "
+    "process-step-list entry, a heading, a caption) — a genuinely different conditional "
+    "branch is NEVER a duplicate and must be kept. Also reproduce any short Overview / "
+    "summary passage that introduces a section's scenarios."
+)
+
 
 def _system_prompt_for(detail_level: str) -> str:
     """Pick the synthesis system-prompt variant (CH-006).
@@ -179,6 +202,7 @@ def build_prompt(
     dispatch_mode: str = "replace",
     detail_level: str = "concise",
     inline_image_markers: bool = False,
+    complete_coverage: bool = False,
 ) -> PromptMessages:
     """Build system+user messages with formatted chunk context.
 
@@ -193,6 +217,10 @@ def build_prompt(
     inline_image_markers: W70 / ADR-0055 — True switches the raw chunk-text path to
     `chunk_text_marked` (falling back to clean text per chunk) AND appends the
     keep-markers system rule. Default False = pre-W70 byte-identical prompts.
+
+    complete_coverage: W97 / ADR-0069 — True appends the additive COVERAGE rule
+    (enumerate conditional variants / branches / scenarios) ONLY when detail_level is
+    "detailed"; a no-op under concise. Default False = pre-W97 byte-identical prompts.
     """
     if not chunks:
         chunk_block = "(no chunks retrieved)"
@@ -205,6 +233,11 @@ def build_prompt(
     system_prompt = _system_prompt_for(detail_level)
     if inline_image_markers:
         system_prompt = f"{system_prompt}\n{_MARKER_RULE}"
+    # W97 / ADR-0069 — the coverage rule only makes sense atop the full-enumeration
+    # detailed prompt (it refines that prompt's DEDUP clause); under concise it is a
+    # no-op so the 150-word baseline answer shape is untouched.
+    if complete_coverage and detail_level == "detailed":
+        system_prompt = f"{system_prompt}\n{_COVERAGE_RULE}"
 
     user_msg = f"Question: {query}\n\nRetrieved chunks:\n{chunk_block}\n\nAnswer with citations."
     return PromptMessages(
