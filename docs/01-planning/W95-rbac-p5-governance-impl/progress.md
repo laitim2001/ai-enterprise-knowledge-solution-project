@@ -11,8 +11,12 @@
 ### kickoff(R1)
 - rolling JIT 建 W95 三件套。F1-F3 + F5 backend;F4 前端 H7 gate(無 mockup → STOP+ask)。
 
-### 待續(本 phase)
-- F1 auditor role(`RoleKey` + matrix 第 5 column + guard + test)→ F2 access-review report → F3 re-certify store → F4 前端(H7)→ F5 Gate。
+### 暫緩(2026-06-25)
+- F1 auditor role code 開咗頭(改 `RoleKey` + permission matrix + `_TIER1_ROLES` + audit-log guard 共 4 檔),但用戶評估後決定 **implementation 暫緩** —— 治理功能(稽核員 + 存取覆核)對當前核心問答 / RAG 無直接幫助,屬將來企業營運 / 審計需求先用得著。
+- **F1 改動已 `git checkout` 還原**,4 個 code 檔回到 HEAD(`442e079`)原狀,**零 retrieval / 零功能改變**。
+- **P5 狀態**:設計完成(W94 + ADR-0068 Accepted)保留;**implementation 暫緩,等將來真實審計 / 合規需求 driver**。
+- think-before 留痕(將來 impl 參考):audit-log 端點(`server.py:408`)現只有 `_auth` 無 `require_role` guard = P0 漏掃缺口,將來 F1 可順帶補。
 
 ### Commits
-- (kickoff)docs(planning): kickoff W95 P5-impl phase artifacts
+- (kickoff)`442e079` docs(planning): kickoff W95 P5-impl governance phase artifacts
+- (本 entry)docs(planning): W95 P5 implementation 暫緩(F1 已還原)
