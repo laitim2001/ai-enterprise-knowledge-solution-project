@@ -31,3 +31,12 @@
 - [x] memory 新建 `project_completeness_eval_gate_w96` + MEMORY.md 指標
 - [x] `DEFERRED_REGISTER.md` DD-15(gate hardening 前置)+ DD-16(緩解 phase blocked on DD-15)
 - [x] Phase Gate G-W96 verdict(PARTIAL)寫入 progress.md
+
+## DD-15 gate hardening(F6-F8)
+- [x] F6 `completeness_coverage.py` 加 `mean_std` + paired aggregation + 6 測試(14 綠)
+- [x] F6 `completeness_judge.py` 重構 `_build_client` + `make_nugget_extractor`/`make_presence_judge`(行為不變,10 綠)
+- [x] F7 `scripts/run_completeness_ab.py`(build-nuggets + 固定 nugget K-run paired A/B)+ console cp1252 crash fix
+- [x] F8 固定 nugget 建好 + paired A/B 跑完(`gpt-5.4-mini` vs `gpt-5.5`,K=3)
+- [~] **G-W96-H = 進步但未完全解決**:固定 nugget 去掉 nugget variance,但答案 variance 主導(K=3 未壓住,std 0.16-0.41)→ gate 解析度 ~±0.15(解大 delta、解唔到 4pp 細 delta);乾淨副信號 = gpt-5.5 答案更穩定
+- [x] F8 doc-sync(eval-methodology §2.5 paired + 噪聲底 + DEFERRED DD-15 更新 + memory)
+- [ ] **殘餘**:fixed-answer 模式(temperature=0 直呼 synthesizer 去掉答案 variance)— 列 DD-15 殘餘 / 細效果量度先做;大 delta 唔需要

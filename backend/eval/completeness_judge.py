@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 import structlog
 
@@ -40,6 +41,11 @@ logger = structlog.get_logger(__name__)
 
 # (query, retrieved_context, answer) -> per-nugget judgements (or None on error/no-cred).
 CompletenessJudgeFn = Callable[[str, str, str], Awaitable[list[NuggetJudgement] | None]]
+# DD-15 granular judges (build-nuggets / fixed-nugget scoring share these):
+# (query, retrieved_context) -> query-conditioned nuggets (or None on error/no-cred).
+NuggetExtractFn = Callable[[str, str], Awaitable[list[str] | None]]
+# (query, answer, nuggets) -> per-nugget present flags (or None on error/no-cred).
+PresenceJudgeFn = Callable[[str, str, list[str]], Awaitable[list[bool] | None]]
 
 _EXTRACT_SYSTEM_PROMPT = (
     "You build a CONTENT-COMPLETENESS test for answers drawn from a procedural / SOP "
@@ -137,12 +143,9 @@ def _parse_presence(content: str | None, nuggets: list[str]) -> list[bool] | Non
     return [False] * len(nuggets)
 
 
-def make_completeness_judge(settings: Settings) -> CompletenessJudgeFn | None:
-    """Build the judge-bound (query, context, answer) -> [NuggetJudgement] function, or
-    ``None`` when no Azure OpenAI credential is configured → callers skip the harness.
-
-    Judge = ``azure_openai_deployment_llm_judge`` (gpt-5.4-mini per the cost policy).
-    """
+def _build_client(settings: Settings) -> tuple[Any, str] | None:
+    """Build the (AsyncAzureOpenAI client, judge deployment) pair, or ``None`` when no
+    Azure OpenAI credential is configured. Shared by all three judge makers."""
     if not settings.azure_openai_api_key:
         logger.info(
             "completeness_judge_skipped",
@@ -158,57 +161,83 @@ def make_completeness_judge(settings: Settings) -> CompletenessJudgeFn | None:
         api_version=settings.azure_openai_api_version,
     )
     patch_for_gpt5(client)
-    deployment = settings.azure_openai_deployment_llm_judge
+    return client, settings.azure_openai_deployment_llm_judge
+
+
+async def _extract_nuggets(
+    client: Any, deployment: str, query: str, context: str
+) -> list[str] | None:
+    """One EXTRACT judge call → query-conditioned nuggets (None on empty input / error)."""
+    if not query.strip() or not context.strip():
+        return None
+    try:
+        resp = await client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": _EXTRACT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"QUESTION:\n{query}\n\nRETRIEVED SOURCE CONTEXT:\n{context}",
+                },
+            ],
+            max_tokens=_EXTRACT_MAX_TOKENS,
+        )
+        return _parse_nuggets(resp.choices[0].message.content)
+    except Exception as exc:  # noqa: BLE001 — openai exception chain unpredictable; degrade
+        logger.warning(
+            "completeness_extract_exception",
+            exception_type=type(exc).__name__,
+            error=str(exc)[:200],
+        )
+        return None
+
+
+async def _judge_presence(
+    client: Any, deployment: str, query: str, answer: str, nuggets: list[str]
+) -> list[bool] | None:
+    """One PRESENCE judge call → per-nugget present flags ([] for empty nuggets)."""
+    if not nuggets:
+        return []
+    numbered = "\n".join(f"{i + 1}. {n}" for i, n in enumerate(nuggets))
+    try:
+        resp = await client.chat.completions.create(
+            model=deployment,
+            messages=[
+                {"role": "system", "content": _PRESENCE_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"QUESTION:\n{query}\n\nANSWER:\n{answer}\n\nNUGGETS:\n{numbered}",
+                },
+            ],
+            max_tokens=_PRESENCE_MAX_TOKENS,
+        )
+        return _parse_presence(resp.choices[0].message.content, nuggets)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "completeness_presence_exception",
+            exception_type=type(exc).__name__,
+            error=str(exc)[:200],
+        )
+        return None
+
+
+def make_completeness_judge(settings: Settings) -> CompletenessJudgeFn | None:
+    """Build the judge-bound (query, context, answer) -> [NuggetJudgement] function, or
+    ``None`` when no Azure OpenAI credential is configured → callers skip the harness.
+    Composes EXTRACT then PRESENCE. Judge = ``azure_openai_deployment_llm_judge``
+    (gpt-5.4-mini per the cost policy)."""
+    built = _build_client(settings)
+    if built is None:
+        return None
+    client, deployment = built
 
     async def _judge(query: str, context: str, answer: str) -> list[NuggetJudgement] | None:
-        if not query.strip() or not context.strip():
-            return None
-        try:
-            extract_resp = await client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": _EXTRACT_SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": f"QUESTION:\n{query}\n\nRETRIEVED SOURCE CONTEXT:\n{context}",
-                    },
-                ],
-                max_tokens=_EXTRACT_MAX_TOKENS,
-            )
-            nuggets = _parse_nuggets(extract_resp.choices[0].message.content)
-        except Exception as exc:  # noqa: BLE001 — openai exception chain unpredictable; degrade
-            logger.warning(
-                "completeness_extract_exception",
-                exception_type=type(exc).__name__,
-                error=str(exc)[:200],
-            )
-            return None
+        nuggets = await _extract_nuggets(client, deployment, query, context)
         if nuggets is None:
             return None
         if not nuggets:
             return []  # no relevant context nugget → coverage 1.0 (nothing to drop)
-
-        numbered = "\n".join(f"{i + 1}. {n}" for i, n in enumerate(nuggets))
-        try:
-            presence_resp = await client.chat.completions.create(
-                model=deployment,
-                messages=[
-                    {"role": "system", "content": _PRESENCE_SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": f"QUESTION:\n{query}\n\nANSWER:\n{answer}\n\nNUGGETS:\n{numbered}",
-                    },
-                ],
-                max_tokens=_PRESENCE_MAX_TOKENS,
-            )
-            present_flags = _parse_presence(presence_resp.choices[0].message.content, nuggets)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "completeness_presence_exception",
-                exception_type=type(exc).__name__,
-                error=str(exc)[:200],
-            )
-            return None
+        present_flags = await _judge_presence(client, deployment, query, answer, nuggets)
         if present_flags is None:
             return None
         return [
@@ -216,3 +245,30 @@ def make_completeness_judge(settings: Settings) -> CompletenessJudgeFn | None:
         ]
 
     return _judge
+
+
+def make_nugget_extractor(settings: Settings) -> NuggetExtractFn | None:
+    """DD-15 — EXTRACT-only judge for build-once fixed nugget sets, or ``None`` (no cred)."""
+    built = _build_client(settings)
+    if built is None:
+        return None
+    client, deployment = built
+
+    async def _extract(query: str, context: str) -> list[str] | None:
+        return await _extract_nuggets(client, deployment, query, context)
+
+    return _extract
+
+
+def make_presence_judge(settings: Settings) -> PresenceJudgeFn | None:
+    """DD-15 — PRESENCE-only judge for scoring an answer against a FIXED nugget set, or
+    ``None`` (no cred). Used by the paired A/B harness so the nugget set never re-extracts."""
+    built = _build_client(settings)
+    if built is None:
+        return None
+    client, deployment = built
+
+    async def _presence(query: str, answer: str, nuggets: list[str]) -> list[bool] | None:
+        return await _judge_presence(client, deployment, query, answer, nuggets)
+
+    return _presence

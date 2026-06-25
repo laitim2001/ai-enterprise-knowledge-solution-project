@@ -202,7 +202,11 @@ answer_coverage = |context nuggets present in answer| / |context nuggets|
 - 用作 config A/B gate 需:(a) ≥20-30 query 穩定 mean;**和/或 (b) fixed-context paired A/B 模式**(每 query 檢索一次 + 抽 nugget 一次,A/B 兩臂用同一 context + 同一 nugget set 各自生成 → 去掉檢索 + nugget variance,只剩 prompt 效果;precedent = `controlled_comparison.py` shared frozen set);和/或 (c) 每 config 平均 N run。
 - W96 5-query × 單 run 嘅 mean 仍擺 0.08 → **未夠做可靠 gate**,屬可靠度 envelope 證據,非 production threshold。
 
-**Target**:無固定 threshold(係 **relative A/B** 比較 metric,非硬閘)。緩解(coverage prompt)前必須先把 gate 加 fixed-context A/B + 擴 query set。
+**Target**:無固定 threshold(係 **relative A/B** 比較 metric,非硬閘)。
+
+**Paired A/B 模式(DD-15 hardening,`scripts/run_completeness_ab.py`)**:把 metric 變可用 config A/B gate 嘅做法 ——(1)`--build-nuggets` 抽 nugget **一次** persist(去掉 nugget-creation variance,研究背書 AutoNuggetizer「固定 creation、只自動 assignment」);(2)`--runs K` 每臂生成 K 次平均(平滑答案 + judge 噪聲);(3)paired delta(B−A,同 query 同固定 nugget)抵消 query/nugget offset。讀 `mean_delta` + `delta_sign` 穩定性,**唔好**讀 absolute per-query coverage。
+
+**⚠️ 實測解析度(DD-15 F8,5 query × K=3)**:固定 nugget **唔解決**主導 variance —— synthesizer 答案 stochasticity(同 query 同固定 nugget,per-run coverage 仍擺 0.16-0.89)。avg residual std≈**0.165** → gate **解析度約 ±0.15**:**解到大 delta**(coverage prompt 預期效果),**解唔到細 delta**(`gpt-5.5` vs `gpt-5.4-mini` 僅 +0.038,淹喺噪聲)。要量細效果需:更多 query / 更大 K / **最乾淨 = fixed-answer(temperature=0 直呼 synthesizer 去掉答案 variance,`/query` 無 temperature 旋鈕故需 offline)**。副信號:gpt-5.5 per-arm std 明顯細於 gpt-5.4-mini(大模型答案更穩定)。
 
 ---
 

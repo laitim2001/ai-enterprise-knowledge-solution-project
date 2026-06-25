@@ -45,6 +45,43 @@
 - ⚠️ **未可用作 gate as-is**:per-query 不可診斷;5 條 query 嘅 mean 都擺 0.08。要做可靠 gate 需:(a) ≥20-30 query 穩定 mean;**和/或 (b) fixed-context paired A/B 模式**(每 query 檢索一次 + 抽 nugget 一次,A/B 兩臂用**同一** context + 同一 nugget set 各自生成答案再比 coverage → 去掉檢索 + nugget variance,只剩 prompt 效果;precedent = `controlled_comparison.py` shared frozen set);和/或 (c) 每 config 平均 N run。
 - **洞察(refine analysis)**:乙類有一部分根本係 synthesizer **非確定性**(同 query 有時完整有時濃縮)→ 緩解唔淨係「寫個 coverage prompt」,要連**穩定性**一齊睇;fixed-context A/B 先量得準 prompt 真效果。
 
+### Next(F1-F5 後)
+- F5:eval-methodology §2.5 + memory + DEFERRED_REGISTER。
+- 緩解 phase 前置 = gate hardening(DD-15)。
+
+---
+
+## Day 1(cont)— 2026-06-25 DD-15 gate hardening(F6-F8)
+
+> 用戶拍板 commit F1-F5(`4bca795`)後即做 DD-15。打三個 variance 源:nugget 抽取 / 答案 / query offset。
+
+### F6 done(pure helper)
+- `completeness_coverage.py` 加 `mean_std` + paired A/B aggregation(`PairedQueryResult`/`build_paired_query_result`/`PairedReport`/`aggregate_paired`/`paired_report_to_dict`)+ 6 新測試(共 14 綠)。
+- `completeness_judge.py` 重構共用 `_build_client` + 粒度化 `make_nugget_extractor`/`make_presence_judge`(既有 `make_completeness_judge` 行為不變,composes 佢哋;10 測試綠)。ruff + mypy clean(my files)。
+
+### F7 done(paired A/B harness)
+- `scripts/run_completeness_ab.py`:`--build-nuggets`(抽 nugget 一次 persist `*.nuggets.yaml`)+ 固定 nugget K-run paired A/B(`--config-a/-b` QueryRequest override,default `llm_model` gpt-5.4-mini vs gpt-5.5;`--runs K`)。**A/B lever 用 `llm_model`(synth-only,代表 DD-16 將來嘅 prompt 改動性質),確定性檢索保兩臂同 context,無需直呼 synthesizer。**
+- 修一個 console crash bug:print 用咗 `Δ`/`±`(Δ/±)→ cp1252 console `UnicodeEncodeError` 撞死整個 run(LLM 工作做晒先 crash 喺 print = 全失;memory「console cp1252 用英文」)→ 改 ASCII + 加 `sys.stdout.reconfigure(utf-8, replace)` backstop。
+
+### F8 done(hardening 驗證)— fixed nugget + K=3 paired A/B
+- 固定 nugget set 建好(C001=4 / C002=19 / C003=11 / C004=8 / C005=8;C001 由 F4 嘅 3/9/6 變固定 4 → nugget 抽取 variance 去掉)。
+- paired A/B(`gpt-5.4-mini` A vs `gpt-5.5` B,K=3,report `reports/completeness_w96_ab.yaml`):
+
+  | query | A mean±std | B mean±std | delta |
+  |---|---|---|---|
+  | C001 | 0.83±0.24 | 0.83±0.12 | +0.00 |
+  | C002 | 0.49±**0.30** | 0.68±**0.09** | +0.19 |
+  | C003 | 0.85±**0.21** | 0.97±**0.04** | +0.12 |
+  | C004 | 1.00±0.00 | 1.00±0.00 | +0.00 |
+  | C005 | 0.83±0.24 | 0.71±**0.41** | −0.12 |
+  | **mean** | **0.801** | **0.839** | **+0.038**(sign 2/1/2,avg residual std **0.165**)|
+
+### Phase Gate G-W96-H verdict — **進步但未完全解決(誠實)**
+- ✅ Hardening machinery 造成 + 跑得 + 固定 nugget **去掉 nugget 抽取 variance**(C001 穩定 4)。
+- ⚠️ **主導 variance = synthesizer 答案 stochasticity,K=3 未壓住**:固定 nugget 之後 per-run coverage 仍狂擺(C002 arm A = 0.16/0.89/0.42;C005 arm B = 1.0/0.125/1.0)。avg residual std=0.165 → **gate 解析度約 ±0.15**:解到大 delta(C002 +0.19 / C003 +0.12 可見),解唔到細 delta(`gpt-5.5` vs `gpt-5.4-mini` mean 差 +0.038 淹喺噪聲)。
+- ✅ **意外乾淨信號**:`gpt-5.5`(B)per-arm std 明顯細過 `gpt-5.4-mini`(A)(C002 0.09 vs 0.30 / C003 0.04 vs 0.21)→ 大模型答案**更穩定 + 略完整**,把尺喺**穩定性維度**捉到真差異(雖然 mean coverage 差被噪聲淹)。
+- **含意**:DD-16 coverage prompt 預期係**大 + 系統性**完整度改動(非 4pp)→ 本 gate 解得到。要解細效果需:(a) ≥20-30 query;(b) 升 K;**和/或 (c) 最乾淨 = fixed-answer 模式**(每臂 temperature=0 生成一次 → 去掉答案 variance;但 `/query` 無 temperature 旋鈕 → 需直呼 synthesizer offline,more plumbing)。
+
 ### Next
-- F5:eval-methodology §2.5 + memory + DEFERRED_REGISTER(緩解 phase + gate-hardening 列下一步)。
-- **緩解 phase 前置條件(改 plan §5 out-of-scope → 變 gate-hardening 前置)**:先把 gate 加 fixed-context paired A/B 模式 + 擴 query set,先有可信尺,再談 coverage prompt(否則盲調 + 噪聲淹冇)。
+- F8 doc-sync(eval-methodology §2.5 補 paired 用法 + 噪聲底 finding;DEFERRED DD-15 更新;memory)。
+- DD-16(緩解 phase)解鎖條件達成度:gate 對**大 delta** 可信 → 可開;若要量細效果,先做 fixed-answer 模式(列入 DD-15 殘餘 / DD-16 前置)。

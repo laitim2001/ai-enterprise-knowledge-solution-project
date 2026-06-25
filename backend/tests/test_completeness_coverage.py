@@ -14,7 +14,11 @@ from eval.completeness_coverage import (
     CompletenessQueryResult,
     NuggetJudgement,
     aggregate,
+    aggregate_paired,
+    build_paired_query_result,
     compute_metrics,
+    mean_std,
+    paired_report_to_dict,
     report_to_dict,
 )
 
@@ -124,3 +128,59 @@ def test_report_to_dict_includes_context_coverage_when_present() -> None:
     d = report_to_dict(aggregate("eval-set", "kb-1", per_query))
     assert d["metadata"]["mean_context_coverage"] == 0.9
     assert d["per_query"][0]["context_coverage"] == 0.9
+
+
+# --- DD-15 gate hardening: mean_std + paired A/B --------------------------- #
+
+
+def test_mean_std_basic() -> None:
+    mean, std = mean_std([1.0, 1.0, 1.0])
+    assert mean == 1.0
+    assert std == 0.0
+    mean, std = mean_std([0.0, 1.0])
+    assert mean == 0.5
+    assert std == 0.5  # population std of {0,1}
+
+
+def test_mean_std_empty() -> None:
+    assert mean_std([]) == (0.0, 0.0)
+
+
+def test_build_paired_query_result_delta() -> None:
+    # A noisy (the F4 problem) but mean lower; B higher mean → positive delta
+    r = build_paired_query_result(
+        "Q1", "q", total_nuggets=10, a_runs=[0.2, 0.8, 0.5], b_runs=[0.9, 1.0, 0.8]
+    )
+    assert round(r.mean_a, 4) == 0.5
+    assert round(r.mean_b, 4) == 0.9
+    assert round(r.delta, 4) == 0.4
+    assert r.std_a > 0  # residual noise still visible per-arm
+
+
+def test_aggregate_paired_delta_sign_tally_and_residual_std() -> None:
+    per_query = [
+        build_paired_query_result("Q1", "a", 5, [0.4, 0.6], [0.8, 1.0]),  # delta +0.4
+        build_paired_query_result("Q2", "b", 5, [1.0, 1.0], [1.0, 1.0]),  # delta 0 (tie)
+        build_paired_query_result("Q3", "c", 5, [0.9, 0.9], [0.5, 0.5]),  # delta -0.4
+        build_paired_query_result("Q4", "d", 5, [], [], error="failed"),  # excluded
+    ]
+    rep = aggregate_paired("set", "kb", "gpt-5.4-mini", "gpt-5.5", 2, per_query)
+    assert rep.total_queries == 4
+    assert rep.scored_queries == 3
+    assert rep.delta_positive == 1
+    assert rep.delta_negative == 1
+    assert rep.delta_zero == 1
+    assert round(rep.mean_delta, 4) == 0.0  # (+0.4 + 0 - 0.4) / 3
+    # Q2 has zero std both arms; Q1/Q3 have std 0.1 each arm → avg residual > 0
+    assert rep.mean_per_query_std > 0
+
+
+def test_paired_report_to_dict_shape() -> None:
+    per_query = [build_paired_query_result("Q1", "a", 5, [0.4, 0.6], [0.8, 1.0])]
+    d = paired_report_to_dict(aggregate_paired("set", "kb", "A", "B", 2, per_query))
+    assert d["metadata"]["mean_delta"] == 0.4
+    assert d["metadata"]["delta_sign"]["B_beats_A"] == 1
+    assert "paired delta" in d["metadata"]["caveat"]
+    row = d["per_query"][0]
+    assert row["coverage_a_runs"] == [0.4, 0.6]
+    assert row["delta"] == 0.4

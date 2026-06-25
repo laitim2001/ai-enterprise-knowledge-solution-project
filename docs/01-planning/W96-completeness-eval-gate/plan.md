@@ -32,6 +32,16 @@
 | **F4** | Baseline 驗證 run(乙類已知案發 KB:`drive-images-1` / GL 手冊)+ **construct validity 驗證** | 記錄 baseline mean answer_coverage;**證明把尺真係 flag 到已知乙類案**(GL「post journal entry」query answer_coverage 明顯 < 1.0,`missed` 含 RMS/RSP 變體 + Overview nugget);run-level 多 run 睇 band(per 研究 per-answer 不可靠 caveat) |
 | **F5** | Doc-sync:`docs/eval-methodology.md` 加完整度 metric 段 + memory 更新 + `DEFERRED_REGISTER.md` 記低「緩解 phase」為下一步 | doc + memory synced;eval-methodology 寫明 run-level gate 用法 + per-answer 不可靠 caveat |
 
+### DD-15 gate hardening(F6–F8 — W96 continuation,per §6 changelog 2026-06-25b)
+
+> F4 證 per-answer 不可靠(3 run band C003 0.18↔0.88)→ 把尺未夠可信驅動 prompt 決策。F6-F8 打三個 variance 源令把尺可信,先解鎖緩解 phase(DD-16)。
+
+| # | Deliverable | Acceptance |
+|---|---|---|
+| **F6** | **Fixed nugget set** — build-once 模式:per query 抽 nugget 一次 → persist `docs/eval-set-completeness-w96.nuggets.yaml`;scoring 用固定 nugget 只判 presence(skip 抽取)。+ pure helper `mean_std` / paired aggregation + 測試 | 固定 nugget 持久化;scoring 跳過抽取(去掉 nugget-creation variance,research-backed);pure helper pytest 綠 + ruff + mypy |
+| **F7** | **Paired A/B + K-run 平均 harness** `scripts/run_completeness_ab.py` — per query:固定 nugget,兩臂(`--config-a`/`--config-b`,QueryRequest override 如 `llm_model`)各生成 K 次 → 平均 coverage → paired delta(B−A)。確定性檢索 → 兩臂同 context | 出 paired report(per-query mean±std + delta + 符號穩定性);K-run 平均;ruff |
+| **F8** | **Hardening 驗證** — 擴 query set(~12-20)+ build 固定 nugget + 跑 paired A/B(`gpt-5.5` vs `gpt-5.4-mini`)+ 對照 F4 baseline | 證 per-query std 較 F4 收窄(fixed nugget + K-run 生效)+ paired delta 符號穩定(把尺偵測得到真實 config 差)→ G-W96-H verdict;doc-sync eval-methodology §2.5 補 paired 用法 |
+
 ## §3 Phase Gate
 
 - **G-W96**:F1 metric core 測試綠 + F3 driver 出到 baseline + **F4 construct validity 過**(尺 demonstrably flag 到已知乙類案)+ run-level band 已睇(多 run)+ **確認零 production pipeline 改動**(eval-only)。
@@ -58,3 +68,4 @@
 | 日期 | 變動 | 由 |
 |---|---|---|
 | 2026-06-25 | Phase kickoff — 2026-06-25 研究確立乙類為可機器量度失效模式;用戶拍板「先做完整度 eval gate」。F1-F5 分段;F1-F3 零 production 改動,F4 construct-validity gate。緩解留下一 phase | 開工 |
+| 2026-06-25b | **F1-F5 完成 + Gate G-W96 = PARTIAL**(commit `4bca795`):把尺造成但 F4 3 run band 證 per-answer 不可靠。**DD-15 gate hardening 拉入 scope(R3 deviation,原 §5 out-of-scope)**:用戶拍板做。加 F6-F8(fixed nugget + K-run 平均 + paired A/B),打三個 variance 源(nugget 抽取 / 答案 / query offset)。A/B lever 用 `QueryRequest.llm_model`(per-request toggle,無需直呼 synthesizer — 確定性檢索保兩臂同 context) | F1-F5 closeout + DD-15 開工 |

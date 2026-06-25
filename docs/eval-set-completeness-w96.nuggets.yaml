@@ -1,0 +1,110 @@
+metadata:
+  eval_set: eval-set-completeness-w96.yaml
+  kb_id: drive-user-manual-kb-20260618
+queries:
+- query_id: C001
+  query_text: How do I post a journal entry in General Ledger?
+  total_nuggets: 4
+  nuggets:
+  - Open the General journal and click Post > Post to post the journal.
+  - Confirm that the operation completed after posting.
+  - Click Voucher to view the posted voucher.
+  - Confirm the voucher transactions after posting.
+- query_id: C002
+  query_text: How do I record a payment collection from a customer?
+  total_nuggets: 19
+  nuggets:
+  - Go to Accounts receivable > Payments > Customer payment journal, click New, and
+    select “ARpayment” in Name.
+  - If not using Excel/import, click Lines and manually update the journal lines.
+  - In each journal line, select the customer account, select the invoice to settle,
+    and note that invoices with zero amount cannot be selected.
+  - Credit is auto-populated from the invoice amount, but it can be manually changed
+    for partial settlement.
+  - If there are multiple invoices to settle, click New and add additional lines.
+  - Alternatively, use Payment proposal > Create payment proposal after creating the
+    journal header, then set invoice selection criteria, click Filter, and set additional
+    criteria such as customer account, currency, and amount.
+  - After lines are prepared, update financial dimensions on the journal lines if
+    needed.
+  - Update offset account information by entering offset account type, offset account,
+    and method of payment.
+  - Set Payment status to “Received”.
+  - If using the settlement-marking flow, mark the invoices you want to settle, click
+    OK, and then click View marked transaction to confirm the selected transactions.
+  - Validate the customer payment journal by going to Validate > Validate and confirming
+    Operation Completed.
+  - Post the customer payment journal by clicking Post and confirming Operation Completed.
+  - After posting, click Voucher to verify the voucher transaction.
+  - If using the Excel upload flow, create the journal header, copy the journal number,
+    prepare the Excel file, and upload the file through Workspaces > Data management
+    using IMP-Customer payment journal line.
+  - For the Excel upload flow, run the project, upload the file, confirm import, and
+    verify the transaction appears in the journal line.
+  - As an alternative to typing directly in the journal line, use Open in Excel/Download
+    to input information in Excel and upload it back to the system.
+  - You can also select an invoice from Settle transactions by clicking Settle Transactions.
+  - If needed, update financial dimensions for both Account and Offset account, using
+    Financial dimensions > Account or Offset account.
+  - If payment fee applies, click Payment fee and enter Fee ID, Fee amount, Currency,
+    Account type, and Account.
+- query_id: C003
+  query_text: What is the procedure to write off a receivable?
+  total_nuggets: 11
+  nuggets:
+  - To write off a single customer transaction, go to Credit and Collections > Collections
+    > Aged balances, click the customer name, select the transaction(s) to write off,
+    and click Write off.
+  - In the single-customer write-off flow, select a reason code and click OK, then
+    confirm the journal is created for write-off.
+  - For RMS, a write-off journal can also be created from the Open customer invoice
+    screen when the intent is to write off a single transaction rather than the whole
+    outstanding balance.
+  - After the write-off journal is created automatically, go to General ledger > Journal
+    entries > General journals and confirm the journal is automatically created.
+  - In the general journal, click the item number and confirm the selected transaction
+    is included.
+  - For multiple customers, create a batch write-off from Customer payment journal
+    by going to Accounts receivable > Payments > Customer payment journal, clicking
+    New, and entering AR-W/O in Name.
+  - For the batch write-off flow, click the journal number, then Payment proposal
+    > Create payment proposal, select Due date in Select invoices by, define the due-date
+    or amount range to write off, and click OK.
+  - In the batch flow, select the transactions to write off and click Multiple change.
+  - Then select write-off for Method of payment, click OK, confirm the Method of payment
+    is changed for the selected lines, click Create payment, and confirm the transactions
+    to be posted for write-off.
+  - If approval workflow is turned on, submit the journal via Workflow > Submit, then
+    approve or reject it via Workflow > Approval or Workflow > Reject, and confirm
+    the approval result by viewing workflow history.
+  - To post the write-off journal, define Main account and Team for each line and
+    click Post.
+- query_id: C004
+  query_text: How to generate a customer account statement?
+  total_nuggets: 8
+  nuggets:
+  - Go to Accounts receivables > Inquiries and reports > Customers > Customer account
+    statement.
+  - Set the parameter.
+  - Define customer account, contract group, etc. if needed.
+  - Click OK.
+  - Confirm the statement is generated.
+  - Alternatively, generate it from the customer master by going to Account receivable
+    > Customers > All customers.
+  - Click the customer account.
+  - Go to Collect > Statements.
+- query_id: C005
+  query_text: How to create an aging period definition for receivables?
+  total_nuggets: 8
+  nuggets:
+  - Go to Credit and collections > Setup > Aging period definitions.
+  - Click New.
+  - Define the aging period definition by entering Period, Unit, Interval, Aging Indicator,
+    and Icon.
+  - Click Save.
+  - If you want to validate the setup, go to Credit and collections > Periodic tasks
+    > Age customer balances.
+  - Update the customer aging snapshot parameter.
+  - Click OK.
+  - Confirm the customer aging snapshot is created based on the definition you set
+    up.
