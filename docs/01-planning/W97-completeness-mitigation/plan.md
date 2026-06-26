@@ -6,7 +6,7 @@
 | Status | **closed — NEGATIVE / REVERTED**(2026-06-26;F1-F4 實作 + 兩輪 A/B 反證 → code revert,保留 ADR-0069 + plan/progress 記錄,per ADR-0069 §Outcome) |
 | Tier | Tier 1(改 synthesizer prompt 策略,gated default OFF) |
 | 依賴 | **ADR-0069(Proposed → 待 Accept)**・ W96 完整度 gate(`4bca795`)+ DD-15 hardening(`2102eed`) |
-| 錨點 | **ADR-0069**・ CLAUDE.md §15・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3・`source_fidelity_recall_external_research_20260625.md` 方向 A |
+| 錨點 | **ADR-0069**・ CLAUDE.md §15・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3・`docs/09-analysis/source_fidelity_recall_external_research_20260626.md`(第三輪,捕捉 2026-06-25 乙類方向 A + W97 反證)|
 | 粗估 | 中(F1-F5;prompt + config knob + A/B 驗證) |
 | 下一期 | production default flip(另一決定,類 ADR-0052;需 gate 正向證據 + 再確認) |
 

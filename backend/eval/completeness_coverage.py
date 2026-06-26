@@ -7,8 +7,9 @@ WAS in its retrieved context, so a dropped paragraph's images lose their text an
 Operationalises "answer content completeness" as nugget-coverage recall — the
 peer-reviewed method line confirmed by the 2026-06-25 research round (FineSurE ACL
 2024 ``Completeness = covered keyfacts / all keyfacts``; AutoNuggetizer SIGIR 2025
-nugget recall; CRUX EMNLP 2025 sub-question coverage). See
-``docs/09-analysis/source_fidelity_recall_external_research_20260625.md``.
+nugget recall; CRUX EMNLP 2025 sub-question coverage). The 2026-06-25 round was never
+saved standalone; see ``docs/09-analysis/source_fidelity_recall_external_research_20260626.md``
+(the follow-up that captures it + records the W97 coverage-prompt refutation).
 
 answer_coverage = |context nuggets present in answer| / |context nuggets|
     The 乙類 ISOLATOR: of the query-relevant facts the synthesiser HAD in its
