@@ -104,18 +104,22 @@ _MARKER_RULE = (
 # the optional Rule 9 marker rule without a numbering collision. It also calibrates the
 # Rule 3 DEDUP clause so a genuine variant is never folded away as a「duplicate」.
 _COVERAGE_RULE = (
-    "COVERAGE — beyond the main-line procedure, the retrieved chunks often describe "
-    "CONDITIONAL VARIANTS, ALTERNATIVE BRANCHES, and SCENARIO sub-procedures (e.g. "
-    "'for a single customer', 'for multiple customers', 'for RMS only', 'for the approval "
-    "workflow', 'if the journal is reversed'). You MUST enumerate EVERY such variant / "
-    "branch / scenario that appears in the chunks — render each as its own bold branch "
-    "title followed by its steps — even when it is optional, parallel, or an exception "
-    "path, and even when it shares its opening steps with the main path. Do NOT collapse "
-    "distinct branches into one, and do NOT silently pick only the most common path. This "
-    "REFINES the DEDUP rule: DEDUP removes only restatements of the SAME step (a "
-    "process-step-list entry, a heading, a caption) — a genuinely different conditional "
-    "branch is NEVER a duplicate and must be kept. Also reproduce any short Overview / "
-    "summary passage that introduces a section's scenarios."
+    "COVERAGE — the retrieved chunks SOMETIMES describe CONDITIONAL VARIANTS, "
+    "ALTERNATIVE BRANCHES, or SCENARIO sub-procedures (e.g. 'for a single customer', "
+    "'for multiple customers', 'for RMS only', 'for the approval workflow', 'if the "
+    "journal is reversed'). When such variants ACTUALLY APPEAR in the chunks, you MUST "
+    "enumerate EVERY one of them — render each as its own bold branch title followed by "
+    "its steps — even when it is optional, parallel, or an exception path, and even when "
+    "it shares its opening steps with the main path; do NOT collapse distinct branches "
+    "into one and do NOT silently keep only the most common path. CRITICAL — only "
+    "reproduce variants, branches, and steps that are LITERALLY PRESENT in the retrieved "
+    "chunks: NEVER invent a branch, NEVER pad with variants the source does not contain, "
+    "and NEVER add generic advice or filler. If the procedure has NO conditional "
+    "variants, answer the single procedure exactly as the chunks give it — adding "
+    "nothing. This REFINES the DEDUP rule: DEDUP removes only restatements of the SAME "
+    "step (a process-step-list entry, a heading, a caption) — a genuinely different "
+    "conditional branch is NEVER a duplicate and must be kept. Also reproduce any short "
+    "Overview / summary passage that the chunks use to introduce a section's scenarios."
 )
 
 

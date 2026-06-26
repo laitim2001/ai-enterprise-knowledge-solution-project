@@ -1,0 +1,21 @@
+metadata:
+  eval_set: W97 variant-coverage focused A/B (乙類 high-K)
+  kb_id: drive-user-manual-kb-20260618
+  note: >-
+    Focused subset of eval-set-completeness-w96.yaml — ONLY the two known 乙類
+    (variant-heavy) cases C001 (GL post-journal, drops RMS/RSP variant + Overview)
+    and C003 (write-off, 11 conditional-branch nuggets: single-customer / RMS /
+    multiple-customers batch / approval workflow). Used for the W97 iteration-2
+    high-K (K>=15) paired A/B of the refined _COVERAGE_RULE (coverage OFF vs ON).
+    The matching .nuggets.yaml reuses the W96 fixed nugget set verbatim for
+    cross-run comparability (nuggets are config-independent — extracted from the
+    deterministic retrieved context).
+queries:
+- query_id: C001
+  query_text: How do I post a journal entry in General Ledger?
+  kb_id: drive-user-manual-kb-20260618
+  note: construct-validity 乙類 — missed = RMS/RSP variant + Overview
+- query_id: C003
+  query_text: What is the procedure to write off a receivable?
+  kb_id: drive-user-manual-kb-20260618
+  note: 乙類 — 11 conditional-branch nuggets (single / RMS / multiple / approval)

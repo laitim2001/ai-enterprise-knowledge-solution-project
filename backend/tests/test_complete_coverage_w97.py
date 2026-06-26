@@ -65,6 +65,16 @@ def test_coverage_rule_targets_variants_branches_scenarios() -> None:
     assert "never a duplicate" in low
 
 
+def test_coverage_rule_forbids_fabrication_and_padding() -> None:
+    # W97 iteration 2 — the rule must enumerate variants ONLY when present, and must
+    # never invent / pad (reduce the C005-type over-enumeration regression).
+    low = _COVERAGE_RULE.lower()
+    assert "actually appear" in low  # enumerate only variants that exist
+    assert "never invent" in low  # anti-fabrication
+    assert "never pad" in low  # anti-padding
+    assert "no conditional" in low  # explicit no-variant => single procedure, add nothing
+
+
 # --------------------------------------------------------------------------- #
 # T2 — build_prompt OFF = byte-identical (production-preserve)
 # --------------------------------------------------------------------------- #
