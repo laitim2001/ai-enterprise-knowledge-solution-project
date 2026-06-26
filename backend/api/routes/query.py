@@ -154,17 +154,10 @@ def _per_query_from_payload(payload: QueryRequest) -> PerQueryOverrides:
     so the resolver treats them as the highest-priority override. Both fields are
     `None` for the chat path (which sends neither), letting the per-KB
     `default_top_k` / `default_rerank_k` win.
-
-    W97 / ADR-0069 — also fold the per-query synthesis overrides (`answer_detail`,
-    `enable_complete_coverage`). Both default `None` → inherit per-KB / global, so the
-    chat path stays production-preserve; the W96 completeness A/B harness sets them
-    explicitly per arm.
     """
     return PerQueryOverrides(
         default_top_k=payload.top_k_retrieval,
         default_rerank_k=payload.top_k_rerank,
-        answer_detail=payload.answer_detail,
-        enable_complete_coverage=payload.enable_complete_coverage,
     )
 
 

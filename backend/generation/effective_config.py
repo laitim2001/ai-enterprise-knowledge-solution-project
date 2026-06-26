@@ -58,7 +58,6 @@ class PerQueryOverrides:
     enable_chapter_overview_pin: bool | None = None  # CH-010 / ADR-0047
     answer_detail: str | None = None  # CH-006 — synthesis detail level override
     enable_inline_image_markers: bool | None = None  # W70 / ADR-0055
-    enable_complete_coverage: bool | None = None  # W97 / ADR-0069
     enable_section_anchored_aux_images: bool | None = None  # W75 / ADR-0056 段②d
     section_anchor_max_per_anchor: int | None = None  # W75 F5 / ADR-0056 段②d
 
@@ -115,10 +114,6 @@ class EffectiveConfig:
     # prompt text paths consume `chunk_text_marked` + the system prompt gains the
     # keep-markers rule; False = clean text (pre-W70 identical).
     enable_inline_image_markers: bool
-    # W97 / ADR-0069 — coverage-oriented synthesis gate. True = (under detailed) the
-    # synthesis system prompt gains the additive COVERAGE rule (enumerate conditional
-    # variants / branches / scenarios); False = pre-W97 prompt (no-op).
-    enable_complete_coverage: bool
     # W75 / ADR-0056 段②d — section-anchored aux images injection gate. True =
     # post-synthesis inject `[IMG#sha8]` markers for un-anchored neighbour / aux images
     # at their same-section anchored marker (frontend renders them inline); False = no
@@ -312,16 +307,6 @@ def resolve_effective_config(
                 kb.enable_inline_image_markers if kb else None,
             ),
             settings.enable_inline_image_markers,
-        ),
-        # W97 / ADR-0069 — four-layer chain (per-query > per-DOC > per-KB > global);
-        # consumed at synth prompt build, so the per-DOC layer applies.
-        enable_complete_coverage=_resolve(
-            pq.enable_complete_coverage if pq else None,
-            _layer(
-                dc.enable_complete_coverage if dc else None,
-                kb.enable_complete_coverage if kb else None,
-            ),
-            settings.enable_complete_coverage,
         ),
         # W75 / ADR-0056 段②d — four-layer chain (per-query > per-DOC > per-KB >
         # global); consumed post-synthesis at the marker-injection stage.

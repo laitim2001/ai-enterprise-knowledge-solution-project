@@ -78,13 +78,6 @@ class QueryRequest(BaseModel):
     mode: Literal["hybrid", "vector", "fulltext"] = "hybrid"
     enable_crag: bool = True
     enable_intent_routing: bool = False
-    # W97 / ADR-0069 + CH-006 — per-query synthesis overrides (activate the
-    # `PerQueryOverrides` seam). `None` = inherit per-DOC / per-KB / global, so the
-    # chat path (sends neither) is production-preserve. Primary A/B lever for the W96
-    # completeness gate: force `answer_detail="detailed"` on both arms while toggling
-    # `enable_complete_coverage` (OFF=A / ON=B) so the only variable is the coverage rule.
-    answer_detail: Literal["concise", "detailed"] | None = None
-    enable_complete_coverage: bool | None = None
 
 
 class QueryResponse(BaseModel):
