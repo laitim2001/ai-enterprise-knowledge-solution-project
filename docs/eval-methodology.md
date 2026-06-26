@@ -177,7 +177,7 @@ Image Assoc = (count of queries where cited screenshots ⊆ ground_truth.expecte
 
 ### 2.5 Answer Completeness(Nugget Coverage)— W96
 
-> **乙類 over-summarisation 偵測**(對齊 CLAUDE.md §15 北極星)。把「答案把原文段落濃縮掉」操作化為 nugget coverage recall(方法線:FineSurE ACL 2024 / AutoNuggetizer SIGIR 2025 / CRUX EMNLP 2025;見 `docs/09-analysis/source_fidelity_recall_external_research_20260625.md`)。**唔用 RAGAs**(RAGAs faithfulness ≠ completeness,研究實證兩者獨立軸)。
+> **乙類 over-summarisation 偵測**(對齊 CLAUDE.md §15 北極星)。把「答案把原文段落濃縮掉」操作化為 nugget coverage recall(方法線:FineSurE ACL 2024 / AutoNuggetizer SIGIR 2025 / CRUX EMNLP 2025;2026-06-25 嗰輪 deep-research 未存檔,見 `docs/09-analysis/source_fidelity_recall_external_research_20260626.md` 第三輪 follow-up 捕捉並 supersede)。**唔用 RAGAs**(RAGAs faithfulness ≠ completeness,研究實證兩者獨立軸)。
 
 **定義**:synthesizer 手上有(餵入嘅檢索 context)嘅 query 相關事實,有幾多 survive 入答案?
 

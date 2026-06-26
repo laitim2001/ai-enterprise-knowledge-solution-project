@@ -6,7 +6,7 @@
 | Status | **active**(2026-06-25 kickoff) |
 | Tier | Tier 1(加 eval metric;用既有 infra,不觸 H1/H2 — 同 `image_recall.py` / `marker_placement.py` 並存先例) |
 | 依賴 | 2026-06-20 + 2026-06-25 兩輪 source-fidelity 研究(`docs/09-analysis/`)+ 分析文件 §5.3/§9 乙類 |
-| 錨點 | **CLAUDE.md §15 北極星**・`docs/09-analysis/source_fidelity_recall_external_research_20260625.md`(本輪研究)・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3 乙類 |
+| 錨點 | **CLAUDE.md §15 北極星**・`docs/09-analysis/source_fidelity_recall_external_research_20260626.md`(2026-06-25 本輪研究未存檔,由第三輪 follow-up 捕捉)・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3 乙類 |
 | 粗估 | 中(F1-F5;F1-F3 純加 eval 零 production 改動,F4 需 backend + eval run) |
 | 下一期 | **緩解 phase**(coverage-oriented / U-形位置-aware synthesis prompting)— 視本 gate 量到嘅 baseline 決定,可能觸 synthesizer prompt(屆時確認 H 級別) |
 

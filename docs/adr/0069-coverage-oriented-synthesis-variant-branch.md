@@ -62,7 +62,7 @@ knob + `_COVERAGE_RULE` + per-query A/B lever 全部實作(commits `fd45db5` / `
 
 ## References
 
-- CLAUDE.md §15 North-Star Principle + `docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3(乙類)+ `source_fidelity_recall_external_research_20260625.md`(方向 A,FineSurE/AutoNuggetizer/CRUX;extractive-then-abstractive 反證)
+- CLAUDE.md §15 North-Star Principle + `docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3(乙類)+ `docs/09-analysis/source_fidelity_recall_external_research_20260626.md`(第三輪 follow-up,捕捉未存檔嘅 2026-06-25 乙類方向 A 研究 + 記錄 W97 反證 + CRUX generation-ceiling 解釋)
 - W96 完整度 gate(`4bca795`)+ DD-15 hardening(`2102eed`)+ `docs/eval-methodology.md` §2.5
 - `backend/generation/prompt_builder.py`(`SYSTEM_PROMPT_DETAILED` Rule 3 + `_MARKER_RULE` Rule 9 append pattern)
 - ADR-0040(四層 config resolve)・ ADR-0052(default flip 流程 precedent)・ ADR-0053(synth timeout)・ DD-7(mega-section timeout)
