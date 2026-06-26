@@ -128,6 +128,12 @@ class KbConfig(BaseModel):
     # per-chapter injection at N (doc_order first N) to bound clump.
     section_anchor_max_per_anchor: int | None = None
 
+    # W98 (ADR-0056 段②d leaf 級) — per-KB section-anchor selection. `None` = inherit
+    # global `Settings.section_anchor_nearest` (default False = chapter-last). True =
+    # same-chapter doc_order-nearest anchor (spread aux across cited steps). Query-time
+    # knob (no re-index).
+    section_anchor_nearest: bool | None = None
+
 
 # kb_id forms BOTH the AI Search index name (`ekp-kb-{kb_id}-v1`) AND the Azure
 # Blob container names (`ekp-kb-{kb_id}-screenshots` / `-sources`). Blob container

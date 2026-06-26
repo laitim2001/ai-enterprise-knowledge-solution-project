@@ -60,6 +60,7 @@ class PerQueryOverrides:
     enable_inline_image_markers: bool | None = None  # W70 / ADR-0055
     enable_section_anchored_aux_images: bool | None = None  # W75 / ADR-0056 段②d
     section_anchor_max_per_anchor: int | None = None  # W75 F5 / ADR-0056 段②d
+    section_anchor_nearest: bool | None = None  # W98 / ADR-0056 段②d leaf 級
 
 
 @dataclass(slots=True, frozen=True)
@@ -123,6 +124,9 @@ class EffectiveConfig:
     # aux image injected); N > 0 = inject doc_order first N per chapter (overflow stays
     # in the frontend trailing pile), bounding the章節內 clump.
     section_anchor_max_per_anchor: int
+    # W98 / ADR-0056 段②d leaf 級 — anchor selection. False = chapter-last (W75); True =
+    # same-chapter doc_order-nearest anchor (spread aux across the chapter's cited steps).
+    section_anchor_nearest: bool
 
 
 def _resolve[T: int](per_query: T | None, kb_value: T | None, global_value: T) -> T:
@@ -326,5 +330,14 @@ def resolve_effective_config(
                 kb.section_anchor_max_per_anchor if kb else None,
             ),
             settings.section_anchor_max_per_anchor,
+        ),
+        # W98 / ADR-0056 段②d leaf 級 — anchor selection (same four-layer chain).
+        section_anchor_nearest=_resolve(
+            pq.section_anchor_nearest if pq else None,
+            _layer(
+                dc.section_anchor_nearest if dc else None,
+                kb.section_anchor_nearest if kb else None,
+            ),
+            settings.section_anchor_nearest,
         ),
     )

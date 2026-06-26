@@ -203,3 +203,83 @@ def test_max_per_anchor_zero_is_no_cap() -> None:
     out_zero = inject_section_anchored_markers(answer, citations, max_per_anchor=0)
     out_default = inject_section_anchored_markers(answer, citations)
     assert out_zero == out_default == "Intro [IMG#aaaaaaaa][IMG#bbbbbbbb][IMG#cccccccc] end."
+
+
+# ── W98 / ADR-0056 段②d leaf 級 — nearest-anchor selection ──────────────────────
+
+
+def test_nearest_spreads_aux_to_closest_anchor() -> None:
+    """W98 — nearest=True anchors each aux after the SAME-CHAPTER anchor whose image
+    doc_order is closest, spreading the chapter's aux across its cited steps (vs the
+    default chapter-last, which clumps them all after the last anchor)."""
+    answer = "Open [IMG#aaaaaaaa] then later confirm [IMG#bbbbbbbb] done."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=10),   # anchored, early step
+            _img(SHA_B, section=["3"], doc_order=100),  # anchored, late step
+            _img(SHA_C, section=["3"], doc_order=12),   # aux near A
+            _img(SHA_D, section=["3"], doc_order=98),   # aux near B
+        ]),
+    ]
+    out = inject_section_anchored_markers(answer, citations, nearest=True)
+    assert out == (
+        "Open [IMG#aaaaaaaa][IMG#cccccccc] then later confirm "
+        "[IMG#bbbbbbbb][IMG#dddddddd] done."
+    )
+    # contrast: chapter-last (default) clumps BOTH aux after the last anchor B
+    clump = inject_section_anchored_markers(answer, citations)
+    assert clump == (
+        "Open [IMG#aaaaaaaa] then later confirm "
+        "[IMG#bbbbbbbb][IMG#cccccccc][IMG#dddddddd] done."
+    )
+
+
+def test_nearest_single_anchor_equals_chapter_last() -> None:
+    """W98 — a single-anchor chapter has nothing to spread → nearest ≡ chapter-last."""
+    answer = "Intro [IMG#aaaaaaaa] end."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=1),
+            _img(SHA_B, section=["3"], doc_order=10),
+            _img(SHA_C, section=["3"], doc_order=20),
+        ]),
+    ]
+    near = inject_section_anchored_markers(answer, citations, nearest=True)
+    last = inject_section_anchored_markers(answer, citations, nearest=False)
+    assert near == last == "Intro [IMG#aaaaaaaa][IMG#bbbbbbbb][IMG#cccccccc] end."
+
+
+def test_nearest_defaults_false_preserves_w75() -> None:
+    """W98 — the default call (no nearest kwarg) is chapter-last (W75) even when a
+    spread would differ → production-preserve."""
+    answer = "A [IMG#aaaaaaaa] B [IMG#bbbbbbbb] end."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=10),
+            _img(SHA_B, section=["3"], doc_order=100),
+            _img(SHA_C, section=["3"], doc_order=12),  # closest to A, but default clumps at B
+        ]),
+    ]
+    default = inject_section_anchored_markers(answer, citations)
+    explicit_false = inject_section_anchored_markers(answer, citations, nearest=False)
+    assert default == explicit_false == "A [IMG#aaaaaaaa] B [IMG#bbbbbbbb][IMG#cccccccc] end."
+
+
+def test_nearest_cap_applies_per_chosen_anchor() -> None:
+    """W98 — with nearest, max_per_anchor caps EACH chosen anchor, so the spread fits
+    more total than chapter-last+cap (which caps the single clump anchor)."""
+    answer = "A [IMG#aaaaaaaa] B [IMG#bbbbbbbb] end."
+    citations = [
+        _citation([
+            _img(SHA_A, section=["3"], doc_order=10),
+            _img(SHA_B, section=["3"], doc_order=100),
+            _img(SHA_C, section=["3"], doc_order=11),  # near A
+            _img(SHA_D, section=["3"], doc_order=99),  # near B
+        ]),
+    ]
+    # nearest + cap=1: A keeps C, B keeps D → both injected (one per anchor)
+    near = inject_section_anchored_markers(answer, citations, nearest=True, max_per_anchor=1)
+    assert near == "A [IMG#aaaaaaaa][IMG#cccccccc] B [IMG#bbbbbbbb][IMG#dddddddd] end."
+    # chapter-last + cap=1: BOTH aux → anchor B, cap 1 → only doc_order-first (C) injected
+    last = inject_section_anchored_markers(answer, citations, max_per_anchor=1)
+    assert last == "A [IMG#aaaaaaaa] B [IMG#bbbbbbbb][IMG#cccccccc] end."

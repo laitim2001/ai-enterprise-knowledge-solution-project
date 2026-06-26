@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W98-leaf-anchor-precision(source-fidelity §15 北極星線 · ADR-0056 段②d leaf 級)|
-| Status | **draft**(2026-06-26 kickoff;待確認後轉 active)|
+| Status | **active**(2026-06-26 kickoff;用戶確認轉 active;F1 已落地)|
 | Tier | Tier 1(改 `section_anchor_markers.py` 注入定位策略,knob-gated default 保留現狀)|
 | 依賴 | ADR-0056 段②d(章節級 section-anchor inject 已落地 W75)+ W98 前置 offline 診斷(`scripts/diag_leaf_anchor.py`,commit `70b7b85`)|
 | 錨點 | **CLAUDE.md §15 北極星**・ADR-0056 段②d roadmap「leaf 級精準錨」・memory [[principle_source_fidelity_recall]] 甲類・[[project_inline_image_markers_w70]] W75 段 |
@@ -62,3 +62,4 @@
 | 日期 | 變動 | 由 |
 |---|---|---|
 | 2026-06-26 | Phase draft kickoff — 乙類收口(generation-ceiling 診斷)後用戶拍板轉甲類圖錨定;W98 前置 offline 診斷(18 captures)證 doc_order-nearest = Pareto 正向(worse=0 / 110 張救返 / clump 37→16)→ 寫 plan productionize。F1-F5 分段,knob-gated default 保留現狀,ADR-0056 amendment(leaf 級 pre-scoped)。**待確認轉 active** | 草案 |
+| 2026-06-26 | **用戶確認轉 active → F1 落地**:核心 `inject_section_anchored_markers` 加 `nearest: bool=False` 參數(doc_order 最近錨點選擇,統一邏輯 `nearest=False` byte-identical)+ knob `section_anchor_nearest` 四層(Settings/KbConfig/DocConfig/PerQueryOverrides/EffectiveConfig+resolve)+ 4 個 nearest 測試;67 passed(含既有 14 byte-identical)+ ruff + mypy --strict clean | F1 |

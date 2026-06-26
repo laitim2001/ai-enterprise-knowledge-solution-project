@@ -26,7 +26,14 @@
 | `70b7b85` | chore(eval): leaf-anchor diagnostic harness | W98 motivation |
 | (本 commit) | docs(planning): W98 kickoff(draft) | F0 kickoff |
 
-**Next**:待用戶確認 draft → 轉 active → 開 F1（knob + nearest 策略 + 測試）。**未確認唔開 code（R1）**。
+**F1 落地（用戶確認轉 active 後）**:
+- `section_anchor_markers.py`：`inject_section_anchored_markers` 加 `nearest: bool = False`。統一 anchor 選擇邏輯 —— `anchored_meta[sha8]=(chapter,doc_order)` + `anchors` list(chapter,doc_order,end_offset);`nearest=False` → target = chapter-last offset(全同章節 aux map 同一 offset = W75 byte-identical);`nearest=True` → target = `min(same-chapter anchors, key=(|doc_order diff|, offset))`。cap 由 per-target offset 套用。
+- knob `section_anchor_nearest` 四層:`Settings`(bool=False)/ `KbConfig`(bool|None)/ `DocConfig`(bool|None)/ `PerQueryOverrides`(bool|None)/ `EffectiveConfig`(bool)+ resolve block(per-query > [per-DOC > per-KB] > global,mirror `section_anchor_max_per_anchor`)。
+- 測試:4 新 nearest 測試(spread / single-anchor≡last / default-false-preserves-W75 / cap-per-anchor)+ 既有 14 全過 = **byte-identical 驗證**。
+- **驗證**:`67 passed`（test_section_anchor_markers + test_effective_config + test_doc_profile_override + test_profile_routing)+ ruff clean + mypy --strict clean(`--explicit-package-bases`，項目無 mypy config)。
+- **零行為改動**:default OFF → production 與 pre-W98 bit-identical(H1 production-preserve 達成)。
+
+**Next**:F2（wire knob 經 effective_config → `/query` + `/query/stream` 兩注入點,off bit-identical route 測試）。**未開 —— 等用戶指示繼續定 pause**。
 
 **Carry-over / 待決**:
 - F1 knob 設計 = bool `section_anchor_nearest`（vs mode enum）—— 採 bool（Karpathy §1.2 simplicity）。

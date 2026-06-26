@@ -3,15 +3,15 @@
 > 對應 `plan.md` §2 Deliverables。Atomic items;每完成一項 tick + 對應 `progress.md` Day-N。
 > **狀態:draft —— 待確認轉 active 先開 F1。**
 
-## F1 — nearest-anchor 策略 + knob + 單元測試
+## F1 — nearest-anchor 策略 + knob + 單元測試 ✅(2026-06-26）
 
-- [ ] `Settings` 加 `section_anchor_nearest: bool = False`(ADR-0040 四層,storage/settings.py)
-- [ ] `KbConfig` / per-doc config schema 加同名欄位(`api/schemas/kb.py` + doc_config）
-- [ ] `effective_config.py` resolve `section_anchor_nearest`(per-query > per-doc > per-KB > global)
-- [ ] `section_anchor_markers.py` 加 nearest 錨點選擇(同章節 `doc_order` 最近 anchored marker;tie → earliest offset),參數化 `nearest: bool`,default False = 現行章節最後
-- [ ] knob OFF byte-identical 測試(substring + 完整 byte 對 pre-W98 輸出)
-- [ ] nearest 行為測試:多錨點 spread / 單錨點 nearest≡last 等價 / cap 互動(`max_per_anchor` 下 spread 後超出回 trailing)
-- [ ] pytest(擴 `test_section_anchor_markers.py`)+ ruff + mypy clean
+- [x] `Settings` 加 `section_anchor_nearest: bool = False`(ADR-0040 四層,storage/settings.py)
+- [x] `KbConfig` / per-doc config schema 加同名欄位(`api/schemas/kb.py` + doc_config）
+- [x] `effective_config.py` resolve `section_anchor_nearest`(per-query > per-doc > per-KB > global;PerQueryOverrides + EffectiveConfig + resolve block）
+- [x] `section_anchor_markers.py` 加 nearest 錨點選擇(同章節 `doc_order` 最近 anchored marker;tie → earliest offset),參數化 `nearest: bool`,default False = 現行章節最後（統一邏輯,`nearest=False` byte-identical）
+- [x] knob OFF byte-identical 測試（既有 14 測試全過 + `test_nearest_defaults_false_preserves_w75`）
+- [x] nearest 行為測試:多錨點 spread / 單錨點 nearest≡last 等價 / cap per-anchor 互動（4 新測試）
+- [x] pytest（67 passed)+ ruff（clean)+ mypy --strict（clean,`--explicit-package-bases`）
 
 ## F2 — wire knob 經 pipeline 兩個注入點
 

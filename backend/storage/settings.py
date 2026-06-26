@@ -189,6 +189,14 @@ class Settings(BaseSettings):
     # some images returning to the trailing pile.
     section_anchor_max_per_anchor: int = 0
 
+    # W98 (ADR-0056 段②d leaf 級) — section-anchor injection anchor selection. False
+    # (default) = chapter-LAST anchor (W75 behaviour, production-preserve). True = the
+    # same-chapter anchor whose image doc_order is nearest the aux's, spreading the
+    # chapter's aux across its cited steps (offline diagnostic: clump 37→16, +110 aux
+    # placed, worse=0 / 18 captures). Query-time knob (no re-index); structurally Pareto
+    # on clump. Profile / per-KB routed ON post production A/B (W98 F5 default-flip).
+    section_anchor_nearest: bool = False
+
     # W42 (ADR-0039) — hybrid mode semantic ranker toggle. True (default) =
     # preserve W2 baseline (hybrid uses `queryType="semantic"` + semantic config →
     # Azure built-in semantic L2 rerank). False = hybrid drops semantic ranker →

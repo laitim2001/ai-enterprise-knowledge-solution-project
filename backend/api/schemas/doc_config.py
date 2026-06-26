@@ -65,3 +65,7 @@ class DocConfig(BaseModel):
 
     # W75 F5 (ADR-0056 段②d) — per-anchor injection cap (per-DOC override; 0 = no cap).
     section_anchor_max_per_anchor: int | None = None
+
+    # W98 (ADR-0056 段②d leaf 級) — section-anchor selection (per-DOC override; False =
+    # chapter-last, True = same-chapter doc_order-nearest anchor).
+    section_anchor_nearest: bool | None = None
