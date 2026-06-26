@@ -91,20 +91,34 @@
 
 ---
 
-## 6. 最關鍵 Open Question(會改變方向優先序)
+## 6. 最關鍵 Open Question — ✅ 已實測解答(2026-06-26)
 
-CRUX 個 **62-65% generation ceiling 係用 Llama-3.1-8B 量**。**若 `gpt-5.5` 喺 EKP SOP 場景 ceiling 接近 90%+,咁乙類根因就唔係 generation,而係偏返 retrieval / anchoring** → 方向 A(generation-side 替代)大部分白費,應轉去步驟級錨定(方向 B)。
+**原問題**:CRUX 個 62-65% generation ceiling 係用 Llama-3.1-8B 量。若 `gpt-5.5` 喺 EKP SOP 場景 ceiling 接近 90%+,乙類根因就偏 retrieval/anchoring → 方向 A 白費、應轉錨定;若低 → generation-side 坐實。未實測前方向 A vs B 就係估。
 
-→ **未實測前,方向 A vs B 優先序就係估。** 而呢個診斷 = **fixed-context oracle A/B(畀完美 context 量 GPT-5.5 還原上限),零 production 改動**,可用現有 W96 harness 改。**建議任何後續 implementation 之前先做呢個診斷。**
+**診斷做法(零 production 改動)**:用現有 W96 paired A/B harness(`scripts/run_completeness_ab.py`,固定 nugget,K=3,5 query,KB `drive-user-manual-kb-20260618`),兩臂同 `gpt-5.5`、只差 context 量 —— A = 預設;B = 最大(`top_k_rerank=40` / `top_k_retrieval=80`,~8× context)。報告 `reports/completeness_ceiling_diag.yaml`。
+
+**結果 → generation-side ceiling 坐實(≈ 0.77,非 retrieval)**:
+- 加 ~8× context,平均覆蓋率 0.765 → 0.767,**delta +0.002 ≈ 零**。內容唔係唔喺度(B context ⊇ A ⊇ 全 nugget),覆蓋率照樣唔郁 → **瓶頸唔喺檢索 breadth**。
+- 上限 ≈ 0.77 非 1.0;`C004` 穩定 1.0(3/3)證上限**非量度 artifact**(乾淨可答 query 會到頂),sub-1.0(C001/C003/C005)係真生成側掉內容。
+- `C005` 加 context **反退 −0.17**(中段遺失 / 干擾)→ 加 context 可以 hurt。
+- 掉內容**隨機非系統**(C003 arm B run [1.0, 0.91, 0.27] 同 config)→ 同 W97 一致,解釋 prompt 必敗(靜態 rule 改唔到 run lottery)。
+- **同 CRUX 62-65% 同 ballpark** → §2 #1「絕對值未必 transfer」caveat 實測收窄:`gpt-5.5` SOP 場景 ceiling 都係 sub-80%,**唔係** 90%+。
+
+**對方向優先序嘅裁決**:
+- 方向 B(parent / anchoring 檢索)**對乙類完整度 = 否決**(內容已檢索到,加檢索冇用)。
+- 方向 A(generation-side)= 數據支持但 prompt exhausted(W97);唯一數據正面支持嘅 sub-lever = 多次取樣聯集(隨機掉 → union-of-K 救返),但 K× 成本 + 合併 + faithfulness/timeout 風險。
+- **用戶 2026-06-26 拍板:收乙類口,轉去甲類圖步驟級錨定**(tractable 檢索/排序問題,對齊 §15;乙類 generation-ceiling 屬高成本低回報,暫不追)。
+
+> caveat:N 細(5 query / K=3 / C002 一 run 掉),variance 大 → 方向性非定論;但三點(加 context 唔升 / 乾淨 query 穩 1.0 / 隨機掉)一致,夠硬否決「加檢索 + 改 prompt」救乙類。
 
 ---
 
 ## 7. 建議 ROI 排序(全部係待驗證假設,非已證手段)
 
-1. **(零成本診斷,最該先做)** fixed-context oracle ceiling 測試 — 決定後面一切(ceiling 高 → 轉錨定;低 → DIPPER/EVE 值得試)。
-2. 若郁完整度:**section-merge parent retrieval**(延伸現有 `parent_doc`,runtime 層,成本最低)。
-3. **VITAL** importance-weighted coverage:小規模試,睇能否令 per-answer signal 變可用。
-4. **DIPPER / EVE**:工程成本高 + domain transfer 未證,排最後。
+1. ✅ **(已做 2026-06-26,見 §6)** ceiling 診斷 = generation-side 坐實(≈ 0.77,加 ~8× context 唔升)→ **否決「retrieval-anchoring 救乙類」**;乙類收口,**轉甲類圖步驟級錨定**。
+2. ~~section-merge parent retrieval~~ — §6 否決(對乙類無效;內容已檢索到)。仍可作甲類錨定嘅 context 完整度輔助,非乙類解。
+3. **VITAL** importance-weighted coverage:小規模試,睇能否令 per-answer signal 變可用(measurement-side,非 fix)。
+4. **多次取樣聯集 / DIPPER / EVE**:唯一數據支持嘅 generation-side fix 但成本高 + domain transfer 未證,排最後;乙類若日後重啟先考慮。
 
 ---
 
@@ -157,4 +171,4 @@ CRUX 個 **62-65% generation ceiling 係用 Llama-3.1-8B 量**。**若 `gpt-5.5`
 
 ---
 
-**End — 本文件係外部實證調查 brief,非 implementation order;決策權喺 Chris。下一步建議先做 §6 零成本 ceiling 診斷再定方向。**
+**End — 本文件係外部實證調查 brief,非 implementation order;決策權喺 Chris。§6 零成本 ceiling 診斷已於 2026-06-26 完成(generation-side 坐實 ≈ 0.77,加 context 唔升)→ 用戶拍板收乙類口、轉甲類圖步驟級錨定。**
