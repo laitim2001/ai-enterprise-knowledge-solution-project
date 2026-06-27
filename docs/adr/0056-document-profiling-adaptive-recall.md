@@ -299,6 +299,20 @@ profiling 係新 failure surface(分錯 → 路由錯)。除咗 D1 信心度 fla
 
 ---
 
+## Amendment(W98,2026-06-27)— 段②d leaf 級 doc_order-nearest 錨點
+
+W75 段②d 把 un-anchored aux 圖注入到**章節最後一個** anchored marker 後(`doc_order` 只用嚟組內排序)。高圖密 query 因此把同章節幾十張圖 clump 喺一個步驟後(W75 DD-1 肉眼見 39 連續圖)。本 amendment 落地段②d roadmap 早已 pre-scope 嘅「leaf 級精準錨」:
+
+- **`inject_section_anchored_markers` 加 `nearest` 參數**(`backend/generation/section_anchor_markers.py`):`nearest=False`(預設)= W75 章節最後(byte-identical);`nearest=True` = 同章節 `doc_order` **最近**錨點(tie → earliest offset),把 aux 分散到對應 cited 步驟。**結構上 Pareto on clump**(單錨點章節 ≡ 章節最後;多錨點只會分散)。
+- **新 knob `section_anchor_nearest`**(ADR-0040 四層,global default **False** = production-preserve)。
+- **實證**:offline 診斷 18 captures(`scripts/diag_leaf_anchor.py` + `_capsweep.py`)—— worse=0、cap8 多置 110 張 aux 入步驟、nocap clump 37→16;production live A/B(`_live.py`)—— citation image set 不變(recall 不受影響)+ running backend markers 置入升(Q001 76→81 / Q036 52→72);browser 肉眼(用戶 §15 verdict PASS)圖交織入步驟、39-clump 病態消失。
+- **drive-images-1 config = nearest + cap8**(W98 F3 用戶拍板;`section_anchor_max_per_anchor=8`)。
+- **邊界(誠實)**:nearest 按設計**唔強錨去錯 section** → 無同章節錨點嘅圖(可錨率 < 100%)仍 section-grouped 呈現(ADR-0064);呢部分受**答案完整度(乙類,generation-ceiling 已收口,見 `docs/09-analysis/source_fidelity_recall_external_research_20260626.md` §6)**約束 ——**甲類 nearest 上限 = 乙類答案完整度,兩腿相連**。
+- **Production default flip**(global / preset OFF→ON)= 另一決定(類 ADR-0052),out-of-scope。
+- Refs:W98 plan `docs/01-planning/W98-leaf-anchor-precision/`;commits `8323253`(F1)/ `828f85b`(F2)/ `8ca31a2`(F3)/ `d7762b1`(F4)。
+
+---
+
 ## References
 
 - 實證 script:`scripts/explore_doc_profiling.py`(v1)/ `explore_doc_profiling_v2.py`(v2,90%)/

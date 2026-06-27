@@ -35,11 +35,11 @@
 - [x] clump 量化(offline cap-sweep + live)— nearest+cap8 clump 受控（offline 最壞 12,live 7-9）;trade = placement↑（非 clump↓）
 - [x] browser 肉眼(Q001 live,nearest+cap8)— **用戶 §15 verdict 達標(2026-06-27)**:圖交織入步驟(figures 56/57/59 + Confirm step 截圖)、W75「39 連續圖」病態消失、按 section 組織。誠實 caveat:section-grouped grid 殘留 = 可錨率 < 100%(乙類-bound,已收口),nearest 唔強錨錯 section
 
-## F5 — doc-sync + ADR amendment + close
+## F5 — doc-sync + ADR amendment + close ✅(2026-06-27)
 
-- [ ] ADR-0056 加 leaf-級 amendment(注入錨點策略 last→nearest + knob `section_anchor_nearest`）
-- [ ] memory [[project_inline_image_markers_w70]] + [[principle_source_fidelity_recall]] 更新(甲類 leaf 級落地）
-- [ ] `DEFERRED_REGISTER.md`「leaf 級精準錨」close
-- [ ] `docs/08-user-guide` 若涉 default / knob 同步(per 其 README 維護規則)
-- [ ] production default flip 列另一決定(out-of-scope,需 F4 正向 + 再確認)
-- [ ] G-W98 Phase Gate verdict 入 progress retro
+- [x] ADR-0056 加 leaf-級 amendment(注入錨點策略 last→nearest + knob `section_anchor_nearest` + 實證 + drive-images-1=nearest+cap8 + 乙類邊界)
+- [x] memory [[project_inline_image_markers_w70]]（append W98 段）+ [[principle_source_fidelity_recall]]（甲 bullet + 自驗下一步 mark done）更新
+- [x] `DEFERRED_REGISTER.md` DD-10 leaf 級 trigger 標 ✅ W98 解(DD-10 核心層 B 仍 defer)
+- [x] `docs/08-user-guide` **N/A** — global default 不變(OFF,production-preserve)→ 維護規則(改 default 先 sync)未觸發;section-anchor knob 家族本身未喺 user-guide(W75 未加),加孤條 = scope creep（§1.3）
+- [x] production default flip 列另一決定(ADR-0056 amendment + plan §5 已標 out-of-scope,需再確認)
+- [x] G-W98 Phase Gate verdict 入 progress retro
