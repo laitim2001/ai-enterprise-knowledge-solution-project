@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W99-nearest-preset-ui(ADR-0056 層 A 段②d leaf 級 productionize 收尾 · 願景融合）|
-| Status | **active**（用戶 2026-06-27 批准「接埋兩步令 W98 同願景完全融合」→ 直接開工）|
+| Status | **closed — G-W99 PASS**（2026-06-27;F1-F3 全完成,nearest 入 P1_sop_imgdense preset + 前端 3 surface UI,ADR-0056 §Amendment）|
 | Tier | Tier 1（改 `profile_presets.py` 自動配對 + 3 前端 surface expose 既有 knob;無新 vendor / 無檢索改動）|
 | 依賴 | W98（`section_anchor_nearest` knob 四層 + drive-images-1=nearest+cap8 已落地）+ ADR-0056 層 A（profiler 六類 + profile→preset 自動配對 W73 + 三層 UI W78-82）|
 | 錨點 | ADR-0056 §Amendment(W98)「default flip = 另一決定」· W98 plan §下一期 · CLAUDE.md §15 北極星 · memory [[project_per_kb_tunable_config_vision]] 願景 |
@@ -54,3 +54,4 @@
 | 日期 | 變動 | 由 |
 |---|---|---|
 | 2026-06-27 | Phase kickoff（active）— 用戶 2026-06-27 批准「接埋兩步令 W98 同願景完全融合」。先讀 4 surface 確認既有 pattern（`profile_presets.py` / `doc-config-tab.tsx` / `settings-doc-profiling.tsx` / `test_profile_routing.py`）→ 寫 plan。F1 backend preset（nearest+cap8）→ F2 frontend 3 surface → F3 verify + doc-sync。cap 5→8 對齊 drive-images-1 = 順帶決定,向用戶 surface。**ADR-0056 §Amendment 更新（preset-level flip,non-global）** | kickoff |
+| 2026-06-27 | **F1-F3 完成 → G-W99 PASS,phase closed**:F1 `profile_presets` P1_sop_imgdense 加 nearest+cap8 + test（`69bc2bb`,132 passed + ruff + mypy clean）;F2 前端 3 surface nearest toggle（`c1aa7a7`,tsc/vitest 4 passed/lint 綠,方案 A 零新視覺 H7 pass）;F3 ADR-0056 §Amendment + memory + running-GET 改 pytest（R3 deviation:constant change,`test_profile_routing` assert + `test_profile_presets_routes` route serialize 取代,重啟純 tautology）。**無新 ADR / 無新 vendor / global default OFF production-preserve** | F1-F3 + close |

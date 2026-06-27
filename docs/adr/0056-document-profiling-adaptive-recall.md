@@ -308,8 +308,20 @@ W75 段②d 把 un-anchored aux 圖注入到**章節最後一個** anchored mark
 - **實證**:offline 診斷 18 captures(`scripts/diag_leaf_anchor.py` + `_capsweep.py`)—— worse=0、cap8 多置 110 張 aux 入步驟、nocap clump 37→16;production live A/B(`_live.py`)—— citation image set 不變(recall 不受影響)+ running backend markers 置入升(Q001 76→81 / Q036 52→72);browser 肉眼(用戶 §15 verdict PASS)圖交織入步驟、39-clump 病態消失。
 - **drive-images-1 config = nearest + cap8**(W98 F3 用戶拍板;`section_anchor_max_per_anchor=8`)。
 - **邊界(誠實)**:nearest 按設計**唔強錨去錯 section** → 無同章節錨點嘅圖(可錨率 < 100%)仍 section-grouped 呈現(ADR-0064);呢部分受**答案完整度(乙類,generation-ceiling 已收口,見 `docs/09-analysis/source_fidelity_recall_external_research_20260626.md` §6)**約束 ——**甲類 nearest 上限 = 乙類答案完整度,兩腿相連**。
-- **Production default flip**(global / preset OFF→ON)= 另一決定(類 ADR-0052),out-of-scope。
+- **Production default flip** — **preset-level(P1_sop_imgdense)已落地 W99**(見下 Amendment W99);**global default**(`Settings.section_anchor_nearest`)仍 OFF = 另一決定(類 ADR-0052),out-of-scope。
 - Refs:W98 plan `docs/01-planning/W98-leaf-anchor-precision/`;commits `8323253`(F1)/ `828f85b`(F2)/ `8ca31a2`(F3)/ `d7762b1`(F4)。
+
+---
+
+## Amendment(W99,2026-06-27)— nearest 融入自動配對 + 前端 UI(願景融合)
+
+W98 落地咗 `section_anchor_nearest` knob(四層 config)+ 為 drive-images-1 人手 set(per-KB nearest+cap8),但個 knob **未融入 ADR-0056 願景嘅兩個 surface**:(1)profile→preset 自動配對 `profile_presets.py` 冇 nearest → 新 ingest 圖密 SOP 文件唔自動有;(2)前端 per-doc / preset-mapping UI 冇 nearest toggle → 用戶頁面調唔到。本 amendment 接埋呢兩步,令「自動判斷文件 → 自動配對策略」+「頁面自助調試」對 nearest 都成立。
+
+- **自動配對(F1)**:`PROFILE_PRESETS["P1_sop_imgdense"]` 加 `section_anchor_nearest=True` + `section_anchor_max_per_anchor` 5→8(對齊 drive-images-1 W98 F3 §15 決定,令新 ingest P1 文件唔比 drive-images-1 差)。**只改 P1_sop_imgdense** —— 佢係唯一開 `enable_section_anchored_aux_images` 嘅 profile,nearest 只對佢有意義(P1_sop_text / P3_slide_* 冇開 section 錨定;P2/P4/P5 散文/掃描/表單唔做 → 不碰,D7 保守 + §1.3 surgical)。
+- **前端 UI(F2)**:3 surface expose `section_anchor_nearest` —— (a)`doc-config.ts` DocConfig type 加 field;(b)`doc-config-tab.tsx`(L3 per-doc 微調)W81 image-anchor group 加 nearest `DocSwitchKnob` + key 入 `DOC_TUNE_KNOB_KEYS`;(c)`settings-doc-profiling.tsx`(admin preset 映射)EditPresetDialog section-錨定 field 加 nearest toggle + `fmtAnchor` table 反映。**跟既有 design-stage expansion 方案 A 零新視覺**(複用 `DocSwitchKnob` / `.switch` row,無新 component / 無新 mockup deviation,H7 self-check pass)。
+- **範圍邊界**:**只 preset-level + UI**,**global default 不變**(`Settings.section_anchor_nearest` 仍 False)→ 非 P1 / 其他 KB / 既有文件 production-preserve;改 preset 只影響**將來 ingest**(auto-write per-doc,D6 守 manual override);drive-images-1 已 per-KB set,照行。
+- **驗證**:backend 132 passed + ruff + mypy clean(`profile_presets` 零 error);frontend tsc clean + vitest 4 passed + lint clean;running backend `GET /profile-presets` P1_sop_imgdense 反映 nearest+cap8(F3)。
+- Refs:W99 plan `docs/01-planning/W99-nearest-preset-ui/`。
 
 ---
 
