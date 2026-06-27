@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W95-rbac-p5-governance-impl(enterprise RBAC track 第 8 期,P5 implementation) |
-| Status | **active**(2026-06-25 用戶批准「繼續執行 P5 實作」) |
+| Status | **closed — implementation 暫緩**(2026-06-25;P5 設計完成保留〔W94 + ADR-0068 Accepted〕,F1 開頭 4 檔即 `git checkout` 還原 = 零 code 改動 — 治理功能〔auditor + access review〕等真實審計 / 合規 driver,Tier 1.5;詳見 progress.md「暫緩」段) |
 | Tier | Tier 1.5(per ADR-0068) |
 | 依賴 | **ADR-0068 Accepted**(2026-06-25)・ ADR-0027(role / permission matrix / audit log 基建)・ W94 設計(threat-model-p5 / target-architecture-p5) |
 | 錨點 | **ADR-0068** §Decision(auditor role 唯讀 + access-review report + re-certify)・ §Decision 6 分段 F1-F5 |

@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Status** | Tier 1 / 12-week implementation |
-| **Phase** | POC(W1–W6) → Beta(W7–W10) → Staged Rollout(W11–W12) |
-| **Spec Version** | v5(2026-04-27,frozen) |
+| **Status** | Tier 1 / 原 12-week → 實際 rolling JIT(最近 closed phase = W99,2026-06-27) |
+| **Phase** | W1–W18 base(POC → Beta → Rollout → UI sprint cycle → app shell IA)+ W19+ rolling JIT;timeline 見 [`docs/12-ai-assistant/01-prompts/01-session-start.md`](./docs/12-ai-assistant/01-prompts/01-session-start.md) §10 |
+| **Spec Version** | v6(frozen;v5 → v5.1 → v6 amendment per ADR-0014/0015/0024) |
 | **Tech Lead** | Chris |
 | **Strict Mode** | ON — see [`CLAUDE.md`](./CLAUDE.md) |
 
@@ -85,12 +85,12 @@ ekp/
 ├── README.md                  ← 你而家睇緊
 ├── CLAUDE.md                  ← Claude Code standing instructions(strict mode)
 ├── docs/
-│   ├── architecture.md        ← Spec v5(frozen,single source of truth)
+│   ├── architecture.md        ← Spec v6(frozen,single source of truth)
 │   ├── setup.md               ← Local dev + Azure resource setup
 │   ├── api-contract.md        ← (W2 ready)18 endpoints OpenAPI spec
 │   ├── eval-methodology.md    ← (W1 ready)RAGAs + 4 metric framework
 │   ├── eval-set-v0.yaml       ← (W1 ready)30 條 ground truth eval set
-│   ├── decision-form.md       ← (W1 ready)21 條 Open Question stakeholder review
+│   ├── decision-form.md       ← 22 條 Open Question stakeholder review(17 Resolved / 5 Open)
 │   └── adr/                   ← (W2 ready)Architecture Decision Records
 ├── references/
 │   ├── dify/                  ← Read-only reference(gitignored)
@@ -150,10 +150,10 @@ ekp/
 
 呢個 project 用 **Claude Code 作為主要 dev agent**。Claude Code 嘅 standing instructions 喺 [`CLAUDE.md`](./CLAUDE.md),包括:
 
-- Strict Mode hard constraints(H1–H6)
+- Strict Mode hard constraints(H1–H7)
 - Document routing logic(咩情況讀邊份 doc)
 - Coding / git / testing conventions
-- Sprint awareness(W1–W12 default focus)
+- Sprint awareness(W1–W18 base + W19+ rolling JIT)
 - Self-verification checklist
 
 **Onboarding new dev**:讀完 README.md → 讀 CLAUDE.md → 讀 [`docs/architecture.md`](./docs/architecture.md) → 讀 [`docs/setup.md`](./docs/setup.md) 跑 setup → 開工。
@@ -216,7 +216,7 @@ Decision Gates 詳情見 [`docs/architecture.md` §6.3](./docs/architecture.md)�
 - Q4: Azure OpenAI GPT-5.5 deployment ready?
 - Q13: Ground truth labeling owner
 
-完整 21 條 OQ 同 stakeholder decision form 見 [`docs/decision-form.md`](./docs/decision-form.md)。
+完整 22 條 OQ 同 stakeholder decision form 見 [`docs/decision-form.md`](./docs/decision-form.md)。
 
 ---
 
@@ -251,5 +251,5 @@ External distribution / open-sourcing 需 RAPO management approval。
 
 ---
 
-**Last updated**:2026-04-27
-**README version**:1.0
+**Last updated**:2026-06-27
+**README version**:1.1

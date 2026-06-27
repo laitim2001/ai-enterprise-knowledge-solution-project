@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W96-completeness-eval-gate(source-fidelity §15 北極星線 · 接 ADR-0056 vision 主線) |
-| Status | **active**(2026-06-25 kickoff) |
+| Status | **closed — G-W96 PARTIAL**(2026-06-25;完整度 eval gate 造成但 per-answer 不可靠〔3-run band C003 0.18↔0.88 / C005 0.25↔1.00〕**只可 aggregate 用**;F1-F8 含 DD-15 hardening〔fixed-nugget paired A/B,殘餘噪聲底 ±0.15〕;乙類緩解見 W97 → 兩輪 A/B 反證 → code REVERT〔ADR-0069 §Outcome〕;乙類 = generation-ceiling ~0.77) |
 | Tier | Tier 1(加 eval metric;用既有 infra,不觸 H1/H2 — 同 `image_recall.py` / `marker_placement.py` 並存先例) |
 | 依賴 | 2026-06-20 + 2026-06-25 兩輪 source-fidelity 研究(`docs/09-analysis/`)+ 分析文件 §5.3/§9 乙類 |
 | 錨點 | **CLAUDE.md §15 北極星**・`docs/09-analysis/source_fidelity_recall_external_research_20260626.md`(2026-06-25 本輪研究未存檔,由第三輪 follow-up 捕捉)・`docs/09-analysis/text_image_fidelity_recall_analysis_20260620.md` §5.3 乙類 |
