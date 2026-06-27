@@ -6,7 +6,8 @@ the ingest router (`documents.py:_run_ingest_pipeline`) conservatively auto-writ
 
 Preset values 對齊 ADR-0056 D1 流程 + 已驗 good config:
 - `P1_sop_imgdense` = drive-images-1 已驗 good config (cap=80 / neighbour / max_aux=40 /
-  markers / overview_pin) → auto-write 對 P1 不退化 (W73 R1 緩解)。
+  markers / section 錨定 nearest + cap8 / overview_pin) → auto-write 對 P1 不退化 (W73 R1
+  緩解;W99 加 nearest + cap8 對齊 drive-images-1 F3 §15 決定)。
 - 其他 profile = D1 描述 + D7 保守 default;中值未逐一實證,段③ UI 俾 admin 調 mapping。
 - `too_small` / `unknown` → None (唔 routing,inherit per-KB / global,D7 保守)。
 
@@ -29,6 +30,8 @@ PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
     # 圖密結構化 SOP — drive-images-1 已驗 good config (避退化)。
     # W75 / ADR-0056 段②d — section 級錨定 (方案 A) 只開呢個 profile (結構化 SOP 收益高
     # 錯位風險低;P2/prose 留 False 避反噬,per ADR-0056 D7 條件式)。
+    # W99 / ADR-0056 §Amendment — leaf 級 doc_order-nearest 錨點入 preset (令新 ingest P1
+    # 文件自動同 drive-images-1 一致;只呢個 profile 開咗 section 錨定故只佢有意義)。
     "P1_sop_imgdense": DocConfig(
         max_images_per_answer=80,
         enable_citation_neighbour_images=True,
@@ -36,7 +39,8 @@ PROFILE_PRESETS: dict[DocProfile, DocConfig | None] = {
         citation_neighbour_section_path_prefix_depth=1,
         enable_inline_image_markers=True,
         enable_section_anchored_aux_images=True,
-        section_anchor_max_per_anchor=5,  # W75 F5 — bound clump (DD-1 39 → 6); overflow → trailing
+        section_anchor_nearest=True,  # W99 — doc_order-nearest 錨點 (W98 knob);圖錨對應步驟非堆章節尾
+        section_anchor_max_per_anchor=8,  # W99 — 對齊 drive-images-1 (F3 §15: placed 218/235);was 5 (W75)
         enable_chapter_overview_pin=True,
         answer_detail="detailed",
     ),

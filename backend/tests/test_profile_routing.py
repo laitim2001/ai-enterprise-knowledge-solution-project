@@ -49,7 +49,8 @@ def test_p1_imgdense_preset_aligns_good_config() -> None:
     assert p.citation_neighbour_max_aux_images == 40
     assert p.enable_inline_image_markers is True
     assert p.enable_section_anchored_aux_images is True  # W75 / ADR-0056 段②d 方案 A
-    assert p.section_anchor_max_per_anchor == 5  # W75 F5 — clump cap
+    assert p.section_anchor_nearest is True  # W99 — leaf 級 doc_order-nearest 錨點 (ADR-0056 §Amendment)
+    assert p.section_anchor_max_per_anchor == 8  # W99 — 對齊 drive-images-1 (was 5, W75 F5)
     assert p.enable_chapter_overview_pin is True
     assert p.answer_detail == "detailed"
 
