@@ -12,7 +12,7 @@
 | Project | **Enterprise Knowledge Platform (EKP)** — Tier 1 Foundation |
 | First Use Case | Drive Project — Ricoh internal user manuals |
 | Primary Spec | `docs/architecture.md` v6 frozen(v5 → v5.1 → v6 amendment W11 D2 cont per ADR-0014/0015 — UI Tier 1 expansion 9 views + hybrid auth model;§3.4 + §3.7 inline-tagged via ADR-0022/0023 W17,doc version held) |
-| Phase | Tier 1 Foundation — 原 spec 12-week(POC 6w → Beta 4w → Rollout 2w)實際 trajectory:W1–W11 base + **W12–W15 UI sprint cycle pivot**(v5.1→v6 amendment)+ W17 beta hardening + W18 unified application shell IA。**17 phases closed through W18(2026-05-11)**,W16 partial 待 Track A IT cred,W19+ rolling JIT |
+| Phase | Tier 1 Foundation — 原 spec 12-week(POC 6w → Beta 4w → Rollout 2w)實際 trajectory:W1–W11 base + **W12–W15 UI sprint cycle pivot**(v5.1→v6 amendment)+ W17 beta hardening + W18 unified application shell IA。**W18 後 W19+ rolling JIT 持續至 W99**(最近 closed = W99 nearest-preset-ui,2026-06-27)— 主線 image-recall(W59-68)+ ADR-0056 per-KB config vision(W72-85)+ enterprise RBAC track(W88-95)+ 完整度 eval gate(W96-97)+ 圖錨 amendment(W98-99)。W16 partial 待 Track A IT cred。逐 phase timeline 見 `docs/12-ai-assistant/01-prompts/01-session-start.md` §10 |
 | Strict Mode | **ON** — see §5 Hard Constraints |
 | Behavioral Baseline | **§1(Karpathy guidelines)** — universal coding mindset,適用於所有 code change |
 | Decision Owner(architecture) | Chris(技術 Lead) |
@@ -124,7 +124,7 @@ Multi-step task 要先講 plan:
 | 涉及 Dify reference | `references/REFERENCE_USAGE.md`(W1 Day 1 setup) | 嚴禁 copy-paste,只可 layout 借鑒 |
 | Stakeholder-facing 變動 | `docs/decision-form.md`(W1 ready) | 確認 22 條 OQ status(Q22 NEW W12 D1 per ADR-0014) |
 | **用戶操作 / 配置 / 調試疑問**(UI 點用、旋鈕做咩、出廠值、benchmark 對照、故障排查)| [`docs/08-user-guide/`](./docs/08-user-guide/README.md)(8 份,2026-06-12 W69-era 快照)| 答用戶操作問題 first stop,唔好憑記憶重新推導旋鈕值;**ADR 改 default 時必須同步其 `03-configuration-reference.md` + `06-benchmarks-and-metrics.md`**(維護規則喺其 README)|
-| **Enterprise 權限(RBAC)擴充工作** | [`docs/01-planning/enterprise-rbac/TRACKER.md`](./docs/01-planning/enterprise-rbac/TRACKER.md)(追蹤入口)+ `enterprise-rbac/FINDINGS.md`(單一事實來源)| 2026-06-23 啟動;W88 P0 `draft` 待 Chris 批准;P2+ 跨 Tier 邊界需 ADR-0066 + Chris approve(H1/H4) |
+| **Enterprise 權限(RBAC)擴充工作** | [`docs/01-planning/enterprise-rbac/TRACKER.md`](./docs/01-planning/enterprise-rbac/TRACKER.md)(追蹤入口)+ `enterprise-rbac/FINDINGS.md`(單一事實來源)| 2026-06-23 啟動,**做到 W95**:P0 地基 → P2 檢索層文件 ACL → P3 文件級+群組繼承(ADR-0066/0067 Accepted)→ P5 治理設計(ADR-0068 Accepted,**impl 2026-06-25 暫緩等審計 driver,Tier 1.5**);跨 Tier 邊界需 ADR + Chris approve(H1/H4) |
 | 評估 GraphRAG / multi-agent / multi-tenancy | **STOP** — 呢啲係 Tier 2,Tier 1 唔做 | See `docs/architecture.md` §11 trigger matrix |
 
 **Default behavior**:如果你唔確定一個 task 屬邊個 doc 範圍,**ask before guessing**。
@@ -496,7 +496,8 @@ references/DIFY_PINNED_COMMIT.txt
 | W16 | Beta deploy resume — Track A IT cred + 25% rollout activation + daily metric monitor + backend stub closure cascade | 🟡 **draft / partial**:F5 stub cascade DONE;F1-F4 仍 pending **Track A IT cred populate event + R-B1 closure** |
 | W17 | Beta hardening(parallel to W16)— Postgres persistent backing(ADR-0023)+ auth-transport hardening(ADR-0022)+ RAGAs 4-metric integration + ADR-0017 R8 mitigation pattern | ✅ closed 2026-05-10(Gate PASS;🚧 F1.5b + F3.5b R8/Azure-key-bound runtime smoke deferred per CO17) |
 | W18 | Unified application shell IA(per ADR-0024)— `<AppShell>` across all authenticated views + URL flatten(`/admin/*`→`/kb/*`)+ `/dashboard` real overview + `/settings` + `<GlobalSearch>` Cmd/Ctrl+K palette + V7 Landing removed | ✅ closed 2026-05-11(Gate PASS WITH SMOKE-USER-DEFERRED CAVEAT) |
-| W19+ | _not pre-created_ — rolling JIT per §10 R1 | _kickoff post-W18 closeout decision;candidates = W16 F1-F4 if Track A IT cred lands / Tier 2 prep governance Q12 / Beta-launch readiness pass / local-dev seed-KB task / **Enterprise RBAC track(2026-06-23 啟動,W88 P0 `draft` 待批准,入口 `docs/01-planning/enterprise-rbac/TRACKER.md`)**_ |
+| W19–W99 | _occurred — rolling JIT per §10 R1(此表未逐 phase backfill,以 phase folder + session-start.md §10 為準)_ | _image-recall(W59-68,ADR-0054)/ ADR-0056 per-KB config vision(W72-85)/ inline image markers(W70-71)/ enterprise RBAC track(W88-95:P0→P2→P3→P5,ADR-0066/0067/0068)/ 完整度 eval gate(W96-97,ADR-0069 REVERT)/ 圖錨 amendment(W98-99,ADR-0056 §Amendment)_ |
+| W100+ | _not pre-created_ — rolling JIT per §10 R1 | _candidates(多 blocked on production):Track A IT cred(W16 F1-F4)/ production v1→v2 原子切換 / prose human GT(卡用戶)/ RBAC P5 impl(等審計 driver)/ `section_anchor_nearest` global default flip(另一決定)/ 新 use case_ |
 
 如果 Claude Code session 邊個 week 唔清楚,**ask user "What week / day are we in?"** 之後再做 default focus 對應。Hard gates:Gate 1 ✅ / Gate 2 PARTIAL ✅ / Gate 3 ✅ / Tier 1 UI sprint cycle FINAL ✅ / **Production launch gate ⏳ pending Track A IT cred**。
 
