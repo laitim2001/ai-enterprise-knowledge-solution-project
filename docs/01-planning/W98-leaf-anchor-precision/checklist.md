@@ -21,11 +21,11 @@
 - [x] try/except graceful 保留(未碰;注入失敗 → 原 answer)
 - _note_:mypy query.py 既有 81-error baseline(line 82/203/723/767 pre-existing,非本改動;529/714 唔在 list)→ §1.3 surgical 唔掂無關 error
 
-## F3 — cap 互動 + drive-images-1 config 決定
+## F3 — cap 互動 + drive-images-1 config 決定 ✅(2026-06-27)
 
-- [ ] diag harness 量 nearest × cap∈{0,5,higher} 嘅 clump / placement / trailing trade(9 query)
-- [ ] 揀 drive-images-1 推薦 config(nearest + cap 調整),記數據入 progress
-- [ ] 確認 cap5 最壞 clump 惡化(+1~2）係否可接受 / 需放寬 cap
+- [x] cap-sweep（`scripts/diag_leaf_anchor_capsweep.py`,offline reuse 18 captures)量 `{last,nearest} × cap∈{0,3,5,8}` 嘅 clump/placed/trailing trade（`reports/leaf_anchor_capsweep.json`）
+- [x] 揀 drive-images-1 推薦 config = **nearest + cap8**（用戶 2026-06-27 拍板;置 218/235 vs 現 79、trailing 156→17、clump 最壞 38→12）
+- [x] cap 惡化可接受性已決:nearest 每 cap 壓倒 last;§15 角度 trailing（還原失敗)比 clump（密但近步驟)更傷 → 用戶取 §15 優先 + clump 受控（cap8 最壞 12）
 
 ## F4 — production A/B + browser 肉眼
 

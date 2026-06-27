@@ -39,7 +39,24 @@
 - **off bit-identical**:default resolve False（測試）+ 既有 route 測試全過（行為不變）+ F1 function byte-identical（mirror W75 既有 pattern:無獨立 route inject 測試）。
 - **mypy note**:query.py 既有 81-error baseline（line 82/203/723/767 等 pre-existing tech debt,項目無 mypy config / route 檔無 clean --strict baseline)；我加嘅 529/714 唔在 error list = 本改動 type-clean。§1.3 surgical 唔掂無關 error。
 
-**Next**:F3（cap 互動 + drive-images-1 config 決定 —— diag harness 量 nearest × cap∈{0,5,higher}）。**等用戶指示繼續定 pause**。
+**F3 落地（offline,零 backend）**:
+- `scripts/diag_leaf_anchor_capsweep.py` reuse 18 captures,用**生產函數**跑 `{last,nearest} × cap∈{0,3,5,8}`（`reports/leaf_anchor_capsweep.json`）。總可錨 aux = 235。
+- 數據（clump 平均/最壞 · placed · trailing）:
+
+  | config | clump 平均 | clump 最壞 | placed | trailing |
+  |---|---|---|---|---|
+  | last_cap0 | 13.89 | 38 | 235 | 0 |
+  | last_cap5（現 prod） | 5.22 | 7 | 79 | 156 |
+  | last_cap8 | 6.56 | 10 | 103 | 132 |
+  | nearest_cap0 | 7.22 | 16 | 235 | 0 |
+  | nearest_cap5 | 5.44 | 9 | 189 | 46 |
+  | **nearest_cap8** | 6.33 | 12 | 218 | 17 |
+
+- **洞察**:現 prod（last_cap5)掉 156/235（66%)去 trailing = §15 還原缺口;nearest 每 cap 壓倒 last（多 placed + 細 clump,因分散）。trailing（圖脫離步驟)比 clump（密但近步驟)更傷 §15。
+- **決定（用戶 2026-06-27)**:drive-images-1 = **nearest + cap8**（置 218/235 = 93%,trailing 17,clump 最壞 12 << 現無-cap 38）。cap0 極致（全置)留 fallback;cap5 保守留 fallback。
+- config 套用 + 驗證留 F4（production A/B + browser）。
+
+**Next**:F4（production A/B + browser）—— **需重啟 backend**（running server 仲係 pre-F1 stale,要 pick up nearest wiring）+ 設 drive-images-1 per-KB `section_anchor_nearest=true` + `section_anchor_max_per_anchor=8` + image-recall/marker-order 唔回退 + browser 肉眼。**等用戶指示**。
 
 **Carry-over / 待決**:
 - F1 knob 設計 = bool `section_anchor_nearest`（vs mode enum）—— 採 bool（Karpathy §1.2 simplicity）。
