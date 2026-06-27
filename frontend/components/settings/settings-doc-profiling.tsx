@@ -58,7 +58,7 @@ const fmtNeighbour = (c: DocConfig): string =>
     : '關';
 const fmtAnchor = (c: DocConfig): string =>
   c.enable_section_anchored_aux_images
-    ? `section · cap ${c.section_anchor_max_per_anchor ?? 0}`
+    ? `section · ${c.section_anchor_nearest ? '近錨' : '章末'} · cap ${c.section_anchor_max_per_anchor ?? 0}`
     : '—';
 
 export function SettingsDocProfiling() {
@@ -371,17 +371,36 @@ function EditPresetDialog({
               </span>
             </div>
             {draft.enable_section_anchored_aux_images ? (
-              <input
-                className="input"
-                type="number"
-                min={0}
-                value={draft.section_anchor_max_per_anchor ?? ''}
-                onChange={(e) => set('section_anchor_max_per_anchor', num(e.target.value))}
-                style={{ maxWidth: 140, marginTop: 8 }}
-                aria-label="每錨點圖片上限(0 = 無 cap)"
-              />
+              <>
+                {/* W99 — nearest 錨點策略 toggle (跟既有 .switch row pattern, 視覺零發明) */}
+                <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  <span
+                    className="switch"
+                    data-on={draft.section_anchor_nearest === true}
+                    role="switch"
+                    aria-checked={draft.section_anchor_nearest === true}
+                    tabIndex={0}
+                    onClick={() => set('section_anchor_nearest', !draft.section_anchor_nearest)}
+                  />
+                  <span className="muted text-xs">
+                    錨到最近步驟(nearest):{draft.section_anchor_nearest ? '開' : '關(章節最後)'}
+                  </span>
+                </div>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  value={draft.section_anchor_max_per_anchor ?? ''}
+                  onChange={(e) => set('section_anchor_max_per_anchor', num(e.target.value))}
+                  style={{ maxWidth: 140, marginTop: 8 }}
+                  aria-label="每錨點圖片上限(0 = 無 cap)"
+                />
+              </>
             ) : null}
-            <div className="hint">開 = aux 圖錨入各自章節(末尾堆→章節內);數字 = 每錨點上限(0=無 cap)。</div>
+            <div className="hint">
+              開 = aux 圖錨入各自章節(末尾堆→章節內);nearest = 錨到 doc_order 最近步驟(否則章節最後);數字
+              = 每錨點上限(0=無 cap)。
+            </div>
           </div>
 
           {/* 詳細度 */}

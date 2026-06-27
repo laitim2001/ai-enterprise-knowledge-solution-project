@@ -112,6 +112,7 @@ const DOC_TUNE_KNOB_KEYS = [
   // setKnob / buildDraftConfig / dirty / saveMutation via this key list).
   'enable_inline_image_markers',
   'enable_section_anchored_aux_images',
+  'section_anchor_nearest', // W99 / ADR-0056 §Amendment — leaf 級 doc_order-nearest 錨點
   'section_anchor_max_per_anchor',
 ] as const;
 
@@ -496,6 +497,11 @@ function DocConfigEditor({
               label="section 錨定 aux 圖(末尾堆 → 章節內)"
               value={knobs.enable_section_anchored_aux_images as boolean | null}
               onChange={(v) => setKnob('enable_section_anchored_aux_images', v)}
+            />
+            <DocSwitchKnob
+              label="錨到最近步驟(nearest;否則章節最後)"
+              value={knobs.section_anchor_nearest as boolean | null}
+              onChange={(v) => setKnob('section_anchor_nearest', v)}
             />
             <DocTuneKnob
               label="每錨點圖片上限(0 = 無 cap)"

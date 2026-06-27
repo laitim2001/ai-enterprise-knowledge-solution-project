@@ -31,6 +31,8 @@ export interface DocConfig {
   // W81 / ADR-0060 — image-anchor knobs (inline markers W70 / section 錨定 W75).
   enable_inline_image_markers?: boolean | null;
   enable_section_anchored_aux_images?: boolean | null;
+  // W99 / ADR-0056 §Amendment — leaf 級 doc_order-nearest 錨點 (圖錨對應步驟非堆章節尾).
+  section_anchor_nearest?: boolean | null;
   section_anchor_max_per_anchor?: number | null;
 }
 
