@@ -65,7 +65,31 @@
 - **marker order-consistency**:結構論證（nearest 按 doc_order → 更 order-consistent）+ offline;full empirical run 按用戶同意 deferred。
 - **browser 肉眼**（claude-in-chrome 驅動已認證 Chrome;**坑:EKP frontend = :3001,:3000 係 Langfuse**,playwright 撞 :3000 auth wall 證實咗 port confusion）：Q001 live 答案 —— 圖交織入步驟（figures 56/57/59 + Confirm step 截圖）、W75「39 連續圖」病態消失、按 section 組織。**誠實 caveat**:section-grouped grid 殘留 = 可錨率 < 100%(乙類-bound,已收口);**甲類 nearest 上限 = 乙類答案完整度（兩腿相連）**。**用戶 §15 verdict 達標 → F4 PASS**。
 
-**Next**:F5（doc-sync + ADR-0056 amendment + memory + DEFERRED close + production default flip 列另一決定 + G-W98 Gate verdict）。
+**F5 落地（2026-06-27,doc-sync + close）**:
+- ADR-0056 加 §Amendment(W98)— 段②d leaf 級 doc_order-nearest + knob + 實證 + drive-images-1=nearest+cap8 + 乙類邊界 + default flip out-of-scope。
+- memory [[project_inline_image_markers_w70]] append W98 段 + [[principle_source_fidelity_recall]] 甲 bullet + 自驗下一步 mark done。
+- DEFERRED_REGISTER DD-10 leaf 級 trigger 標 ✅ W98 解(DD-10 核心層 B 仍 defer)。
+- user-guide **N/A**（global default 不變 OFF,維護規則未觸發;knob 家族本身未喺 user-guide,§1.3 surgical 不加孤條）。
+- production default flip = 另一決定（out-of-scope,需再確認）。
+
+---
+
+## Phase Gate — G-W98 = **PASS**（2026-06-27）
+
+- ✅ F1 knob OFF byte-identical（既有 14 測試全過 + production-preserve）+ nearest 單元測試綠（4 新:spread/single-anchor≡last/default-preserves/cap-per-anchor）。
+- ✅ F2 wire 兩注入點 + 5 個四層 resolve 測試;off bit-identical（67/70 passed,ruff clean;mypy 新 code clean,query.py 既有 baseline 非本改動）。
+- ✅ F3 cap-sweep → nearest+cap8 決定（用戶拍板;cap8 置 218/235,clump 最壞 12）。
+- ✅ F4 production A/B:recall 不受影響（image set 不變）+ running backend honors nearest（markers 置入升,非 stale）+ browser §15 verdict **PASS**（用戶,圖交織入步驟,39-clump 病態消失）。
+- ✅ F5 doc-sync + ADR-0056 amendment（非新 ADR,leaf 級 pre-scoped per H1）。
+- **無新 ADR**（ADR-0056 amendment）/ **無新 vendor**（H2）/ **無 fine-tune**（H4）/ **global default OFF = production-preserve**（H1）。
+
+## Retro（教訓）
+1. **診斷先於 build 兩次都贏**:乙類 ceiling 診斷避免又一輪白做（收口 generation-ceiling）;甲類 offline 18-capture 診斷先證 Pareto 正向先 build → W98 落地有底氣。
+2. **統一 anchor 選擇邏輯令 `nearest=False` byte-identical**:用既有 14 測試做 production-preserve gate,改動風險最低。
+3. **甲乙兩腿相連**:browser 肉眼揭示 section-grouped grid 殘留 = 可錨率<100%（答案未寫嗰 section 步驟）→ 甲類 nearest 上限 = 乙類完整度（已收口 generation-ceiling）。headless 量唔到呢個,肉眼先見（W75 教訓重現）。
+4. **踩坑記錄**:EKP frontend=:3001 不是 :3000（Langfuse）;commit heredoc 訊息勿嵌 `"`（native git arg parser 重切）;backend reload=False 改 code 後必重啟（F4 重啟先 pick up）。
+
+**Next（W98 已收尾）**:rolling JIT,未開新 phase。候選:production default flip（global/preset OFF→ON,需再確認）/ leaf 級 full empirical `check_marker_order`（deferred）/ 其他 source-fidelity 或新 use case。next ADR NNNN = `0070`。
 
 **Carry-over / 待決**:
 - F1 knob 設計 = bool `section_anchor_nearest`（vs mode enum）—— 採 bool（Karpathy §1.2 simplicity）。
