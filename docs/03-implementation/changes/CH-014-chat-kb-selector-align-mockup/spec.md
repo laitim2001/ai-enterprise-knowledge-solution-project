@@ -1,7 +1,7 @@
 ---
 change_id: CH-014
 title: "chat KB 選擇器對齊 mockup — 移除載入對話時的 KB 還原（selector 獨立語義）"
-status: approved         # draft | proposed | approved | active | done | cancelled
+status: superseded       # superseded by CH-015 — direction was wrong (see below)
 created: 2026-06-28
 target_completion: 2026-06-28
 affects_components: [C10]      # C10 Chat（前端 chat 互動）
@@ -85,6 +85,7 @@ spec_refs:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-28 | Initial draft + approved | 受控測試證明功能正確；對齊 mockup 移除 BUG-033 過度實作的載入還原；用戶 AskUserQuestion 選「對齊 mockup」 | Chris |
+| 2026-06-28 | **SUPERSEDED by CH-015** | 方向誤判：mockup 是靜態 demo、未涵蓋「載入對話顯示其 KB」真實需求。用戶實測回報點對話回到 default Drive Manuals，要求恢復還原。CH-015 revert 之。教訓見 CH-015 §8 | Chris |
 
 ---
 
