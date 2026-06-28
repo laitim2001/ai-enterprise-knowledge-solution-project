@@ -147,9 +147,17 @@ export default function DashboardPage() {
   });
 
   const kbs = kbQuery.data ?? [];
-  const totalDocs = kbs.reduce((s, k) => s + k.total_documents, 0);
-  const totalChunks = kbs.reduce((s, k) => s + k.total_chunks, 0);
-  const totalStorageMb = kbs.reduce((s, k) => s + k.storage_size_mb, 0);
+  // CH-017 — the stat strip describes the ACTIVE knowledge bases. Mockup
+  // `MOCK_KBS` had no `archived` concept, so mockup `{kbs.length} active` worked
+  // (length == active count); the real `KbStatus` carries an `archived`
+  // soft-delete flag, so we filter to keep the strip's "N active" + Documents /
+  // chunks consistent with the sidebar badge (CH-016). The KB summary TABLE
+  // below still lists ALL kbs (archived ones flagged) — table = full inventory,
+  // strip = active overview.
+  const activeKbs = kbs.filter((k) => !k.archived);
+  const totalDocs = activeKbs.reduce((s, k) => s + k.total_documents, 0);
+  const totalChunks = activeKbs.reduce((s, k) => s + k.total_chunks, 0);
+  const totalStorageMb = activeKbs.reduce((s, k) => s + k.storage_size_mb, 0);
   // Mockup line 13:`kbs.filter(k => k.status === "indexing")`。Backend `KbStatus`
   // 暫未 expose `status === indexing` field(W22 B-i policy:default "All ready"
   // until backend ships indexing state)。`archived` flag 唔等於 indexing,
@@ -201,7 +209,7 @@ export default function DashboardPage() {
               <Database size={13} /> Knowledge bases
             </div>
             <div className="stat-value">
-              {kbs.length}
+              {activeKbs.length}
               <span className="stat-unit"> active</span>
             </div>
             <div className="stat-meta">
@@ -241,7 +249,7 @@ export default function DashboardPage() {
               <Activity size={13} /> Today&apos;s spend
             </div>
             <div className="stat-value">—</div>
-            <div className="stat-meta muted">Cost summary pending Beta cohort</div>
+            <div className="stat-meta muted">Cost tracking is not enabled yet</div>
           </div>
         </div>
 
@@ -406,7 +414,7 @@ function RecentQueriesCard() {
           className="text-xs muted"
           style={{ padding: '32px 18px', textAlign: 'center' }}
         >
-          No recent activity yet — query log pending (Q6).
+          No queries recorded yet — query logging is not enabled.
         </div>
       </div>
     </div>
