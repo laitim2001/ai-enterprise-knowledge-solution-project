@@ -41,7 +41,7 @@ import { useAuthStore } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
   const router = useRouter();
-  const ssoSignIn = useAuthStore((s) => s.signIn);
+  const signIn = useAuthStore((s) => s.signIn);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,6 +57,10 @@ export default function LoginPage() {
     setIsFormPending(true);
     try {
       const response = await authApi.login({ email, password });
+      // CH-013 — login set the httpOnly ekp_session cookie; hydrate the auth
+      // store with the real identity (signIn → GET /auth/me in cookie mode) so
+      // the AppShell renders the signed-in user instead of the pre-login state.
+      await signIn();
       toast.success(`Welcome back, ${response.user.display_name}!`);
       router.push('/dashboard');
     } catch (err) {
@@ -69,7 +73,7 @@ export default function LoginPage() {
   async function handleSsoClick() {
     setIsSsoPending(true);
     try {
-      await ssoSignIn();
+      await signIn();
       toast.success('Signed in with Microsoft.');
       router.push('/dashboard');
     } catch (err) {

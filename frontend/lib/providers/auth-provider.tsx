@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { authMode, getCurrentUser, login, logout, refresh } from '@/lib/auth';
 import type { AuthenticatedUser } from '@/lib/auth';
@@ -57,6 +57,8 @@ const REFRESH_INTERVAL_MS = 50 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { signIn, setUserFromCache, status } = useAuthStore();
+  // CH-013 — cookie-mode hydration must run exactly once (see the cookie branch).
+  const cookieHydratedRef = useRef(false);
 
   useEffect(() => {
     if (authMode === 'mock') {
@@ -64,6 +66,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // W7 mock mode: auto-sign-in so dev sessions don't have to click a
         // button before each Admin / Chat view loads.
         void signIn();
+      }
+      return;
+    }
+
+    if (authMode === 'cookie') {
+      // CH-013 — hydrate identity from the existing httpOnly ekp_session cookie
+      // exactly once on mount. A 401 (no/invalid session) resolves to `idle`
+      // (NOT `error`) so the login-gate shows the sign-in path normally. We do
+      // NOT re-run on status changes — otherwise a sign-out (status → idle)
+      // would immediately re-hydrate and undo the logout. Login itself goes
+      // through the login page form (authApi.login → cookie) then store.signIn.
+      if (!cookieHydratedRef.current) {
+        cookieHydratedRef.current = true;
+        void (async () => {
+          useAuthStore.setState({ status: 'loading', error: null });
+          try {
+            const user = await login();
+            setUserFromCache(user);
+          } catch {
+            useAuthStore.setState({ user: null, status: 'idle', error: null });
+          }
+        })();
       }
       return;
     }

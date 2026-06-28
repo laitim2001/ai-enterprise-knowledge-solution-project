@@ -24,6 +24,7 @@
 
 import { ChevronDown, Key, LogOut, Settings as SettingsIcon, Shield, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ export function UserMenu() {
   const user = useCurrentUser();
   const role = useRole();
   const signOut = useAuthStore((s) => s.signOut);
+  const router = useRouter();
 
   if (!user) {
     return (
@@ -136,7 +138,7 @@ export function UserMenu() {
           <div className="hr" />
           <button
             type="button"
-            onClick={() => void signOut()}
+            onClick={() => void signOut().then(() => router.push('/login'))}
             className="nav-item"
             style={{
               padding: '7px 10px',

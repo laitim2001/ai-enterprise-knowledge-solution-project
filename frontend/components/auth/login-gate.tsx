@@ -12,6 +12,12 @@
  *    to /login — matching the existing AuthProvider design that avoids an infinite loop if
  *    cred wiring is broken (the user clicks the sign-in CTA; /login is outside (app)/, so it
  *    is not behind this gate).
+ *  - cookie session (CH-013, mock off + SSO off): AuthProvider hydrates identity from the
+ *    httpOnly ekp_session cookie via GET /auth/me on mount. Same gate UI as real MSAL —
+ *    splash while loading, splash + sign-in link when unauthenticated (a 401 resolves to
+ *    `idle`, not `error`). The root `/` redirect (CH-013 §2.4) routes authenticated users
+ *    to /dashboard and others to /login, so this in-(app) splash is only briefly seen on a
+ *    direct deep-link before login.
  *    // TODO(W16): once MSAL cred wiring is live (Q11 Track A), tighten this to a
  *    // router.replace('/login') on the definitively-unauthenticated state.
  */
