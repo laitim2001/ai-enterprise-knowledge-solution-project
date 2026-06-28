@@ -55,6 +55,7 @@ import {
   Users as UsersIcon,
   Zap,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import { UserMenu } from '@/components/auth/user-menu';
 import { GlobalSearch } from '@/components/nav/global-search';
@@ -68,6 +69,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { RoleBadge } from '@/components/users/role-badge';
+import { kbApi } from '@/lib/api/kb';
 import { useRole } from '@/lib/hooks/use-role';
 import { useCurrentUser } from '@/lib/providers/auth-provider';
 
@@ -79,7 +81,8 @@ interface NavLink {
   href: string;
   label: string;
   Icon: LucideIcon;
-  /** Right-aligned tail label (e.g. "5" KBs count, "Cmd↵" shortcut). */
+  /** Right-aligned tail label (e.g. KB count, "Cmd↵" shortcut). The Knowledge
+   *  item's count is injected live in `SidebarNav` (CH-016), not stored here. */
   tail?: string;
 }
 
@@ -95,7 +98,10 @@ interface NavLink {
 const WORKSPACE_NAV: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: Home },
   { href: '/chat', label: 'Chat', Icon: MessageCircle, tail: 'Cmd↵' },
-  { href: '/kb', label: 'Knowledge', Icon: Database, tail: '5' },
+  // tail = live active-KB count, injected in SidebarNav (CH-016). mockup
+  // `ekp-data.jsx:233` ships a hard-coded `tail: "5"` placeholder (= its
+  // MOCK_KBS length); we wire it to the real `kbApi.list()` count instead.
+  { href: '/kb', label: 'Knowledge', Icon: Database },
   { href: '/eval', label: 'Eval', Icon: Activity },
   { href: '/traces', label: 'Traces', Icon: Layers },
 ];
@@ -414,13 +420,25 @@ function SidebarNav({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  // CH-016 — Knowledge nav tail = live active-KB count. Shares the exact
+  // queryKey `['kb','list']` with the /kb list page, so this rides its cache
+  // (no extra request) and reflects the RBAC-trimmed set the current user sees.
+  // `archived` KBs are soft-deleted → excluded. tail stays absent until data is
+  // ready (don't show a stale/placeholder number).
+  const { data: kbs } = useQuery({ queryKey: ['kb', 'list'], queryFn: kbApi.list });
+  const activeKbCount = kbs?.filter((kb) => !kb.archived).length;
+
   return (
     <nav className="nav" aria-label="Primary">
       {!collapsed && <div className="nav-section-label">Workspace</div>}
       {WORKSPACE_NAV.map((item) => (
         <SidebarLink
           key={item.href}
-          item={item}
+          item={
+            item.href === '/kb' && activeKbCount !== undefined
+              ? { ...item, tail: String(activeKbCount) }
+              : item
+          }
           active={isActiveRoute(pathname, item.href)}
           collapsed={collapsed}
           onNavigate={onNavigate}
