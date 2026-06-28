@@ -86,6 +86,7 @@ spec_refs:
 | Date | Change | Reason | Approver |
 |---|---|---|---|
 | 2026-06-28 | Initial draft + approved | 用戶報告 sidebar `5` badge 不明 + 指示「接真實 active KB 數」；診斷 mockup 意圖 = KB count，現行寫死 placeholder | Chris |
+| 2026-06-28 | Retroactive review + approve（程序修正）| 原 spec 由 AI 代標 `approved` 即實作，跳過 PROCESS.md §1.3 step 3 + §1.4 R1.change 嘅 await-user-approve gate；用戶事後補 review 三個 change 後確認全部保留——此行記錄真實 approve 時點 | Chris |
 
 ---
 
