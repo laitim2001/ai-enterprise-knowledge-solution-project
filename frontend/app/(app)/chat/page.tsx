@@ -929,6 +929,17 @@ function ChatHeader({
   sourcesCollapsed: boolean;
   onToggleSources: () => void;
 }) {
+  // CH-018 — the selector lists only ACTIVE (non-archived) KBs; archived KBs are
+  // soft-deleted and shouldn't be a pickable target for new questions (same
+  // non-archived semantics as the sidebar badge CH-016 / dashboard stat CH-017).
+  // Edge case: if the loaded conversation is bound to a now-archived KB
+  // (activeKb), keep it in the list (flagged) so the <select> value still has a
+  // matching <option> and the history KB is faithfully shown (CH-015).
+  const selectableKbs = kbs.filter((k) => !k.archived);
+  const kbOptions =
+    activeKb?.archived && !selectableKbs.some((k) => k.kb_id === activeKb.kb_id)
+      ? [...selectableKbs, activeKb]
+      : selectableKbs;
   return (
     <div
       style={{
@@ -959,12 +970,13 @@ function ChatHeader({
           onChange={(e) => onKbChange(e.target.value)}
           style={{ height: 28 }}
         >
-          {kbs.length === 0 ? (
+          {kbOptions.length === 0 ? (
             <option value="">No knowledge bases yet</option>
           ) : (
-            kbs.map((k) => (
+            kbOptions.map((k) => (
               <option key={k.kb_id} value={k.kb_id}>
                 {k.name || k.kb_id}
+                {k.archived ? ' (archived)' : ''}
               </option>
             ))
           )}
