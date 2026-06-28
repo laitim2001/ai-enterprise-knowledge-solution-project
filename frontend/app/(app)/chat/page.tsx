@@ -308,13 +308,13 @@ export default function ChatPage() {
     setActiveConvId(conversationId);
     try {
       const detail = await conversationsApi.get(conversationId);
-      // CH-014 — the KB selector is independent of conversation switching, to
-      // align the mockup (ekp-page-chat.jsx: kbId is its own state; selecting a
-      // thread does NOT change it; each thread shows its own kb_name in the
-      // history list). We deliberately DO NOT restore detail.conversation.kb_id
-      // here — this reverses BUG-033's over-implementation. The selector means
-      // "which KB to ask with now", not "this thread's KB"; the thread's bound
-      // KB stays visible via its sidebar tag.
+      // Restore the conversation's bound KB so the selector shows the KB this
+      // thread ACTUALLY used — users expect a loaded thread to faithfully show
+      // its real KB (source fidelity per CLAUDE.md §15), not a leftover default.
+      // kb_id lives on detail.conversation. (CH-014 briefly removed this to
+      // "align the static mockup", but that contradicted the real requirement;
+      // restored per user feedback 2026-06-28 — see CH-015.)
+      if (detail.conversation.kb_id) setKbId(detail.conversation.kb_id);
       const hydrated: Message[] = detail.messages.map((m) => ({
         id: m.id,
         role: m.role,
