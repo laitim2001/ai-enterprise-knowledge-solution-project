@@ -105,6 +105,7 @@ Multi-step task 要先講 plan:
 
 | 情況 | 必讀文件 | 補充 |
 |---|---|---|
+| **想知有咩工作 pending / 揀下一個 task 去做** | [`docs/01-planning/BACKLOG.md`](./docs/01-planning/BACKLOG.md)(中央 backlog dashboard) | 全部 pending / 候選 / blocked / defer 一覽 + 狀態;細節 link ADR / `DEFERRED_REGISTER.md` / `enterprise-rbac/TRACKER.md` / phase folder。同步係 binding(§10 R7) |
 | **Multi-day phase / sprint work**(任何超 single session implementation) | [`docs/01-planning/PROCESS.md §2`](./docs/01-planning/PROCESS.md) + active phase folder | Per phase plan / checklist / progress — 詳見 §10 |
 | **Change to existing feature**(modify behavior, < 3 days) | [`docs/01-planning/PROCESS.md §3`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/changes/CH-{NNN}-{kebab}/` | Pre-doc:**spec.md**(approved by user)→ derive checklist + progress;AI auto-classify per PROCESS.md §1 |
 | **Bug-fix**(fix incorrect / broken / regressed behavior) | [`docs/01-planning/PROCESS.md §4`](./docs/01-planning/PROCESS.md) + new instance `docs/03-implementation/bugs/BUG-{NNN}-{kebab}/` | Pre-doc:**report.md**(severity Sev1-Sev4)→ derive checklist + progress;Sev1/Sev2 mandatory postmortem |
@@ -523,6 +524,7 @@ references/DIFY_PINNED_COMMIT.txt
 - **R4**:OQ resolved → 同步更新 `decision-form.md` AND `progress.md` Day-N entry mention
 - **R5**:Phase closeout 之前任何 architectural-adjacent decision(per §5.1 H1)必須寫 ADR
 - **R6**:Pre-active-flip 5-step grep verification **recursive scope** — apply 唔單只 to code-at-active-flip-time,**也** to **plan-text itself** at plan kickoff(W23 F3 amendment per W22 D1/D8/D9 3 次 cumulative recursive catch evidence;memory `feedback_design_fidelity.md` 5-pattern catalog)。5 步:**(1)** read plan literal acceptance criteria;**(2)** grep code base / mockup source for referenced files / functions / patterns;**(3)** surface mismatches via Karpathy §1.1 think-before-coding upfront;**(4)** document deviations in plan §7 changelog at plan kickoff(or active-flip);**(5)** adjust acceptance criteria per actual reality。Recursive trigger:plan text 引用 pre-W{N-1} surface / naming / wording(common contamination source per W20→W22 inheritance);catch it 喺 implementation 之前,而非 post-implementation user-eye audit。
+- **R7**:任何 pending 工作 / next-candidate 嘅**識別**同**進度變動**必須反映喺 [`docs/01-planning/BACKLOG.md`](./docs/01-planning/BACKLOG.md)(中央 backlog dashboard)。觸發點:**(1)** 新 candidate 被識別(分析 / 討論 / ADR Accept / phase retro carry-over / 用戶提出)→ 加一行(狀態 `候選`);**(2)** phase kickoff(plan 建)→ 對應項改 `進行中`;**(3)** phase closeout → 改 `完成`,有 recurring debt 則同步 `DEFERRED_REGISTER.md`;**(4)** defer / blocked 決定 → 改對應狀態 + link DD-N 或阻塞源。BACKLOG 係 **index 層**,細節唔複製(link ADR / DEFERRED_REGISTER / TRACKER / phase folder),避免雙重維護 stale。**唔可以 silent drift**(同 R3)。維護規則全文喺 BACKLOG.md 文末。
 
 ### 10.3 AI Session Start Protocol
 
@@ -549,6 +551,7 @@ Example:`W01-foundation/`、`W02-multi-format-ingestion/`、`W04-crag-eval-shoot
 
 ### 10.5 Reference
 
+- **Central backlog dashboard**(全部 pending / next-candidate + 進度,per R7):[`docs/01-planning/BACKLOG.md`](./docs/01-planning/BACKLOG.md)
 - Workflow source of truth:[`docs/01-planning/PROCESS.md`](./docs/01-planning/PROCESS.md)
 - Templates:[`docs/01-planning/_templates/`](./docs/01-planning/_templates/)
 - W01 reference example:[`docs/01-planning/W01-foundation/`](./docs/01-planning/W01-foundation/)
@@ -680,6 +683,7 @@ EKP Tier 1 — Strict Mode
 ---
 
 **End of CLAUDE.md**
+**Version 2.2 — 2026-06-28 中央 backlog dashboard + R7 同步 binding rule**(用戶指出項目無統一 pending 工作記錄 / next-candidate 機制 + 無進度同步易混亂 → 兩輪 AskUserQuestion 揀「新建 BACKLOG.md」+「同步寫入 §10 binding rule」)。具體變動:新建 [`docs/01-planning/BACKLOG.md`](./docs/01-planning/BACKLOG.md)(中央 dashboard — A-F 六類 + 狀態 lifecycle + 維護規則,由 2026-06-28 全項目 pending 盤點固化做 v0)+ §10.2 加 **R7**(pending / next-candidate 識別 + 進度變動必須同步 BACKLOG,4 觸發點,index 層唔複製細節,no silent drift)+ §2 Document Routing 首位加 backlog entry + §10.5 Reference 加 BACKLOG link。**Why**:現有機制碎片化(`DEFERRED_REGISTER.md` 只收 recurring debt / `adr/README.md` 記決定 / 各 track 自己 TRACKER / §9 一句話 candidates),無單一 pending 入口 + 無防 stale 同步機制(盤點時抓到 `enterprise-rbac/TRACKER.md` checkbox + `adr/README.md` index ADR-0045/0046 兩處 stale 為證)。
 **Version 2.1 — 2026-06-20 North-Star Principle 圖文還原度 promote**(用戶確立 RAG / 知識系統最根本目的準則:答案忠實還原原文檔本來嘅圖文關係,非圖文 1:1,做到還原自然得高完整度 + 準確度)。具體變動:新增 **§15 North-Star Principle**(universal,同 §1 同層,適用所有 recall / 圖文呈現決策)+ §13 When in Doubt 加「圖文 recall / 呈現衝突」row(以原文檔還原為準,末尾孤兒圖退底部前先分甲 / 乙 / 丙)+ Appendix A Quick Reference Card 加 north-star line + memory `principle_source_fidelity_recall` 新建。**Why**:用戶 2026-06-20 explicit「需要一直都有同步的準則…這是最根本目的準則」+ 揀「升格入 CLAUDE.md」。
 **Version 2.0 — 2026-05-25 中文紀律 binding strict rule promote**(W27 D3 第 4 次違反觸發 user explicit「強調保持使用中文對答」request)。具體變動:
 - §11 Output / Communication Conventions 第 1 條 bullet rewrite — 由 single-line 描述 expand 為 **multi-section binding rule** 包含:6 類唯一可保留原文範圍 / Phase Gate verdict word 例外 / 常違反 mapping(Next/Status/Done/pending/ticked/verdict/hypothesis/validated/refuted/lessons learned/priority queue locked/recovery)/ **Hard enforcement gate**(每段 reply 之前 + 完成後 mandatory self-check) / **violation binding level = H7 design fidelity 同層**(broken project signal)/ memory reset 唔再依賴

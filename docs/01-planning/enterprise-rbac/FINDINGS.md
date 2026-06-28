@@ -38,6 +38,8 @@
 - 檢索層文件 / 段落級存取控制 = **0%**;真實 SSO = **0%**(全 mock);群組成員同步 / 管理權分級 / 存取覆核 / 生命週期 = **0%**;前端寫操作(改角色 / 邀請 / 停用)= **佔位未接通**
 
 > **⏩ 2026-06-24 P0 後更新**:上述 §2.B 壞狀態 + §2.C「前端寫操作佔位未接通」已由 **P0 F1-F5 解決** —— bootstrap 生效(首位用戶→admin)/ 角色正確解析 / `verified` 一致 / `/users` + KB 寫操作接通且受 RBAC 守衛(209 RBAC/auth pytest 全綠)。§2 快照保留作 P0 前診斷歷史;P0 後現狀詳見 [`../W88-rbac-p0-foundation/progress.md`](../W88-rbac-p0-foundation/progress.md)。**§2.C 企業核心(檢索層 / SSO / 群組 / 治理)仍 0%**,待 P1+。
+>
+> **⏩ 2026-06-28 P2-P5 後更新**(§2.C + §4 缺口快照部分過時,以本 note 為準):**檢索層文件級存取控制(§4 最關鍵缺口)已由 P2 解決** —— `allowed_principals` Collection + `classification` 索引擴欄位 + 檢索 filter security trimming + query 端點補 KB 層守衛(G1),W90 P2.0-P2.3,**DG4 Tier 1 上線安全先決達成**(ADR-0066)。**文件級 doc_acl override(G6,P3a W92)+ 群組繼承(G7,P3b W93)亦完成**(ADR-0067;query 側 `principals_for_user` 展開,group member 改動零 re-stamp)。**P5 治理層(auditor 職責分立 + 存取覆核)設計拍板 ADR-0068,impl 暫緩等真實審計 driver(Tier 1.5)**。**仍 0% / Tier 2 延後**:真實 Microsoft SSO + SCIM 自動群組同步(P4 只手動成員)+ P6 政策引擎。狀態總覽見 [`TRACKER.md` 一](./TRACKER.md)。
 
 ---
 
@@ -82,3 +84,4 @@
 |---|---|---|
 | 2026-06-23 | 建立 FINDINGS(由 ROADMAP/REPORT/RECORD 抽取整合,作單一事實來源) | 初版 |
 | 2026-06-24 | P0 核心完成 → §2 加 P0 後更新 note(B/C 壞狀態 + 前端佔位已由 F1-F5 解決,§2 快照保留作診斷歷史);企業核心仍 0% 不變 | P0 closeout |
+| 2026-06-28 | §2 加 P2-P5 後更新 note(§2.C + §4 缺口快照部分過時:檢索層 P2 / doc_acl P3a G6 / 群組 P4 P3b G7 完成,DG4 達成;P5 設計拍板 impl 暫緩;SSO/SCIM/P6 仍 Tier 2)— BACKLOG 機制啟動 stale 修正 | stale sync |

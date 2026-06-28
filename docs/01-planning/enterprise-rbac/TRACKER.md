@@ -56,20 +56,20 @@
 - [x] F3 撰寫 ADR-0066(**Proposed**,`docs/adr/0066-enterprise-retrieval-layer-document-acl.md`)+ DG4 用戶定方向
 - [x] **DG5 ADR-0066 Accept**(用戶 2026-06-24 decision owner 拍板)→ Status **Accepted**,P2 解鎖(次序鐵律 5 satisfied)
 
-### P2 — 檢索層文件級存取控制(🔲 未開始,最關鍵)
-- [ ] 索引結構加 ACL / 密級欄位
-- [ ] ingestion stamp 文件 ACL
-- [ ] 查詢時注入 Azure AI Search filter
-- [ ] 答案 / 引用層確認唔洩漏
-- [ ] 重建索引 + 驗證唔影響問答品質
+### P2 — 檢索層文件級存取控制(✅ 完成 2026-06-24,W90 P2.0-P2.3,commit `5fca451`/`0d4fb20`)
+- [x] 索引結構加 ACL / 密級欄位(`allowed_principals` Collection + `classification`)
+- [x] ingestion stamp 文件 ACL
+- [x] 查詢時注入 Azure AI Search filter(security trimming;query 端點補 KB 層守衛 G1)
+- [x] 答案 / 引用層確認唔洩漏
+- [x] 重建索引 + 驗證唔影響問答品質(north-star §15)
 
-### P3 — 文件/資料夾級細粒度授權(🔲 未開始)
-- [ ] 授權表擴資源層級維度 + 繼承 + 覆寫
-- [ ] 細粒度授權管理介面
+### P3 — 文件/資料夾級細粒度授權(✅ 完成 2026-06-24,W92 P3a doc_acl override G6,commit `041813b`)
+- [x] 授權表擴資源層級維度 + 繼承 + 覆寫(`doc_acl` replace 語義,沿用 `allowed_principals` 零新索引欄位)
+- [ ] 細粒度授權管理介面(UI — Tier 1.5,等真實 doc-level driver,per ADR-0067 DG-P3-C)
 
-### P4 — 群組存取(🔲 未開始,真實同步隨 SSO)
-- [ ] 群組成員模型 + 繼承解析
-- [ ] 手動 / 匯入成員
+### P4 — 群組存取(✅ 完成 2026-06-24,W93 P3b group 繼承 G7,commit `433ab74`)
+- [x] 群組成員模型 + 繼承解析(query 側 `principals_for_user` 展開,group member 改動零 re-stamp)
+- [x] 手動成員(復用 `group_members` 表,per ADR-0067 DG-P3-B;真 SCIM 自動同步仍 Tier 2 延後)
 
 ### P5 — 管理權分級 + 治理(🟡 設計完成 — W94 + ADR-0068 Accepted 2026-06-25;impl 待用戶另批)
 - [x] **設計 + ADR-0068 Accepted**(W94:F1 威脅模型 G8 職責分立 / G9 存取覆核 + F2 目標架構 + ADR)
@@ -128,6 +128,7 @@
 | 2026-06-24 | **P1 核心完成** — kickoff(`284e9f0`)+ DG1/DG2/DG4 resolution(`2d3138b`)+ F1 威脅模型(`294080f`)+ F2 目標架構(`fc704a0`)+ F3 **ADR-0066 Proposed**;DG5 Accept 待 Chris(P2 前置,次序鐵律 5) | P1 核心完成 |
 | 2026-06-24 | **P1 完全完成 + P2 解鎖** — 用戶 decision owner 拍板 **Accept ADR-0066**(Proposed→Accepted),DG5 resolved + M2 達成;P0+P1 15 commits push origin/main;**W90 P2 kickoff**(檢索層文件級 ACL,P2.0-P2.3) | P1 完成 / P2 開工 |
 | 2026-06-25 | **P2-P4 完成 sync + P5 設計拍板** — TRACKER stale 更新(P2.0-P2.3 / P3a G6 / P3b G7 全完成,M3 + M4 達成);W94 P5 設計 phase + **ADR-0068 Accepted**(auditor role 職責分立 + access review,範圍核心 + 存取覆核,JIT/break-glass 延後 Tier 2);P5-impl 待用戶另批(Tier 1.5) | P5 設計完成 |
+| 2026-06-28 | **第二節工作清單 checkbox 補勾**(P2/P3/P4 section 標題仍 🔲 + 子項全 `[ ]`,與「一、狀態總覽」+「三、里程碑」矛盾;對齊狀態總覽勾選已完成子項,P3 管理介面 UI + P4 SCIM 保留未勾並加 Tier 1.5/Tier 2 註)| BACKLOG 機制啟動 stale 修正 |
 
 ---
 
