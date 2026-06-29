@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-06-28(初版 — 由 2026-06-28 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-06-29(BUG-038 fix landed + 驗證全綠 → `完成`,待用戶 commit;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -15,6 +15,14 @@
 `候選`(已識別未規劃)→ `已規劃`(plan 建咗)→ `進行中` → `完成` / `defer`(實證或決定暫不做)/ `blocked`(卡外部·用戶決定)
 
 分類 A–F 按「可開工性」:**A 可立即開工** / **B 已設計·暫緩** / **C blocked on 外部** / **D 已實證 defer** / **E 持續技術債** / **F Tier 2 out-of-scope**。
+
+---
+
+## 進行中(Active — 當前處理中)
+
+| ID | 任務 | 狀態 | 下一步 / 阻塞 | 來源 |
+|---|---|---|---|---|
+| **BUG-038** | login-gate loading 期間顯示多餘「Sign in to continue」CTA — fix 範圍 A(`status === 'loading'` → 純 spinner,唔出 CTA) | `完成` | fix landed(`login-gate.tsx:44-50`,git diff 核實)+ 驗證全綠(`tsc`/`eslint` exit 0 + `vitest` **4/4 pass**);manual browser smoke **deferred**(W87 OneDrive:next dev 首編 ~135s + Fast Refresh 唔可靠,見 B-05);**待用戶自行 commit** 後即可移除本行 | `docs/03-implementation/bugs/BUG-038-login-gate-loading-shows-signin-cta/` |
 
 ---
 

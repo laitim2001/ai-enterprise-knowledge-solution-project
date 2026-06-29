@@ -35,7 +35,22 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Real MSAL, not (yet) authenticated — splash + a sign-in link (no auto-redirect; see docstring).
+  // Still resolving identity (cookie hydration via GET /auth/me, or MSAL init).
+  // The user may well be signed in — show a neutral spinner WITHOUT the sign-in
+  // CTA so we never flash "Sign in to continue" at an already-authenticated user
+  // (BUG-038). The sign-in link only belongs in the definitively-unauthenticated
+  // (idle / error) state below — this matches the docstring's "splash while
+  // loading, splash + sign-in link when unauthenticated" intent.
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  // Definitively unauthenticated (idle after a 401) or sign-in error — splash + a
+  // sign-in link (no auto-redirect; see docstring).
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
       {status === 'error' ? (
