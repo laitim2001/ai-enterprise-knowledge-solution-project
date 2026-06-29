@@ -30,7 +30,7 @@
 
 | ID | 任務 | 狀態 | 前置 / 下一步 | 來源 |
 |---|---|---|---|---|
-| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `候選` | 先 amend `architecture.md §3.3/§4` + `COMPONENT_CATALOG.md` → 按 §10 R1 開階段 1 phase(plan/checklist/progress) | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 |
+| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② 階段 1 完整方案藍圖 + progress tracker **待建**(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`;方案交付公司真實環境執行,唔喺 local repo 假裝 implement);③ 藍圖完成後按 §10 R1 開階段 1 phase 三件套 | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 |
 
 ---
 

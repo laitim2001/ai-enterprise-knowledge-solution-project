@@ -303,6 +303,17 @@ End User UI
 
 呢個係**對比 Dify「General mode」嘅核心差異化**:Dify 純 character-based,我哋係 layout-semantic-based。
 
+> **ADR-0070 landing amendment**(2026-06-29,doc-version held — ADR is record):
+> **來源抽象層(Source Abstraction Framework,C17)接喺 parsing 上游**。原本文件只靠人手
+> multipart upload;ADR-0070(Accepted)加 provider-agnostic `SourceConnector` 抽象,令文件
+> 可由外部來源(SharePoint / OneDrive / Google Drive / S3 / Confluence)connect → browse →
+> fetch → 標準化成 `SourceDocument`(stream/temp-path bytes + 文件級權限 `allowed_principals`
+> + change-detection metadata)→ **交俾上文同一條 Docling parsing + chunking pipeline,核心零
+> 改動**(設計鐵律:connector 唔掂 ingestion 核心,換來源 = 換 adapter)。階段 1(Tier 1.5)=
+> SharePoint 按需手動匯入(push-model + Azure AI Search GA 字串比對 security filter 比對
+> `allowed_principals`,複用 ADR-0066/0067 RBAC track);auto-sync / 多 provider = Tier 2
+> (H4,階段 2-3)。See ADR-0070 + COMPONENT_CATALOG.md C17 + `docs/09-analysis/` deep-research ×2。
+
 ### 3.4 Multi-Knowledge-Base Architecture
 
 ```
@@ -505,6 +516,14 @@ EKP Platform
 │            │            │ embed    │          │               │
 └────────────┴────────────┴──────────┴──────────┴───────────────┘
 ```
+
+> **ADR-0070 landing amendment**(2026-06-29,doc-version held — ADR is record):
+> 高層架構新增 **來源抽象層(C17 Source Abstraction Framework)** 喺 Backend ingestion 上游 ——
+> provider-agnostic `SourceConnector` 由外部來源(階段 1 = SharePoint,push-model)拉文件 + 文件級
+> 權限 principals 入 ingestion pipeline;query-time security trimming 用 Azure AI Search **GA 字串
+> 比對 filter** 比對文件級 `allowed_principals`(複用 ADR-0066/0067 RBAC track,非 preview token-trim)。
+> 認證分工:ingestion 用 application `Sites.Selected`(least-privilege)、query-time 用 delegated/OBO。
+> See COMPONENT_CATALOG.md C17 + ADR-0070。
 
 ### 4.2 Repository Structure
 

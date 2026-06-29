@@ -1,9 +1,9 @@
 ---
 artifact: component-catalog
-version: 1.0
+version: 1.1
 status: active
-last_updated: 2026-05-01
-spec_anchor: docs/architecture.md (v5 frozen 2026-04-27)
+last_updated: 2026-06-29
+spec_anchor: docs/architecture.md (v6 frozen; §3.3/§4.1 inline-tagged via ADR-0070 2026-06-29)
 process_anchor: docs/01-planning/PROCESS.md (v1.0)
 ---
 
@@ -387,6 +387,25 @@ Phase Gates             prep G1        G2   stretch  POC  Beta deploy testing 25
 
 ---
 
+### C17 — Source Abstraction Framework(Tier 1.5,NEW per ADR-0070 — 2026-06-29)
+
+> **NEW component** per ADR-0070 Accepted(統一整合層 / Unified Integration Layer)。Provider-agnostic connector framework 接喺 C01 Ingestion **上游** —— 由外部來源(SharePoint / OneDrive / Google Drive / S3 / Confluence)拉文件 + 權限 + metadata 入 ingestion。C14 / C15 仍 Tier 2 reserved(Training Pipeline / Workflow Engine);C16 = Users Service;**C17 是第二個 Tier 1.5 component**。**設計鐵律:connector 唔掂 ingestion 核心**(換來源 = 換 adapter,Docling pipeline / 圖文還原 / profile / 可調配置零影響)。
+
+| Field | Value |
+|---|---|
+| **Scope** | provider-agnostic `SourceConnector` Protocol + capability model;由外部來源 connect / 認證 / browse / list / fetch document / fetch principals → 標準化成 `SourceDocument`(stream/temp-path bytes + 文件級 `allowed_principals` + change-detection metadata)→ 交俾 C01 Ingestion(現有 multipart 入口)。階段 1 = **一個** concrete SharePoint connector(push-model + 按需手動匯入) |
+| **Spec ref** | `architecture.md §3.3`(ingestion upstream 來源層 inline-tag)+ `§4.1`(component diagram inline-tag)+ ADR-0070 |
+| **Tech (H2 locked)** | Microsoft Graph(階段 1 SharePoint;傾向 `azure-identity` + `httpx` managed-REST,對齊 C16 F1「managed-REST > heavy SDK」per ADR-0017;`msgraph-sdk` 留階段 1 plan 評估)+ application `Sites.Selected`(ingestion least-privilege)+ delegated / OBO(query-time)。**Graph SDK / 任何新 dep = H2 → 階段 1 plan 內逐項確認 + R8 corp-proxy mitigation(ADR-0017)** |
+| **Depends on** | C01 Ingestion(下游 handoff,現有 Docling pipeline 不變),C16 Users Service(`allowed_principals` 文件級 ACL 收斂點,per ADR-0066/0067),C11 Identity(Entra auth 重用),C12(credential 儲存:階段 1 配置 → Beta+ Azure Key Vault H5) |
+| **Phase plan** | 階段 1(Tier 1.5,rolling JIT 待 kickoff,先 plan 三件套 per §10 R1):`SourceConnector` interface + SharePoint connector + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平(group 級,per ADR-0067)+ token refresh + per-doc 錯誤模型;按需手動匯入,**唔做** auto-sync / 多 provider → 階段 2(Tier 2)多 provider → 階段 3(Tier 2)auto-sync(H4) |
+| **Critical OQ** | (階段 1 plan 內開):SharePoint tenant + `Sites.Selected` site grant(IT 前置)/ 特殊 principal(Anyone link 無可解析 GUID)處理規則 / credential 儲存方式 |
+| **Risks** | Microsoft Graph SDK = 新 dep(H2,需 R8 mitigation per ADR-0017);push-model nested group 展平 + 防爆量(< 2,049/file)+ 特殊 principal = EKP 自身工作量;stale permission 結構性無即時撤權(排程 full re-ingest 補);chunk-level ACL 傳播無 production case(階段 1 plan 解) |
+| **Owner** | AI(impl)、Chris + IT(SharePoint tenant + `Sites.Selected` grant) |
+| **Status** | ⏳ Not started(ADR-0070 Accepted 2026-06-28;spec amendment landed 2026-06-29;階段 1 implementation phase 待 rolling JIT kickoff per §10 R1)。技術基礎:`docs/09-analysis/` deep-research ×2(`unified_integration_layer_architecture_20260628.md` 設計骨架 + `sharepoint_connector_permission_mapping_external_research_20260628.md` 第一 connector 深度) |
+| **Interface** | **Input**:connector credentials + 用戶選取嘅 container / document refs → **Output**:`AsyncIterator[SourceDocument]`(bytes/stream + `allowed_principals` group-level + change-detection metadata)→ **Side effect**:Microsoft Graph API calls(browse / list / fetch / principals),交 C01 ingestion 入口,文件級 ACL 寫入 index `allowed_principals` |
+
+---
+
 ## 5. Cross-Cutting Conventions(binding)
 
 呢套規則喺 catalog 寫低,所有 future doc / commit / artifact 必跟:
@@ -419,7 +438,7 @@ Tier 2 features per `architecture.md §11`,plug 入 existing component slots:
 | **Multi-Tenancy** | C02 KB Manager(tenant_id column)+ C03 Indexing(tenant prefix in index name)+ C11 Identity(tenant claim) | 三個 component 各自加 tenant dimension,C08 加 tenant context middleware |
 | **Multi-Modal Retrieval(B 類純圖搜)** | C04 Retrieval(image embedding mode)+ C01 Ingestion(image embedding) | 加 image embedding model 入 C01,C04 加 image-only query path |
 | **Multi-Language(JP / ZH)** | C01 Ingestion(per-language analyzer)+ C04 Retrieval(per-language semantic config) | Language detection in C01,per-language index variants in C03 |
-| **Auto-Sync from External Source** | C01 Ingestion(scheduler trigger)+ C12 DevOps(scheduler infra) | 加 scheduled job runner(Azure Functions 或 Container Apps Jobs)→ trigger C01 ingestion |
+| **Auto-Sync from External Source** | **C17 Source Abstraction Framework**(connector `delta` + scheduler)+ C01 Ingestion + C12 DevOps(scheduler infra) | C17 階段 3(per ADR-0070):加 scheduled job runner(Azure Functions / Container Apps Jobs)+ connector `delta`(`supports_delta` capability-gate,階段 1 唔實作)→ trigger 既有 connector → ingestion pipeline。**注:auto-sync = H4 明確 Tier 2** |
 
 **架構 readiness invariant**:Tier 2 features **不應該** 需要 Tier 1 component 嘅 interface change(只係 internal evolve)。任何 Tier 2 feature plan 若需要 Tier 1 interface 改動 → STOP + ADR + re-evaluate decomposition。
 
@@ -466,6 +485,6 @@ Conventions:see Section 5 CC-1 … CC-7
 
 ---
 
-**End of COMPONENT_CATALOG.md v1.0**
-**Effective**:from W1 D3(2026-05-01)
+**End of COMPONENT_CATALOG.md v1.1**
+**Effective**:from W1 D3(2026-05-01;v1.1 2026-06-29 — NEW C17 Source Abstraction Framework per ADR-0070)
 **Owner**:Chris(技術 Lead)
