@@ -22,7 +22,7 @@
 | **WIP memory** `project_adr0070_integration_phase1_wip.md` | ✅ 已建立 | `.claude/.../memory/`(非 git-tracked,經 OneDrive 同步) |
 | **方案藍圖** `integration_layer_phase1_sharepoint_solution.md` | 🟡 §0–2 已寫;§3–10 + 附錄待續 | 本 commit(grep title + §0/§1/§2 確認) |
 
-**下一塊**:藍圖 §5 權限映射(ACL → `allowed_principals`:`transitiveMembers` 展 group 級 / Anyone-link / 防爆量)+ §6 撤權 / stale permission(逐節寫;大綱見本檔 §2)。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4),**唔喺 local repo 假裝 implement**(SharePoint / Graph 要真 tenant + `Sites.Selected` grant,本機造唔到)。
+**下一塊**:藍圖 §7 與 EKP 核心銜接(push chunks + `allowed_principals` 入 Azure AI Search;query-time GA 字串比對 filter;ingestion 核心零改動)+ §8 錯誤模型 + 生命週期(逐節寫;大綱見本檔 §2)。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4),**唔喺 local repo 假裝 implement**(SharePoint / Graph 要真 tenant + `Sites.Selected` grant,本機造唔到)。
 
 ---
 
@@ -48,8 +48,8 @@
 | §2 | 認證架構 | ingestion 用 application `Sites.Selected`(least-privilege)+ query-time delegated/OBO + token refresh(⑥) | ✅ |
 | §3 | `SourceConnector` interface + capability model | 5 點修正 interface(§4 D-IF)+ `ConnectorCapabilities` 退化規則 | ✅ |
 | §4 | SharePoint connector 實作 | browse site/library → list driveItems(分頁)→ fetch document(stream/temp)→ Graph endpoints | ✅ |
-| §5 | 權限映射(ACL → `allowed_principals`) | `/permissions` 抽 → 正規化 Entra GUID → `transitiveMembers` 展 nested group 到 **group 級** → 填欄;Anyone-link 特殊處理;< 2,049/file cap | ❌ |
-| §6 | 撤權 / stale permission | delta 對 library 層唔可靠 → 排程 full re-ingest + 有界延遲明示;唔承諾即時撤權 | ❌ |
+| §5 | 權限映射(ACL → `allowed_principals`) | `/permissions` 抽 → 正規化 Entra GUID → `transitiveMembers` 展 nested group 到 **group 級** → 填欄;Anyone-link 特殊處理;< 2,049/file cap | ✅ |
+| §6 | 撤權 / stale permission | delta 對 library 層唔可靠 → 排程 full re-ingest + 有界延遲明示;唔承諾即時撤權 | ✅ |
 | §7 | 與 EKP 核心銜接 | push chunks + `allowed_principals` 入 Azure AI Search;query-time GA 字串比對 security filter;ingestion 核心零改動鐵律 | ❌ |
 | §8 | 錯誤模型 + 生命週期 | per-doc 失敗唔 abort batch(⑦)+ re-sync / 健康監控 | ❌ |
 | §9 | 階段 1 範圍邊界 + 未答缺口 | 唔做 auto-sync / 多 provider(Tier 1.5);§6 4 缺口承接 | ❌ |
@@ -119,4 +119,5 @@
 | 2026-06-29 | `884b149` | EKP spec amendment 真正落地(architecture.md §3.3/§4.1 + COMPONENT_CATALOG C17 v1.1)+ BACKLOG B-01 改誠實 |
 | 2026-06-29 | `0a06798` | 建立本 progress tracker(防失憶)+ WIP memory |
 | 2026-06-29 | `26c5e74` | 方案藍圖 `integration_layer_phase1_sharepoint_solution.md` §0–2(總覽 / 前置 / 認證)寫入 |
-| 2026-06-29 | (本 commit) | 藍圖 §3(interface + capability model + 5 點修正 + 退化規則)+ §4(SharePoint connector 實作:browse / list 分頁 / fetch stream / get_principals / delta-gate / per-site grant)|
+| 2026-06-29 | `45142f3` | 藍圖 §3(interface + capability model + 5 點修正 + 退化規則)+ §4(SharePoint connector 實作:browse / list 分頁 / fetch stream / get_principals / delta-gate / per-site grant)|
+| 2026-06-29 | (本 commit) | 藍圖 §5(權限映射:transitiveMembers 展 group 級 / 特殊 principal / 防爆量 / chunk-ACL 缺口)+ §6(撤權:membership 變即時 vs 文件 ACL 變需 re-ingest / delta 反證 / 有界延遲)|

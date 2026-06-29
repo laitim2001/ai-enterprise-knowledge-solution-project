@@ -282,4 +282,106 @@ ConnectorCapabilities(
 
 ---
 
-> **§5–§10 + 附錄 待續**。下一塊:§5 權限映射(ACL → `allowed_principals` 深度:`transitiveMembers` 展 group 級 / Anyone-link 特殊處理 / 防爆量)+ §6 撤權 / stale permission。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
+## §5 權限映射(來源 ACL → `allowed_principals`)
+
+> 統一整合層**最難一環**。把「有 ACL / 冇 ACL / 特殊 principal」嘅來源**統一收斂到 EKP `allowed_principals`**(文件級 ACL 欄,複用 RBAC track ADR-0066/0067)。query-time security trimming 邏輯**只寫一次、全 provider 共用**。
+
+### 5.1 收斂點 = `allowed_principals`
+
+每個 connector 嘅權限映射,最終都係「填同一個 `allowed_principals`」。SharePoint connector 嘅 `get_principals`(§4.6)輸出 → 正規化 → 寫入 chunk 嘅 `allowed_principals` → query-time GA 字串比對 filter(§2.2 / §7)。整合層同 RBAC track 係**同一條路兩段**,唔係兩件獨立工作。
+
+### 5.2 抽取 + 正規化流程
+
+```
+GET /drives/{drive-id}/items/{item-id}/permissions
+  → 抽 grantedToIdentitiesV2(user.id)+ group identity
+  → 正規化成 Entra GUID
+  → nested group:GET /groups/{group-id}/transitiveMembers 展平到 group 級(§5.3)
+  → 特殊 principal 按規則處理(§5.4)
+  → 防爆量檢查(§5.5)
+  → 寫入 allowed_principals(Entra GUID 字串集)
+```
+
+### 5.3 nested group 展平 — **展到 group 級,唔展到 user 級**(①)
+
+- 用 Graph **`transitiveMembers`**(**非**被 0-3 反證嘅 `transitiveMemberOf` — kill list #2)展開 **nested group(group-of-groups)**。
+- 結果 = **flat group id set + 直接 user id**,**唔展到每個 member user**。
+- application 最小權限 = `GroupMember.Read.All`。
+
+**點解 group 級**(同 ADR-0067 group key 洞察一致):
+
+| 做法 | 加 user 入 group | index 大細 | 改 membership |
+|---|---|---|---|
+| 展到 **user 級**(❌)| 要 re-stamp 全部文件 | 爆炸 | 重 re-ingest |
+| 展到 **group 級**(✅ 採用)| **零 re-ingest** | 細 | 唔使 re-stamp |
+
+→ query-time 用**登入用戶 token 帶嘅 group membership**比對 `allowed_principals`(§2.2);user 加入某 group **即時生效**。
+
+### 5.4 特殊 principal 處理規則
+
+| 來源 principal | 可否映射 | 階段 1 規則 |
+|---|---|---|
+| **Specific people** link | ✅ 帶可解析 `grantedToIdentitiesV2` user.id | 直接映射 |
+| **Anyone** link | ❌ **無可解析 Entra object ID**(permission 物件只有 link facet)| **明確規則**:預設 **drop**(唔索引該 grant);可 config 改「當 public」/「拒絕索引整個文件」— 屬 KB 政策,階段 1 plan 定 default |
+| **People in your organization** link | ⚠️ 不令內容出現喺 SharePoint search / Copilot(官方 surface)| 我哋自建 pipeline → 建議當 **tenant-wide / org principal**(一個代表全 org 嘅 group id);階段 1 plan 確認 |
+| **非 Entra group**(SharePoint local group / 跨系統)| ⚠️ 非 Entra GUID 構造 | 模型化為 **external group**(參考 M365 Copilot connector external-groups 設計);階段 1 SharePoint 主力 = Entra group,local group 列 plan 處理 |
+
+### 5.5 防爆量(scale 硬上限)
+
+| 限制 | 數值 | 應對 |
+|---|---|---|
+| 單一用戶 group membership | **< 2,049**(超過結果不可預測)| 展開設上限保護 |
+| query principal set | > 10,000 → Graph 直接 400 | query 側 principal set 截斷 / 分批 |
+| ACL entry / file | SharePoint 1,000 · ADLS Gen2 32 | 抽取時知上限,超額策略 plan 定 |
+
+→ 自家展 group **亦要防爆量**:`transitiveMembers` 展開設 < 2,049 / file 上限,超額 → 記 warning + 策略(截斷 / 退化 KB 層 / 拒索引)。
+
+### 5.6 chunk-level ACL 傳播(未答缺口②)
+
+文件切多 chunk,每 chunk 是否重複完整 `allowed_principals`?大文件 + 大 group set 下 index 膨脹 + query filter 效能 —— **無 production case,階段 1 implementation plan 要解**(per deep-research §7 缺口②)。候選:每 chunk 重複(簡單但膨脹)/ 文件級 ACL 表 join(慳空間但 query 複雜)。
+
+### 5.7 認證(呼應 §2)
+
+- `get_principals` 用 ingestion 側 application token(`Sites.Selected` + `GroupMember.Read.All`)。
+- query-time 比對用 delegated / OBO per-user token(用戶自己嘅 group membership)。
+
+---
+
+## §6 撤權 / stale permission
+
+> deep-research 最重要警示之一:**撤權係結構性有界延遲,無方案做到即時撤權**。設計要把呢個當前提,唔好假設有即時方案。
+
+### 6.1 兩種「撤權」要分清(關鍵)
+
+因為權限展到 **group 級**(§5.3),兩種撤權行為唔同:
+
+| 撤權類型 | 例 | 階段 1 行為 |
+|---|---|---|
+| **(a) group membership 變**(user 加 / 出 group)| 某員工調離部門,移出該 group | ✅ **query-time 即時生效、零 re-ingest** —— query 側用用戶當前 token group membership 比對,user 一出 group 即唔再命中該 group 嘅 `allowed_principals` |
+| **(b) 文件 ACL 變**(library / folder 層 grant 加 / 減 group)| 某 library 移除某 group 嘅讀權限 | ⚠️ 要**更新 `allowed_principals`** —— delta 唔可靠(§6.2)→ 靠 re-ingest(§6.3),有界延遲 |
+
+→ group-level flatten 嘅紅利:最常見嘅撤權(人事異動 = membership 變)係**即時**嘅;只有**文件本身 ACL 改動**先要等 re-ingest。
+
+### 6.2 為何唔可以靠 delta query(反證)
+
+- Graph delta query **無法可靠捕捉 library / folder 層權限變更**(架構性):連 3 個 Prefer header(`deltashowremovedasdeleted` / `deltatraversepermissiongaps` / `deltashowsharingchanges`)都唔得;folder / library 層加減 user / group 會令 delta token 失效(`resyncRequired`)。
+- 故 **撤權唔可以靠 delta**。(注:kill list #5 — 唔好引用「微軟員工確認 Graph 唔支援」嗰個被過度簡化嘅 framing;但「library 層 delta 唔可靠」本身由獨立 3-0 claim 確認。)
+
+### 6.3 撤權補機制 = 排程 full re-ingest
+
+- 文件 ACL 變(類型 b)→ 用**排程 full re-ingest / per-site re-crawl** 重抽 `/permissions` 重填 `allowed_principals`。
+- 階段 1 = **按需手動匯入**,所以「撤權生效」= 用戶下次手動 re-import 嗰個 site / library 時更新 ACL(re-import 用 `eTag` / `cTag` 慳成本,但 ACL 變要重抽 `permissions`)。
+- **自動排程 re-ingest = 階段 3(Tier 2,auto-sync,H4)**。
+
+### 6.4 產品上明示有界延遲
+
+- 撤權延遲(類型 b)**要喺產品上明示為有界延遲**(官方只給定性「timing lag」,無精確 SLA 數字)。
+- **唔承諾即時撤權**;競品(Glean)「webhook 即時撤權」claim 被反證(1-2,kill list #3),唔跟。
+
+### 6.5 未答缺口(承 §9)
+
+- library / folder 層撤權補機制嘅實際頻率 vs 成本 + 實測延遲 = **缺口③**(階段 1 plan / 階段 3 設計補)。
+
+---
+
+> **§7–§10 + 附錄 待續**。下一塊:§7 與 EKP 核心銜接(push chunks + `allowed_principals` 入 Azure AI Search;query-time GA 字串比對 filter;ingestion 核心零改動)+ §8 錯誤模型 + 生命週期。大綱見 progress tracker `integration_layer_phase1_sharepoint_solution_PROGRESS.md` §2。
