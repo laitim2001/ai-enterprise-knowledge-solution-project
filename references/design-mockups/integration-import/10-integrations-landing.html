@@ -1,0 +1,90 @@
+<!-- @dsCard group="Integration — SharePoint import" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Integrations — landing</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  .ic { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .icon svg { width: 16px; height: 16px; display: block; }
+  .conn-card { display: flex; align-items: center; gap: 16px; padding: 16px 18px; margin-bottom: 12px; }
+  .conn-logo { width: 42px; height: 42px; border-radius: var(--radius-sm); display: grid; place-items: center; flex-shrink: 0; background: oklch(var(--muted)); color: oklch(var(--foreground)); }
+  .conn-logo svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .conn-meta { flex: 1; min-width: 0; }
+  .conn-name { font-size: 14px; font-weight: 600; }
+  .conn-desc { font-size: 12.5px; color: oklch(var(--muted-foreground)); line-height: 1.5; margin-top: 2px; }
+  .conn-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .conn-card.is-disabled { opacity: .6; }
+  .conn-card.is-disabled .conn-logo { color: oklch(var(--muted-foreground)); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-mark">EK</div><div class="brand-name">EKP</div><span class="brand-tag">TIER 1</span></div>
+    <nav class="nav">
+      <div class="nav-section-label">Workspace</div>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></span> Dashboard</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><path d="M2 4h12v7H6l-3 2.5V11H2z" stroke-linejoin="round"/></svg></span> Chat</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="5.5" ry="2"/><path d="M2.5 4v8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4"/></svg></span> Knowledge <span class="nav-tail">6</span></a>
+      <a class="nav-item" data-active="true"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><path d="M6.5 9.5a2.4 2.4 0 003.4 0l2-2a2.4 2.4 0 00-3.4-3.4l-1 1"/><path d="M9.5 6.5a2.4 2.4 0 00-3.4 0l-2 2a2.4 2.4 0 003.4 3.4l1-1"/></svg></span> Integrations</a>
+      <div class="nav-section-label">Tools</div>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8.5l2 2 3.5-4"/></svg></span> Eval</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><path d="M2 9h3l2-5 3 9 2-4h2"/></svg></span> Traces</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg></span> Users</a>
+      <a class="nav-item"><span class="icon"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2"/></svg></span> Settings</a>
+    </nav>
+    <div class="sidebar-footer"><div class="user-chip"><div class="avatar">CL</div><div class="user-chip-info"><b>Chris Lai</b><span>Admin</span></div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="breadcrumbs"><b>Integrations</b></div>
+      <div class="topbar-search"><span>Search pages, KBs…</span><span class="kbd">&#8984;K</span></div>
+      <div class="topbar-actions"><button class="btn btn-ghost btn-icon btn-sm" aria-label="Notifications"><svg class="ic" viewBox="0 0 16 16"><path d="M4 6.5a4 4 0 018 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5zM6.5 13a1.5 1.5 0 003 0"/></svg></button><span class="topbar-divider"></span><div class="avatar avatar-sm">CL</div></div>
+    </header>
+
+    <div class="content">
+      <div class="content-narrow">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Integrations</h1>
+            <p class="page-subtitle">Connect external content sources and import their documents into your knowledge bases.</p>
+          </div>
+        </div>
+
+        <div class="banner banner-info" style="margin-bottom:20px">
+          <div style="flex:1;font-size:12.5px;line-height:1.55">Imported documents run through the same Docling pipeline, profiles and per-KB config as local uploads. Source permissions are mapped to <span class="mono" style="font-family:var(--font-mono)">allowed_principals</span> (per ADR-0070 / ADR-0066).</div>
+        </div>
+
+        <div class="nav-section-label" style="padding:0 2px 10px">Available sources</div>
+        <div class="card conn-card">
+          <div class="conn-logo"><svg viewBox="0 0 16 16"><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="4" r="1.8"/><circle cx="12" cy="12" r="1.8"/><path d="M5.6 7.1l4.8-2.4M5.6 8.9l4.8 2.4"/></svg></div>
+          <div class="conn-meta">
+            <div class="conn-name">SharePoint</div>
+            <div class="conn-desc">Import documents from a SharePoint site granted <span class="mono" style="font-family:var(--font-mono)">Sites.Selected</span> access.</div>
+          </div>
+          <div class="conn-actions">
+            <span class="badge badge-muted"><span class="badge-dot"></span> Not connected</span>
+            <a class="btn btn-primary btn-sm" href="20-step1-connect.html">Import documents &rarr;</a>
+          </div>
+        </div>
+
+        <div class="nav-section-label" style="padding:14px 2px 10px">More sources</div>
+        <div class="card conn-card is-disabled">
+          <div class="conn-logo"><svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg></div>
+          <div class="conn-meta">
+            <div class="conn-name">Connect another source</div>
+            <div class="conn-desc">Google Drive, Box, Confluence and more — planned for a later release.</div>
+          </div>
+          <div class="conn-actions">
+            <span class="badge badge-muted">Tier 2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
