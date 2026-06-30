@@ -60,6 +60,20 @@
 - doc-row / mini-stat surface class 加入 scoped `<style>`(`.sp-import`,鏡像 mockup `22`/`23` inline style)。
 - 驗:tsc + eslint clean。
 
+### F7 完成 + Phase 收尾(2026-06-30)
+- F7.1 **不改 upload**(用戶揀,改 upload sharepoint placeholder 偏離 upload mockup 觸 H7)/ F7.2 component test **🚧 deferred**(DD-2)/ F7.3 Gate / F7.4 doc-sync。
+- **Gate G-W101 = PASS WITH PRE-EXISTING-VITEST-FAIL + LIVE-DEFERRED CAVEAT**:
+  - backend:ingestion diff **= 零**(§7.2 鐵律)+ pytest **80 passed**(integration 24 + RBAC 21 + 其他,零 regression)+ ruff + `mypy --strict`(integration package + route module)clean。
+  - frontend:tsc + eslint **clean**;5 surface H7 重現對齊 mockup(inline-style verbatim 值 + scoped `<style>` 鏡像 mockup surface class)。
+  - **vitest 14 fail = pre-existing 既有技術債**:`chat-meta-row` / `kb-detail` / `kb-settings-reindex` / `kb-settings-tuning`(kb config view test render error)。`git diff --stat babccd8 HEAD -- frontend` 證 W101 **只**改 `app-shell`(+11)+ 3 integrations 新檔 → 嗰 14 test 嘅 code W101 前後逐字節一致 = **0 regression**;單獨跑 4 file 穩定 **14 fail/9 pass**(env 26s 非 full-suite 506s flaky)= 真 pre-existing broken;`app-shell.test` **pass**(加 nav item 冇 break)。
+  - **Live 端到端(D1-D4)留 runbook**(真 tenant + `Sites.Selected`,D4 本機造唔到),唔計入 Gate。
+- **H7 browser visual smoke deferred**(同 BUG-038 — W87 OneDrive dev server 首編慢 + Fast Refresh 唔可靠)→ 留用戶 pre-Beta 親手 / 真 tenant 將近時。
+
+### Retrospective
+- **順**:逐 deliverable 驗證(tsc/eslint per surface + pytest)令 regression 早捕 + 定位易;**5 個 mockup-vs-backend 張力逐個 STOP+ask**(credential H5 唯讀 / 個別文件粒度 / browse 端點 / step3 streaming / step4 chunks→documents)避免自行 approximate;ingestion 核心**零改動鐵律**守住(git diff 驗);backend connector(W100)browse 能力已備 → F1 只係薄 HTTP expose。
+- **教訓**:① **R6 recursive 再驗成立** — F7.1「改 upload」plan 寫咗,但實作前 first-hand 驗證揭該 placeholder 屬 upload 自己 mockup → STOP+ask 改「不改」(plan text 都要驗,唔可盲跟)② **mockup-vs-backend 張力多數實作期先浮現**(step3 streaming / step4 chunks 寫 F6 先見)→ 宜接受「plan 列已知張力 + 實作期補捉 STOP+ask」③ **發現既有 14 vitest fail 技術債**(W101 外,Karpathy surgical 只 mention 唔修)。
+- **carry-over**:① 階段 1b **live 驗證 runbook**(真 tenant + Sites.Selected)② **follow-up principal**(org/public/external_group 端到端,需 query 側 inject token)③ **14 pre-existing frontend test 債**(kb config view test,入 BACKLOG E)④ H7 browser visual smoke(用戶 pre-Beta)。
+
 ### Commits
 - `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
 - `docs(planning):` W101 plan 三件套(`babccd8`)
@@ -67,5 +81,5 @@
 - `feat(frontend):` F2 sidebar nav + breadcrumb + route 骨架(`d5dcfc7`)
 - `feat(frontend):` F3 API client + F4 landing H7 重現(`5611f2e`)
 - `feat(frontend):` F5 wizard step1 Connect + step2 Select(`9972a18`)
-- `feat(frontend):` F6 wizard step3 Import + step4 Summary(本 commit)
-- (F7 收尾)
+- `feat(frontend):` F6 wizard step3 Import + step4 Summary(`7545bde`)
+- `docs(planning):` F7 收尾 + phase close(本 commit)
