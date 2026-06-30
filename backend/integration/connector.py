@@ -50,10 +50,16 @@ class ConnectorCapabilities:
 @runtime_checkable
 class ConnectionHandle(Protocol):
     """Opaque authenticated context. Implementations encapsulate token refresh (⑥)
-    so connector methods never see token expiry."""
+    so connector methods never see token expiry. A handle owns a network resource
+    (a credential / its transport), so it is closeable — the caller closes it once
+    the import batch finishes (mirrors `entra_graph.py` finally-close)."""
 
     async def token(self) -> str:
         """A currently-valid access token, refreshed transparently if near expiry."""
+        ...
+
+    async def aclose(self) -> None:
+        """Release the handle's underlying credential / transport."""
         ...
 
 

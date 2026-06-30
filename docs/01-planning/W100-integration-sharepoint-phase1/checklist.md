@@ -14,13 +14,13 @@
 
 ## F2 — Graph REST client(認證 + 分頁 + token refresh)
 
-- [ ] F2.1 `backend/integration/sharepoint/__init__.py` 建包
-- [ ] F2.2 `graph_client.py`:app-only token(`azure-identity` ClientSecret/Certificate credential)
-- [ ] F2.3 `graph_client.py`:`httpx.AsyncClient` GET/POST 封裝 + 429/5xx retry(`tenacity`)
-- [ ] F2.4 `graph_client.py`:`@odata.nextLink` 分頁 async generator
-- [ ] F2.5 `ConnectionHandle` 封裝 token refresh(過期自動續,呼叫方唔理)
-- [ ] F2.6 `tests/integration/test_graph_client.py`:`httpx.MockTransport` 分頁 + token refresh + retry(無新 dep)
-- [ ] F2.7 驗:credential 絕不 log(H5)+ 測試綠
+- [x] F2.1 `backend/integration/sharepoint/__init__.py` 建包
+- [x] F2.2 `graph_client.py`:`build_credential`(`azure-identity` aio ClientSecret/Certificate,lazy import 對齊 entra_graph)+ `SharePointCredentials`(secret/cert 二擇一)
+- [x] F2.3 `graph_client.py`:`GraphClient._request` `httpx.AsyncClient` + `tenacity` 429/5xx retry(4xx 非 429 propagate fatal)
+- [x] F2.4 `graph_client.py`:`paged` `@odata.nextLink` async generator(params 只第一頁)+ `stream_to_file`(④)
+- [x] F2.5 `GraphConnectionHandle` token refresh(委派 azure-identity 快取/續期,⑥)+ `aclose()`(加入 ConnectionHandle Protocol)
+- [x] F2.6 `tests/integration/test_graph_client.py`:`httpx.MockTransport` 7 test(bearer 注入 / 分頁 / 429 retry / 5xx 耗盡 / 403 fatal / stream / cred 驗證)
+- [x] F2.7 驗:credential / token 絕不 log(H5)+ ruff/mypy --strict/14 passed(7+7)
 
 ## F3 — SharePoint connector:connect / browse / list / fetch
 

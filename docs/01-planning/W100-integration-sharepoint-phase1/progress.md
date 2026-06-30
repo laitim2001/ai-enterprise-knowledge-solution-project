@@ -48,7 +48,30 @@
 
 **Next**:F2 — Graph REST client(`azure-identity` app-only token + `httpx` + `@odata.nextLink` 分頁 + `ConnectionHandle` token refresh + `tenacity` 429/5xx retry),mock via `httpx.MockTransport`。
 
-**Commits**:見下方 F1 commit hash。
+**Commits**:`67f4f14` feat(integration): F1 SourceConnector interface + capability model。
+
+---
+
+## Day 1(續)— 2026-06-30(F2 Graph REST client)
+
+**先例確認**:`backend/api/auth/entra_graph.py` 已記「F1 D1 — managed-REST over `msgraph-sdk`:azure-identity + httpx,zero new dep / H2 / R8(ADR-0017)」+ `azure.identity.aio` `get_token(_GRAPH_SCOPE)` + `@odata.nextLink` loop + `credential.close()` → 印證 H2 分析 + 對齊既有可行 pattern。
+
+**F2 — Graph REST client → 完成,綠**:
+- `backend/integration/sharepoint/__init__.py`(包說明)
+- `backend/integration/sharepoint/graph_client.py`:`SharePointCredentials`(secret/cert)+ `build_credential`(lazy `azure.identity.aio`,cast 解耦 azure get_token 簽名)+ `GraphConnectionHandle`(token 委派 azure 快取/續期 ⑥ + `aclose`)+ `GraphClient`(`_request` tenacity 429/5xx retry · `get_json` · `paged` `@odata.nextLink` async generator · `stream_to_file` ④)+ `GRAPH_BASE/SCOPE` 常數
+- `integration/connector.py`:`ConnectionHandle` Protocol 加 `aclose()`(handle = network resource,caller batch 完 close)
+- `tests/integration/test_graph_client.py` 7 test(`httpx.MockTransport` + fake handle)
+
+**驗證**:ruff `All checks passed` · `mypy --strict -p integration` `Success: 5 source files` · pytest `14 passed`(7 F1 + 7 F2)。
+
+**決定**:
+- testable seam — `GraphClient` 只依賴 `ConnectionHandle` + `httpx.AsyncClient` → 測試注入 fake handle + MockTransport,**azure-identity 永不喺 mock 測試觸及**(D4);`build_credential`/`GraphConnectionHandle` 留 runbook live 行。
+- retry seam injectable(`max_attempts`/`backoff_base`)→ 測試零 backoff 快跑;429+5xx retry,非 429 4xx(如 403 缺 per-site grant §1.3)即 propagate fatal(§8.1)。
+- H5:`_auth_headers` 明註不 log;無 token/secret 落 log。
+
+**Next**:F3 — `SharePointConnector`(capability 宣告 §4.1 + connect/browse/list_documents/fetch_document),sit 喺 GraphClient 上。
+
+**Commits**:見下方 F2 commit hash。
 
 ---
 
