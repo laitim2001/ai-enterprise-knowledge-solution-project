@@ -91,7 +91,28 @@
 
 **Next**:F4 — `get_principals` 權限映射(`permissions.py`:`/permissions` → transitiveMembers 展 group 級 + Anyone-link drop(D-2)+ 防爆量 cap)+ 補完 SourceConnector conformance。
 
-**Commits**:見下方 F3 commit hash。
+**Commits**:`bfa1d34` feat(integration): F3 SharePoint connect/browse/list/fetch。
+
+---
+
+## Day 1(續)— 2026-06-30(F4 ACL → allowed_principals 權限映射)
+
+**F4 — `get_principals` 權限映射 → 完成,綠(security-critical)**:
+- `backend/integration/sharepoint/permissions.py`:`resolve_principals`(`/permissions` 分頁 → 各 grant)+ `_identity_set_principals`(user/group/siteGroup)+ `_expand_group_to_group_level`(`transitiveMembers` 展 nested group **到 group 級** ①,skip user)+ `AnyonePolicy` Literal(drop/public/reject)+ `MAX_PRINCIPALS_PER_FILE=2049` 防爆量(§5.5)+ `AclResolutionError`(fetch 失敗 / reject → 拋,**唔 fail-open** §6)
+- `connector.py`:`get_principals` wire `resolve_principals`(`anyone_policy` 入 `__init__`,default drop D-2)+ `TYPE_CHECKING` `_assert_conforms` 靜態 SourceConnector conformance
+- `tests/integration/test_sharepoint_permissions.py` 12 test
+
+**驗證**:ruff clean · `mypy --strict -p integration` 7 files clean · pytest `35 passed`(7+7+9+12)。
+
+**決定 / 教訓**:
+- **D-2 Anyone-link=drop**:anonymous link 預設唔索引(映射唔到 Entra principal);policy=public 出 `PUBLIC_PRINCIPAL` sentinel(註:真 grant everyone 需 query 側注入,follow-up,default drop 唔行此路);policy=reject 拋 `AclResolutionError`。
+- **group 級展開**(①):`transitiveMembers` 只收 `@odata.type` endswith `group`(nested group),**skip user members** → 零 re-ingest on membership 變,同 ADR-0067 一致。
+- **空集 ≠ public**(§6 risk F4.5):fetch 失敗拋 `AclResolutionError`;成功但全 drop → 回 `[]`,F5 必須拒當 public(下一步 enforce)。
+- **conformance**:`get_principals` 補齊 → SharePointConnector 完整 6 method;靜態(`_assert_conforms` TYPE_CHECKING)+ runtime(`isinstance`)雙重鎖。
+
+**Next**:F5 — `import_service`(browse-selection → list → per-doc fetch → 既有 ingestion 入口帶 `allowed_principals` → per-doc summary;空 ACL 拒 fail-open;fatal vs per-doc §8.1)。**ingestion 核心零改動驗證**(§7.2 鐵律)。
+
+**Commits**:見下方 F4 commit hash。
 
 ---
 

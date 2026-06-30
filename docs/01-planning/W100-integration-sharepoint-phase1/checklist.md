@@ -34,13 +34,13 @@
 
 ## F4 — `get_principals` 權限映射(ACL → allowed_principals)
 
-- [ ] F4.1 `permissions.py`:`/permissions` 抽 grantedToIdentitiesV2(user)+ group identity
-- [ ] F4.2 `transitiveMembers` 展平 nested group **到 group 級**(§5.3,唔展 user 級)
-- [ ] F4.3 特殊 principal 規則(§5.4:Anyone=drop default / Org-link / 非 Entra group)
-- [ ] F4.4 防爆量 cap < 2,049 / file(§5.5,超額 log warning + truncate / 退化)
-- [ ] F4.5 抽唔到 ACL **唔默默 fail-open public**(記 per-doc 失敗或退化 KB 層 — §6 risk)
-- [ ] F4.6 `tests/integration/test_sharepoint_permissions.py`:每個特殊 case + nested flatten + over-limit + 抽唔到 ACL
-- [ ] F4.7 驗:回 group 級 set + Anyone drop + 測試綠
+- [x] F4.1 `permissions.py`:`resolve_principals` 抽 grantedToV2 + grantedToIdentitiesV2(user/group/siteGroup)+ link facet
+- [x] F4.2 `_expand_group_to_group_level`:`transitiveMembers` 展平 nested group **到 group 級**(§5.3,`@odata.type` endswith group;skip user)
+- [x] F4.3 特殊 principal(§5.4:Anyone anonymous=drop default(D-2)/ public sentinel / reject · organization→`org::{tenant}` · siteGroup→external_group · specific-people→identities)
+- [x] F4.4 防爆量 cap `MAX_PRINCIPALS_PER_FILE=2049`(§5.5,超額 log `acl_principal_cap_hit` + truncate)
+- [x] F4.5 抽唔到 ACL **唔 fail-open**:permission fetch 失敗 → `AclResolutionError`(propagate);空集 = 「無可解析 principal」非 public(docstring + F5 enforce)
+- [x] F4.6 `tests/integration/test_sharepoint_permissions.py` 12 test(user/group-nested/anyone drop·reject·public/org/siteGroup/specific-people/cap/fetch-fail/full conformance/connector get_principals)
+- [x] F4.7 驗:group 級 set + Anyone drop + 完整 SourceConnector conformance(靜態 `_assert_conforms` + runtime isinstance)+ ruff/mypy/35 passed
 
 ## F5 — import service(ingestion 薄銜接 + per-doc 錯誤模型 + summary)
 
