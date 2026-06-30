@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-06-30(B-01 階段 1 backend W100 closed — G-W100 PASS,49 新測試;剩階段 1b 前端 + live runbook;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-06-30(B-01 階段 1b plan active — ADR-0071 **Accepted** 獨立頂層 Integrations 模組 + W101 plan 7 deliverable approve;mockup landing+4 surface 歸屬已改;backend W100 已 closed G-W100 PASS;剩 F1-F7 impl + live runbook;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -30,7 +30,7 @@
 
 | ID | 任務 | 狀態 | 前置 / 下一步 | 來源 |
 |---|---|---|---|---|
-| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中`(backend ✅ / 前端+live 待) | ①–③ spec amendment + 方案藍圖 + UI mockup ✅(見來源);④ ✅ **階段 1 backend 落地(`W100` closed,G-W100 PASS)**:F1 interface+capability / F2 Graph client(azure-identity+httpx,無新 dep)/ F3 connect·browse·list·fetch / F4 get_principals(transitiveMembers group 級+Anyone-drop+防爆量)/ F5 import service(per-doc 錯誤模型)/ F6 API route+RBAC+production adapter(doc ACL→既有 pipeline,**ingestion 核心零改動**)。**49 新測試 + RBAC 回歸綠**,ruff/mypy clean。commits `67f4f14`/`abfaf1e`/`bfa1d34`/`0499f2d`/`08ce773`/`ff87652`;⑤ **carry-over**:**階段 1b 前端匯入 wizard**(H7 重現 `integration-import/` 4 surface,等真 tenant 將近/用戶 kickoff)+ **live 驗證**(藍圖 §10 階段 C/D runbook,公司真 tenant)+ follow-up(org/public/external_group principal 端到端) | ADR-0070(Accepted)/ `W100-integration-sharepoint-phase1/`(plan+progress)/ `docs/09-analysis/` 藍圖+deep-research ×2 / C17 / `integration-import/` mockup |
+| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中`(backend ✅ / 前端 IA+plan ✅ / impl 進行中 / live 待) | ①–③ spec amendment + 方案藍圖 + UI mockup ✅(見來源);④ ✅ **階段 1 backend 落地(`W100` closed,G-W100 PASS)**:F1 interface+capability / F2 Graph client(azure-identity+httpx,無新 dep)/ F3 connect·browse·list·fetch / F4 get_principals(transitiveMembers group 級+Anyone-drop+防爆量)/ F5 import service(per-doc 錯誤模型)/ F6 API route+RBAC+production adapter(doc ACL→既有 pipeline,**ingestion 核心零改動**)。**49 新測試 + RBAC 回歸綠**,ruff/mypy clean。commits `67f4f14`/`abfaf1e`/`bfa1d34`/`0499f2d`/`08ce773`/`ff87652`;⑤ **階段 1b 前端 IA 決定 ✅**(2026-06-30):ADR-0071(**Proposed** — 獨立頂層 Integrations 模組;用戶 AskUserQuestion 揀 landing+wizard 形態 + 命名 Integrations)+ mockup 配套改(加 `10-integrations-landing.html` + 4 surface shell 由 Knowledge 改 Integrations 歸屬);⑥ **階段 1b plan active**(`W101-integrations-import-ui`,2026-06-30 approve):ADR-0071 **Accepted** + 7 deliverable(F1 backend browse/list/resolve 端點 + import 個別 ref path / F2-F7 前端 5 surface H7 重現 + nav + API client);#2 credential 唯讀(H5 deviation 用戶確認);⑦ **carry-over**:F1-F7 impl 進行中 + **live 驗證**(藍圖 §10 階段 C/D runbook,公司真 tenant)+ follow-up(org/public/external_group principal 端到端) | ADR-0070(Accepted)/ `W100-integration-sharepoint-phase1/`(plan+progress)/ `docs/09-analysis/` 藍圖+deep-research ×2 / C17 / `integration-import/` mockup |
 
 ---
 
