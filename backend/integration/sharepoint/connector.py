@@ -18,13 +18,14 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from integration.connector import ConnectionHandle, ConnectorCapabilities
 from integration.models import (
     DeltaResult,
+    Principal,
     SourceContainer,
     SourceDocument,
     SourceDocumentRef,
@@ -35,6 +36,10 @@ from integration.sharepoint.graph_client import (
     SharePointCredentials,
     build_credential,
 )
+from integration.sharepoint.permissions import AnyonePolicy, resolve_principals
+
+if TYPE_CHECKING:
+    from integration.connector import SourceConnector
 
 _DEFAULT_TIMEOUT = httpx.Timeout(60.0)
 _SEP = "::"
@@ -116,8 +121,12 @@ class SharePointConnector:
         credentials: SharePointCredentials,
         *,
         http: httpx.AsyncClient | None = None,
+        anyone_policy: AnyonePolicy = "drop",
     ) -> None:
         self._creds = credentials
+        # D-2 — Anyone-link policy (default drop: don't index a grant we can't map to
+        # an Entra principal). See permissions.resolve_principals.
+        self._anyone_policy = anyone_policy
         # Connector owns one AsyncClient for the import run (reused across calls).
         # An injected client (tests) is caller-owned and not closed here.
         self._http = http or httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT)
@@ -221,6 +230,23 @@ class SharePointConnector:
         await gc.stream_to_file(f"/drives/{drive_id}/items/{ref.id}/content", dest)
         return SourceDocument(ref=ref, content_path=dest, metadata={"source": "sharepoint"})
 
+    async def get_principals(
+        self, handle: ConnectionHandle, ref: SourceDocumentRef
+    ) -> list[Principal]:
+        """Resolve the document's ACL → group-level principals (①, §5). Raises
+        `AclResolutionError` on fetch failure / policy=reject; an empty list means
+        'no resolvable principal' — the import service refuses to index it as public
+        (§6 risk)."""
+        drive_id = _drive_id_from_container(ref.container_id)
+        gc = self._graph(handle)
+        return await resolve_principals(
+            gc,
+            drive_id,
+            ref.id,
+            tenant_id=self._creds.tenant_id,
+            anyone_policy=self._anyone_policy,
+        )
+
     async def delta(
         self, handle: ConnectionHandle, container_id: str, token: str | None
     ) -> DeltaResult:
@@ -228,3 +254,10 @@ class SharePointConnector:
         permission layer, §6.2). Always signals resync so a caller that ignores the
         capability still falls back to full re-ingest."""
         return DeltaResult(changes=[], new_token=None, resync_required=True)
+
+
+if TYPE_CHECKING:
+    # Static conformance check (mypy -p integration doesn't see the test that asserts
+    # this at runtime): SharePointConnector must satisfy the SourceConnector Protocol.
+    def _assert_conforms(c: SharePointConnector) -> SourceConnector:
+        return c
