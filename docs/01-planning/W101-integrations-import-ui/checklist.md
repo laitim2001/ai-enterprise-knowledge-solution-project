@@ -15,12 +15,12 @@
 - [x] F1.10 `ruff` + `mypy --strict`(integration package + route module)clean
 
 ## F2 — sidebar nav + breadcrumb + route scaffold
-- [ ] F2.1 `app-shell.tsx` `WORKSPACE_NAV` `/kb`(行 104)之後加 `{ href:'/integrations', label:'Integrations', Icon: <lucide> }`(icon 對 mockup `10-integrations-landing.html` chain-link)
-- [ ] F2.2 `computeBreadcrumbs` 加 `integrations` 分支(`/integrations`→`['Integrations']`;`/integrations/sharepoint/import`→`['Integrations','Import from SharePoint']`)
-- [ ] F2.3 `app/(app)/integrations/page.tsx` 骨架(`'use client'`)
-- [ ] F2.4 `app/(app)/integrations/sharepoint/import/page.tsx` 骨架(`'use client'`)
-- [ ] F2.5 sidebar active 高亮驗證(`usePathname` `isActiveRoute`)+ **唔郁其他 nav 項歸屬**(surgical,D-1)
-- [ ] F2.6 `tsc` + `eslint` clean
+- [x] F2.1 `app-shell.tsx` `WORKSPACE_NAV` `/kb`(行 104)之後加 `{ href:'/integrations', label:'Integrations', Icon: <lucide> }`(icon 對 mockup `10-integrations-landing.html` chain-link)
+- [x] F2.2 `computeBreadcrumbs` 加 `integrations` 分支(`/integrations`→`['Integrations']`;`/integrations/sharepoint/import`→`['Integrations','Import from SharePoint']`)
+- [x] F2.3 `app/(app)/integrations/page.tsx` 骨架(`'use client'`)
+- [x] F2.4 `app/(app)/integrations/sharepoint/import/page.tsx` 骨架(`'use client'`)
+- [x] F2.5 sidebar active 高亮驗證(`usePathname` `isActiveRoute`)+ **唔郁其他 nav 項歸屬**(surgical,D-1)
+- [x] F2.6 `tsc` + `eslint` clean
 
 ## F3 — API client + types
 - [ ] F3.1 `lib/api/integration.ts` `new ApiClient()` + `integrationApi` object

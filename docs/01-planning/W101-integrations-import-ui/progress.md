@@ -47,5 +47,6 @@
 ### Commits
 - `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
 - `docs(planning):` W101 plan 三件套(`babccd8`)
-- `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(本 commit)
-- (F2+ 隨 impl)
+- `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(`9f2818e`)
+- `feat(frontend):` F2 Integrations sidebar nav + breadcrumb + 2 route 骨架(本 commit)
+- (F3+ 隨 impl)

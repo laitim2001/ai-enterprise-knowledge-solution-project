@@ -41,6 +41,7 @@ import {
   Globe,
   Home,
   Layers,
+  Link2,
   type LucideIcon,
   Menu,
   MessageCircle,
@@ -102,6 +103,10 @@ const WORKSPACE_NAV: NavLink[] = [
   // `ekp-data.jsx:233` ships a hard-coded `tail: "5"` placeholder (= its
   // MOCK_KBS length); we wire it to the real `kbApi.list()` count instead.
   { href: '/kb', label: 'Knowledge', Icon: Database },
+  // Integrations — top-level source-integration module (ADR-0071). Sits after
+  // Knowledge in Workspace (mockup integration-import/10-integrations-landing.html
+  // sidebar). Icon: chain-link SVG → lucide `Link2` (mechanical match).
+  { href: '/integrations', label: 'Integrations', Icon: Link2 },
   { href: '/eval', label: 'Eval', Icon: Activity },
   { href: '/traces', label: 'Traces', Icon: Layers },
 ];
@@ -166,6 +171,12 @@ function computeBreadcrumbs(pathname: string): string[] {
   if (root === 'traces') {
     if (rest.length === 0) return ['Traces'];
     return ['Traces', 'Trace detail'];
+  }
+
+  if (root === 'integrations') {
+    // /integrations → landing; /integrations/sharepoint/import → import wizard.
+    if (rest[0] === 'sharepoint') return ['Integrations', 'Import from SharePoint'];
+    return ['Integrations'];
   }
 
   return [root.charAt(0).toUpperCase() + root.slice(1)];
