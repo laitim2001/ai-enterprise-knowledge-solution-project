@@ -49,10 +49,16 @@
 - F4 連接狀態靜態「Not connected」(D4 — live 探測需真 tenant);`integrationApi` F5/F6 wizard 先消費。
 - 驗:tsc + eslint clean。**H7 browser visual smoke 留 phase 末 / 用戶**(同 BUG-038 pattern — W87 OneDrive dev server 首編 ~135s + Fast Refresh 唔可靠)。
 
+### F5 完成(2026-06-30)
+- wizard step1 Connect(KB select `kbApi.list` + site URL +「Test connection」call `resolveSite` + credential 唯讀 banner #2 + Sites.Selected prerequisite banner + Continue gate)+ step2 Select(lazy browse tree `TreeNode` + `listDocuments` 文件 table + 個別 checkbox + selected count)。
+- stepper inline 28px circle(`kb/new` pattern,D-2 不抽 primitive);tree-row hover/active 用 scoped `<style>`(`.sp-import` 前綴鏡像 mockup `21` inline style,唔污染全域)。step3/4 placeholder 留 F6。
+- 驗:tsc + eslint clean。
+
 ### Commits
 - `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
 - `docs(planning):` W101 plan 三件套(`babccd8`)
 - `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(`9f2818e`)
 - `feat(frontend):` F2 sidebar nav + breadcrumb + route 骨架(`d5dcfc7`)
-- `feat(frontend):` F3 API client + F4 landing H7 重現(本 commit)
-- (F5+ 隨 impl)
+- `feat(frontend):` F3 API client + F4 landing H7 重現(`5611f2e`)
+- `feat(frontend):` F5 wizard step1 Connect + step2 Select(本 commit)
+- (F6+ 隨 impl)
