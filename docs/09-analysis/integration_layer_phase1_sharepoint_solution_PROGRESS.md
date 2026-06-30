@@ -22,8 +22,11 @@
 | **WIP memory** `project_adr0070_integration_phase1_wip.md` | ✅ 已建立 | `.claude/.../memory/`(非 git-tracked,經 OneDrive 同步) |
 | **方案藍圖** `integration_layer_phase1_sharepoint_solution.md` | ✅ **§0–10 + 附錄 全部完成** | `26c5e74`→`14f3719`(grep 11 節 + 附錄)|
 | **UI 設計 mockup**(SharePoint 匯入 4 surface + foundation + index)| ✅ **land 落 `references/design-mockups/integration-import/`** | `70e42df`(8 檔;雙擊 `index.html` 直接開,link canonical `../styles.css`;design-stage,H7 源頭)|
+| **階段 1 backend 落地(W100 F1–F6)** | ✅ **G-W100 PASS(2026-06-30)** | plan 三件套 `796ea22`;F1 `67f4f14` / F2 `abfaf1e` / F3 `bfa1d34` / F4 `0499f2d` / F5 `08ce773` / F6 `ff87652`;`backend/integration/` + `api/routes/integration.py`;49 新測試 + RBAC 回歸綠;`backend/ingestion/` diff=零 |
 
-**下一塊**:藍圖正文 + UI mockup **已齊**。按 §10 R1 考慮開**階段 1 implementation phase**(`SourceConnector` interface + SharePoint connector,先 plan 三件套 `plan.md` / `checklist.md` / `progress.md`)—— 等用戶決定幾時 kickoff(屬落 code 階段,phase folder = `W{NN}-integration-sharepoint-phase1/` rolling JIT)。**UI 部分**:design-stage mockup 已備(解咗早前 flagged 嘅 H7 UI gap),impl 時前端按 H7 100% 重現 `integration-import/` 4 個 surface。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4),**唔喺 local repo 假裝 implement**(SharePoint / Graph 要真 tenant + `Sites.Selected` grant,本機造唔到)。
+**現狀(2026-06-30)**:藍圖正文 + UI mockup + **階段 1 backend(F1–F6)全部完成**。backend 詳情(deliverable / 測試 / 教訓 / Gate caveat / carry-over)= `docs/01-planning/W100-integration-sharepoint-phase1/`(plan + progress retro)。**H2 無新 dep**(`azure-identity`+`httpx` 已在,對齊 `api/auth/entra_graph.py`)+ B1(`allowed_principals`)W90 已 ship → **冇開新 ADR**(全喺 ADR-0070 範圍)。
+
+**下一塊(carry-over)**:① **階段 1b 前端匯入 wizard**(H7 100% 重現 `integration-import/` 4 surface;等真 tenant 將近 / 用戶 kickoff)② **live 驗證**(本藍圖 §10 階段 C/D runbook,公司真 tenant + `Sites.Selected`,D4 本機造唔到)③ follow-up:org-link / Anyone-public / external_group principal 端到端(需 query 側 inject org/public token;default drop 唔行此路)。藍圖係**你帶去公司真實環境執行**嗰份(reframe,見 §1 D4)。
 
 **UI 設計來歷注意**:用 claude design(`DesignSync`)植入 EKP design system 後設計;但該 design-system project 喺用戶互動 claude.ai 登入**唔可見**(`/design-login` 獨立授權 context,API `list_projects`/`list_files` 證實有檔但瀏覽器睇唔到)→ 改為 land 落本地 canonical。教訓:claude design design-system project ≠ 用戶 prototype project(`EKP Platform.html` 嗰個 `/p/` regular project,API 404 掂唔到);要畀用戶睇得到嘅交付,land 落本地 `references/design-mockups/` 最穩。
 

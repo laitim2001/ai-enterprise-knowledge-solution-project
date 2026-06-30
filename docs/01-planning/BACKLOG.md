@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-06-30(B-01 階段 1 phase plan W100 proposed,待 approve;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-06-30(B-01 階段 1 backend W100 closed — G-W100 PASS,49 新測試;剩階段 1b 前端 + live runbook;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -30,7 +30,7 @@
 
 | ID | 任務 | 狀態 | 前置 / 下一步 | 來源 |
 |---|---|---|---|---|
-| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② ✅ 方案藍圖 §0–10 + 附錄 + progress tracker 完成(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`,交付公司真實環境執行);③ ✅ UI design-stage mockup land(`references/design-mockups/integration-import/` 4 surface + foundation,`70e42df`,H7 源頭,雙擊 index.html 開);④ ✅ 階段 1 phase plan(`W100-integration-sharepoint-phase1/`)proposed — F1–F6(interface→Graph client→connect/browse/list/fetch→get_principals 權限映射→import service→API route);**H2 無新 dep**(`azure-identity`+`httpx` 已存在)+ **B1 已 ship**(W90 P2.1 `allowed_principals` plumbing)兩 gate 清;Gate=mock 測試+靜態檢查,live 留 runbook(D4);⑤ **待**:用戶 approve plan + 確認 Anyone-link 政策(D-2)+ frontend 時機 → 開 F1 落 code | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 + 藍圖 + `integration-import/` mockup + `W100-integration-sharepoint-phase1/plan.md` |
+| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中`(backend ✅ / 前端+live 待) | ①–③ spec amendment + 方案藍圖 + UI mockup ✅(見來源);④ ✅ **階段 1 backend 落地(`W100` closed,G-W100 PASS)**:F1 interface+capability / F2 Graph client(azure-identity+httpx,無新 dep)/ F3 connect·browse·list·fetch / F4 get_principals(transitiveMembers group 級+Anyone-drop+防爆量)/ F5 import service(per-doc 錯誤模型)/ F6 API route+RBAC+production adapter(doc ACL→既有 pipeline,**ingestion 核心零改動**)。**49 新測試 + RBAC 回歸綠**,ruff/mypy clean。commits `67f4f14`/`abfaf1e`/`bfa1d34`/`0499f2d`/`08ce773`/`ff87652`;⑤ **carry-over**:**階段 1b 前端匯入 wizard**(H7 重現 `integration-import/` 4 surface,等真 tenant 將近/用戶 kickoff)+ **live 驗證**(藍圖 §10 階段 C/D runbook,公司真 tenant)+ follow-up(org/public/external_group principal 端到端) | ADR-0070(Accepted)/ `W100-integration-sharepoint-phase1/`(plan+progress)/ `docs/09-analysis/` 藍圖+deep-research ×2 / C17 / `integration-import/` mockup |
 
 ---
 
