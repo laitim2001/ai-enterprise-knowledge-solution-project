@@ -71,7 +71,27 @@
 
 **Next**:F3 — `SharePointConnector`(capability 宣告 §4.1 + connect/browse/list_documents/fetch_document),sit 喺 GraphClient 上。
 
-**Commits**:見下方 F2 commit hash。
+**Commits**:`abfaf1e` feat(integration): F2 Microsoft Graph REST client。
+
+---
+
+## Day 1(續)— 2026-06-30(F3 SharePoint connect/browse/list/fetch)
+
+**F3 — `SharePointConnector` → 完成,綠**:
+- `backend/integration/sharepoint/connector.py`:capability §4.1 + `connect`(build_credential→GraphConnectionHandle)+ `aclose` + `resolve_site`(UI step1 URL→site)+ `browse`(container-id 前綴 `site::`/`drive::`/`folder::` 一個 method 行全樹,folder-only)+ `list_documents`(file-only,ref 帶 ③ eTag/cTag/lastModified/size)+ `fetch_document`(stream 落 NamedTemporaryFile)+ `delta`(resync_required)
+- `tests/integration/test_sharepoint_connector.py` 9 test
+
+**驗證**:ruff clean · `mypy --strict -p integration` 6 files clean · pytest `23 passed`(7+7+9)。
+
+**決定 / 教訓**:
+- container-id 前綴編碼(`<kind>::<native-id>[::<item>]`)令單一 `browse` walk 全樹;`SourceDocumentRef.container_id` 保留 → `fetch_document` 由此 recover drive_id,零額外 state。
+- `browse` folder-only / `list_documents` file-only(driveItem `folder`/`file` facet 分流)。
+- **教訓**:F3 test 原本斷言 `isinstance(c, SourceConnector)` runtime 失敗(`get_principals` 未做,F4 先有)→ 正確訊號。`mypy -p integration` 唔檢 `tests/`(唔同 package)所以冇 catch;**完整 SourceConnector conformance 斷言移去 F4**,F3 只驗 capabilities。
+- http lifecycle:connector 自有 AsyncClient(injected = caller-owned 不 close;自建 = `aclose` 關)。
+
+**Next**:F4 — `get_principals` 權限映射(`permissions.py`:`/permissions` → transitiveMembers 展 group 級 + Anyone-link drop(D-2)+ 防爆量 cap)+ 補完 SourceConnector conformance。
+
+**Commits**:見下方 F3 commit hash。
 
 ---
 

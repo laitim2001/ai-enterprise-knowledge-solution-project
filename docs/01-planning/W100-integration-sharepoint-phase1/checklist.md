@@ -24,13 +24,13 @@
 
 ## F3 — SharePoint connector:connect / browse / list / fetch
 
-- [ ] F3.1 `connector.py`:`SharePointConnector` capability 宣告(§4.1 acl_granularity=document / supports_delta=False)
-- [ ] F3.2 `connect`(app-only token + ConnectionHandle)
-- [ ] F3.3 `browse`(site→drive→folder,分頁 AsyncIterator,§4.3)
-- [ ] F3.4 `list_documents`(driveItem + eTag/cTag/lastModified/size 映射 SourceDocumentRef,§4.4)
-- [ ] F3.5 `fetch_document`(stream 落 temp file + 抓完即清,§4.5)
-- [ ] F3.6 `tests/integration/test_sharepoint_connector.py`:mock browse 樹 / list 分頁 / fetch-to-temp
-- [ ] F3.7 驗:分頁 + temp 清理 + change-detection 欄 + 測試綠
+- [x] F3.1 `connector.py`:`SharePointConnector` capability 宣告(§4.1 acl_granularity=document / supports_delta=False)
+- [x] F3.2 `connect`(`build_credential` → `GraphConnectionHandle`)+ `aclose`(close owned http)+ `resolve_site`(UI step1 URL→site container)
+- [x] F3.3 `browse`(container-id 前綴編碼 site→drive→folder,分頁 AsyncIterator,folder-only;§4.3)
+- [x] F3.4 `list_documents`(driveItem file-only + eTag/cTag/lastModified/size 映射 SourceDocumentRef,§4.4)
+- [x] F3.5 `fetch_document`(`stream_to_file` 落 NamedTemporaryFile + suffix;抓完即清 = caller 責任 §7.2)
+- [x] F3.6 `tests/integration/test_sharepoint_connector.py` 9 test:browse 三層 / list file-only / fetch-to-temp / resolve_site / delta-resync / capabilities
+- [x] F3.7 驗:分頁 + folder/file 分流 + change-detection 欄 + ruff/mypy/23 passed(完整 SourceConnector conformance 留 F4 — get_principals 後)
 
 ## F4 — `get_principals` 權限映射(ACL → allowed_principals)
 
