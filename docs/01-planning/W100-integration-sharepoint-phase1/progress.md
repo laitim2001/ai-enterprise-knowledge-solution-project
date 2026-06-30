@@ -112,7 +112,29 @@
 
 **Next**:F5 — `import_service`(browse-selection → list → per-doc fetch → 既有 ingestion 入口帶 `allowed_principals` → per-doc summary;空 ACL 拒 fail-open;fatal vs per-doc §8.1)。**ingestion 核心零改動驗證**(§7.2 鐵律)。
 
-**Commits**:見下方 F4 commit hash。
+**Commits**:`0499f2d` feat(integration): F4 SharePoint ACL -> allowed_principals mapping。
+
+---
+
+## Day 1(續)— 2026-06-30(F5 import service)
+
+**先查**:既有單檔 ingestion 入口 = `api/routes/documents.py:_run_ingest_pipeline`(收 `UploadFile` + 內部自行 `resolve_doc_principals` 解 allowed_principals,**唔收外部值**)。
+
+**F5 — `import_service` → 完成,綠**:
+- `backend/integration/import_service.py`:`import_documents`(per-container `list_documents` → per-doc `_import_one`)+ `DocImportResult` / `ImportSummary`(§8.2)+ `IngestCallable` Protocol(注入式 ingestion seam)+ `default_doc_id`(`sp-{item}` 穩定 id → re-import replace-in-place §8.3)
+- `tests/integration/test_import_service.py` 6 test(fake connector 可控 + 真 SharePointConnector 端到端 ACL flow)
+
+**驗證**:ruff clean · `mypy --strict -p integration` 8 files clean · pytest `41 passed`(35+6)· **`backend/ingestion/` git diff = 零**(§7.2 鐵律守住)。
+
+**關鍵設計決定**:
+- **零核心改動達成法**:import_service 用注入式 `IngestCallable`,**唔 import sharepoint / 唔改 ingestion**;production wiring(F6)再寫 doc-level ACL rows → 既有 `_run_ingest_pipeline` 經 `resolve_doc_principals`(5.2 doc override)自然 pick up SharePoint principals → ingestion 核心 + Docling pipeline 完全不動。
+- **空集 ≠ public enforce(§6/F4.5)**:`acl_granularity=="document"` 且 principals 空 → 記 `acl_empty` failed,**唔 ingest**(防 empty stamp 經 P2.2 filter fail-open 變 public)。
+- **per-doc 韌性(⑦)**:`_import_one` 永不拋;fetch/ACL/ingest 失敗各記 + 續;container list 失敗 per-container 記 + 續;temp 抓完 finally 即清(§8.5),ingest 失敗都清。
+- **provider-agnostic**:只 import `integration.connector`/`integration.models`,零 SharePoint 耦合 → 階段 2 provider reuse。
+
+**Next**:F6 — thin API route(`POST /integration/sharepoint/import`,RBAC `require_role(admin,editor)`)+ production ingest adapter(doc ACL write → `_run_ingest_pipeline`)+ **G-W100 Gate**(full pytest + ruff + mypy --strict + ingestion diff=零)。
+
+**Commits**:見下方 F5 commit hash。
 
 ---
 
