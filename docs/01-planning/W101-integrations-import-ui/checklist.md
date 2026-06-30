@@ -3,16 +3,16 @@
 > 對應 `plan.md` §2 Deliverables F1–F7。Atomic checkbox,逐項 tick。**未 tick 項唔可刪**(只 `[x]` 或加 🚧 + reason)。
 
 ## F1 — backend browse/list/resolve 端點 + import 個別 ref path
-- [ ] F1.1 `import_service.import_selected_documents(connector, handle, kb_id, refs, ingest)` — 收選定 `SourceDocumentRef` list,逐個 fetch + get_principals + ingest(per-doc 錯誤模型同 `import_documents`)
-- [ ] F1.2 既有 `import_documents`(container 級)**不變**(production-preserve 驗證)
-- [ ] F1.3 `POST /resolve-site` — body `{ site_url }` → parse hostname+site_path → `connector.resolve_site` → `SourceContainerOut`(兼做 step1「Test connection」)
-- [ ] F1.4 `GET /browse?container_id=` — optional container_id(None=top)→ collect `connector.browse` → `{ containers: SourceContainerOut[] }`(D-6 server-side cap)
-- [ ] F1.5 `GET /documents?container_id=` — required → collect `connector.list_documents` → `{ documents: SourceDocumentRefOut[] }`(D-6 cap)
-- [ ] F1.6 `POST /import` 擴 `documents: list[SourceDocumentRefIn]`(個別 ref path,#1 D-3);`container_ids` 保留向後相容
-- [ ] F1.7 Pydantic schema `SourceContainerOut` / `SourceDocumentRefOut` / `SourceDocumentRefIn`(鏡像 `integration/models.py` dataclass)
-- [ ] F1.8 RBAC:browse/list/resolve = `require_role(admin,editor)`;import = + per-KB edit(既有);not-configured 503(既有 helper)
-- [ ] F1.9 mock connector 單元測(`tests/api/test_integration_route.py` + `tests/integration/`):resolve/browse/list/import-selected happy + RBAC + 503;既有 `import_documents` 測試零 regression
-- [ ] F1.10 `ruff` + `mypy --strict`(integration package + route module)clean
+- [x] F1.1 `import_service.import_selected_documents(connector, handle, kb_id, refs, ingest)` — 收選定 `SourceDocumentRef` list,逐個 fetch + get_principals + ingest(per-doc 錯誤模型同 `import_documents`)
+- [x] F1.2 既有 `import_documents`(container 級)**不變**(production-preserve 驗證)
+- [x] F1.3 `POST /resolve-site` — body `{ site_url }` → parse hostname+site_path → `connector.resolve_site` → `SourceContainerOut`(兼做 step1「Test connection」)
+- [x] F1.4 `GET /browse?container_id=` — optional container_id(None=top)→ collect `connector.browse` → `{ containers: SourceContainerOut[] }`(D-6 server-side cap)
+- [x] F1.5 `GET /documents?container_id=` — required → collect `connector.list_documents` → `{ documents: SourceDocumentRefOut[] }`(D-6 cap)
+- [x] F1.6 `POST /import` 擴 `documents: list[SourceDocumentRefIn]`(個別 ref path,#1 D-3);`container_ids` 保留向後相容
+- [x] F1.7 Pydantic schema `SourceContainerOut` / `SourceDocumentRefOut` / `SourceDocumentRefIn`(鏡像 `integration/models.py` dataclass)
+- [x] F1.8 RBAC:browse/list/resolve = `require_role(admin,editor)`;import = + per-KB edit(既有);not-configured 503(既有 helper)
+- [x] F1.9 mock connector 單元測(`tests/api/test_integration_route.py` + `tests/integration/`):resolve/browse/list/import-selected happy + RBAC + 503;既有 `import_documents` 測試零 regression
+- [x] F1.10 `ruff` + `mypy --strict`(integration package + route module)clean
 
 ## F2 — sidebar nav + breadcrumb + route scaffold
 - [ ] F2.1 `app-shell.tsx` `WORKSPACE_NAV` `/kb`(行 104)之後加 `{ href:'/integrations', label:'Integrations', Icon: <lucide> }`(icon 對 mockup `10-integrations-landing.html` chain-link)

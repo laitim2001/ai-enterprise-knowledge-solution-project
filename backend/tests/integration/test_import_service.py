@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 
 from integration.connector import ConnectorCapabilities
-from integration.import_service import import_documents
+from integration.import_service import import_documents, import_selected_documents
 from integration.models import Principal, SourceContainer, SourceDocument, SourceDocumentRef
 from integration.sharepoint.connector import SharePointConnector, _drive_cid
 from integration.sharepoint.graph_client import SharePointCredentials
@@ -223,3 +223,38 @@ async def test_end_to_end_real_connector_acl_flow() -> None:
 
     assert summary.succeeded == 1
     assert set(ingest.calls[0]["allowed"]) == {"G1", "G2"}  # group + nested, end to end
+
+
+async def test_import_selected_documents_by_ref() -> None:
+    # Individual-file path (#1 / D-3): refs imported directly, list_documents bypassed.
+    conn = _FakeConnector(
+        docs={},  # unused — import_selected_documents does not list containers
+        principals={"I1": [Principal("group", "G1")], "I2": [Principal("group", "G2")]},
+    )
+    ingest = _RecordingIngest()
+    summary = await import_selected_documents(
+        conn,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+        kb_id="kb1",
+        refs=[_ref("I1", "a.pdf"), _ref("I2", "b.docx")],
+        ingest=ingest,
+    )
+
+    assert summary.total == 2 and summary.succeeded == 2 and summary.failed == 0
+    assert {c["doc_id"] for c in ingest.calls} == {"sp-I1", "sp-I2"}
+    assert all(not p.exists() for p in conn.created_paths)  # temp cleaned (§8.5)
+
+
+async def test_import_selected_empty_acl_refused() -> None:
+    # Same no-fail-open guard as the container path (§6): empty ACL → not indexed.
+    conn = _FakeConnector(docs={}, principals={"I1": []})
+    ingest = _RecordingIngest()
+    summary = await import_selected_documents(
+        conn,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+        kb_id="kb1",
+        refs=[_ref("I1", "secret.pdf")],
+        ingest=ingest,
+    )
+
+    assert summary.failed == 1 and ingest.calls == []

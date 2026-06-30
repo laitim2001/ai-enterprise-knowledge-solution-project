@@ -37,7 +37,15 @@
 - BACKLOG B-01 R7 同步(plan active)。
 - 開 **F1**(backend 端點,最底層先)。
 
+### F1 完成(2026-06-30)
+- backend browse/list/resolve 端點 + import 個別 ref path。
+- `import_service.import_selected_documents`(復用 `_import_one`,個別文件路徑;container 級 `import_documents` 不變 = production-preserve)。
+- `integration.py`:3 新端點(`POST /resolve-site` / `GET /browse` / `GET /documents`)+ `POST /import` 擴 `documents` ref 欄(both-empty → 422)+ schema(`SourceContainerOut` / `SourceDocumentRefOut` / `SourceDocumentRefIn`)+ RBAC `require_role(admin,editor)` + D-6 `_collect_capped` cap 2000(no silent cap,log warning)。
+- credential 仍 server-side(`_new_connector` 由 .env / Key Vault,H5);#2 credential 唯讀屬前端 F5。
+- 驗:pytest **24 passed**(既有 + 新端點 happy / RBAC user 403 / 個別 ref path / both-empty 422 / invalid URL 422)/ ruff clean / `mypy --strict`(integration package + route module module-mode)clean。
+
 ### Commits
-- `docs(adr):` ADR-0071 Accepted + landing mockup + 4 surface 歸屬(Step 1)
-- `docs(planning):` W101 plan 三件套 kickoff
-- (F1+ commit 隨 impl)
+- `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
+- `docs(planning):` W101 plan 三件套(`babccd8`)
+- `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(本 commit)
+- (F2+ 隨 impl)

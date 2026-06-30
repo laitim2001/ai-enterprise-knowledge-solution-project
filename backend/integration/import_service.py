@@ -130,6 +130,44 @@ async def import_documents(
     return summary
 
 
+async def import_selected_documents(
+    connector: SourceConnector,
+    handle: ConnectionHandle,
+    *,
+    kb_id: str,
+    refs: list[SourceDocumentRef],
+    ingest: IngestCallable,
+    make_doc_id: Callable[[SourceDocumentRef], str] = default_doc_id,
+) -> ImportSummary:
+    """Import a pre-selected set of document refs into `kb_id` (§8.3 — individual-file
+    selection from the wizard step 2 picker, vs `import_documents` which expands whole
+    containers). Same per-doc resilience (⑦): a single doc's ACL / fetch / ingest
+    failure is recorded and skipped; the batch continues. Auth / connect failures are
+    fatal and surface from `connector.connect()` BEFORE this call (the caller aborts).
+    """
+    summary = ImportSummary()
+    doc_acl = connector.capabilities.acl_granularity == "document"
+    for ref in refs:
+        await _import_one(
+            connector,
+            handle,
+            ref,
+            kb_id=kb_id,
+            doc_acl=doc_acl,
+            ingest=ingest,
+            make_doc_id=make_doc_id,
+            summary=summary,
+        )
+    logger.info(
+        "import_selected_complete",
+        kb_id=kb_id,
+        total=summary.total,
+        succeeded=summary.succeeded,
+        failed=summary.failed,
+    )
+    return summary
+
+
 async def _import_one(
     connector: SourceConnector,
     handle: ConnectionHandle,

@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from api.routes import integration as integration_routes
 from integration.import_service import ImportSummary
+from integration.models import SourceContainer, SourceDocumentRef
 from kb_management import KBService, get_kb_service
 from kb_management.doc_acl_store import InMemoryDocAclStore
 from kb_management.storage import InMemoryKBBackend
@@ -96,9 +97,11 @@ def test_import_not_configured_503() -> None:
 
 
 def test_import_validation_error_on_missing_fields() -> None:
+    # Neither container_ids nor documents → 422 (in-route guard, #1 / D-3 — both fields
+    # now optional but at least one must be non-empty).
     with TestClient(_app("admin")) as client:
         r = client.post("/integration/sharepoint/import", json={"kb_id": _KB}, headers=_HEADERS)
-    assert r.status_code == 422  # container_ids required
+    assert r.status_code == 422
 
 
 # ---- happy path (mocked connector + real import_documents) ------------------
@@ -211,3 +214,132 @@ def test_adapter_refuses_without_doc_acl_store() -> None:
                 source_url="/x",
             )
         )
+
+
+# ---- browse / list / resolve endpoints (F1 — mocked connector) --------------
+
+
+def _configured(role: str = "admin") -> Settings:
+    return Settings(
+        feature_auth_mock=True,
+        auth_mock_role=role,
+        sharepoint_tenant_id="T1",
+        sharepoint_client_id="C1",
+        sharepoint_client_secret="S1",
+    )
+
+
+class _FakeBrowseConnector:
+    """connect/resolve/browse/list only — no Graph, no ingestion (D4)."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    async def connect(self) -> _FakeHandle:
+        return _FakeHandle()
+
+    async def aclose(self) -> None:
+        return None
+
+    async def resolve_site(self, handle: object, hostname: str, site_path: str) -> SourceContainer:
+        return SourceContainer(id="site::S1", name="Manuals", type="site")
+
+    async def browse(self, handle: object, container_id: str | None = None):  # noqa: ANN201
+        yield SourceContainer(
+            id="drive::D1", name="Documents", type="library", parent_id=container_id
+        )
+
+    async def list_documents(self, handle: object, container_id: str):  # noqa: ANN201
+        yield SourceDocumentRef(id="I1", name="a.pdf", path="/a.pdf", container_id=container_id)
+
+
+def test_resolve_site_happy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(integration_routes, "SharePointConnector", _FakeBrowseConnector)
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.post(
+            "/integration/sharepoint/resolve-site",
+            json={"site_url": "https://contoso.sharepoint.com/sites/manuals"},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 200, r.text
+    assert r.json() == {"id": "site::S1", "name": "Manuals", "type": "site", "parent_id": None}
+
+
+def test_resolve_site_invalid_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(integration_routes, "SharePointConnector", _FakeBrowseConnector)
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.post(
+            "/integration/sharepoint/resolve-site",
+            json={"site_url": "https://contoso.sharepoint.com"},  # no /sites/<name>
+            headers=_HEADERS,
+        )
+    assert r.status_code == 422
+
+
+def test_resolve_site_user_forbidden() -> None:
+    with TestClient(_app("user")) as client:
+        r = client.post(
+            "/integration/sharepoint/resolve-site",
+            json={"site_url": "https://c.sharepoint.com/sites/m"},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 403
+
+
+def test_browse_happy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(integration_routes, "SharePointConnector", _FakeBrowseConnector)
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.get(
+            "/integration/sharepoint/browse",
+            params={"container_id": "site::S1"},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 200, r.text
+    assert r.json()["containers"][0]["id"] == "drive::D1"
+
+
+def test_browse_user_forbidden() -> None:
+    with TestClient(_app("user")) as client:
+        r = client.get("/integration/sharepoint/browse", headers=_HEADERS)
+    assert r.status_code == 403
+
+
+def test_documents_happy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(integration_routes, "SharePointConnector", _FakeBrowseConnector)
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.get(
+            "/integration/sharepoint/documents",
+            params={"container_id": "drive::D1"},
+            headers=_HEADERS,
+        )
+    assert r.status_code == 200, r.text
+    docs = r.json()["documents"]
+    assert len(docs) == 1
+    assert docs[0]["id"] == "I1" and docs[0]["container_id"] == "drive::D1"
+
+
+def test_documents_requires_container_id() -> None:
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.get("/integration/sharepoint/documents", headers=_HEADERS)
+    assert r.status_code == 422  # container_id is a required query param
+
+
+def test_import_individual_documents_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(integration_routes, "SharePointConnector", _FakeBrowseConnector)
+    captured: dict = {}
+
+    async def _fake_selected(connector, handle, *, kb_id, refs, ingest):  # noqa: ANN001
+        captured["kb_id"] = kb_id
+        captured["refs"] = refs
+        return ImportSummary(results=[])
+
+    monkeypatch.setattr(integration_routes, "import_selected_documents", _fake_selected)
+    body = {
+        "kb_id": _KB,
+        "documents": [{"id": "I1", "name": "a.pdf", "path": "/a.pdf", "container_id": "drive::D1"}],
+    }
+    with TestClient(_app("admin", settings=_configured())) as client:
+        r = client.post("/integration/sharepoint/import", json=body, headers=_HEADERS)
+    assert r.status_code == 200, r.text
+    assert captured["kb_id"] == _KB
+    assert len(captured["refs"]) == 1 and captured["refs"][0].id == "I1"
