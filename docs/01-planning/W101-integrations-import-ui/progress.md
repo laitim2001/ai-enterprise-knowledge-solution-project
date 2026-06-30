@@ -54,11 +54,18 @@
 - stepper inline 28px circle(`kb/new` pattern,D-2 不抽 primitive);tree-row hover/active 用 scoped `<style>`(`.sp-import` 前綴鏡像 mockup `21` inline style,唔污染全域)。step3/4 placeholder 留 F6。
 - 驗:tsc + eslint clean。
 
+### F6 完成(2026-06-30)
+- step3 Import:重現 mockup `22` layout(RUNNING badge + banner + progress bar + 揀文件 doc-row 列表),`importSelected` mount auto-run,per-doc 統一「Importing…」→ 完成 `onDone(summary)`。**step3 streaming = 整體 progress 過場**(用戶揀方案 A — backend 同步無 SSE,plan §4 #step3 記);Cancel 按鈕 disabled(同步無得 cancel)。
+- step4 Summary:重現 mockup `23`(banner-success + mini-stats + per-doc READY/FAILED table + View KB link)。**第 3 mini-stat 由「Chunks added」改「Documents」**(backend `ImportSummary` 無 chunk count,H7 minor deviation 標明);Retry disabled(階段 1b,功能留 follow-up)。
+- doc-row / mini-stat surface class 加入 scoped `<style>`(`.sp-import`,鏡像 mockup `22`/`23` inline style)。
+- 驗:tsc + eslint clean。
+
 ### Commits
 - `docs(adr):` ADR-0071 Accepted + landing mockup(`d84cbf8`)
 - `docs(planning):` W101 plan 三件套(`babccd8`)
 - `feat(integration):` F1 backend browse/list 端點 + import 個別 ref(`9f2818e`)
 - `feat(frontend):` F2 sidebar nav + breadcrumb + route 骨架(`d5dcfc7`)
 - `feat(frontend):` F3 API client + F4 landing H7 重現(`5611f2e`)
-- `feat(frontend):` F5 wizard step1 Connect + step2 Select(本 commit)
-- (F6+ 隨 impl)
+- `feat(frontend):` F5 wizard step1 Connect + step2 Select(`9972a18`)
+- `feat(frontend):` F6 wizard step3 Import + step4 Summary(本 commit)
+- (F7 收尾)

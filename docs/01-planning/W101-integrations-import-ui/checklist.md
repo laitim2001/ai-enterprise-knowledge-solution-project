@@ -47,11 +47,11 @@
 - [x] F5.7 **H7 fidelity check** `20`+`21`(含 credential 唯讀屬 H5 deviation,其餘 100% 對齊)
 
 ## F6 — Wizard Step 3 Import + Step 4 Summary(H7 重現 `22`+`23`)
-- [ ] F6.1 Step 3:progress bar + per-doc 即時狀態列(ready/processing/queued status-dot)`importSelected`
-- [ ] F6.2 Step 3:失敗唔 abort batch(per-doc 狀態獨立)+「runs in background」hint
-- [ ] F6.3 Step 4:summary(2 of 3 imported banner + mini-stats imported/failed/chunks)
-- [ ] F6.4 Step 4:per-doc table(READY/FAILED badge + detail + scan-PDF guard 例 ADR-0065)+「Retry failed」+「View knowledge base →」
-- [ ] F6.5 **H7 fidelity check** `22`+`23`
+- [x] F6.1 Step 3:progress bar + per-doc 即時狀態列(ready/processing/queued status-dot)`importSelected`
+- [x] F6.2 Step 3:失敗唔 abort batch(per-doc 狀態獨立)+「runs in background」hint
+- [x] F6.3 Step 4:summary(2 of 3 imported banner + mini-stats imported/failed/chunks)
+- [x] F6.4 Step 4:per-doc table(READY/FAILED badge + detail + scan-PDF guard 例 ADR-0065)+「Retry failed」+「View knowledge base →」
+- [x] F6.5 **H7 fidelity check** `22`+`23`
 
 ## F7 — 收尾 + Gate
 - [ ] F7.1 `kb/[id]/upload/page.tsx` `SourceKind='sharepoint'` placeholder 改指向 `/integrations/sharepoint/import` link(避免兩入口 drift)

@@ -75,6 +75,14 @@ export default function SharePointImportPage() {
         .sp-import .tree-row[data-active="true"] { background: oklch(var(--muted)); font-weight: 500; }
         .sp-import .tree-row svg { width: 15px; height: 15px; color: oklch(var(--muted-foreground)); flex-shrink: 0; }
         .sp-import .pick-table input[type=checkbox] { accent-color: oklch(var(--primary)); width: 14px; height: 14px; }
+        .sp-import .doc-row { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid oklch(var(--border)); }
+        .sp-import .doc-row:last-child { border-bottom: 0; }
+        .sp-import .doc-row .name { font-size: 13px; }
+        .sp-import .doc-row .st { margin-left: auto; font-size: 12px; color: oklch(var(--muted-foreground)); }
+        .sp-import .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .sp-import .mini-stat { border: 1px solid oklch(var(--border)); border-radius: var(--radius-sm); padding: 12px 14px; }
+        .sp-import .mini-stat .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .sp-import .mini-stat .l { font-size: 11.5px; color: oklch(var(--muted-foreground)); }
       `}</style>
       <div className="content-narrow sp-import">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -161,15 +169,16 @@ export default function SharePointImportPage() {
           />
         )}
         {step === 2 && (
-          <StepImportPlaceholder
-            count={selectedRefs.length}
+          <StepImport
+            kbId={targetKb}
+            refs={selectedRefs}
             onDone={(s) => {
               setSummary(s);
               setStep(3);
             }}
           />
         )}
-        {step === 3 && summary && <StepSummaryPlaceholder summary={summary} kbId={targetKb} />}
+        {step === 3 && summary && <StepSummary summary={summary} kbId={targetKb} />}
       </div>
     </div>
   );
@@ -519,38 +528,187 @@ function TreeNode({ container, depth, active, onSelect }: TreeNodeProps) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Step 3 / 4 — placeholders (F6)
+// Step 3 — Import (mockup 22-step3-import.html)
 // ──────────────────────────────────────────────────────────────────────────
 
-function StepImportPlaceholder({
-  count,
+function StepImport({
+  kbId,
+  refs,
   onDone,
 }: {
-  count: number;
+  kbId: string;
+  refs: SourceDocumentRef[];
   onDone: (s: ImportSummary) => void;
 }) {
+  const run = useMutation({
+    mutationFn: () => integrationApi.importSelected(kbId, refs),
+    onSuccess: onDone,
+  });
+
+  // Synchronous backend import (no SSE — step3 is an integral progress pass, not
+  // per-doc streaming; user-confirmed deviation, plan §4 #step3). Fire once on mount.
+  useEffect(() => {
+    run.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Importing</h3>
+        {run.isError ? (
+          <span className="badge badge-error">
+            <span className="badge-dot" /> FAILED
+          </span>
+        ) : (
+          <span className="badge badge-info">
+            <span className="badge-dot" /> RUNNING
+          </span>
+        )}
+      </div>
       <div className="card-body">
-        <p className="hint">Step 3 (Import) — {count} documents. Built in F6.</p>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => onDone({ total: count, succeeded: count, failed: 0, results: [] })}
-        >
-          (stub) finish
+        <div className="banner banner-info" style={{ marginBottom: 14 }}>
+          <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
+            Importing <b>{refs.length} documents</b> into <b>{kbId}</b>. A failed
+            document does not stop the batch.
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div className="progress accent" style={{ flex: 1 }}>
+            <i style={{ width: run.isPending ? '60%' : '100%' }} />
+          </div>
+          <span
+            className="text-xs muted mono"
+            style={{ fontSize: 11.5, color: 'oklch(var(--muted-foreground))' }}
+          >
+            {run.isPending ? 'importing…' : 'sent'}
+          </span>
+        </div>
+        {refs.map((r) => (
+          <div key={r.id} className="doc-row">
+            <span className={`status-dot ${run.isPending ? 'processing' : 'ready'}`} />
+            <span className="name">{r.name}</span>
+            <span className="st">{run.isPending ? 'Importing…' : 'Sent'}</span>
+          </div>
+        ))}
+        {run.isError && (
+          <div className="hint" style={{ marginTop: 12, color: 'oklch(var(--destructive))' }}>
+            {(run.error as Error).message}
+          </div>
+        )}
+      </div>
+      <div className="card-footer">
+        <button className="btn btn-ghost btn-sm" disabled>
+          Cancel import
         </button>
+        <div
+          className="text-xs muted mono"
+          style={{ fontSize: 11.5, color: 'oklch(var(--muted-foreground))' }}
+        >
+          Step 3 of 4 · runs synchronously
+        </div>
       </div>
     </div>
   );
 }
 
-function StepSummaryPlaceholder({ summary, kbId }: { summary: ImportSummary; kbId: string }) {
+// ──────────────────────────────────────────────────────────────────────────
+// Step 4 — Summary (mockup 23-step4-summary.html). The mockup's 3rd mini-stat is
+// "Chunks added"; the backend ImportSummary carries no chunk count, so it shows
+// total Documents instead (H7 minor deviation — backend data limit).
+// ──────────────────────────────────────────────────────────────────────────
+
+function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }) {
+  const failed = summary.failed;
   return (
     <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Import complete</h3>
+        {failed > 0 ? (
+          <span className="badge badge-warning">{failed} needs attention</span>
+        ) : (
+          <span className="badge badge-success">All imported</span>
+        )}
+      </div>
       <div className="card-body">
-        <p className="hint">
-          Step 4 (Summary) — {summary.succeeded}/{summary.total} into {kbId}. Built in F6.
-        </p>
+        <div className="banner banner-success" style={{ marginBottom: 16 }}>
+          <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
+            <b>
+              {summary.succeeded} of {summary.total} documents
+            </b>{' '}
+            imported into <b>{kbId}</b>.
+            {failed > 0 ? ` ${failed} failed — see below.` : ''}
+          </div>
+        </div>
+
+        <div className="mini-stats">
+          <div className="mini-stat">
+            <div className="v" style={{ color: 'oklch(var(--success))' }}>
+              {summary.succeeded}
+            </div>
+            <div className="l">Imported</div>
+          </div>
+          <div className="mini-stat">
+            <div className="v" style={{ color: 'oklch(var(--destructive))' }}>
+              {failed}
+            </div>
+            <div className="l">Failed</div>
+          </div>
+          <div className="mini-stat">
+            <div className="v">{summary.total}</div>
+            <div className="l">Documents</div>
+          </div>
+        </div>
+
+        {summary.results.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Status</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.results.map((r) => (
+                  <tr key={r.doc_id}>
+                    <td>{r.name}</td>
+                    <td>
+                      {r.status === 'success' ? (
+                        <span className="badge badge-success">
+                          <span className="badge-dot" /> READY
+                        </span>
+                      ) : (
+                        <span className="badge badge-error">
+                          <span className="badge-dot" /> FAILED
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className="text-xs"
+                      style={{ fontSize: 12, color: 'oklch(var(--muted-foreground))' }}
+                    >
+                      {r.error ?? 'Imported'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <div className="card-footer">
+        {failed > 0 ? (
+          <button className="btn btn-secondary btn-sm" disabled>
+            Retry {failed} failed
+          </button>
+        ) : (
+          <span />
+        )}
+        <Link className="btn btn-primary btn-sm" href={`/kb/${kbId}`}>
+          View knowledge base &rarr;
+        </Link>
       </div>
     </div>
   );
