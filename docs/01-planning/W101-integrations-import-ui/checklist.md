@@ -38,13 +38,13 @@
 - [x] F4.5 **H7 fidelity check**:逐 section 對齊 mockup(layout/spacing/typography/color token/interaction/responsive)
 
 ## F5 — Wizard Step 1 Connect + Step 2 Select(H7 重現 `20`+`21`)
-- [ ] F5.1 inline stepper(4 step,28px circle DESIGN_SYSTEM §4.2,done/current/upcoming 態)+ `useState` step state
-- [ ] F5.2 Step 1:目標 KB select + site URL input + **credential 唯讀狀態展示(#2 D-4)**(已配置/未配置 banner,非可輸入 fields)
-- [ ] F5.3 Step 1「Test connection」→ `resolveSite` → 成功 enable Continue + 狀態 badge
-- [ ] F5.4 Step 2:browse 樹(site→library→folder)`browse` lazy load + tree-row active
-- [ ] F5.5 Step 2:文件 table + checkbox `listDocuments`;個別文件揀選 state + selected count
-- [ ] F5.6 Step 1/2 導航(Continue / Back)+ breadcrumb「Integrations / Import from SharePoint」
-- [ ] F5.7 **H7 fidelity check** `20`+`21`(含 credential 唯讀屬 H5 deviation,其餘 100% 對齊)
+- [x] F5.1 inline stepper(4 step,28px circle DESIGN_SYSTEM §4.2,done/current/upcoming 態)+ `useState` step state
+- [x] F5.2 Step 1:目標 KB select + site URL input + **credential 唯讀狀態展示(#2 D-4)**(已配置/未配置 banner,非可輸入 fields)
+- [x] F5.3 Step 1「Test connection」→ `resolveSite` → 成功 enable Continue + 狀態 badge
+- [x] F5.4 Step 2:browse 樹(site→library→folder)`browse` lazy load + tree-row active
+- [x] F5.5 Step 2:文件 table + checkbox `listDocuments`;個別文件揀選 state + selected count
+- [x] F5.6 Step 1/2 導航(Continue / Back)+ breadcrumb「Integrations / Import from SharePoint」
+- [x] F5.7 **H7 fidelity check** `20`+`21`(含 credential 唯讀屬 H5 deviation,其餘 100% 對齊)
 
 ## F6 — Wizard Step 3 Import + Step 4 Summary(H7 重現 `22`+`23`)
 - [ ] F6.1 Step 3:progress bar + per-doc 即時狀態列(ready/processing/queued status-dot)`importSelected`
