@@ -1,0 +1,43 @@
+# W101 progress — Integrations 前端匯入 wizard + browse 端點
+
+> Daily 進度 + 決策 + commits + 結尾 retro。對應 `checklist.md` F1–F7。
+
+---
+
+## Day 0 — 2026-06-30(plan proposed)
+
+### 前情(本 phase 點嚟)
+- ADR-0070(統一整合層 connector framework)backend 階段 1 已喺 W100 完成(G-W100 PASS,49 測試,ingestion 核心零改動)。
+- 用戶 2026-06-30 review IA 後,連續決定:
+  1. 前端 wizard 應做**獨立頂層 Integrations 模組**(非掛 Knowledge 下)→ AskUserQuestion 揀 **landing + wizard 形態** + 命名 **Integrations**。
+  2. → **ADR-0071** 寫成 Proposed → 用戶**Accept**(行使 decision owner)。
+  3. mockup Step 1 已配套改:新增 `10-integrations-landing.html` + 4 surface(`20`–`23`)shell 由 Knowledge 歸屬改 Integrations(sidebar active / breadcrumb /「‹ Integrations」返回)。
+  4. Step 2「Select」backend gap AskUserQuestion → 用戶揀 **B — 補 browse 端點 + 串真接口**。
+
+### 開 plan 前查證(R6 think-before)
+- **Explore agent** map frontend 現狀:route group `(app)` + 每 route 一 folder/`page.tsx`;sidebar `components/nav/app-shell.tsx` `WORKSPACE_NAV` array(行 98-107,`/kb` 行 104)+ `computeBreadcrumbs`(行 145-172);**無 `<Stepper>` primitive**(2 個 wizard inline + `useState`);API `lib/api/*.ts` `xxxApi` + `/api/backend/[...path]` proxy;**無 i18n**(hardcode 英文);無既有 integration frontend code。
+- **First-hand 讀 backend**:`SharePointConnector` 已實作 `resolve_site` / `browse`(site→library→folder)/ `list_documents` / `fetch_document` / `get_principals`,**只欠 HTTP expose**;`POST /import` 現收 `container_ids`(整 container,`import_documents`)。
+
+### 識別 3 處 mockup-vs-backend 張力(§4 處理)
+1. **#1 個別文件粒度**:mockup step2 個別 checkbox vs backend container 級 import → F1 補 `import_selected_documents`(保留 container 級,production-preserve)。
+2. **#2 credential H5**:mockup step1 輸入 Tenant/App ID/credential vs backend `.env` server-side(H5)→ **credential fields 改唯讀狀態展示**(H7 deviation,backend/H5 wins per §13,**待用戶 approve plan 確認**)。
+3. **#3 browse 端點**:未 expose → F1 補 `resolve-site`/`browse`/`documents`(用戶選 B)。
+
+### 決定(Day 0)
+- 自決(已對齊 mockup + Karpathy):D-1 sidebar 加 `WORKSPACE_NAV` `/kb` 後(仍 Workspace section)/ D-2 Stepper inline 不抽 primitive / D-5 browse stateless / D-6 server-side cap。
+- **待用戶確認**:#2 D-4 credential 唯讀(H7 deviation due to H5)。
+- mockup sidebar 同實際 `app-shell.tsx` 有既有 drift(Eval/Traces 歸屬)— 非本 phase 引入,impl 以實際 app-shell 為準,只加一項(surgical)。
+
+### plan 三件套
+- `plan.md`(7 deliverable F1–F7 + Gate G-W101 + §4 六決定 + risks + changelog)/ `checklist.md`(F1.1–F7.4 atomic)/ 本 `progress.md`。
+- **Status proposed** — 守 R1,F1 code 未開。
+
+### Approve(2026-06-30 同日)
+- 用戶 AskUserQuestion 揀「確認唯讀 + approve,開 F1(推薦)」→ #2 D-4 credential 唯讀**確認**,plan status proposed→**active**。
+- BACKLOG B-01 R7 同步(plan active)。
+- 開 **F1**(backend 端點,最底層先)。
+
+### Commits
+- `docs(adr):` ADR-0071 Accepted + landing mockup + 4 surface 歸屬(Step 1)
+- `docs(planning):` W101 plan 三件套 kickoff
+- (F1+ commit 隨 impl)
