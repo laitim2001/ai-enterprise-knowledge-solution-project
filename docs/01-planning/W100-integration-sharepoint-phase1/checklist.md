@@ -44,12 +44,12 @@
 
 ## F5 — import service(ingestion 薄銜接 + per-doc 錯誤模型 + summary)
 
-- [ ] F5.1 `import_service.py`:browse-selection → list → per-doc fetch
-- [ ] F5.2 per-doc:fetch → **既有 ingestion 入口**(orchestrator `ingest()` 帶 `allowed_principals` + `classification`)→ 收集 result
-- [ ] F5.3 fatal(auth / per-site 無權)停 batch;per-doc(單文件 fetch/parse/ACL 失敗)skip + 記(§8.1)
-- [ ] F5.4 per-doc summary `{doc_id, name, status, error?}`(§8.2 對齊 ADR-0043)
-- [ ] F5.5 `tests/integration/test_import_service.py`:per-doc 失敗唔 abort + allowed_principals 端到端 + fatal 停 batch
-- [ ] F5.6 驗:**ingestion 核心 git diff = 零**(§7.2 鐵律)+ 測試綠
+- [x] F5.1 `import_service.py`:`import_documents` per-container `list_documents` → per-doc `_import_one`(provider-agnostic,零 SharePoint import)
+- [x] F5.2 per-doc:`get_principals` → `fetch_document` → **注入式 `IngestCallable` seam**(production F6 adapter 寫 doc ACL → 既有 `_run_ingest_pipeline` 經 5.2 override pick up,核心零改動)
+- [x] F5.3 fatal(connect/auth)喺 `connect()` 前置 propagate;per-container list 失敗記 + 續;per-doc fetch/ACL/ingest 失敗 skip + 記(§8.1 ⑦)
+- [x] F5.4 per-doc summary `DocImportResult{doc_id,name,status,error?}` + `ImportSummary` total/succeeded/failed(§8.2 ADR-0043)
+- [x] F5.5 `tests/integration/test_import_service.py` 6 test(happy 2-doc+ACL flow / 空 ACL 拒 / fetch 失敗 per-doc / ingest 失敗+temp 清 / container 失敗 per-container / 真 connector 端到端 G1+G2)
+- [x] F5.6 驗:**ingestion 核心 git diff = 零**(全程未碰 `backend/ingestion/`)+ temp 抓完即清(§8.5)+ 空集≠public(F4.5 enforce)+ ruff/mypy/41 passed
 
 ## F6 — thin API route + Phase Gate
 
