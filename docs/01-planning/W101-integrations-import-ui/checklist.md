@@ -54,7 +54,7 @@
 - [x] F6.5 **H7 fidelity check** `22`+`23`
 
 ## F7 — 收尾 + Gate
-- [ ] F7.1 `kb/[id]/upload/page.tsx` `SourceKind='sharepoint'` placeholder 改指向 `/integrations/sharepoint/import` link(避免兩入口 drift)
-- [ ] F7.2 component test scaffold(視 sprint;至少 landing + wizard smoke)
-- [ ] F7.3 Gate G-W101:`tsc`/`eslint` clean + 既有 frontend 測試零 regression + backend mock 測試綠 + `ruff`/`mypy --strict` clean + `test_integration_route`/`test_kb_route_acl` 零 regression + `backend/ingestion/` diff = 零
-- [ ] F7.4 doc-sync:BACKLOG B-01(R7)+ WIP memory + progress.md retro
+- [x] F7.1 ~~upload placeholder 改指向~~ → **不改 upload**(用戶 2026-06-30 揀:改 `kb/[id]/upload` sharepoint placeholder 會偏離其 mockup `ekp-page-misc.jsx` 觸 H7;disabled「Wave C+」placeholder non-functional 唔構成真 drift。plan changelog R3)
+- [ ] F7.2 🚧 **deferred** component test scaffold — per DD-2(frontend test deferred pattern);階段 1b 純前端 UI(H6 UI test nice-to-have);target = 對應 view 再動 / F8 batch 補
+- [x] F7.3 Gate G-W101 **PASS(caveat)**:tsc+eslint clean / backend pytest **80 passed**(integration+RBAC) / ruff+mypy clean / **ingestion diff=零** / 5 surface H7 對齊 mockup。⚠️ **vitest 14 fail = pre-existing**(kb config view test;git diff 證 W101 零 touch → 0 regression;單跑穩定 fail;`app-shell.test` pass);live 留 runbook(D4)
+- [x] F7.4 doc-sync:plan close + progress retro + BACKLOG B-01(R7,前端 impl done)+ E 區 14 pre-existing test 債 + WIP memory
