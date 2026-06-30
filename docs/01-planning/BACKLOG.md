@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-06-29(BUG-038 fix landed + 驗證全綠 → `完成`,待用戶 commit;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-06-30(B-01 階段 1 phase plan W100 proposed,待 approve;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -30,7 +30,7 @@
 
 | ID | 任務 | 狀態 | 前置 / 下一步 | 來源 |
 |---|---|---|---|---|
-| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② ✅ 方案藍圖 §0–10 + 附錄 + progress tracker 完成(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`,交付公司真實環境執行);③ ✅ UI design-stage mockup land(`references/design-mockups/integration-import/` 4 surface + foundation,`70e42df`,H7 源頭,雙擊 index.html 開);④ **待**:按 §10 R1 開階段 1 implementation phase(`SourceConnector` + SharePoint connector,plan 三件套)— 等用戶 kickoff | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 + 藍圖 + `integration-import/` mockup |
+| **B-01** | 統一整合層階段 1 — SharePoint 按需匯入(`SourceConnector` interface + `Sites.Selected` 認證 + `allowed_principals` 權限收斂 + nested group 展平 + token refresh + per-doc 錯誤模型;Tier 1.5) | `進行中` | ① EKP spec amendment ✅ landed(architecture.md §3.3/§4.1 inline-tag + COMPONENT_CATALOG C17 v1.1)2026-06-29;② ✅ 方案藍圖 §0–10 + 附錄 + progress tracker 完成(`docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`,交付公司真實環境執行);③ ✅ UI design-stage mockup land(`references/design-mockups/integration-import/` 4 surface + foundation,`70e42df`,H7 源頭,雙擊 index.html 開);④ ✅ 階段 1 phase plan(`W100-integration-sharepoint-phase1/`)proposed — F1–F6(interface→Graph client→connect/browse/list/fetch→get_principals 權限映射→import service→API route);**H2 無新 dep**(`azure-identity`+`httpx` 已存在)+ **B1 已 ship**(W90 P2.1 `allowed_principals` plumbing)兩 gate 清;Gate=mock 測試+靜態檢查,live 留 runbook(D4);⑤ **待**:用戶 approve plan + 確認 Anyone-link 政策(D-2)+ frontend 時機 → 開 F1 落 code | ADR-0070(Accepted 2026-06-28)/ `docs/09-analysis/` deep-research ×2 + C17 + 藍圖 + `integration-import/` mockup + `W100-integration-sharepoint-phase1/plan.md` |
 
 ---
 
