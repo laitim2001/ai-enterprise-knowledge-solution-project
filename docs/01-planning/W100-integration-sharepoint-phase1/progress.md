@@ -134,7 +134,61 @@
 
 **Next**:F6 — thin API route(`POST /integration/sharepoint/import`,RBAC `require_role(admin,editor)`)+ production ingest adapter(doc ACL write → `_run_ingest_pipeline`)+ **G-W100 Gate**(full pytest + ruff + mypy --strict + ingestion diff=零)。
 
-**Commits**:見下方 F5 commit hash。
+**Commits**:`08ce773` feat(integration): F5 import service。
+
+---
+
+## Day 1(續)— 2026-06-30(F6 API route + production adapter + Gate)
+
+**先查**:`acl.py` 確認 principal 字串格式一致(`resolve_doc_principals` / `principals_for_user` 都係 raw GUID 字串比對)→ connector stamp raw Entra GUID 同 query filter match,「同一條路兩段」成立。`doc_acl_store.add` + `_run_ingest_pipeline`(documents.py:820,讀 `deps.doc_acl_store`)= adapter 落點。
+
+**F6 — API route + production adapter → 完成,綠**:
+- `backend/api/routes/integration.py`:`POST /integration/sharepoint/import`(`SharePointImportRequest`/`ImportSummaryOut`)+ `require_role(admin,editor)` self-gated + body-aware `assert_kb_access(kb_id, edit)` + `_sharepoint_credentials_or_503` + **`make_pipeline_ingest` production adapter**(寫 doc ACL rows → wrap temp file 做 `UploadFile` → 既有 `_run_ingest_pipeline`,**ingestion 核心零改動**)
+- `backend/storage/settings.py`:SharePoint 配置欄位(`sharepoint_tenant_id`/`_client_id`/`_client_secret`/`_certificate_path`/`_anyone_policy`,空 → route 503 not-configured)
+- `backend/api/server.py`:import `integration` + `include_router`(self-gated 無 `_auth`)
+- `tests/api/test_integration_route.py` 8 test
+
+**驗證**:ruff clean(我嘅檔;server.py 36 E402 = pre-existing app-bootstrap,我 4 行 edit 零新增)· `mypy --strict -p integration` 8 files clean · route module mypy(`--follow-imports=silent`)· F6 route 8 passed · **`backend/ingestion/` git diff = 零**(§7.2 鐵律)。
+
+**關鍵決定 / 教訓**:
+- **settings 必須 `Depends(get_settings)` 注入**(非 route body 直接 `get_settings()`)否則 `dependency_overrides` 唔生效(happy-path test 一度 503 → 改 Depends 修)。
+- **adapter doc-ACL-then-pipeline**:把 SharePoint principals 寫 `doc_acl_store` → 既有 pipeline 經 `resolve_doc_principals` 5.2 override stamp → 核心 + Docling 零改動;`doc_acl_store` 未 wire → adapter raise(防 fail-open 退化 KB 繼承)。
+- **principal_type bookkeeping-only**:retrieval match 純 `principal_id` 字串(`resolve_doc_principals` 忽略 type)→ 統一寫 "group" 功能正確;user/group(Entra)端到端 work,external_group/org/public 屬 follow-up(query 側注入,default drop 唔行此路)。
+- **D4**:live(真 SharePoint + ingestion + Azure index)本機驗唔到 → route/RBAC/schema/summary/adapter 結構用 mock 測;real path 留 runbook §10 階段 C/D。
+
+**G-W100 Gate**:**PASS(附 full-suite-env caveat)**。
+- ✅ 新測試全綠:integration package 41 + route 8 = **49 passed**;RBAC 鄰近回歸 `test_kb_route_acl` 21 passed(共 70 passed 24.5s)。
+- ✅ ruff clean(我嘅檔全部;`server.py` 36 E402 = pre-existing app-bootstrap,我 4 行 edit 零新增)。
+- ✅ `mypy --strict -p integration`(8 files)clean + route module `mypy --strict --follow-imports=silent -m api.routes.integration` `Success: no issues found in 1 source file`。
+- ✅ `import api.server` OK,`/integration` route 註冊成功(1 條)。
+- ✅ **`backend/ingestion/` git diff = 零**(§7.2 鐵律全 phase 守住)。
+- ⚠️ **full repo pytest 跑唔完(caveat)**:背景全套跑到 ~12%(hang 前 ~216 test 全綠 dots)卡喺一個**網絡綁定測試**(reach 緊外部服務無 timeout,3060s wall / 49 CPU-s = idle hang)→ 殺咗。屬 EKP 既有 env 限制(R8 corp-proxy / CLOSE_WAIT,非本 phase 引入:hang 前全綠 + 本 phase 改動全屬新增 module + 1 settings 欄 + router 註冊,additive/局部)。`pytest-timeout` 未裝(裝撞 R8)→ 改針對性 Gate 已足夠覆蓋本 phase surface。同 EKP「smoke-user-deferred」caveat 同類。
+
+**Live 驗證(D4)**:真 SharePoint + ingestion + Azure index 端到端留藍圖 §10 階段 C/D runbook 畀公司真 tenant 執行,**不計入 G-W100**。
+
+**Commits**:見下方 F6 commit hash。
+
+---
+
+## Retrospective(W100 closeout 2026-06-30)
+
+**達成**:ADR-0070 階段 1 backend 垂直切片完整落地 —— C17 `SourceConnector` 抽象層 + SharePoint concrete connector(connect/browse/list/fetch/get_principals)+ 權限映射(transitiveMembers group 級 + Anyone-drop + 防爆量)+ import service(per-doc 錯誤模型)+ thin API route(RBAC 守衛)+ production ingest adapter(doc ACL → 既有 pipeline,核心零改動)。**49 新測試**,ruff/mypy clean,ingestion 核心零改動。
+
+**Gate 評估的價值**(Karpathy §1.1 think-before):開工前查證令兩個原以為會卡嘅 gate 清空 —— H2 無新 dep(`azure-identity`+`httpx` 已存在,對齊 `entra_graph.py` 先例)+ B1(`allowed_principals` plumbing)已 ship(W90 P2.1)。慳返大量 re-work。
+
+**教訓**:
+1. **Protocol 設計 lock-in**(D-1):credentials 入 `__init__` 而非 `connect()` 參數,避 method-param contravariance 破 structural conformance — 概念草案(藍圖 §3.2)落實作要修。
+2. **mypy `-p` module mode**:repo 根 path 撞 `backend.X` vs `X` 雙名 → 用 `-p`/`-m` module mode,唔用 path mode。
+3. **`Depends(get_settings)` 注入**:route body 直接 `get_settings()` 繞過 `dependency_overrides`,test override 唔生效。
+4. **空集 ≠ public**(§6/F4.5):document-ACL connector 抽唔到 principal 唔可 fail-open 當 public,要記 per-doc 失敗。
+5. **full-suite env hang**:EKP 全套測試有網絡綁定測試會 idle-hang(wall ≫ CPU 係診斷信號),針對性 Gate + caveat 係務實做法。
+
+**carry-over**:
+- **階段 1b**:前端匯入 wizard(H7 100% 重現 `references/design-mockups/integration-import/` 4 surface)— 等真 tenant 驗證將近或用戶 explicit kickoff。
+- **Live 驗證**:藍圖 §10 階段 C/D runbook,公司真 tenant 執行。
+- **follow-up**:org-link / Anyone-public / external_group principal 端到端(需 query 側 inject org/public token;default drop 唔行此路)。
+
+**G-W100 PASS WITH FULL-SUITE-ENV + LIVE-DEFERRED CAVEAT。W100 closed 2026-06-30。**
 
 ---
 

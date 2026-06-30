@@ -500,6 +500,19 @@ class Settings(BaseSettings):
         "https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
     )
 
+    # W100 (ADR-0070) — SharePoint integration connector (C17 階段 1). app-only
+    # Graph via Sites.Selected (§1.2). Empty tenant/client → the
+    # /integration/sharepoint routes 503 "not configured" (the connector never
+    # touches azure-identity). Provide exactly ONE of secret / certificate (cert
+    # preferred for production, §1.4). H5: stored in .env / Key Vault, NEVER committed.
+    sharepoint_tenant_id: str = ""
+    sharepoint_client_id: str = ""
+    sharepoint_client_secret: str = ""
+    sharepoint_certificate_path: str = ""
+    # D-2 — Anyone-link policy: drop (default; don't index a grant with no resolvable
+    # Entra principal) / public / reject (§5.4).
+    sharepoint_anyone_policy: Literal["drop", "public", "reject"] = "drop"
+
     # Logging / Environment
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     environment: Literal["local", "poc", "beta", "production"] = "local"

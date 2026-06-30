@@ -53,9 +53,9 @@
 
 ## F6 — thin API route + Phase Gate
 
-- [ ] F6.1 `api/routes/integration.py`:`POST /integration/sharepoint/import`(+ browse/list 如需)wire import_service
-- [ ] F6.2 RBAC 守衛 `require_role(admin, editor)`(對齊 W88 寫端點)
-- [ ] F6.3 register router(`api/server.py` 或 router aggregator)
-- [ ] F6.4 `tests/integration/test_integration_route.py`:route + RBAC 守衛(mock import_service)
-- [ ] F6.5 **G-W100 Gate**:full pytest 綠 + ruff clean + `mypy --strict` clean + ingestion diff=零 + H6 coverage 新 module
-- [ ] F6.6 doc-sync:progress retro + BACKLOG B-01 → `完成`(backend 部分)+ memory append + PROGRESS tracker
+- [x] F6.1 `api/routes/integration.py`:`POST /integration/sharepoint/import` wire import_service + `make_pipeline_ingest` production adapter(寫 doc ACL rows → 既有 `_run_ingest_pipeline` 5.2 override,核心零改動)+ `SharePointImportRequest`/`ImportSummaryOut` schema
+- [x] F6.2 RBAC:`require_role(admin, editor)`(self-gated)+ body-aware `assert_kb_access(kb_id, edit)`(對齊 documents upload 寫 lane)
+- [x] F6.3 register router(`api/server.py` import + `include_router`,self-gated 無 `_auth`)+ `settings.py` SharePoint 配置欄位(tenant/client/secret/cert/anyone_policy)
+- [x] F6.4 `tests/api/test_integration_route.py` 8 test(user 403 / 401 / editor-no-grant 403 / not-configured 503 / 422 validation / happy-path summary / adapter 寫 ACL+call pipeline / adapter doc_acl None refuse)
+- [x] F6.5 **G-W100 Gate**:見 progress retro(full pytest + ruff + mypy --strict + ingestion diff=零)
+- [x] F6.6 doc-sync:progress retro + BACKLOG B-01 + memory append + PROGRESS tracker

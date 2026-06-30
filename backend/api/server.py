@@ -35,6 +35,7 @@ from api.routes import (
     feedback,
     groups,
     health,
+    integration,
     kb,
     kb_acl,
     observability,
@@ -420,6 +421,9 @@ app.include_router(kb_acl.router)
 # W92 P3a — /kb/{id}/docs/{docId}/acl per-doc ACL override per ADR-0067. Same
 # self-gated require_kb_acl("manage") pattern as kb_acl.
 app.include_router(doc_acl.router)
+# W100 ADR-0070 — /integration/sharepoint/* import (C17). Self-gated by
+# require_role("admin","editor") + body-aware assert_kb_access("edit") in-handler.
+app.include_router(integration.router, tags=["integration"])
 
 
 # ── Server launcher (BUG-008) ──────────────────────────────────────────────
