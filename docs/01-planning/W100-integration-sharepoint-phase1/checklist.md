@@ -4,13 +4,13 @@
 
 ## F1 — `SourceConnector` interface + capability model + 資料模型
 
-- [ ] F1.1 `backend/integration/__init__.py` 建包
-- [ ] F1.2 `connector.py`:`ConnectorCapabilities`(auth_kind / supports_browse / supports_acl / supports_delta / acl_granularity)
-- [ ] F1.3 `connector.py`:`SourceConnector` Protocol(connect / browse / list_documents / fetch_document / get_principals / delta)+ `ConnectionHandle` 抽象
-- [ ] F1.4 `models.py`:`SourceContainer` / `SourceDocumentRef`(etag/version/last_modified/size)/ `SourceDocument` / `Principal`(kind+entra_guid)/ `DeltaResult`
-- [ ] F1.5 `pyproject.toml` `[tool.setuptools.packages.find]` include 加 `integration*`
-- [ ] F1.6 `tests/integration/test_capabilities.py`:capability 退化規則(§3.4)
-- [ ] F1.7 驗:`mypy --strict` clean + ruff clean + provider-agnostic(connector/models 零 SharePoint import)
+- [x] F1.1 `backend/integration/__init__.py` 建包
+- [x] F1.2 `connector.py`:`ConnectorCapabilities`(auth_kind / supports_browse / supports_acl / supports_delta / acl_granularity)
+- [x] F1.3 `connector.py`:`SourceConnector` Protocol(connect / browse / list_documents / fetch_document / get_principals / delta)+ `ConnectionHandle` 抽象
+- [x] F1.4 `models.py`:`SourceContainer` / `SourceDocumentRef`(etag/version/last_modified/size)/ `SourceDocument` / `Principal`(kind+id)/ `DeltaResult`
+- [x] F1.5 `pyproject.toml` `[tool.setuptools.packages.find]` include 加 `integration*`
+- [x] F1.6 `tests/integration/test_capabilities.py`:capability 退化規則(§3.4)+ models + Protocol runtime-check(7 test)
+- [x] F1.7 驗:`mypy --strict -p integration` clean + ruff clean + provider-agnostic(connector/models 零 SharePoint import)+ 7 passed
 
 ## F2 — Graph REST client(認證 + 分頁 + token refresh)
 

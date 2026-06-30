@@ -3,7 +3,7 @@
 | 項目 | 值 |
 |---|---|
 | Phase | W100-integration-sharepoint-phase1(ADR-0070 / C17 Source Abstraction Framework 第一個 concrete connector)|
-| Status | **proposed — 待用戶 approve**(per [[feedback_change_spec_approval_gate]];plan committed 但 **F1 code 未開**,等用戶 go)|
+| Status | **active**(用戶 2026-06-30 approve:D-2 Anyone-link=drop / frontend 留階段 1b;F1 已落地 G 綠,F2 進行中)|
 | Tier | Tier 1.5(NET NEW backend module `backend/integration/`,已喺 architecture.md §3.3/§4.1 + COMPONENT_CATALOG C17 登記 = ADR-0070 Accepted 授權範圍;非新架構決定)|
 | 依賴 | **已清**:① H2 無新 dep(`azure-identity>=1.20` + `httpx>=0.27` 已喺 `pyproject.toml`,藍圖 §2.5 managed-REST 路線)② B1 前置(`allowed_principals` index 欄 + ingest stamp + query filter)已 ship(W90 P2.1 / ADR-0066,grep 證 `orchestrator.ingest()` line 139/331 已收 + stamp)|
 | 錨點 | 方案藍圖 `docs/09-analysis/integration_layer_phase1_sharepoint_solution.md`(§0–10 + 附錄)· ADR-0070(Accepted)· 2 份 deep-research · COMPONENT_CATALOG C17 · UI design-stage mockup `references/design-mockups/integration-import/` · BACKLOG B-01 |
@@ -74,3 +74,4 @@
 | 日期 | 變動 | 由 |
 |---|---|---|
 | 2026-06-30 | **Plan proposed(F1 code 未開)**:用戶 2026-06-30 講「可以開始 ADR-0070 階段 1 落 code」→ 依 R1 先寫 plan。Gate 評估發現 H2 無新 dep(`azure-identity`+`httpx` 已存在)+ B1 前置(`allowed_principals` plumbing)已 ship(W90 P2.1)→ 兩 gate 清。D4 reframe:本機落 connector code + mock 測試,live 驗證留 runbook。6 deliverable F1–F6(F1 interface → F2 Graph client → F3 connect/browse/list/fetch → F4 get_principals 權限映射 → F5 import service 薄銜接 → F6 API route + Gate)。frontend wizard 列 §5 階段 1b(向用戶 surface 揀時機)。§9.3 六項實作決定 proposed default(D-2 Anyone-link=drop security-relevant → 待確認)。**STOP — 等用戶 approve plan + 確認 D-2 + frontend 時機,先開 F1。** | proposed |
+| 2026-06-30 | **用戶 approve(AskUserQuestion):D-2 Anyone-link=drop(推薦)/ frontend 留階段 1b backend 先(推薦)** → status proposed→active。**F1 落地 G 綠**:`backend/integration/`(`__init__` + `models.py` 5 型別 + `connector.py` Protocol 6 method + capability model + `resolve_behaviour` §3.4 退化)+ `pyproject.toml` `integration*` package + `tests/integration/test_capabilities.py` 7 test。驗:ruff clean / `mypy --strict -p integration` clean / 7 passed。**D-1 lock-in 偏離藍圖 §3.2 草案**(R3 記錄):credentials 入 `__init__` 非 `connect()` 參數(避 Protocol 參數 contravariance + 對齊 EKP store 構造 pattern);`browse`/`list_documents` 用 `def -> AsyncIterator`(async generator);`SourceDocument` 唔 carry `allowed_principals`(ACL 由 `get_principals` 單一職責方法出,解藍圖 §3.2 vs §3.5 草案不一致)。F2 進行中。 | F1 |

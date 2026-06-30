@@ -62,7 +62,7 @@ eval = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["api*", "storage*", "observability*", "kb_management*", "ingestion*"]
+include = ["api*", "storage*", "observability*", "kb_management*", "ingestion*", "integration*"]
 exclude = ["tests*", ".venv*", "*.egg-info"]
 
 [tool.ruff]

@@ -27,4 +27,30 @@
 
 ---
 
+## Day 1 — 2026-06-30(approve + F1 落地)
+
+**用戶 approve(AskUserQuestion)**:D-2 Anyone-link = **drop**(推薦)· frontend wizard 留 **階段 1b**(backend 先)。→ plan status proposed→active,§9.3 default 鎖好。
+
+**F1 — `SourceConnector` interface + capability model + 資料模型 → 完成,G 綠**:
+- `backend/integration/__init__.py`(C17 包說明)
+- `backend/integration/models.py`:`Principal`(kind+id,id=allowed_principals 字串)/ `SourceContainer` / `SourceDocumentRef`(③ etag/version/last_modified/size)/ `SourceDocument`(④ content_path temp)/ `DeltaResult`(⑤ 保留)
+- `backend/integration/connector.py`:`ConnectorCapabilities` + `ConnectionHandle` Protocol(⑥ token refresh)+ `SourceConnector` Protocol 6 method + `resolve_behaviour`(§3.4 退化:manual/auto · kb_fallback/document_trimming · tree/manual_id)
+- `pyproject.toml` packages.find 加 `integration*`
+- `tests/integration/test_capabilities.py` 7 test(退化規則 4 case + models + Protocol runtime-check)
+
+**驗證**:ruff `All checks passed` · `mypy --strict -p integration` `Success: no issues found in 3 source files`(註:path mode 撞 `backend.integration` 雙名 → 用 `-p` module mode)· pytest `7 passed`。
+
+**決定 / 偏離藍圖草案(R3)**:
+- D-1:credentials 入 concrete connector `__init__`,**非** `connect()` 參數 — 避 Protocol method-param contravariance 破壞 structural conformance + 對齊 EKP store 構造 pattern(cheap sync 構造 / async network connect)。
+- `browse`/`list_documents` = async generator → 宣告 `def -> AsyncIterator[...]`(非 `async def`)。
+- `SourceDocument` 唔 carry `allowed_principals`:ACL 由 `get_principals` 單一職責方法出(解藍圖 §3.2 method vs §3.5 欄位草案不一致)。
+- provider-agnostic 守住:`connector.py` / `models.py` **零 SharePoint / Graph import**。
+
+**Next**:F2 — Graph REST client(`azure-identity` app-only token + `httpx` + `@odata.nextLink` 分頁 + `ConnectionHandle` token refresh + `tenacity` 429/5xx retry),mock via `httpx.MockTransport`。
+
+**Commits**:見下方 F1 commit hash。
+
+---
+
 <!-- Day N entries append below as F-items land -->
+
