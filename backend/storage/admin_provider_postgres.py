@@ -123,8 +123,11 @@ class PostgresAdminProviderBackend:
                 f"settings JSONB NOT NULL DEFAULT '{{}}'::jsonb"
             )
             # Idempotent seed — only inserts rows missing by provider_id PK.
+            # NB: the connection uses dict_row, so rows are dicts — index by column
+            # name, not position (`r[0]` KeyErrors on a populated table; surfaced
+            # W102 when adding the 10th provider forced the seed-insert branch).
             await cur.execute(f"SELECT provider_id FROM {_TABLE}")
-            existing = {r[0] for r in await cur.fetchall()}
+            existing = {r["provider_id"] for r in await cur.fetchall()}
             for cfg in default_providers():
                 if cfg.provider_id in existing:
                     continue

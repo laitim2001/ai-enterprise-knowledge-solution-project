@@ -49,3 +49,14 @@
 - 前端組件 test（deferred，plan「視進度」）+ user-guide 連接章節（optional）+ 生產 cert 上載 + 多 named connection（follow-up）。
 
 **狀態**:W102 implementation 完成，G-W102 test gate PASS。
+
+---
+
+## Day 1（cont 2）— Live smoke（重啟 backend + mock auth，真 Postgres）
+
+重啟 backend（帶新 code + `FEATURE_AUTH_MOCK=true` 供 curl）後逐端點 live 驗（真 Postgres admin backend + EnvVarProvider Key Vault）:
+
+- **捉到真 bug + 修**:`admin_provider_postgres.py` seed `existing = {r[0] for r in ...}` —— 連接用 `dict_row`，`fetchall()` 返 dict，`r[0]` → `KeyError: 0`。**既有 latent bug**（seed 對已有 rows 嘅表），加第 10 provider 觸發 seed-insert 分支先 surface；**InMemory 單元測試冚唔到 Postgres 路**。修 `r[0]` → `r["provider_id"]`。
+- Live 結果（修後全通）:**10 provider**（sharepoint category=integration）/ test 空→`not_tested` / **PATCH settings 持久化 Postgres**（exercise `settings JSONB` ALTER 欄）/ **set-secret 回 masked `***9999`，value 無洩漏（H5 ✅）** / test 齊→`ok` / GET roundtrip settings+masked 持久 / **resolve-site 用 managed creds 打真 Entra → `AADSTS90002 Tenant not found`（唔再 not-configured 503）→ managed 路端到端證明**（真連通需真 tenant D4）。
+
+**教訓（追加）**:admin provider Postgres 路無單元測試覆蓋（測試用 InMemory）→ dict_row 索引 bug 潛伏;live smoke 對 running-server + 真 DB 路係必要驗證層。Postgres 路 test 覆蓋 = carry-over（需 test DB 基建）。
