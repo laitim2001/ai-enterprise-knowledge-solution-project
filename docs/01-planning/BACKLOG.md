@@ -40,6 +40,7 @@
 |---|---|---|---|---|
 | **B-02** | RBAC P5 implementation — auditor 唯讀稽核角色 + access-review report + re-certify | `defer` | 出現真實審計 / 合規 driver(Tier 1.5);用戶另批(2026-06-25 暫緩,F1 已還原) | ADR-0068(Accepted)/ `enterprise-rbac/TRACKER.md` M5 |
 | **B-03** | `section_anchor_nearest` 全域 default flip — leaf 級圖步驟錨點由 preset-only 升全域 default | `defer` | 單獨拍板(類 ADR-0052)+ eval 背書;現只 preset(`P1_sop_imgdense`=nearest+cap8)+ UI,全域仍 OFF | ADR-0056 §Amendment / W98 / W99 |
+| **B-08** | 整合層匯入 browse user-scoped 取捨(Copilot 式 delegated browse vs 現狀 app-only) | `defer` | 分析完成,建議 Option A(維持 app-only)+ D-1 審計切片;revisit trigger = 出現自助 / per-department 匯入需求,或審計方要求 browse 按操作者權限收斂(Option B/C 需 ADR + 改認證模型) | [`integration_import_browse_scope_analysis_20260701.md`](../09-analysis/integration_import_browse_scope_analysis_20260701.md) |
 
 ---
 
