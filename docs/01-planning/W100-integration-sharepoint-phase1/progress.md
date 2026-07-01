@@ -185,7 +185,7 @@
 
 **carry-over**:
 - **階段 1b**:前端匯入 wizard(H7 100% 重現 `references/design-mockups/integration-import/` 4 surface)— 等真 tenant 驗證將近或用戶 explicit kickoff。
-- **Live 驗證**:藍圖 §10 階段 C/D runbook,公司真 tenant 執行。
+- **Live 驗證**:藍圖 §10 階段 C/D runbook,公司真 tenant 執行。**→ 2026-07-01 runbook 可執行版已備**(見文末 post-closeout note)。
 - **follow-up**:org-link / Anyone-public / external_group principal 端到端(需 query 側 inject org/public token;default drop 唔行此路)。
 
 **G-W100 PASS WITH FULL-SUITE-ENV + LIVE-DEFERRED CAVEAT。W100 closed 2026-06-30。**
@@ -193,4 +193,12 @@
 ---
 
 <!-- Day N entries append below as F-items land -->
+
+## Post-closeout — 2026-07-01(live 驗證 runbook 已備)
+
+W100 已 closed(2026-06-30)。後續 carry-over 進展記錄:
+
+- **Live 驗證 runbook 可執行版已備**:[`docs/09-analysis/integration_layer_phase1_live_verification_runbook.md`](../../09-analysis/integration_layer_phase1_live_verification_runbook.md)(commit `4c61c58`)—— 藍圖 §10 A–E concept checklist 嘅可執行展開版:確切 `.env` `SHAREPOINT_*` key + 重啟提醒(reload=False)/ curl 連通冒煙(早捕 403 缺 grant)/ UI wizard 4 步走查 / north-star + 安全 D1–D4 / 故障對照表 / 撤權回滾。所有環境變數 / 端點 / RBAC / 503 / cap 已 first-hand 對 `api/routes/integration.py` + `storage/settings.py` 核實。**仍 blocked on 真 tenant + `Sites.Selected`**(D4,外部)。
+- **階段 1b 前端**:已喺 `W101-integrations-import-ui` 完成(G-W101 PASS,2026-06-30)+ 2026-07-01 step2-4 layout browser mock demo 對齊驗證 → 原 carry-over「階段 1b」項 **close**。
+- **同步**:藍圖 §10 cross-ref + BACKLOG B-01 + CLAUDE.md §9/§0(commits `5cc3b54` / `81d8ed4` / `4c61c58`)。
 
