@@ -84,7 +84,7 @@ export default function SharePointImportPage() {
         .sp-import .mini-stat .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
         .sp-import .mini-stat .l { font-size: 11.5px; color: oklch(var(--muted-foreground)); }
       `}</style>
-      <div className="content-narrow sp-import">
+      <div className="content-wide sp-import">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <Link className="btn btn-ghost btn-xs btn-ghost-muted" href="/integrations">
             &#8249; Integrations

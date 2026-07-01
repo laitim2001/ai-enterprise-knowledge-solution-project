@@ -58,7 +58,7 @@ const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
 export default function IntegrationsPage() {
   return (
     <div className="content">
-      <div className="content-narrow">
+      <div className="content-wide">
         <div className="page-header">
           <div>
             <h1 className="page-title">Integrations</h1>
