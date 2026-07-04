@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-07-01(B-01 **live 驗證 runbook 可執行版已備**(`docs/09-analysis/integration_layer_phase1_live_verification_runbook.md` — 確切 `.env` key / curl 連通冒煙 / UI 走查 / 故障對照 / 撤權測試,等真 tenant 拎住做)+ 前端 **step2-4 layout browser mock demo 對齊驗證** — landing + 4 步 wizard H7 對齊 mockup,純前端 mock 假 data 走完流程,demo 完 `integration.ts` code 已還原;真 live smoke 仍待真 tenant。CLAUDE.md §9/§0 已同步 W100-W101 進度(`5cc3b54`)。2026-06-30:階段 1b **W101 closed G-W101 PASS** — F1-F7 全落,backend 3 端點 + import 個別 ref + 前端 5 surface H7;ingestion diff=零 + pytest 80 passed + tsc/eslint clean;剩 live 驗證 blocked 真 tenant;14 pre-existing frontend test 債入 E 區;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-07-04(**B-10 新增** — PR 流程正式化:solo self-merge SOP 已建([`PR_WORKFLOW.md`](./PR_WORKFLOW.md)),階段 1 `完成` / 階段 2 `main` branch protection `候選`;連帶本次 git 衛生 — 3 份 docs + PR SOP + gitignore commit、4 條 merge 殘留 branch 清理、docs branch push、首個對齊 PR〔83 commit → `main`〕待用戶開。**前期** 2026-07-01:B-01 **live 驗證 runbook 可執行版已備**(`docs/09-analysis/integration_layer_phase1_live_verification_runbook.md` — 確切 `.env` key / curl 連通冒煙 / UI 走查 / 故障對照 / 撤權測試,等真 tenant 拎住做)+ 前端 **step2-4 layout browser mock demo 對齊驗證** — landing + 4 步 wizard H7 對齊 mockup,純前端 mock 假 data 走完流程,demo 完 `integration.ts` code 已還原;真 live smoke 仍待真 tenant。CLAUDE.md §9/§0 已同步 W100-W101 進度(`5cc3b54`)。2026-06-30:階段 1b **W101 closed G-W101 PASS** — F1-F7 全落,backend 3 端點 + import 個別 ref + 前端 5 surface H7;ingestion diff=零 + pytest 80 passed + tsc/eslint clean;剩 live 驗證 blocked 真 tenant;14 pre-existing frontend test 債入 E 區;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -42,6 +42,7 @@
 | **B-03** | `section_anchor_nearest` 全域 default flip — leaf 級圖步驟錨點由 preset-only 升全域 default | `defer` | 單獨拍板(類 ADR-0052)+ eval 背書;現只 preset(`P1_sop_imgdense`=nearest+cap8)+ UI,全域仍 OFF | ADR-0056 §Amendment / W98 / W99 |
 | **B-08** | 整合層匯入 browse user-scoped 取捨(Copilot 式 delegated browse vs 現狀 app-only) | `defer` | 分析完成,建議 Option A(維持 app-only)+ D-1 審計切片;revisit trigger = 出現自助 / per-department 匯入需求,或審計方要求 browse 按操作者權限收斂(Option B/C 需 ADR + 改認證模型) | [`integration_import_browse_scope_analysis_20260701.md`](../09-analysis/integration_import_browse_scope_analysis_20260701.md) |
 | **B-09** | SharePoint 連接改 UI 配置(credential 搬 `.env` → admin UI + Key Vault) | `完成` | 方向甲落地 **G-W102 gate PASS**(2026-07-01):ADR-0072 Accepted + `ProviderConfig.settings` generic 欄 + 新 `set-secret` 端點(用戶輸入→Key Vault,H5 不 log/回傳)+ 整合層 credential **managed > `.env` fallback**(零回歸)+ 前端 Settings→Connections SharePoint 卡。backend 65 passed / tsc+eslint+mypy(淨新增 0)clean。**carry-over**:live smoke 需重啟 backend + blocked 真 tenant(D4,同 B-01);多 named connection + cert 上載 = follow-up。per-site grant 仍 IT 步驟 | [ADR-0072](../adr/0072-sharepoint-managed-connection.md) · [W102](./W102-sharepoint-connection-config/) |
+| **B-10** | PR 流程正式化 — solo self-merge SOP(階段 1)+ 分階段 `main` branch protection(階段 2)+ CODEOWNERS / PR template(階段 3,有協作者時) | 階段 1 `完成`(SOP 已建)/ 階段 2 `候選` | 階段 2 解封 = PR 流程跑順幾個 cycle 後,GitHub 開 `main` branch protection(禁直推 + require `backend-ci` pass + require PR);階段 3 = 有協作者時加 CODEOWNERS / required reviewers / `.github/PULL_REQUEST_TEMPLATE.md` | [`PR_WORKFLOW.md`](./PR_WORKFLOW.md) §7 |
 
 ---
 
