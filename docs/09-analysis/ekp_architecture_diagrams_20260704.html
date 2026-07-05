@@ -1,0 +1,686 @@
+<title>EKP 架構與核心功能流程圖 — 2026-07-04</title>
+<style>
+  :root{
+    --paper:#f4f6f5; --card:#ffffff; --ink:#1b2733; --sub:#5d6b74;
+    --acc:#0e6e6e; --acc-soft:#e7f1f0; --acc-line:#bcd6d3;
+    --ext:#4d6890; --ext-soft:#edf1f7; --ext-line:#c3cfe0;
+    --amber:#a26410; --amber-soft:#f9f0dc; --amber-line:#e0c186;
+    --t2:#8a929a; --t2-soft:#f2f3f4;
+    --line:#d5dcda; --mono:Consolas,'Cascadia Code','Courier New',monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Segoe UI','Microsoft JhengHei','PingFang TC','Noto Sans TC',sans-serif;
+    font-size:15px; line-height:1.75;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:40px 28px 80px}
+  header{border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:10px}
+  .eyebrow{font-size:12px; letter-spacing:.18em; color:var(--acc); font-weight:600; text-transform:uppercase}
+  h1{font-size:30px; margin:6px 0 8px; line-height:1.3; text-wrap:balance}
+  .meta{color:var(--sub); font-size:13.5px}
+  nav.toc{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px}
+  nav.toc a{
+    text-decoration:none; color:var(--acc); background:var(--acc-soft);
+    border:1px solid var(--acc-line); border-radius:999px; padding:3px 14px; font-size:13px; font-weight:600;
+  }
+  nav.toc a:hover,nav.toc a:focus-visible{background:var(--acc); color:#fff; outline:none}
+  section{margin-top:44px}
+  h2{font-size:21px; margin:0 0 4px; text-wrap:balance}
+  h2 .no{color:var(--acc); font-variant-numeric:tabular-nums; margin-right:8px}
+  .lede{color:var(--sub); font-size:14px; margin:0 0 16px; max-width:70ch}
+  .lede code,.note code,li code{font-family:var(--mono); font-size:.88em; background:#eef1f0; border-radius:4px; padding:1px 5px; color:#0c5a5a}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 18px 14px}
+  .scroll{overflow-x:auto; padding-bottom:6px}
+  .note{font-size:13px; color:var(--sub); margin-top:10px; max-width:80ch}
+  .note strong{color:var(--ink)}
+
+  /* 圖例 */
+  .legend{display:flex; flex-wrap:wrap; gap:16px; margin:14px 0 2px; font-size:12.5px; color:var(--sub)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:14px; height:14px; border-radius:4px; display:inline-block; border:1.4px solid}
+  .sw.core{background:var(--acc-soft); border-color:var(--acc)}
+  .sw.ext{background:var(--ext-soft); border-color:var(--ext)}
+  .sw.amb{background:var(--amber-soft); border-color:var(--amber)}
+  .sw.t2{background:var(--t2-soft); border-color:var(--t2); border-style:dashed}
+  .sw.plain{background:#fff; border-color:#b9c4c2}
+
+  /* D1 分層架構(HTML band) */
+  .stack{display:flex; flex-direction:column; gap:0}
+  .band{border:1px solid var(--line); border-radius:10px; background:var(--card); padding:12px 16px 13px}
+  .band+.connector{align-self:center; color:#93a1a8; font-size:17px; line-height:1.15; padding:1px 0}
+  .band-h{display:flex; align-items:baseline; gap:10px; margin-bottom:8px}
+  .band-h b{font-size:14px}
+  .band-h small{color:var(--sub); font-size:12px}
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{border-radius:7px; padding:4px 11px; font-size:12.8px; border:1.3px solid #b9c4c2; background:#fbfcfb}
+  .chip b{font-weight:600}
+  .chip small{display:block; color:var(--sub); font-size:11px; line-height:1.45}
+  .chip.core{background:var(--acc-soft); border-color:var(--acc-line)}
+  .chip.ext{background:var(--ext-soft); border-color:var(--ext-line)}
+  .chip.amb{background:var(--amber-soft); border-color:var(--amber-line)}
+  .chip.t2{background:var(--t2-soft); border-color:var(--t2); border-style:dashed; color:var(--sub)}
+  .chip code{font-family:var(--mono); font-size:11px; background:transparent; padding:0; color:#0c5a5a}
+
+  /* 關卡 chips */
+  .gates{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; margin-top:16px}
+  .gate{border-radius:10px; padding:12px 14px; font-size:13px; border:1.3px solid}
+  .gate b{display:block; font-size:13.5px; margin-bottom:2px}
+  .gate.blocked{background:var(--amber-soft); border-color:var(--amber-line); color:#6e4a10}
+  .gate.go{background:var(--acc-soft); border-color:var(--acc-line); color:#0b4f4f}
+
+  /* SVG 共通 */
+  svg{font-family:inherit; display:block}
+  svg text{fill:var(--ink)}
+  .bx{fill:#fff; stroke:#b9c4c2; stroke-width:1.3}
+  .bx-core{fill:var(--acc-soft); stroke:var(--acc)}
+  .bx-ext{fill:var(--ext-soft); stroke:var(--ext)}
+  .bx-amb{fill:var(--amber-soft); stroke:var(--amber)}
+  .bx-t2{fill:var(--t2-soft); stroke:var(--t2); stroke-dasharray:5 4}
+  .bx-band{fill:#f4f6f5; stroke:#c9d2d0}
+  .tt{font-size:13.5px; font-weight:600}
+  .td{font-size:11.3px; fill:var(--sub)}
+  .tm{font-family:var(--mono); font-size:10.6px; fill:#0c5a5a}
+  .lane{font-size:11.5px; font-weight:700; fill:var(--sub); letter-spacing:.12em}
+  .arr{stroke:#7f8f97; stroke-width:1.6; fill:none}
+  .arr-d{stroke:#9fadb4; stroke-width:1.3; fill:none; stroke-dasharray:4 4}
+  .stepc{fill:var(--acc)}
+  .stepn{font-size:11px; font-weight:700; fill:#fff}
+
+  /* D4 §15 + D7 配置(HTML 步驟) */
+  .steps{display:flex; flex-direction:column; gap:0}
+  .step{display:flex; gap:14px; align-items:flex-start; border:1px solid var(--line); border-radius:10px; background:var(--card); padding:12px 16px}
+  .step+.connector2{align-self:center; color:#93a1a8; font-size:17px; line-height:1.1}
+  .step .n{flex:0 0 30px; height:30px; border-radius:50%; background:var(--acc); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:3px}
+  .step .n.amb{background:var(--amber)}
+  .step h3{margin:0; font-size:14.5px}
+  .step p{margin:2px 0 0; font-size:13px; color:var(--sub)}
+  .flowline{display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13.5px}
+  .flowline .fchip{border:1.3px solid var(--acc-line); background:var(--acc-soft); border-radius:8px; padding:6px 12px; line-height:1.5}
+  .flowline .fchip small{display:block; color:var(--sub); font-size:11px}
+  .flowline .sep{color:#93a1a8}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-top:14px}
+  .kpi{border:1px solid var(--line); border-radius:10px; background:var(--card); padding:10px 14px}
+  .kpi b{font-size:19px; color:var(--acc); font-variant-numeric:tabular-nums}
+  .kpi span{display:block; font-size:12px; color:var(--sub); line-height:1.5}
+
+  footer{margin-top:56px; border-top:1px solid var(--line); padding-top:14px; color:var(--sub); font-size:12.5px}
+  @media (prefers-reduced-motion:no-preference){
+    nav.toc a{transition:background .15s,color .15s}
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Enterprise Knowledge Platform · Tier 1</div>
+  <h1>EKP 架構與核心功能流程圖</h1>
+  <div class="meta">2026-07-04 狀態快照 · 對應 <code style="font-family:var(--mono)">docs/architecture.md</code> v6 frozen + ADR-0001~0072 · 配合《項目進度全面盤點》閱讀</div>
+  <nav class="toc">
+    <a href="#d1">① 整體系統架構</a>
+    <a href="#d2">② RAG 查詢流程</a>
+    <a href="#d3">③ 文件 Ingestion 流程</a>
+    <a href="#d4">④ 圖文還原(§15 北極星)</a>
+    <a href="#d5">⑤ RBAC 權限模型</a>
+    <a href="#d6">⑥ SharePoint 整合層</a>
+    <a href="#d7">⑦ 三層可調配置</a>
+  </nav>
+  <div class="legend">
+    <span><i class="sw core"></i>自研核心(已落地)</span>
+    <span><i class="sw ext"></i>外部 vendor 服務(H2 已 lock)</span>
+    <span><i class="sw amb"></i>blocked on 外部 / 暫緩</span>
+    <span><i class="sw t2"></i>Tier 2(未開始,H4 邊界)</span>
+    <span><i class="sw plain"></i>介面 / 資料層</span>
+  </div>
+</header>
+
+<!-- ═══════════ D1 整體架構 ═══════════ -->
+<section id="d1">
+  <h2><span class="no">①</span>整體系統架構(五層)</h2>
+  <p class="lede">由上而下:用戶 → 前端 → API 層 → 核心服務(component C01–C17)→ 資料與外部服務。全部前端 view 受 H7 design fidelity 約束(100% 重現 <code>references/design-mockups/</code>);vendor 全部 H2 已 lock。</p>
+  <div class="card">
+    <div class="stack">
+      <div class="band">
+        <div class="band-h"><b>用戶層</b><small>Ricoh 內部用戶(首 use case = Drive Project 用戶手冊)</small></div>
+        <div class="chips">
+          <span class="chip"><b>一般用戶</b><small>Chat 問答 + 引用 + 圖文還原</small></span>
+          <span class="chip"><b>管理員 / editor</b><small>KB 管理 · 配置調校 · 匯入 · 用戶權限</small></span>
+        </div>
+      </div>
+      <div class="connector">▼</div>
+      <div class="band">
+        <div class="band-h"><b>前端 — Next.js 14 App Router + 統一 AppShell</b><small>ADR-0024 IA · CSS-first + shadcn/ui · H7 fidelity</small></div>
+        <div class="chips">
+          <span class="chip core"><b>Dashboard</b><small>總覽 + 健康狀態</small></span>
+          <span class="chip core"><b>Chat</b><small>SSE 串流 + 3 種引用模式 + 圖文交織</small></span>
+          <span class="chip core"><b>KB 管理</b><small>KB Detail 8-tab · 上載 · chunk 檢視 · per-doc 配置</small></span>
+          <span class="chip core"><b>Integrations</b><small>SharePoint 匯入 wizard(ADR-0071)</small></span>
+          <span class="chip core"><b>Users</b><small>RBAC:Members / Roles / Groups / Audit</small></span>
+          <span class="chip core"><b>Settings</b><small>6-tab:連線 · 身份 · 配額 · profile 映射</small></span>
+          <span class="chip core"><b>Eval / Traces</b><small>RAGAs 面板 + Langfuse trace 檢視</small></span>
+        </div>
+      </div>
+      <div class="connector">▼</div>
+      <div class="band">
+        <div class="band-h"><b>API 層 — FastAPI Gateway(C08)</b><small>60+ REST 端點 · 10+ router</small></div>
+        <div class="chips">
+          <span class="chip"><b>Hybrid auth</b><small>Entra mock bridge + self-register · httpOnly cookie + CSRF(ADR-0022)</small></span>
+          <span class="chip"><b>RBAC 守衛</b><small><code>require_role</code> / <code>require_kb_acl</code> · query 端點 KB 層 guard</small></span>
+          <span class="chip"><b>SSE streaming</b><small><code>/chat</code> · <code>/query/stream</code></small></span>
+          <span class="chip"><b>錯誤封套 + audit log</b><small>Pydantic v2 schema · 稽核寫入</small></span>
+        </div>
+      </div>
+      <div class="connector">▼</div>
+      <div class="band">
+        <div class="band-h"><b>核心服務層(backend,全 async)</b><small>component spine C01–C17,詳見 COMPONENT_CATALOG.md</small></div>
+        <div class="chips">
+          <span class="chip core"><b>C01 Ingestion</b><small>解析 · 畫像 · 切塊 · embedding(圖 ③)</small></span>
+          <span class="chip core"><b>C02 KB Manager</b><small>KB CRUD + 三層配置</small></span>
+          <span class="chip core"><b>C03 Indexing</b><small>per-KB index 生命週期</small></span>
+          <span class="chip core"><b>C04 Retrieval</b><small>hybrid + rerank + security trimming(圖 ②)</small></span>
+          <span class="chip core"><b>C05 Generation</b><small>CRAG L2 + 合成 + citation + 圖錨(圖 ②④)</small></span>
+          <span class="chip core"><b>C06 Eval</b><small>RAGAs 4 指標 + image-recall + 完整度尺</small></span>
+          <span class="chip core"><b>C16 Users</b><small>RBAC 儲存 + ACL(圖 ⑤)</small></span>
+          <span class="chip core"><b>C17 Integration</b><small>SourceConnector 框架(圖 ⑥)</small></span>
+        </div>
+      </div>
+      <div class="connector">▼</div>
+      <div class="band">
+        <div class="band-h"><b>資料 + 外部服務層</b><small>vendor H2 已 lock(architecture.md §3.2)</small></div>
+        <div class="chips">
+          <span class="chip ext"><b>Azure AI Search S1</b><small>BM25 + 向量 HNSW · <code>allowed_principals</code> filter</small></span>
+          <span class="chip ext"><b>Azure OpenAI</b><small>embedding-3-large · GPT-5.5 合成 · GPT-5.4-mini judge</small></span>
+          <span class="chip ext"><b>Cohere Rerank v4.0-pro</b><small>精排(ADR-0012)</small></span>
+          <span class="chip ext"><b>Azure Blob</b><small>圖片 + 原始檔(本機 Azurite)</small></span>
+          <span class="chip ext"><b>Postgres 16</b><small>KB / users / ACL / 對話 / config(ADR-0023)</small></span>
+          <span class="chip ext"><b>Langfuse</b><small>全 pipeline trace + 成本</small></span>
+          <span class="chip ext"><b>Azure Key Vault</b><small>整合層 credential(ADR-0072)</small></span>
+          <span class="chip amb"><b>Microsoft Graph</b><small>SharePoint 匯入 — live 驗證卡真 tenant</small></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="gates">
+    <div class="gate blocked"><b>關卡 1 — Production 上線</b>Beta 25% rollout 卡 Track A IT credential(DD-6)</div>
+    <div class="gate blocked"><b>關卡 2 — 整合層 live 驗證</b>卡真 tenant + <code style="font-family:var(--mono)">Sites.Selected</code> 授權(runbook 已備)</div>
+    <div class="gate go"><b>關卡 3 — 安全 + 治理審查</b>2026-07-01 啟動,唯一可自行推進嘅主線</div>
+  </div>
+</section>
+
+<!-- ═══════════ D2 RAG 查詢流程 ═══════════ -->
+<section id="d2">
+  <h2><span class="no">②</span>RAG 查詢流程(核心功能:問答)</h2>
+  <p class="lede">由用戶提問到答案渲染共 10 步。全程 Langfuse trace;每階段旋鈕受三層配置(圖 ⑦)控制。security trimming 內嵌喺檢索請求內,唔係事後過濾(ADR-0066)。</p>
+  <div class="card"><div class="scroll">
+  <svg viewBox="0 0 1044 468" role="img" aria-label="RAG 查詢流程圖" style="min-width:1000px">
+    <defs><marker id="a2" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#7f8f97"/></marker></defs>
+    <!-- 第一行 -->
+    <g>
+      <rect class="bx" x="4" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="24" cy="36" r="11"/><text class="stepn" x="24" y="40" text-anchor="middle">1</text>
+      <text class="tt" x="42" y="40">用戶提問</text>
+      <text class="td" x="18" y="64">Chat UI 送出 query</text>
+      <text class="td" x="18" y="81">SSE 串流回應</text>
+      <text class="tm" x="18" y="100">/chat · /query/stream</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="216" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="236" cy="36" r="11"/><text class="stepn" x="236" y="40" text-anchor="middle">2</text>
+      <text class="tt" x="254" y="40">權限守衛</text>
+      <text class="td" x="230" y="64">session auth + KB 層</text>
+      <text class="td" x="230" y="81">ACL 檢查(RBAC P2.0)</text>
+      <text class="tm" x="230" y="100">assert_kb_access</text>
+    </g>
+    <g>
+      <rect class="bx" x="428" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="448" cy="36" r="11"/><text class="stepn" x="448" y="40" text-anchor="middle">3</text>
+      <text class="tt" x="466" y="40">查詢擴展(可選)</text>
+      <text class="td" x="442" y="64">多變體改寫 + RAG-Fusion</text>
+      <text class="td" x="442" y="81">出廠 OFF(ADR-0034)</text>
+      <text class="tm" x="442" y="100">query_reformulator</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="640" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="660" cy="36" r="11"/><text class="stepn" x="660" y="40" text-anchor="middle">4</text>
+      <text class="tt" x="678" y="40">Hybrid 檢索</text>
+      <text class="td" x="654" y="64">BM25 + 向量,RRF 融合;</text>
+      <text class="td" x="654" y="81">同一請求內 security filter</text>
+      <text class="tm" x="654" y="100">allowed_principals any()</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="852" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="872" cy="36" r="11"/><text class="stepn" x="872" y="40" text-anchor="middle">5</text>
+      <text class="tt" x="890" y="40">Rerank 精排</text>
+      <text class="td" x="866" y="64">Cohere v4.0-pro</text>
+      <text class="td" x="866" y="81">rerank top-K(per-KB 旋鈕)</text>
+      <text class="tm" x="866" y="100">reranker/</text>
+    </g>
+    <line class="arr" x1="194" y1="66" x2="212" y2="66" marker-end="url(#a2)"/>
+    <line class="arr" x1="406" y1="66" x2="424" y2="66" marker-end="url(#a2)"/>
+    <line class="arr" x1="618" y1="66" x2="636" y2="66" marker-end="url(#a2)"/>
+    <line class="arr" x1="830" y1="66" x2="848" y2="66" marker-end="url(#a2)"/>
+    <line class="arr" x1="947" y1="116" x2="947" y2="186" marker-end="url(#a2)"/>
+    <!-- 第二行(由右至左) -->
+    <g>
+      <rect class="bx bx-core" x="852" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="872" cy="210" r="11"/><text class="stepn" x="872" y="214" text-anchor="middle">6</text>
+      <text class="tt" x="890" y="214">Context 擴充</text>
+      <text class="td" x="866" y="238">parent-doc ON + 鄰近圖</text>
+      <text class="td" x="866" y="255">max_aux=10(ADR-0052)</text>
+      <text class="tm" x="866" y="274">citation_expansion</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="640" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="660" cy="210" r="11"/><text class="stepn" x="660" y="214" text-anchor="middle">7</text>
+      <text class="tt" x="678" y="214">CRAG L2 評分</text>
+      <text class="td" x="654" y="238">信心評分;低信心 →</text>
+      <text class="td" x="654" y="255">改寫重檢最多 1 次</text>
+      <text class="tm" x="654" y="274">crag.py</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="428" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="448" cy="210" r="11"/><text class="stepn" x="448" y="214" text-anchor="middle">8</text>
+      <text class="tt" x="466" y="214">GPT-5.5 合成</text>
+      <text class="td" x="442" y="238">streaming 輸出;答案內</text>
+      <text class="td" x="442" y="255">植入 [IMG#] 圖錨標記</text>
+      <text class="tm" x="442" y="274">synthesizer.py</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="216" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="236" cy="210" r="11"/><text class="stepn" x="236" y="214" text-anchor="middle">9</text>
+      <text class="tt" x="254" y="214">引用 + 圖錨後處理</text>
+      <text class="td" x="230" y="238">section / leaf 級錨定;</text>
+      <text class="td" x="230" y="255">末尾孤兒圖章節分組</text>
+      <text class="tm" x="230" y="274">section_anchor_markers</text>
+    </g>
+    <g>
+      <rect class="bx" x="4" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="24" cy="210" r="11"/><text class="stepn" x="24" y="214" text-anchor="middle">10</text>
+      <text class="tt" x="42" y="214">前端渲染</text>
+      <text class="td" x="18" y="238">引用卡 + 圖片還原到</text>
+      <text class="td" x="18" y="255">原文對應段落(§15)</text>
+      <text class="tm" x="18" y="274">InlineImageCard</text>
+    </g>
+    <line class="arr" x1="852" y1="240" x2="834" y2="240" marker-end="url(#a2)"/>
+    <line class="arr" x1="640" y1="240" x2="622" y2="240" marker-end="url(#a2)"/>
+    <line class="arr" x1="428" y1="240" x2="410" y2="240" marker-end="url(#a2)"/>
+    <line class="arr" x1="216" y1="240" x2="198" y2="240" marker-end="url(#a2)"/>
+    <!-- CRAG 回圈 -->
+    <path class="arr-d" d="M 735 190 C 735 150 735 140 700 140 L 560 140 C 530 140 523 130 523 116"/>
+    <text class="td" x="560" y="132">低信心 → 改寫後回到檢索(最多 1 次)</text>
+    <!-- 橫切帶 -->
+    <rect class="bx bx-band" x="4" y="330" width="1038" height="64" rx="9"/>
+    <text class="tt" x="20" y="356">橫切關注</text>
+    <text class="td" x="20" y="378">Langfuse 全程 per-stage trace(latency / token / 成本) · structlog JSON · 三層配置 resolve(圖 ⑦)決定每階段旋鈕 · RAGAs eval 可對任何配置組合 A/B</text>
+    <!-- 成果 -->
+    <rect class="bx bx-core" x="4" y="410" width="1038" height="48" rx="9"/>
+    <text class="td" x="20" y="440"><tspan class="tt" style="font-size:12.5px">Gate 實證:</tspan>  Gate 1 R@5 = 0.9722 通過 · Gate 2 部份通過 · 文字 recall ≈ 0.97 · image-recall ≈ 1.0(ADR-0054)</text>
+  </svg>
+  </div></div>
+</section>
+
+<!-- ═══════════ D3 Ingestion ═══════════ -->
+<section id="d3">
+  <h2><span class="no">③</span>文件 Ingestion 流程(核心功能:入庫)</h2>
+  <p class="lede">由上載到可檢索共 10 步。重點:第 4-5 步「文件畫像 → preset 自動配對」係 ADR-0056 per-KB 可調配置 vision 嘅落地 — 唔同類型文件自動攞到度身訂做嘅 recall 配置;第 9 步同時寫入 security 欄位,令權限係「入庫時已收斂」而非查詢時補救。</p>
+  <div class="card"><div class="scroll">
+  <svg viewBox="0 0 1044 400" role="img" aria-label="Ingestion 流程圖" style="min-width:1000px">
+    <defs><marker id="a3" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#7f8f97"/></marker></defs>
+    <g>
+      <rect class="bx" x="4" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="24" cy="36" r="11"/><text class="stepn" x="24" y="40" text-anchor="middle">1</text>
+      <text class="tt" x="42" y="40">上載文件</text>
+      <text class="td" x="18" y="64">.docx / .pdf / .pptx</text>
+      <text class="td" x="18" y="81">multipart 或整合層匯入</text>
+      <text class="tm" x="18" y="100">POST /kb/{id}/documents</text>
+    </g>
+    <g>
+      <rect class="bx bx-amb" x="216" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="236" cy="36" r="11"/><text class="stepn" x="236" y="40" text-anchor="middle">2</text>
+      <text class="tt" x="254" y="40">Scan guard</text>
+      <text class="td" x="230" y="64">秒級 pre-OCR 探測;掃描件</text>
+      <text class="td" x="230" y="81">→ 422 要用戶確認(ADR-0065)</text>
+      <text class="tm" x="230" y="100">is_scan_pdf · force_scan</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="428" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="448" cy="36" r="11"/><text class="stepn" x="448" y="40" text-anchor="middle">3</text>
+      <text class="tt" x="466" y="40">解析</text>
+      <text class="td" x="442" y="64">Docling + python-pptx;</text>
+      <text class="td" x="442" y="81">PDF 內嵌圖抽取(ADR-0057)</text>
+      <text class="tm" x="442" y="100">ingestion/parsers/</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="640" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="660" cy="36" r="11"/><text class="stepn" x="660" y="40" text-anchor="middle">4</text>
+      <text class="tt" x="678" y="40">文件畫像 profiler</text>
+      <text class="td" x="654" y="64">6 類 taxonomy + 信心度</text>
+      <text class="td" x="654" y="81">(ADR-0056,準確率 34/34)</text>
+      <text class="tm" x="654" y="100">profiler.py</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="852" y="16" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="872" cy="36" r="11"/><text class="stepn" x="872" y="40" text-anchor="middle">5</text>
+      <text class="tt" x="890" y="40">Preset 自動配對</text>
+      <text class="td" x="866" y="64">profile → preset 路由;</text>
+      <text class="td" x="866" y="81">保守寫入,唔覆蓋手動配置</text>
+      <text class="tm" x="866" y="100">profile_presets.py</text>
+    </g>
+    <line class="arr" x1="194" y1="66" x2="212" y2="66" marker-end="url(#a3)"/>
+    <line class="arr" x1="406" y1="66" x2="424" y2="66" marker-end="url(#a3)"/>
+    <line class="arr" x1="618" y1="66" x2="636" y2="66" marker-end="url(#a3)"/>
+    <line class="arr" x1="830" y1="66" x2="848" y2="66" marker-end="url(#a3)"/>
+    <line class="arr" x1="947" y1="116" x2="947" y2="186" marker-end="url(#a3)"/>
+    <g>
+      <rect class="bx bx-core" x="852" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="872" cy="210" r="11"/><text class="stepn" x="872" y="214" text-anchor="middle">6</text>
+      <text class="tt" x="890" y="214">Layout-aware 切塊</text>
+      <text class="td" x="866" y="238">表格 / 標題 / 圖片分組;</text>
+      <text class="td" x="866" y="255">相鄰短段合併(ADR-0033)</text>
+      <text class="tm" x="866" y="274">ingestion/chunker/</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="640" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="660" cy="210" r="11"/><text class="stepn" x="660" y="214" text-anchor="middle">7</text>
+      <text class="tt" x="678" y="214">圖片 + 原始檔儲存</text>
+      <text class="td" x="654" y="238">圖 → per-KB Blob 容器;</text>
+      <text class="td" x="654" y="255">原始檔入 source store(可 reindex)</text>
+      <text class="tm" x="654" y="274">screenshots/ · source_store</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="428" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="448" cy="210" r="11"/><text class="stepn" x="448" y="214" text-anchor="middle">8</text>
+      <text class="tt" x="466" y="214">Embedding</text>
+      <text class="td" x="442" y="238">text-embedding-3-large</text>
+      <text class="td" x="442" y="255">MRL 截至 1024 維</text>
+      <text class="tm" x="442" y="274">ingestion/embedding/</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="216" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="236" cy="210" r="11"/><text class="stepn" x="236" y="214" text-anchor="middle">9</text>
+      <text class="tt" x="254" y="214">索引寫入</text>
+      <text class="td" x="230" y="238">per-KB index;同步蓋上</text>
+      <text class="td" x="230" y="255">security 欄位(ADR-0066)</text>
+      <text class="tm" x="230" y="274">allowed_principals</text>
+    </g>
+    <g>
+      <rect class="bx" x="4" y="190" width="190" height="100" rx="9"/>
+      <circle class="stepc" cx="24" cy="210" r="11"/><text class="stepn" x="24" y="214" text-anchor="middle">10</text>
+      <text class="tt" x="42" y="214">可檢索 + 可調</text>
+      <text class="td" x="18" y="238">chunk / 圖 / 畫像 喺 UI 可檢視;</text>
+      <text class="td" x="18" y="255">per-doc 配置可 override + 試跑</text>
+      <text class="tm" x="18" y="274">doc-detail 3-pane</text>
+    </g>
+    <line class="arr" x1="852" y1="240" x2="834" y2="240" marker-end="url(#a3)"/>
+    <line class="arr" x1="640" y1="240" x2="622" y2="240" marker-end="url(#a3)"/>
+    <line class="arr" x1="428" y1="240" x2="410" y2="240" marker-end="url(#a3)"/>
+    <line class="arr" x1="216" y1="240" x2="198" y2="240" marker-end="url(#a3)"/>
+    <rect class="bx bx-band" x="4" y="330" width="1038" height="52" rx="9"/>
+    <text class="td" x="20" y="352">設計鐵律:整合層(圖 ⑥)只係另一個「上載入口」— connector 唔掂 ingestion 核心(W100 實證 ingestion diff = 零)。</text>
+    <text class="td" x="20" y="371">KB-level reindex(ADR-0043)+ profile-only backfill(ADR-0059)令現存文件可以唔重嚟就補畫像 / 換配置。</text>
+  </svg>
+  </div></div>
+</section>
+
+<!-- ═══════════ D4 §15 北極星 ═══════════ -->
+<section id="d4">
+  <h2><span class="no">④</span>圖文還原機制(§15 北極星,核心功能:answer 品質)</h2>
+  <p class="lede">準則:答案要忠實還原原文檔本來嘅圖文關係 — 原文某段有圖跟隨,recall 嗰段時圖就還原到對應位置。以下四層機制由粗到細逐層落地,疊加運作:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="n">A</div>
+      <div><h3>全圖召回地基(W59–W68,ADR-0054)</h3>
+      <p>dedup-before-cap + 鄰近圖收割 + 錨點冗餘 — image-recall 由 0.574 提升到約 1.0(九 query 全 1.0 可達,precision 0.988)。成功定義 = 全圖召回,唔使 caption / 圖片 embedding。</p></div>
+    </div>
+    <div class="connector2">▼</div>
+    <div class="step">
+      <div class="n">B</div>
+      <div><h3>Inline 圖錨標記(W70–W71,ADR-0055)</h3>
+      <p>合成答案時植入 <code>[IMG#…]</code> 標記,前端以 placeholder + 單一 ReactMarkdown 交織渲染 — 圖唔再全部堆落答案底部,而係跟住對應文字出現。copy / eval 路徑會自動 strip 標記。</p></div>
+    </div>
+    <div class="connector2">▼</div>
+    <div class="step">
+      <div class="n">C</div>
+      <div><h3>Section 級 → leaf 級錨定(W75 + W98–W99,ADR-0056 §Amendment)</h3>
+      <p>無錨嘅輔助圖按 <code>source_section</code> 注入同章節錨點後(末尾堆 28–85% → 0%);W98 再加 <code>section_anchor_nearest</code> 以 <code>doc_order</code> 揀最近步驟做 leaf 級精準錨,W99 融入 <code>P1_sop_imgdense</code> preset 自動配對。全域 default 仍 OFF(B-03 等拍板)。</p></div>
+    </div>
+    <div class="connector2">▼</div>
+    <div class="step">
+      <div class="n">D</div>
+      <div><h3>末尾孤兒圖章節分組(W83,ADR-0064)</h3>
+      <p>真係冇文字可錨嘅圖(例如逐欄截圖),按 <code>source_section</code> 分組加章節小標收納 — 純前端零 backend 改動。退底部前必先分甲 / 乙 / 丙三類(per CLAUDE.md §13)。</p></div>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><b>≈ 1.0</b><span>image-recall(由 0.574 起步)</span></div>
+    <div class="kpi"><b>0%</b><span>末尾堆殘餘(原本 28–85%)</span></div>
+    <div class="kpi"><b>≈ 0.97</b><span>文字 recall</span></div>
+    <div class="kpi"><b>~0.77</b><span>乙類完整度 generation-ceiling(prompt 路已實證 exhausted,DD-15/16)</span></div>
+  </div>
+</section>
+
+<!-- ═══════════ D5 RBAC ═══════════ -->
+<section id="d5">
+  <h2><span class="no">⑤</span>企業級 RBAC 權限模型(W88–W95)</h2>
+  <p class="lede">核心思想:權限喺<strong>入庫時收斂做 principal 清單</strong>蓋落 index,檢索時由 Azure AI Search 用字串比對 filter 直接 trim — 用戶睇唔到嘅文件根本唔會入候選池(唔係答案層遮掩)。群組展平到 group 級,成員變動零 re-stamp。</p>
+  <div class="card"><div class="scroll">
+  <svg viewBox="0 0 1044 430" role="img" aria-label="RBAC 權限模型圖" style="min-width:1000px">
+    <defs><marker id="a5" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#7f8f97"/></marker></defs>
+    <text class="lane" x="4" y="14">PRINCIPALS</text>
+    <g>
+      <rect class="bx" x="4" y="26" width="200" height="82" rx="9"/>
+      <text class="tt" x="20" y="52">用戶</text>
+      <text class="td" x="20" y="74">hybrid auth(Entra mock</text>
+      <text class="td" x="20" y="91">bridge + self-register)</text>
+    </g>
+    <g>
+      <rect class="bx" x="4" y="130" width="200" height="82" rx="9"/>
+      <text class="tt" x="20" y="156">群組</text>
+      <text class="td" x="20" y="178">Entra 巢狀群組展平到</text>
+      <text class="td" x="20" y="195">group 級(零 re-stamp)</text>
+    </g>
+    <text class="lane" x="286" y="14">授權三層(C16 Users Service)</text>
+    <g>
+      <rect class="bx bx-core" x="286" y="26" width="240" height="78" rx="9"/>
+      <text class="tt" x="302" y="50">Workspace 角色</text>
+      <text class="td" x="302" y="72">admin / editor / viewer…;</text>
+      <text class="td" x="302" y="89">寫端點 <tspan class="tm">require_role</tspan> 守衛</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="286" y="122" width="240" height="78" rx="9"/>
+      <text class="tt" x="302" y="146">KB 層 ACL(P0/P2.0)</text>
+      <text class="td" x="302" y="168">per-KB grant:manage &gt;</text>
+      <text class="td" x="302" y="185">edit &gt; query;query 端點都守</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="286" y="218" width="240" height="78" rx="9"/>
+      <text class="tt" x="302" y="242">文件級 override(P3)</text>
+      <text class="td" x="302" y="264"><tspan class="tm">doc_acl</tspan> 逐文件收窄 / 放寬</text>
+      <text class="td" x="302" y="281">+ 群組繼承(P4,ADR-0067)</text>
+    </g>
+    <line class="arr" x1="204" y1="67" x2="282" y2="65" marker-end="url(#a5)"/>
+    <line class="arr" x1="204" y1="90" x2="282" y2="155" marker-end="url(#a5)"/>
+    <line class="arr" x1="204" y1="171" x2="282" y2="171" marker-end="url(#a5)"/>
+    <line class="arr" x1="204" y1="195" x2="282" y2="252" marker-end="url(#a5)"/>
+    <text class="lane" x="608" y="14">INDEX(入庫時收斂)</text>
+    <g>
+      <rect class="bx bx-core" x="608" y="122" width="200" height="96" rx="9"/>
+      <text class="tt" x="624" y="148">Security 欄位 stamp</text>
+      <text class="td" x="624" y="170">每 chunk 蓋上收斂後嘅</text>
+      <text class="td" x="624" y="187">principal 清單 + 2 級分類</text>
+      <text class="tm" x="624" y="207">allowed_principals</text>
+    </g>
+    <text class="lane" x="866" y="14">檢索時(查詢路徑)</text>
+    <g>
+      <rect class="bx bx-ext" x="866" y="122" width="176" height="96" rx="9"/>
+      <text class="tt" x="880" y="148">Security trimming</text>
+      <text class="td" x="880" y="170">Azure AI Search GA</text>
+      <text class="td" x="880" y="187">字串比對 filter</text>
+      <text class="tm" x="880" y="207">any() filter</text>
+    </g>
+    <line class="arr" x1="526" y1="161" x2="604" y2="167" marker-end="url(#a5)"/>
+    <line class="arr" x1="526" y1="255" x2="604" y2="196" marker-end="url(#a5)"/>
+    <line class="arr" x1="808" y1="170" x2="862" y2="170" marker-end="url(#a5)"/>
+    <!-- §15 no-op 驗證 -->
+    <rect class="bx bx-band" x="608" y="240" width="434" height="56" rx="9"/>
+    <text class="td" x="624" y="263">P2.2 eval 驗證:security 層改動對問答品質</text>
+    <text class="td" x="624" y="281">零影響(§15 北極星 by-construction no-op)</text>
+    <!-- 狀態行 -->
+    <g>
+      <rect class="bx bx-amb" x="4" y="330" width="510" height="82" rx="9"/>
+      <text class="tt" x="20" y="356">P5 治理層 — 設計完成,實作暫緩</text>
+      <text class="td" x="20" y="378">auditor 唯讀角色 + access-review 報告(ADR-0068 Accepted);</text>
+      <text class="td" x="20" y="395">2026-06-25 用戶暫緩,等真實審計 / 合規 driver(B-02)</text>
+    </g>
+    <g>
+      <rect class="bx bx-t2" x="536" y="330" width="506" height="82" rx="9"/>
+      <text class="tt" x="552" y="356">Tier 2(未開始)</text>
+      <text class="td" x="552" y="378">P6 屬性式政策引擎 · 真 SSO 接駁 · SCIM 自動供應</text>
+      <text class="td" x="552" y="395">任何一項落 Tier 1 都要 STOP + ADR(H4)</text>
+    </g>
+  </svg>
+  </div></div>
+</section>
+
+<!-- ═══════════ D6 整合層 ═══════════ -->
+<section id="d6">
+  <h2><span class="no">⑥</span>統一整合層 — SharePoint 按需匯入(W100–W102,ADR-0070/0071/0072)</h2>
+  <p class="lede">上半係用戶見到嘅 4 步 wizard(H7 重現 mockup);下半係 backend 資料流。兩個關鍵設計:① connector 只負責「攞文件 + 攞權限」,落地一律行既有 ingestion(圖 ③)— 實證 ingestion diff = 零;② SharePoint 權限經 <code>get_principals</code> 收斂到 group 級,直接復用 RBAC(圖 ⑤)嘅 <code>allowed_principals</code> 機制。</p>
+  <div class="card"><div class="scroll">
+  <svg viewBox="0 0 1044 560" role="img" aria-label="SharePoint 整合層流程圖" style="min-width:1000px">
+    <defs><marker id="a6" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#7f8f97"/></marker></defs>
+    <text class="lane" x="4" y="14">前端 — INTEGRATIONS 模組(獨立頂層,ADR-0071)</text>
+    <g>
+      <rect class="bx" x="4" y="26" width="190" height="84" rx="9"/>
+      <text class="tt" x="20" y="52">Landing</text>
+      <text class="td" x="20" y="74">provider 一覽</text>
+      <text class="td" x="20" y="91">(現階段 SharePoint)</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="216" y="26" width="190" height="84" rx="9"/>
+      <text class="tt" x="232" y="52">① Connect</text>
+      <text class="td" x="232" y="74">揀 managed connection</text>
+      <text class="td" x="232" y="91">或 <tspan class="tm">.env</tspan> fallback</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="428" y="26" width="190" height="84" rx="9"/>
+      <text class="tt" x="444" y="52">② Select</text>
+      <text class="td" x="444" y="74">browse site / library /</text>
+      <text class="td" x="444" y="91">folder,揀文件</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="640" y="26" width="190" height="84" rx="9"/>
+      <text class="tt" x="656" y="52">③ Import</text>
+      <text class="td" x="656" y="74">揀目標 KB;逐文件</text>
+      <text class="td" x="656" y="91">匯入 + 進度回報</text>
+    </g>
+    <g>
+      <rect class="bx" x="852" y="26" width="190" height="84" rx="9"/>
+      <text class="tt" x="868" y="52">④ Summary</text>
+      <text class="td" x="868" y="74">per-doc 成功 / 失敗</text>
+      <text class="td" x="868" y="91">錯誤模型逐項列出</text>
+    </g>
+    <line class="arr" x1="194" y1="68" x2="212" y2="68" marker-end="url(#a6)"/>
+    <line class="arr" x1="406" y1="68" x2="424" y2="68" marker-end="url(#a6)"/>
+    <line class="arr" x1="618" y1="68" x2="636" y2="68" marker-end="url(#a6)"/>
+    <line class="arr" x1="830" y1="68" x2="848" y2="68" marker-end="url(#a6)"/>
+    <line class="arr-d" x1="311" y1="110" x2="311" y2="156" marker-end="url(#a6)"/>
+    <line class="arr-d" x1="523" y1="110" x2="523" y2="156" marker-end="url(#a6)"/>
+    <line class="arr-d" x1="735" y1="110" x2="735" y2="156" marker-end="url(#a6)"/>
+    <text class="lane" x="4" y="150">BACKEND — api/routes/integration.py(RBAC 守衛)</text>
+    <g>
+      <rect class="bx bx-core" x="216" y="160" width="190" height="92" rx="9"/>
+      <text class="tt" x="232" y="186">Managed connection</text>
+      <text class="td" x="232" y="208">credential 入 Key Vault,</text>
+      <text class="td" x="232" y="225">唯讀不回傳(ADR-0072,H5)</text>
+      <text class="tm" x="232" y="244">set-secret 端點</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="428" y="160" width="190" height="92" rx="9"/>
+      <text class="tt" x="444" y="186">Browse 端點 ×3</text>
+      <text class="td" x="444" y="208">site 解析 + 目錄分頁</text>
+      <text class="td" x="444" y="225">AsyncIterator 分頁</text>
+      <text class="tm" x="444" y="244">resolve-site · browse</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="640" y="160" width="190" height="92" rx="9"/>
+      <text class="tt" x="656" y="186">Import service</text>
+      <text class="td" x="656" y="208">逐文件 fetch stream +</text>
+      <text class="td" x="656" y="225">per-doc 錯誤模型</text>
+      <text class="tm" x="656" y="244">import_service.py</text>
+    </g>
+    <line class="arr" x1="523" y1="252" x2="523" y2="296" marker-end="url(#a6)"/>
+    <line class="arr" x1="735" y1="252" x2="735" y2="296" marker-end="url(#a6)"/>
+    <!-- connector 行 -->
+    <g>
+      <rect class="bx bx-core" x="216" y="300" width="290" height="92" rx="9"/>
+      <text class="tt" x="232" y="326">SourceConnector 介面(C17)</text>
+      <text class="td" x="232" y="348">provider-agnostic:connect / browse / list /</text>
+      <text class="td" x="232" y="365">fetch / get_principals + capability 聲明</text>
+      <text class="tm" x="232" y="384">integration/connector.py</text>
+    </g>
+    <g>
+      <rect class="bx bx-ext" x="540" y="300" width="250" height="92" rx="9"/>
+      <text class="tt" x="556" y="326">SharePoint connector</text>
+      <text class="td" x="556" y="348">Microsoft Graph,app-only</text>
+      <text class="td" x="556" y="365"><tspan class="tm">Sites.Selected</tspan> 最小授權</text>
+      <text class="tm" x="556" y="384">integration/sharepoint/</text>
+    </g>
+    <g>
+      <rect class="bx bx-core" x="822" y="300" width="220" height="92" rx="9"/>
+      <text class="tt" x="838" y="326">get_principals</text>
+      <text class="td" x="838" y="348">權限收斂到 group 級</text>
+      <text class="td" x="838" y="365">(transitiveMembers 展平)</text>
+      <text class="tm" x="838" y="384">→ allowed_principals</text>
+    </g>
+    <line class="arr" x1="506" y1="346" x2="536" y2="346" marker-end="url(#a6)"/>
+    <line class="arr" x1="790" y1="346" x2="818" y2="346" marker-end="url(#a6)"/>
+    <!-- 落地 -->
+    <path class="arr" d="M 361 392 C 361 420 361 428 400 428 L 480 428" marker-end="url(#a6)"/>
+    <g>
+      <rect class="bx bx-core" x="484" y="404" width="306" height="56" rx="9"/>
+      <text class="tt" x="500" y="428">既有 ingestion pipeline(圖 ③)</text>
+      <text class="td" x="500" y="448">零改動 — W100 gate 實證 ingestion diff = 零</text>
+    </g>
+    <line class="arr" x1="790" y1="432" x2="880" y2="432" marker-end="url(#a6)"/>
+    <text class="td" x="888" y="428">per-KB index</text>
+    <text class="td" x="888" y="445">(帶 security 欄位)</text>
+    <!-- 狀態行 -->
+    <g>
+      <rect class="bx bx-amb" x="4" y="484" width="620" height="62" rx="9"/>
+      <text class="tt" x="20" y="508">Live 端到端驗證 — blocked 真 tenant + Sites.Selected 授權(IT 動作)</text>
+      <text class="td" x="20" y="530">可執行 runbook 已備(docs/09-analysis/);前端 wizard 已 mock demo 對齊 H7(2026-07-01)</text>
+    </g>
+    <g>
+      <rect class="bx bx-t2" x="648" y="484" width="394" height="62" rx="9"/>
+      <text class="tt" x="664" y="508">階段 2–3(Tier 2,未開始)</text>
+      <text class="td" x="664" y="530">OneDrive / Google Drive / S3 多 provider + auto-sync(H4)</text>
+    </g>
+  </svg>
+  </div></div>
+</section>
+
+<!-- ═══════════ D7 三層配置 ═══════════ -->
+<section id="d7">
+  <h2><span class="no">⑦</span>三層可調配置 resolve(EKP 產品方向核心,ADR-0040~0063)</h2>
+  <p class="lede">「唔同 KB / 文件用度身訂做配置」嘅落地機制:由粗到細逐層 override,越細層越贏;最終 effective config 決定圖 ② 每一階段嘅旋鈕。UI 三層對應:L1 自動(畫像配對)→ L2 一鍵 preset override → L3 逐旋鈕 + 試跑。</p>
+  <div class="card">
+    <div class="flowline">
+      <span class="fchip"><b>全域 Settings</b><small>出廠值(ADR-0052 flip 後 baseline)</small></span>
+      <span class="sep">▶ 被覆蓋</span>
+      <span class="fchip"><b>per-KB <code>KbConfig</code></b><small>KB Settings tab · 一鍵套 preset</small></span>
+      <span class="sep">▶ 被覆蓋</span>
+      <span class="fchip"><b>per-doc <code>DocConfig</code></b><small>畫像自動配對 + 手動 override(手動贏)</small></span>
+      <span class="sep">▶ 被覆蓋</span>
+      <span class="fchip"><b>per-query override</b><small>試跑 / A-B 草稿,唔 persist</small></span>
+      <span class="sep">＝</span>
+      <span class="fchip" style="border-color:var(--acc); background:#fff"><b>effective config</b><small>驅動圖 ② 全部旋鈕</small></span>
+    </div>
+    <p class="note"><strong>實務陷阱(已入 memory)</strong>:做 A/B 實驗時,env 改全域會被目標 KB 嘅 per-KB config 鎖死 — 兩臂 effective config 一樣,差異全係 variance。正確做法係改 per-KB / per-doc / per-query 層。</p>
+  </div>
+</section>
+
+<footer>
+  來源:<span style="font-family:var(--mono)">docs/architecture.md</span> v6 · COMPONENT_CATALOG.md v1.1 · ADR-0001~0072 · BACKLOG.md · DEFERRED_REGISTER.md · PROJECT_STATUS_REVIEW_2026-07-04.md — 本頁為 2026-07-04 時點快照,重大 phase closeout 後需重新產出。
+</footer>
+</div>

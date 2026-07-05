@@ -6,6 +6,8 @@
 > **定位 = 時點快照(snapshot),非 living 文件**。living 的 pending 狀態一律以 [`BACKLOG.md`](./BACKLOG.md) 為單一入口;本文只做「2026-07-04 這一刻的橫切面 + 判斷」,供用戶**了解走到多遠、決定下一步方向**。細節一律 link 去 source-of-truth(ADR / DEFERRED_REGISTER / TRACKER / phase folder),不重複維護。
 >
 > **權威來源**:`docs/adr/README.md`(72 ADR)· `BACKLOG.md`(中央 dashboard)· `DEFERRED_REGISTER.md`(DD-1~16)· `enterprise-rbac/TRACKER.md`(P0–P6)· `COMPONENT_CATALOG.md`(component spine)· 104 個 `W{NN}-*/` phase folder。
+>
+> **配套圖表**:[`docs/09-analysis/ekp_architecture_diagrams_20260704.html`](../09-analysis/ekp_architecture_diagrams_20260704.html) — 同日快照七圖(① 整體五層架構 · ② RAG 查詢十步流程 · ③ ingestion 十步流程 · ④ 圖文還原 §15 四層機制 · ⑤ RBAC 權限模型 · ⑥ SharePoint 整合層 · ⑦ 三層可調配置 resolve),瀏覽器直接開。
 
 ---
 
