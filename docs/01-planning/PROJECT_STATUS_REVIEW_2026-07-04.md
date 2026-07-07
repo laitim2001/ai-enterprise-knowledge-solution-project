@@ -8,6 +8,8 @@
 > **權威來源**:`docs/adr/README.md`(72 ADR)· `BACKLOG.md`(中央 dashboard)· `DEFERRED_REGISTER.md`(DD-1~16)· `enterprise-rbac/TRACKER.md`(P0–P6)· `COMPONENT_CATALOG.md`(component spine)· 104 個 `W{NN}-*/` phase folder。
 >
 > **配套圖表**:[`docs/09-analysis/ekp_architecture_diagrams_20260704.html`](../09-analysis/ekp_architecture_diagrams_20260704.html) — 同日快照七圖(① 整體五層架構 · ② RAG 查詢十步流程 · ③ ingestion 十步流程 · ④ 圖文還原 §15 四層機制 · ⑤ RBAC 權限模型 · ⑥ SharePoint 整合層 · ⑦ 三層可調配置 resolve),瀏覽器直接開。
+>
+> **配套分析**:[`docs/09-analysis/pipeline_review_20260706.md`](../09-analysis/pipeline_review_20260706.md) — 核心 pipeline 技術評估(RAG 查詢 + 文件 ingestion 流程合理性 + 風險分級,基於 2026-07-06 代碼核對),補足本盤點「卡 production 上線」結論的技術深度。
 
 ---
 

@@ -6,7 +6,7 @@
 >
 > **同步 = binding(CLAUDE.md §10 R7)**:phase kickoff / closeout、ADR Accept、defer/blocked 決定、新 candidate 被識別 → 必須同步本表,**唔可以 silent drift**。維護規則見文末。
 
-**最後更新**:2026-07-04(**B-10 新增** — PR 流程正式化:solo self-merge SOP 已建([`PR_WORKFLOW.md`](./PR_WORKFLOW.md)),階段 1 `完成` / 階段 2 `main` branch protection `候選`;連帶本次 git 衛生 — 3 份 docs + PR SOP + gitignore commit、4 條 merge 殘留 branch 清理、docs branch push、首個對齊 PR〔83 commit → `main`〕待用戶開。**前期** 2026-07-01:B-01 **live 驗證 runbook 可執行版已備**(`docs/09-analysis/integration_layer_phase1_live_verification_runbook.md` — 確切 `.env` key / curl 連通冒煙 / UI 走查 / 故障對照 / 撤權測試,等真 tenant 拎住做)+ 前端 **step2-4 layout browser mock demo 對齊驗證** — landing + 4 步 wizard H7 對齊 mockup,純前端 mock 假 data 走完流程,demo 完 `integration.ts` code 已還原;真 live smoke 仍待真 tenant。CLAUDE.md §9/§0 已同步 W100-W101 進度(`5cc3b54`)。2026-06-30:階段 1b **W101 closed G-W101 PASS** — F1-F7 全落,backend 3 端點 + import 個別 ref + 前端 5 surface H7;ingestion diff=零 + pytest 80 passed + tsc/eslint clean;剩 live 驗證 blocked 真 tenant;14 pre-existing frontend test 債入 E 區;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
+**最後更新**:2026-07-07(**B-20 新增** — backend `ruff` lint 債 68 項入 E 區:對齊 **PR #1** 令 CI 首次當 gate 浮現,**非 W87 遷移造成**,獨立 PR 處理。**W87 路徑遷移執行** — B-05 `遷移執行中`(commit `b6dcb0d` 已推,首個對齊 **PR #1** branch→main 已開,待 rebase merge)。**前期** 2026-07-06(**pipeline review candidate** — [`pipeline_review_20260706.md`](../09-analysis/pipeline_review_20260706.md) 識別高+中風險 **9 項 candidate 入 B-11~B-19**,立案中〔用戶同意立案處理,先備 proposed 文件等指示才 code〕。**前期** 2026-07-04(**B-10 新增** — PR 流程正式化:solo self-merge SOP 已建([`PR_WORKFLOW.md`](./PR_WORKFLOW.md)),階段 1 `完成` / 階段 2 `main` branch protection `候選`;連帶本次 git 衛生 — 3 份 docs + PR SOP + gitignore commit、4 條 merge 殘留 branch 清理、docs branch push、首個對齊 PR〔83 commit → `main`〕待用戶開。**前期** 2026-07-01:B-01 **live 驗證 runbook 可執行版已備**(`docs/09-analysis/integration_layer_phase1_live_verification_runbook.md` — 確切 `.env` key / curl 連通冒煙 / UI 走查 / 故障對照 / 撤權測試,等真 tenant 拎住做)+ 前端 **step2-4 layout browser mock demo 對齊驗證** — landing + 4 步 wizard H7 對齊 mockup,純前端 mock 假 data 走完流程,demo 完 `integration.ts` code 已還原;真 live smoke 仍待真 tenant。CLAUDE.md §9/§0 已同步 W100-W101 進度(`5cc3b54`)。2026-06-30:階段 1b **W101 closed G-W101 PASS** — F1-F7 全落,backend 3 端點 + import 個別 ref + 前端 5 surface H7;ingestion diff=零 + pytest 80 passed + tsc/eslint clean;剩 live 驗證 blocked 真 tenant;14 pre-existing frontend test 債入 E 區;初版 2026-06-28 — 全項目 pending 盤點固化做 v0)
 
 ---
 
@@ -34,6 +34,26 @@
 
 ---
 
+## ⚑ Pipeline 生產健壯性技術債(2026-07-06 pipeline review 識別 · 立案中,待 approve 才 code)
+
+> 來源:[`../09-analysis/pipeline_review_20260706.md`](../09-analysis/pipeline_review_20260706.md)(RAG 查詢 + ingestion 代碼核對)。用戶 2026-07-06 同意立案處理**高(🔴)+ 中(🟠)級**風險(先備 `status: proposed` 文件,等指示才 code);低(🟡)級不在此批。
+>
+> **2026-07-06 已按推薦框架立案**(①只 Tier 1 緩解 `asyncio.to_thread`,完整佇列另作 Tier 2 候選 ②重疊項指向現有機制 ③每項獨立 folder;用戶立案框架問卷 3 題未答 → 用預設推進,**可調整**)。**B-11~B-17 已備 7 份 proposed 立案文件**(4 BUG + 3 CH);B-18/B-19 指向現有機制不另開 folder。**全部等用戶 approve 才 code。**
+
+| ID | 風險(review 編號) | 級 | 狀態 | 立案 / 路徑 |
+|---|---|---|---|---|
+| **B-11** | ingest parse/chunk 同步阻塞事件迴圈(I-R1/I-R2,`asyncio.to_thread` 緩解) | 🔴 | `立案 proposed` | [BUG-040](../03-implementation/bugs/BUG-040-ingest-sync-blocks-event-loop/report.md)(完整佇列=Tier 2 候選,另議) |
+| **B-12** | 鄰居圖/概覽圖漏 ACL trim → 圖片洩漏(Q-R1) | 🔴 | `立案 proposed` | [BUG-041](../03-implementation/bugs/BUG-041-neighbour-image-acl-trim-gap/report.md)(安全) |
+| **B-13** | embedding 一次過整 doc 無分批 → 大 doc abort(I-R3) | 🟠 | `立案 proposed` | [BUG-042](../03-implementation/bugs/BUG-042-embedding-no-subbatch-large-doc/report.md) |
+| **B-14** | <1000 chunks/doc 假設 → delete/restamp 靜默漏尾(I-R7) | 🟠 | `立案 proposed` | [BUG-043](../03-implementation/bugs/BUG-043-chunk-pagination-1000-cap/report.md) |
+| **B-15** | Cohere 故障無熱切換 → 直接 502(Q-R3) | 🟠 | `立案 proposed` | [CH-020](../03-implementation/changes/CH-020-cohere-reranker-hot-fallback/spec.md) |
+| **B-16** | ingest ACL fail-open 無告警(I-R4) | 🟠 | `立案 proposed` | [CH-021](../03-implementation/changes/CH-021-ingest-acl-fail-open-alert/spec.md) |
+| **B-17** | 串流路徑(chat 主路徑)無 CRAG(Q-R2) | 🟠 | `立案 proposed` | [CH-022](../03-implementation/changes/CH-022-streaming-crag-parity/spec.md)(範圍較大,可能先 spike) |
+| **B-18** | 預設雙重 rerank 冗餘(Q-R4) | 🟠 | `候選` | → 推進 ADR-0039(已 Proposed);不另開 folder |
+| **B-19** | KB reindex 非原子(I-R8) | 🟠 | `候選` | → 併 B-06 / ADR-0043(已有);不另開 folder |
+
+---
+
 ## B — 已設計 / Accepted,用戶主動暫緩(等 driver,非技術阻塞)
 
 | ID | 任務 | 狀態 | 解封條件 | 來源 |
@@ -51,7 +71,7 @@
 | ID | 任務 | 狀態 | Blocker | 來源 |
 |---|---|---|---|---|
 | **B-04** | Production launch / Beta 25% rollout 啟動(Tier 1 上線最大關卡) | `blocked` | **Track A IT credential 落地**(Production launch gate ⏳) | DD-6 / `DEFERRED_REGISTER.md` / W16 F1-F4 |
-| **B-05** | W87 OneDrive → 本地路徑遷移(2026-07-07 pivot 執行路徑 B;新路徑 `C:\Users\CLai03\ai-enterprise-knowledge-solution-project`,已逃出 OneDrive) | `遷移執行中` | backend/frontend 已重建+輕驗(1736 tests 收集 / `api.server` 指新路徑 / MITM 代理擋 numpy 用 site-packages 複製繞);**待新資料夾 session F4 全棧 gate + F5 觀察退役** | `W87-onedrive-path-migration/progress.md` Day 1 |
+| **B-05** | W87 OneDrive → 本地路徑遷移(2026-07-07 pivot 執行路徑 B;新路徑 `C:\Users\CLai03\ai-enterprise-knowledge-solution-project`,已逃出 OneDrive) | `進行中(F5 觀察)` | **F4 全棧 gate PASS 10/10**(2026-07-07 新 session:8 KB/3 conv/6 msg + azurite 827 圖 volume 無縫 + `/query` 引用+圖端到端 + 最長路徑 219 + api/venv 指新路徑);待 **F5 觀察 ≥3 天退役 OneDrive**(未過前保留舊副本) | `W87-onedrive-path-migration/progress.md` Day 2 |
 | **B-06** | production 索引 v1→v2 原子切換 | `候選` | 等 production 需求 / 真實切換場景 | CLAUDE.md §9 W100+ candidate |
 | **B-07** | prose 型 human ground truth 標註(解 DD-14/DD-15 多個品質量度 blocker) | `blocked` | 卡用戶(需人手標註) | DD-14 / DD-15 |
 
