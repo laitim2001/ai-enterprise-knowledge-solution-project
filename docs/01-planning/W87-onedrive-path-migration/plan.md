@@ -161,4 +161,6 @@
 ---
 
 ## §8 Changelog
+- 2026-07-07 Day 1(續)— **同日 pivot A→B 並執行遷移**:用戶已(1)`LongPathsEnabled=1`(驗 return 1)(2)pin node_modules/.venv(3)全量複製到 `C:\Users\CLai03\ai-enterprise-knowledge-solution-project`(前綴 56,已逃出 OneDrive)。AI 從本 session 完成 F2 doc 同步 + F3 memory 重綁(33 檔)+ F4 重建(frontend `pnpm install` / backend venv 撞 MITM 代理擋 numpy 12MB → **複製舊 venv site-packages + `pip install -e . --no-deps` 重綁繞過**)+ 輕驗(`api.server` 新路徑 / 1736 tests 收集零 error)。目標路徑改用現名(非 `dev\ekp`,basename 同 → docker volume 無縫,D10)。**待新資料夾 session 做 F4 全棧 gate + F5 觀察退役**。詳見 progress Day 1。
+- 2026-07-07 Day 1 — 用戶重提「愈來愈嚴重」,重量現況全面惡化(最長路徑 263→**266**、磁碟可用 92.4→**41.2 GB**、滿度 80%→**91.3%**、Storage Sense 確認 **ON** = L2 dehydration 三觸發條件全齊、項目自身僅 ~2.8GB 證 51GB 消失屬系統級)。**F0 gate 過**:IT 允許本地路徑(F0.1)+ 目標路徑定 `C:\Users\CLai03\dev\ekp`(F0.3)。**當前決策 = 先止血觀察(路徑 A)**:A1 `LongPathsEnabled=1`(需 admin,待用戶跑)/ A2 pin `node_modules`+`backend\.venv` 防 dehydrate / A3 磁碟系統級認清 / A4 升級觸發點(build 斷 / 磁碟再掉 / agent 太慢 → 升 B)。遷移 B(F1-F5)ready-on-trigger,規劃不變。詳見 progress Day 1。
 - 2026-06-23 kickoff — 用戶要求把 OneDrive 路徑影響分析 + 遷移風險 + 建議打包成規劃文件。分類判斷:per PROCESS.md §1.1 = 純 infra(非 Change/Phase),借 Phase 三文件結構為執行嚴謹度。實測揭最長路徑 263 已爆 260(立場由「不急」上修「宜早不宜遲」)。設計 F0(IT gate + LongPathsEnabled 止血)→ F1-F5 平行複製法(複製不剪下、先驗後退役)→ F6 可選還原。**Status=draft,未執行,待用戶 go + F0 gate**。

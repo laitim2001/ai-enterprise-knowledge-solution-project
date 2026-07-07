@@ -2,7 +2,7 @@
 phase: W87-onedrive-path-migration
 plan_ref: ./plan.md
 status: in-progress    # in-progress | complete
-last_updated: 2026-06-23
+last_updated: 2026-07-06
 ---
 
 # Phase W87 — Checklist
@@ -18,16 +18,17 @@ last_updated: 2026-06-23
 - [x] 量測數據 grounding(263 路徑 / 36k 檔 / LongPathsEnabled=0 等)— 入 plan.md §1.1
 - [x] 決策與建議(F0 gate + LongPathsEnabled 止血 + 平行複製法)— 入 plan.md §2
 - [x] 執行 deliverables 設計(F0-F6)+ rollback — 入 plan.md §3/§6
-- [ ] 用戶 review 規劃 + go 決定(是否進入執行)
+- [x] 用戶 review 規劃 + go 決定(2026-07-06:決定先止血觀察路徑 A;遷移 B ready-on-trigger)
 
 ---
 
-## 執行階段(待 go 後逐項;現全 unchecked)
+## 執行階段(2026-07-07 pivot 執行路徑 B:F0–F3 + F4 重建/輕驗完成;F4 全棧 gate + F5 待新資料夾 session)
 
 ### F0 — 前置 gate + 止血
-- [ ] F0.1 用戶確認企業 IT 政策(本地路徑允許 / 裝置管理 / IT 備份涵蓋範圍)→ 結果記 progress
-- [ ] F0.2(可選)`LongPathsEnabled = 1`(需 admin)止血 — verify:`(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled).LongPathsEnabled` = 1
-- [ ] F0.3 用戶定目標路徑 `<NEW_ROOT>`(建議 `C:\dev\ekp`)
+- [x] F0.1 用戶確認企業 IT 政策(2026-07-07:**允許寫入本地非 OneDrive 路徑,無限制** → 遷移 B 技術可行)
+- [x] F0.2 `LongPathsEnabled = 1`(2026-07-07 用戶在 admin PowerShell 跑,**已驗 return 1**)
+- [x] F0.3 目標路徑 `<NEW_ROOT>` = `C:\Users\CLai03\ai-enterprise-knowledge-solution-project`(2026-07-07;非原建議 `dev\ekp` — 用戶已複製到此;basename 同舊 → docker volume 無縫,D10)
+- [x]（止血 A2)pin `frontend\node_modules` + `backend\.venv`「一律保留在此裝置上」防 Storage Sense dehydrate(2026-07-07 用戶已執行)
 
 ### F1 — 前置準備 / 盤點
 - [ ] 停 backend / frontend / native azurite 進程(Docker 不停)
@@ -36,18 +37,18 @@ last_updated: 2026-06-23
 - [ ](可選)暫停 OneDrive 同步(避免複製期衝突副本,per R4)
 
 ### F2 — 平行複製(非剪下)
-- [ ] `robocopy` → `<NEW_ROOT>`,排除 `node_modules` / `.venv` / `.next`
-- [ ] 確認 `.git` + `.env` + `azurite-data` + 未追蹤檔已帶
-- [ ] verify:`<NEW_ROOT>` `git status` 與舊一致 + `git log -1` 對得上
+- [x] 用戶全量複製到 `<NEW_ROOT>`(含 build 產物,後刪 `.venv`/`node_modules`/`.next` 重建 per F4)
+- [x] `.git` + `.env` + `azurite-data` + `.claude` 已隨全量複製帶到(已驗)
+- [ ] verify:`<NEW_ROOT>` `git status` 與舊一致 + `git log -1` 對得上(待新 session)
 
 ### F3 — Claude 記憶 / session 重綁
-- [ ] `<NEW_ROOT>` 首次開 Claude → 生成新 key 目錄
-- [ ] 複製舊 `memory/`(23 檔)入新 key 目錄(+ 可選 session)
-- [ ] verify:新 session 載入 `MEMORY.md` + 23 memory 檔
+- [x] 新 key 目錄 `C--Users-CLai03-ai-enterprise-knowledge-solution-project\memory\` 已由 robocopy 生成
+- [x] 複製舊 `memory/` **33 檔**(非原記 23,已增長)入新 key 目錄,`MEMORY.md` 就位
+- [ ] verify:新 session 載入 `MEMORY.md` + 33 memory 檔(待新 session)
 
 ### F4 — 重建 + 全棧驗證(gate:全綠才進 F5)
-- [ ] `<NEW_ROOT>` `pnpm install` + 重建 backend venv
-- [ ] 全棧重啟(infra docker + native azurite + backend + frontend)逐個 ready
+- [x] frontend `pnpm install`(35,894 檔)+ backend venv 重建(**site-packages 複製繞 MITM 代理擋 numpy**,見 progress Day 1);輕驗:`api.server` 新路徑 + **1736 tests 收集零 error**
+- [ ] 全棧重啟(infra docker + native azurite + backend + frontend)逐個 ready(待新 session)
 - [ ] verify:`/health` 200
 - [ ] verify:chat 跑一條 query → 有引用 + 圖
 - [ ] verify:`/conversations` 有舊 session data(Postgres volume 未動)
