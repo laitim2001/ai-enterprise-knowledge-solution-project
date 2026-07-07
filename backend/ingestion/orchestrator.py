@@ -31,6 +31,7 @@ take, so the existing call sites need no churn.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass
@@ -148,8 +149,13 @@ class IngestionOrchestrator:
         # itself — concerns stay separated (Karpathy §1.3).
         chunk_principals = list(allowed_principals or [])
 
-        # 1. Parse — sync but CPU-bound; chunker also sync.
-        result: ParserResult = self._parser.parse(source)
+        # 1. Parse — sync + CPU/IO-bound (Docling / zipfile+XML). BUG-040: run it
+        # via asyncio.to_thread so a large file can't block the uvicorn event loop
+        # and hang every concurrent request; this realises the offload the
+        # parsers/base.py contract promises. chunk + profile below likewise offload.
+        # Safe because select_parser / _select_chunker build a fresh instance per
+        # request (documents.py) — no shared mutable state across threads.
+        result: ParserResult = await asyncio.to_thread(self._parser.parse, source)
         if result.parse_failed:
             return IngestionResult(
                 chunks=[],
@@ -163,11 +169,14 @@ class IngestionOrchestrator:
         # (_run_ingest_pipeline) routes a non-None profile to a per-doc preset.
         profile: ProfileResult | None = None
         try:
-            profile = _PROFILER.profile(result, source)
+            # BUG-040 — profiling is sync + CPU/IO-bound (re-probes PDFs for the
+            # scan signal), so it offloads to a worker thread too.
+            profile = await asyncio.to_thread(_PROFILER.profile, result, source)
         except Exception:  # noqa: BLE001 — profiling is advisory, never fatal
             logger.warning("profile_compute_failed", doc_id=doc_id)
 
-        chunks: list[ChunkSpec] = self._chunker.chunk(result)
+        # BUG-040 — chunk is sync CPU-bound; offload like parse above.
+        chunks: list[ChunkSpec] = await asyncio.to_thread(self._chunker.chunk, result)
         if not chunks:
             return IngestionResult(
                 chunks=[],

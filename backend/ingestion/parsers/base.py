@@ -7,8 +7,8 @@ sequence to build layout-aware chunks with correct section_path context for tabl
 and images alike.
 
 Design notes:
-- Sync parse() — parsers are CPU/IO-bound (zipfile + XML); orchestrator wraps in
-  asyncio.to_thread for async pipeline composition.
+- Sync parse() — parsers are CPU/IO-bound (zipfile + XML); the orchestrator runs
+  it via asyncio.to_thread (BUG-040) so a large file never blocks the event loop.
 - @dataclass (not Pydantic) — internal pipeline types, no API boundary validation needed.
 - Heading.level uses 1-indexed (H1=1, H2=2, ...) matching Word/Markdown convention.
 - doc_order is a monotonic index across all item types (paragraphs / tables / images)
