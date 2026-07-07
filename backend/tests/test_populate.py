@@ -492,6 +492,95 @@ async def test_update_doc_principals_index_missing_returns_zero() -> None:
     assert instance.post.await_count == 1
 
 
+# ─── BUG-043 — paginate chunk-id collection past the top=1000 cap ─────────────
+
+
+@pytest.mark.asyncio
+async def test_delete_doc_paginates_all_chunks_over_1000() -> None:
+    """BUG-043 — a doc with > 1000 chunks must have EVERY chunk collected (not just
+    the first top=1000 page) or delete leaves an orphan tail. Search walks skip/top
+    pages until a short page; delete then batches over all collected ids."""
+    import json
+
+    page1 = {"value": [{"chunk_id": f"c{i}"} for i in range(1000)]}
+    page2 = {"value": [{"chunk_id": f"c{i}"} for i in range(1000, 1500)]}
+    del_batch1 = {"value": [{"status": True, "statusCode": 200} for _ in range(1000)]}
+    del_batch2 = {"value": [{"status": True, "statusCode": 200} for _ in range(500)]}
+
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(
+            side_effect=[
+                _mock_response(200, page1),
+                _mock_response(200, page2),
+                _mock_response(200, del_batch1),
+                _mock_response(200, del_batch2),
+            ]
+        )
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "ekp-kb-drive-v1") as pop:
+            count = await pop.delete_doc("drive_user_manuals", "d")
+
+    # 2 search pages (skip 0 → 1000, skip 1000 → 500) + 2 delete batches (1000 + 500)
+    assert instance.post.await_count == 4
+    assert count == 1500
+
+    # search pages advance skip by the page size
+    search0 = json.loads(instance.post.await_args_list[0].kwargs["content"])
+    search1 = json.loads(instance.post.await_args_list[1].kwargs["content"])
+    assert search0["skip"] == 0
+    assert search1["skip"] == 1000
+
+    # every chunk (incl. the tail past 1000) is deleted, in order
+    deleted = [
+        v["chunk_id"]
+        for call in instance.post.await_args_list[2:]
+        for v in json.loads(call.kwargs["content"])["value"]
+    ]
+    assert deleted == [f"c{i}" for i in range(1500)]
+
+
+@pytest.mark.asyncio
+async def test_update_doc_principals_paginates_all_chunks_over_1000() -> None:
+    """BUG-043 (security) — ACL restamp must cover EVERY chunk of a > 1000-chunk
+    doc; a missed tail keeps stale allowed_principals = a security gap."""
+    import json
+
+    page1 = {"value": [{"chunk_id": f"c{i}"} for i in range(1000)]}
+    page2 = {"value": [{"chunk_id": f"c{i}"} for i in range(1000, 1200)]}
+    merge1 = {"value": [{"status": True, "statusCode": 200} for _ in range(1000)]}
+    merge2 = {"value": [{"status": True, "statusCode": 200} for _ in range(200)]}
+
+    with patch("indexing.populate.httpx.AsyncClient") as MockClient:
+        instance = MockClient.return_value
+        instance.post = AsyncMock(
+            side_effect=[
+                _mock_response(200, page1),
+                _mock_response(200, page2),
+                _mock_response(200, merge1),
+                _mock_response(200, merge2),
+            ]
+        )
+        instance.aclose = AsyncMock()
+
+        async with IndexPopulator("https://x", "k", "ekp-kb-drive-v1") as pop:
+            count = await pop.update_doc_principals("drive_user_manuals", "d", ["oid-a"])
+
+    assert count == 1200  # full coverage, not capped at 1000
+    restamped = [
+        v["chunk_id"]
+        for call in instance.post.await_args_list[2:]
+        for v in json.loads(call.kwargs["content"])["value"]
+    ]
+    assert restamped == [f"c{i}" for i in range(1200)]
+    assert all(
+        v["allowed_principals"] == ["oid-a"]
+        for call in instance.post.await_args_list[2:]
+        for v in json.loads(call.kwargs["content"])["value"]
+    )
+
+
 def test_make_chunk_id_sanitizes_forbidden_chars() -> None:
     """Azure AI Search keys: [A-Za-z0-9_=-] only. Spaces / parens / dots → `_`."""
     cid = make_chunk_id(
