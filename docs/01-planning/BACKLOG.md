@@ -51,7 +51,7 @@
 | ID | 任務 | 狀態 | Blocker | 來源 |
 |---|---|---|---|---|
 | **B-04** | Production launch / Beta 25% rollout 啟動(Tier 1 上線最大關卡) | `blocked` | **Track A IT credential 落地**(Production launch gate ⏳) | DD-6 / `DEFERRED_REGISTER.md` / W16 F1-F4 |
-| **B-05** | W87 OneDrive → 本地路徑遷移(規劃 + 設計完成,未執行;純 infra 不觸 H1) | `blocked` | F0 企業 IT 政策確認 + 用戶 go 決定 | `W87-onedrive-path-migration/plan.md` |
+| **B-05** | W87 OneDrive → 本地路徑遷移(2026-07-07 pivot 執行路徑 B;新路徑 `C:\Users\CLai03\ai-enterprise-knowledge-solution-project`,已逃出 OneDrive) | `遷移執行中` | backend/frontend 已重建+輕驗(1736 tests 收集 / `api.server` 指新路徑 / MITM 代理擋 numpy 用 site-packages 複製繞);**待新資料夾 session F4 全棧 gate + F5 觀察退役** | `W87-onedrive-path-migration/progress.md` Day 1 |
 | **B-06** | production 索引 v1→v2 原子切換 | `候選` | 等 production 需求 / 真實切換場景 | CLAUDE.md §9 W100+ candidate |
 | **B-07** | prose 型 human ground truth 標註(解 DD-14/DD-15 多個品質量度 blocker) | `blocked` | 卡用戶(需人手標註) | DD-14 / DD-15 |
 
@@ -80,6 +80,7 @@
 | DD-1 | Smoke-user-deferred — 9-view 互動 browser walkthrough + Playwright E2E run + dark mode 視覺 | `npx playwright install chromium` 解封(R8 corp-proxy 阻)或用戶 pre-Beta 親手 smoke |
 | DD-2 | Frontend component test scaffold(多個 Vitest deferred) | 對應 view 再動時順帶補 / F8.4 batch |
 | (W101 發現) | 14 個**既有** frontend test fail(kb config view:`kb-detail` / `kb-settings-tuning` / `kb-settings-reindex` / `chat-meta-row` render error;**非 W101 引入** — `git diff babccd8 HEAD -- frontend` 證 W101 零 touch 嗰啲 code;單跑穩定 14 fail/9 pass) | 對應 view 再動時順帶修 / 獨立 debt 清理(疑 kb config schema 演進後 test stale) |
+| **B-20** | backend `ruff` lint 債 **68 項**(35 `E402` / 12 `UP017` / 7 `F401` / 6 `I001` / 4 `UP037` / 4 `B00x`;2026-07-07 對齊 **PR #1** 令 CI `Ruff lint` 首次真正當 gate 才浮現,**非本次 W87 遷移造成** — 遷移 commit `b6dcb0d` 純 docs)| **獨立分支 + PR**(勿混對齊 PR):`ruff check . --fix` 起手修 **29 個** auto-fixable + 逐個評估 35 `E402`(疑刻意 → `# noqa` 或改結構)+ 4 `B00x`;弄綠非快事故獨立一輪 |
 
 ---
 
