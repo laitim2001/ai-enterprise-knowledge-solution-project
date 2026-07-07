@@ -94,10 +94,49 @@ status: in-progress    # in-progress | closed
 
 ---
 
-## Retro(填於 phase 結束 / 執行完成後)
+## Day 2 — 2026-07-07(新資料夾 session):F4 全棧 gate PASS → 遷移核心成功
 
-(待執行)
+**Action**:在新資料夾 `C:\Users\CLai03\ai-enterprise-knowledge-solution-project` 開 Claude session,依 `MIGRATION-HANDOFF.md` §4 runbook 執行 F4 全棧驗證。
+
+### F4 驗證結果(10/10 全綠)
+| # | 驗證項 | 結果 |
+|---|---|---|
+| 1 | Postgres (docker) | ✅ healthy |
+| 2 | 資料無縫(Postgres volume) | ✅ DB 直查 8 KB(drive-images-1 = 6 docs/369 chunks/827 圖,config 含 `section_anchor_nearest`/`max_aux=40` 等 W98-99 旋鈕完整)+ 3 users + 3 conversations + 6 messages 全帶過來 |
+| 3 | Langfuse (docker) | ✅ `/api/public/health` 200(docker `unhealthy` flag = timing artifact,以 endpoint 為準) |
+| 4 | backend `/health` | ✅ 200,五 component(azure_search/azure_openai/cohere/langfuse/postgres)全 ok |
+| 5 | frontend (:3001) | ✅ 200 |
+| 6 | api/venv 指向本路徑 | ✅ `api.__file__` + `sys.prefix` 均指新路徑,非 OneDrive |
+| 7 | 最長路徑 | ✅ **219**(達 handoff 理想 <220,遠低 260 硬上限;未達原訂 <200 但踩線檔 = `references/dify` 深層 `.spec.tsx` = IDE/git-only 非 runtime,可接受) |
+| 8 | azurite 服務 | ✅ native Plan B 起(:10000),15 container |
+| 9 | 圖片 blob 無縫 | ✅ `ekp-kb-drive-images-1-screenshots` **827 blob** ←→ DB 827 screenshots 精準對齊 |
+| 10 | chat query 端到端(引用+圖+顯示) | ✅ `/query` drive-images-1 hybrid → 200,`gpt-5.5` + `cohere-v4.0-pro`,13 citations 精準命中 GL03 章節,40 張圖 + answer 內 40 個 `[IMG#]` inline 標記(圖文交織,north-star §15);screenshot proxy 端點回 PNG 200/5164 bytes(azurite 供圖鏈路通);無 refuse、hybrid 無撞 Free-tier semantic 402 |
+
+### Decisions
+- **D11 azurite 需手動起**:docker 只有 postgres + langfuse 兩容器,azurite 走 native Plan B 獨立 process,session/reboot 後**不會自動起**,要手動(memory `project_loaded_machine_startup_infra_recovery` 已記此坑)。
+- **D12 `/conversations` API dev-token 回 0 屬正常**:per-user 過濾,3 條對話 owner = admin user(`u-IQh-6IRLT-4tXfAS`),非遷移問題;DB 直查 3 conv/6 msg 證 Postgres volume 無縫。
+
+### F4 判決:**PASS(10/10)** — 基礎設施 + 資料層 + 儲存層 + 路徑目標 + 端到端功能全綠,遷移核心成功。F5 觀察期(≥3 天)啟動,**未過前保留 OneDrive 副本**。
+
+### Commits
+- `<pending>` — `docs(planning): W87 F4 全棧驗證通過(10/10)+ 遷移核心成功 + F5 觀察期啟動`
 
 ---
 
-**End of W87 progress(Day 1;遷移執行中,backend/frontend 已重建+輕驗,待新 session F4 全棧 gate)**
+## Retro(2026-07-07 F4 PASS 後填)
+
+**順利**:
+- **平行複製法 + `site-packages` 繞 MITM 代理** → 零重下載完成 venv 重建;docker 具名 volume + basename 相同 → KB/對話/users/圖 **100% 無縫**(DB 8 KB + azurite 827 圖精準對齊為證)。
+- **handoff runbook 清晰** → 新資料夾 session 一次過完成 F4 全 10 項驗證,無走冤枉路。
+
+**教訓**:
+- **azurite native Plan B 不隨 docker 起**,要記入啟動清單(D11);本次新 session 探測即發現缺口並補起。
+- **最長路徑 219 略高於偏嚴的 <200 目標**,踩線檔為 `references/dify` 深層 `.spec.tsx`(非 runtime),遠低 260 硬上限,如實記錄不假 tick。
+
+**待辦**:
+- **F5 觀察 ≥3 天** → 穩定後退役 OneDrive 副本(先封存再刪)。
+- **可選 F6**:切非代理網絡重跑 `pip install -e ".[dev,eval]"` 生成 console script `.exe` + 對齊 numpy;還原 `.npmrc`/playwright/vitest 的 OneDrive workaround。
+
+---
+
+**End of W87 progress(Day 2;F4 全棧 gate PASS 10/10,遷移核心成功,F5 觀察期啟動)**
