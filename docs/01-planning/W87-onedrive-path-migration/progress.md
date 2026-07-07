@@ -119,7 +119,7 @@ status: in-progress    # in-progress | closed
 ### F4 判決:**PASS(10/10)** — 基礎設施 + 資料層 + 儲存層 + 路徑目標 + 端到端功能全綠,遷移核心成功。F5 觀察期(≥3 天)啟動,**未過前保留 OneDrive 副本**。
 
 ### Commits
-- `<pending>` — `docs(planning): W87 F4 全棧驗證通過(10/10)+ 遷移核心成功 + F5 觀察期啟動`
+- `6540008` — `docs(planning): W87 遷移 F4 全棧驗證通過(10/10)+ F5 觀察期啟動`
 
 ---
 
