@@ -31,7 +31,7 @@ from generation.citation_image_neighbors import (
     attach_neighbour_images,
     pin_chapter_overview_images,
 )
-from generation.crag import CragLoop
+from generation.crag import CragGrader, CragLoop
 from generation.effective_config import (
     EffectiveConfig,
     PerQueryOverrides,
@@ -46,7 +46,7 @@ from kb_management.service import KBService, get_kb_service
 from kb_management.storage import KBNotFoundError
 from observability.observe import observe_async, observe_streaming
 from retrieval.result_fusion import fused_retrieve
-from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult
+from retrieval.retrieval_engine import RetrievalEngine, RetrievalResult, RetrievedChunk
 from storage.settings import Settings, get_settings
 
 logger = structlog.get_logger(__name__)
@@ -550,6 +550,41 @@ async def execute_query_pipeline(
     )
 
 
+async def _verify_stream_retrieval_confidence(
+    grader: CragGrader | None,
+    query: str,
+    chunks: list[RetrievedChunk],
+    threshold: float,
+    kb_id: str,
+) -> float | None:
+    """ADR-0073 方案 B — 串流事後 verify(純後端信號)。
+
+    串流合成完成後,用非串流 CRAG 同一 `CragGrader` grade 已檢索 chunks → confidence
+    ∈ [0, 1];低信心(< threshold)emit structured warning + metric(供事後可觀測,對齊
+    CH-021 fail-open 風格)。**不 re-synth / rewrite / re-retrieve** —— grade 在串流之後
+    執行,方案 A 的首 token 代價因此避開。grader 未 wire(None)或 grade 失敗 → 回 None
+    (graceful:verify 是 advisory,絕不可影響已串出的回應)。
+    """
+    if grader is None:
+        return None
+    try:
+        grade = await grader.grade(query, chunks)
+    except Exception as exc:  # noqa: BLE001 — verify 是 advisory,失敗不可影響回應
+        logger.warning(
+            "stream_retrieval_verify_failed",
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        return None
+    if grade.confidence < threshold:
+        logger.warning(
+            "stream_low_retrieval_confidence",
+            kb_id=kb_id,
+            confidence=grade.confidence,
+            threshold=threshold,
+        )
+    return grade.confidence
+
+
 @router.post("/query/stream")
 async def query_stream(
     payload: QueryRequest,
@@ -724,6 +759,10 @@ async def query_stream(
             )
             return answer
 
+    # ADR-0073 方案 B — grader 畀串流事後 verify(getattr defensive:未 wire → None →
+    # helper graceful 回 None,不影響回應)。
+    grader: CragGrader | None = getattr(request.app.state, "crag_grader", None)
+
     async def event_serializer():
         # W10 D1 F4.1 — observe_streaming wraps compose_query_stream so the
         # terminal `done` frame's model + token counts flow to Langfuse
@@ -763,6 +802,22 @@ async def query_stream(
                                 payload.kb_id,
                                 image["blob_url"],
                             )
+                # ADR-0073 方案 B — 串流事後 verify(純後端信號)。done frame 發送前 grade
+                # 已檢索 chunks(與非串流 CRAG 同一組 result.chunks),低信心告警 + 把
+                # retrieval_confidence 放入 done frame(前端本期不消費 → 零 H7)。grade 在
+                # 串流之後 → 不影響首 token;enable_crag gate 沿用非串流 CRAG(用戶可關)。
+                if event.get("type") == "done":
+                    event["retrieval_confidence"] = (
+                        await _verify_stream_retrieval_confidence(
+                            grader,
+                            payload.query,
+                            list(result.chunks),
+                            threshold=settings.crag_confidence_threshold,
+                            kb_id=payload.kb_id,
+                        )
+                        if payload.enable_crag
+                        else None
+                    )
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             logger.info("query_stream_cancelled", query_chars=len(payload.query))

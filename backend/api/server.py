@@ -265,6 +265,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             threshold=settings.crag_confidence_threshold,
             max_corrections=settings.crag_max_reformulations,
         )
+        # ADR-0073 方案 B — 暴露 grader 畀 /query/stream 串流事後 verify(純後端信號)。
+        # 沿用同一 CragGrader(即 CragLoop 內部嗰個),不新增 client(H2 clean)。
+        app.state.crag_grader = crag_grader
 
         # W25 F3 D4 — Query reformulator (ADR-0034). Spin up only when the
         # feature is enabled to avoid an extra AsyncAzureOpenAI client for
