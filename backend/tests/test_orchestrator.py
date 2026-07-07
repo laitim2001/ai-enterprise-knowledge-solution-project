@@ -7,6 +7,7 @@ chunk_id pattern, prev/next links, image resolution, failure propagation.
 from __future__ import annotations
 
 import asyncio
+import threading
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -655,3 +656,81 @@ async def test_ingest_kb_config_extract_embedded_images_true_preserves_w2_path()
     assert result.failure is None
     assert result.chunks[0].embedded_images[0].blob_url.endswith("d.png")
     assert result.images_uploaded == 1
+
+
+# ─── BUG-040 — sync parse/chunk/profile offloaded off the event loop ─────────
+
+
+@pytest.mark.asyncio
+async def test_ingest_offloads_parse_and_chunk_to_worker_thread() -> None:
+    """BUG-040 — parse + chunk are sync + CPU-bound; they MUST run via
+    asyncio.to_thread so a large file can't block the uvicorn event loop and hang
+    every concurrent request. Assert both executed on a worker thread, not the
+    loop's own thread (thread-id check is deterministic — no timing flakiness)."""
+    loop_thread_id = threading.get_ident()
+    ran_on: dict[str, int] = {}
+
+    class _ThreadRecordingParser:
+        doc_format = "docx"
+
+        def parse(self, source: Path) -> ParserResult:  # noqa: ARG002
+            ran_on["parse"] = threading.get_ident()
+            return _parser_result()
+
+    class _ThreadRecordingChunker:
+        def chunk(self, parser_result: ParserResult) -> list[ChunkSpec]:  # noqa: ARG002
+            ran_on["chunk"] = threading.get_ident()
+            return [_spec(0, "S1")]
+
+    orch = IngestionOrchestrator(
+        parser=_ThreadRecordingParser(),
+        chunker=_ThreadRecordingChunker(),
+        embedder=_FakeEmbedder(),
+        uploader=None,
+    )
+
+    result = await orch.ingest(Path("big.docx"), kb_id="kb", doc_id="d")
+
+    assert result.failure is None
+    assert ran_on["parse"] != loop_thread_id, "parse must run off the event loop thread"
+    assert ran_on["chunk"] != loop_thread_id, "chunk must run off the event loop thread"
+
+
+@pytest.mark.asyncio
+async def test_ingest_blocking_parse_keeps_event_loop_responsive() -> None:
+    """BUG-040 — while a large parse blocks inside its worker thread, the event
+    loop stays live: a concurrent coroutine keeps advancing. Without the
+    asyncio.to_thread offload the sync parse would freeze the loop and this test
+    would hang (parse_entered would never be observed before the timeout)."""
+    parse_entered = threading.Event()
+    release_parse = threading.Event()
+
+    class _BlockingParser:
+        doc_format = "docx"
+
+        def parse(self, source: Path) -> ParserResult:  # noqa: ARG002
+            parse_entered.set()
+            # Block the WORKER thread — with to_thread this must NOT freeze the loop.
+            assert release_parse.wait(timeout=5), "release signal never arrived"
+            return _parser_result()
+
+    orch = IngestionOrchestrator(
+        parser=_BlockingParser(),
+        chunker=_FakeChunker([_spec(0, "S1")]),
+        embedder=_FakeEmbedder(),
+        uploader=None,
+    )
+    ingest_task = asyncio.create_task(orch.ingest(Path("big.docx"), kb_id="kb", doc_id="d"))
+
+    # The loop must schedule this poll even though parse is blocking — if the loop
+    # were frozen we'd never see parse_entered set (proving the offload works).
+    for _ in range(500):
+        if parse_entered.is_set():
+            break
+        await asyncio.sleep(0.001)
+    assert parse_entered.is_set(), "event loop stalled — parse never entered its thread"
+
+    release_parse.set()
+    result = await asyncio.wait_for(ingest_task, timeout=5)
+    assert result.failure is None
+    assert len(result.chunks) == 1
