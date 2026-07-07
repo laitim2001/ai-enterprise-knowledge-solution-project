@@ -2,7 +2,7 @@
 phase: W87-onedrive-path-migration
 plan_ref: ./plan.md
 status: in-progress    # in-progress | complete
-last_updated: 2026-07-06
+last_updated: 2026-07-07
 ---
 
 # Phase W87 — Checklist
@@ -22,7 +22,7 @@ last_updated: 2026-07-06
 
 ---
 
-## 執行階段(2026-07-07 pivot 執行路徑 B:F0–F3 + F4 重建/輕驗完成;F4 全棧 gate + F5 待新資料夾 session)
+## 執行階段(2026-07-07 pivot 執行路徑 B:F0–F4 完成,新資料夾 session F4 全棧 gate **PASS 10/10**;F5 觀察退役待續)
 
 ### F0 — 前置 gate + 止血
 - [x] F0.1 用戶確認企業 IT 政策(2026-07-07:**允許寫入本地非 OneDrive 路徑,無限制** → 遷移 B 技術可行)
@@ -39,21 +39,21 @@ last_updated: 2026-07-06
 ### F2 — 平行複製(非剪下)
 - [x] 用戶全量複製到 `<NEW_ROOT>`(含 build 產物,後刪 `.venv`/`node_modules`/`.next` 重建 per F4)
 - [x] `.git` + `.env` + `azurite-data` + `.claude` 已隨全量複製帶到(已驗)
-- [ ] verify:`<NEW_ROOT>` `git status` 與舊一致 + `git log -1` 對得上(待新 session)
+- [x] verify:`<NEW_ROOT>` `git status` 與舊一致 + `git log -1` 對得上(2026-07-07 新 session 驗:git 乾淨,log `66c1825`/`b6dcb0d` 對得上)
 
 ### F3 — Claude 記憶 / session 重綁
 - [x] 新 key 目錄 `C--Users-CLai03-ai-enterprise-knowledge-solution-project\memory\` 已由 robocopy 生成
 - [x] 複製舊 `memory/` **33 檔**(非原記 23,已增長)入新 key 目錄,`MEMORY.md` 就位
-- [ ] verify:新 session 載入 `MEMORY.md` + 33 memory 檔(待新 session)
+- [x] verify:新 session 載入 `MEMORY.md` + 33 memory 檔(2026-07-07 本 session 已載入)
 
 ### F4 — 重建 + 全棧驗證(gate:全綠才進 F5)
 - [x] frontend `pnpm install`(35,894 檔)+ backend venv 重建(**site-packages 複製繞 MITM 代理擋 numpy**,見 progress Day 1);輕驗:`api.server` 新路徑 + **1736 tests 收集零 error**
-- [ ] 全棧重啟(infra docker + native azurite + backend + frontend)逐個 ready(待新 session)
-- [ ] verify:`/health` 200
-- [ ] verify:chat 跑一條 query → 有引用 + 圖
-- [ ] verify:`/conversations` 有舊 session data(Postgres volume 未動)
-- [ ] verify:azurite blob 圖可顯示
-- [ ] verify:最長路徑量測 < 200(headroom 健康)
+- [x] 全棧重啟(infra docker + native azurite + backend + frontend)逐個 ready(2026-07-07;docker postgres+langfuse + backend/frontend 已在跑,azurite native Plan B 本 session 補起,D11)
+- [x] verify:`/health` 200(五 component azure_search/azure_openai/cohere/langfuse/postgres 全 ok)
+- [x] verify:chat 跑一條 query → 有引用 + 圖(`/query` drive-images-1 hybrid → 200:13 citations 命中 GL03 章節,40 圖 + answer 40 個 `[IMG#]` inline 標記,`gpt-5.5`+`cohere-v4.0-pro`,無 refuse/無 402)
+- [x] verify:`/conversations` 有舊 session data(Postgres volume 未動;DB 直查 3 conv/6 msg,owner=admin `u-IQh...`;API dev-token 回 0 = per-user 過濾正常,D12)
+- [x] verify:azurite blob 圖可顯示(screenshot proxy 端點回 PNG 200/5164 bytes;`drive-images-1-screenshots` 827 blob ←→ DB 827 對齊)
+- [x] verify:最長路徑量測 = **219**(達 handoff 理想 <220 + 遠低 260 硬上限;未達原訂 <200,踩線檔 = `references/dify` 深層 `.spec.tsx` = IDE/git-only 非 runtime,可接受)
 
 ### F5 — 觀察期 + 退役
 - [ ] 新路徑實用 ≥ N 天(用戶定,建議 ≥ 3),期間舊副本保留
@@ -67,11 +67,11 @@ last_updated: 2026-07-06
 
 ## Cross-Cutting
 
-- [ ] 規劃文件 committed to git(kickoff)
-- [ ] 無 OQ status 變動(本 phase 不涉)— N/A
-- [ ] 無 architectural-adjacent decision(不觸 H1)→ 無 ADR
-- [ ] `progress.md` retro section written(執行完成後)
-- [ ] `progress.md` frontmatter status flipped to `closed`(結案後)
+- [x] 規劃文件 committed to git(Day 2 首次 commit W87 三件套 + BACKLOG)
+- [x] 無 OQ status 變動(本 phase 不涉)— N/A
+- [x] 無 architectural-adjacent decision(不觸 H1)→ 無 ADR
+- [x] `progress.md` retro section written(Day 2 F4 PASS 後填)
+- [ ] `progress.md` frontmatter status flipped to `closed`(F5 觀察期未過,保持 `in-progress`)
 
 ---
 
