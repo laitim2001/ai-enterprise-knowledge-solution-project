@@ -316,6 +316,59 @@ class IndexPopulator:
         response.raise_for_status()
         return False  # unreachable — raise_for_status() always raises here
 
+    async def _collect_doc_chunk_ids(
+        self, index_name: str, kb_id: str, doc_id: str, *, op: str
+    ) -> list[str] | None:
+        """Collect ALL chunk_ids for (kb_id, doc_id) via paginated search.
+
+        BUG-043 — delete_doc / update_doc_classification / update_doc_principals
+        previously took a single top=1000 page, silently missing the tail of any
+        doc with > 1000 chunks (orphan chunks on delete; stale classification /
+        ACL stamps on restamp — the ACL case is a security gap). This walks
+        skip/top pages (page size = ``_AZURE_BATCH_LIMIT``) until a short page is
+        seen, covering every chunk. A doc within one page breaks after the first
+        request (single-page path unchanged — production-preserve). (Azure's
+        $skip caps at 100k rows; a doc that large is far beyond any real manual.)
+
+        Returns None when the index is missing (KB never had chunks) so callers
+        map it to 0, distinct from [] (index exists, this doc has no chunks). The
+        ``op`` prefixes the log event names to preserve each caller's telemetry.
+        """
+        assert self._client is not None, "use 'async with' to manage populator lifecycle"
+        search_url = (
+            f"{self.endpoint}/indexes/{index_name}/docs/search?api-version={self.api_version}"
+        )
+        filter_clause = f"{kb_id_filter_clause(kb_id)} and doc_id eq '{doc_id}'"
+        chunk_ids: list[str] = []
+        skip = 0
+        while True:
+            payload = {
+                "search": "*",
+                "filter": filter_clause,
+                "select": "chunk_id",
+                "top": _AZURE_BATCH_LIMIT,
+                "skip": skip,
+            }
+            response = await self._client.post(search_url, content=json.dumps(payload))
+            if response.status_code == 404:
+                logger.warning(f"{op}_index_missing", kb_id=kb_id, doc_id=doc_id, index=index_name)
+                return None
+            if response.status_code != 200:
+                logger.error(
+                    f"{op}_search_failed",
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    status_code=response.status_code,
+                    body=response.text[:2000],
+                )
+                response.raise_for_status()
+            rows = response.json().get("value", [])
+            chunk_ids.extend(r["chunk_id"] for r in rows if "chunk_id" in r)
+            if len(rows) < _AZURE_BATCH_LIMIT:
+                break
+            skip += _AZURE_BATCH_LIMIT
+        return chunk_ids
+
     @_azure_lifecycle_retry
     async def delete_doc(self, kb_id: str, doc_id: str) -> int:
         """Delete all chunks for (kb_id, doc_id) from the per-KB index.
@@ -334,34 +387,9 @@ class IndexPopulator:
         index_name = self._resolve_index_name(kb_id)
         api_version = self.api_version
 
-        # Step 1 — collect chunk_ids matching (kb_id, doc_id). Tier 1 assumption:
-        # a single doc has < 1000 chunks (per components/C01-ingestion §4 +
-        # HybridSearcher.list_documents `max_chunks=1000` precedent).
-        search_url = f"{self.endpoint}/indexes/{index_name}/docs/search?api-version={api_version}"
-        filter_clause = f"{kb_id_filter_clause(kb_id)} and doc_id eq '{doc_id}'"
-        search_payload = {
-            "search": "*",
-            "filter": filter_clause,
-            "select": "chunk_id",
-            "top": _AZURE_BATCH_LIMIT,
-        }
-        search_response = await self._client.post(search_url, content=json.dumps(search_payload))
-        if search_response.status_code == 404:
-            # Index doesn't exist (KB never had chunks) — treat as zero matches.
-            logger.warning("delete_doc_index_missing", kb_id=kb_id, doc_id=doc_id, index=index_name)
-            return 0
-        if search_response.status_code != 200:
-            logger.error(
-                "delete_doc_search_failed",
-                kb_id=kb_id,
-                doc_id=doc_id,
-                status_code=search_response.status_code,
-                body=search_response.text[:2000],
-            )
-            search_response.raise_for_status()
-
-        rows = search_response.json().get("value", [])
-        chunk_ids: list[str] = [r["chunk_id"] for r in rows if "chunk_id" in r]
+        # Step 1 — collect ALL chunk_ids matching (kb_id, doc_id), paginated so a
+        # doc with > 1000 chunks doesn't leave an orphan tail on delete (BUG-043).
+        chunk_ids = await self._collect_doc_chunk_ids(index_name, kb_id, doc_id, op="delete_doc")
         if not chunk_ids:
             return 0
 
@@ -416,33 +444,10 @@ class IndexPopulator:
         index_name = self._resolve_index_name(kb_id)
         api_version = self.api_version
 
-        # Step 1 — collect chunk_ids matching (kb_id, doc_id).
-        search_url = f"{self.endpoint}/indexes/{index_name}/docs/search?api-version={api_version}"
-        filter_clause = f"{kb_id_filter_clause(kb_id)} and doc_id eq '{doc_id}'"
-        search_payload = {
-            "search": "*",
-            "filter": filter_clause,
-            "select": "chunk_id",
-            "top": _AZURE_BATCH_LIMIT,
-        }
-        search_response = await self._client.post(search_url, content=json.dumps(search_payload))
-        if search_response.status_code == 404:
-            logger.warning(
-                "restamp_doc_index_missing", kb_id=kb_id, doc_id=doc_id, index=index_name
-            )
-            return 0
-        if search_response.status_code != 200:
-            logger.error(
-                "restamp_doc_search_failed",
-                kb_id=kb_id,
-                doc_id=doc_id,
-                status_code=search_response.status_code,
-                body=search_response.text[:2000],
-            )
-            search_response.raise_for_status()
-
-        rows = search_response.json().get("value", [])
-        chunk_ids: list[str] = [r["chunk_id"] for r in rows if "chunk_id" in r]
+        # Step 1 — collect ALL chunk_ids matching (kb_id, doc_id), paginated so a
+        # doc with > 1000 chunks doesn't leave stale classification stamps on its
+        # tail (BUG-043).
+        chunk_ids = await self._collect_doc_chunk_ids(index_name, kb_id, doc_id, op="restamp_doc")
         if not chunk_ids:
             return 0
 
@@ -508,33 +513,12 @@ class IndexPopulator:
         index_name = self._resolve_index_name(kb_id)
         api_version = self.api_version
 
-        # Step 1 — collect chunk_ids matching (kb_id, doc_id).
-        search_url = f"{self.endpoint}/indexes/{index_name}/docs/search?api-version={api_version}"
-        filter_clause = f"{kb_id_filter_clause(kb_id)} and doc_id eq '{doc_id}'"
-        search_payload = {
-            "search": "*",
-            "filter": filter_clause,
-            "select": "chunk_id",
-            "top": _AZURE_BATCH_LIMIT,
-        }
-        search_response = await self._client.post(search_url, content=json.dumps(search_payload))
-        if search_response.status_code == 404:
-            logger.warning(
-                "restamp_principals_index_missing", kb_id=kb_id, doc_id=doc_id, index=index_name
-            )
-            return 0
-        if search_response.status_code != 200:
-            logger.error(
-                "restamp_principals_search_failed",
-                kb_id=kb_id,
-                doc_id=doc_id,
-                status_code=search_response.status_code,
-                body=search_response.text[:2000],
-            )
-            search_response.raise_for_status()
-
-        rows = search_response.json().get("value", [])
-        chunk_ids: list[str] = [r["chunk_id"] for r in rows if "chunk_id" in r]
+        # Step 1 — collect ALL chunk_ids matching (kb_id, doc_id), paginated so a
+        # doc with > 1000 chunks doesn't leave stale ACL stamps on its tail — a
+        # security gap (BUG-043).
+        chunk_ids = await self._collect_doc_chunk_ids(
+            index_name, kb_id, doc_id, op="restamp_principals"
+        )
         if not chunk_ids:
             return 0
 
