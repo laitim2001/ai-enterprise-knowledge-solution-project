@@ -930,6 +930,40 @@ async def _run_ingest_pipeline(
                 stored = await deps.doc_classification_store.get(kb_id, doc_id)
                 if stored is not None:
                     classification = stored
+            # CH-021 — ingest ACL / classification fail-open 可觀測性(保守版:只加
+            # 告警,不改「寧鬆勿死」語義本身)。上面 resolve 的幾個分支在 RBAC backend /
+            # classification store 未 wire 時,會靜默把此 doc 降級入庫 —— chunk 印成
+            # public(空 allowed_principals 被 P2.2 filter 當 public),或 restricted
+            # tag 退回 "internal"。原設計無任何信號,一次 backend 短暫故障就無人知
+            # (pipeline review I-R4 / I-R5)。此處 emit 固定 event name 的 structured
+            # warning,令 log aggregator 可當 metric count + 供事後 re-stamp 判斷。
+            if deps.rbac_backend is None:
+                logger.warning(
+                    "ingest_acl_fail_open",
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    reason="rbac_backend_unwired",
+                    effect="chunks stamped public (empty allowed_principals)",
+                )
+            elif not allowed_principals:
+                # backend wired 但 resolve 出空 principals → 此 doc 的 chunk 仍會被
+                # P2.2 filter 當 public(可能是真 public KB,也可能是 ACL 漏設 / 被誤
+                # 刪)。無論何者都值得可見,供事後判斷是否 re-stamp。
+                logger.warning(
+                    "ingest_acl_fail_open",
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    reason="empty_principals",
+                    effect="chunks stamped public (empty allowed_principals)",
+                )
+            if deps.doc_classification_store is None:
+                logger.warning(
+                    "ingest_classification_fail_open",
+                    kb_id=kb_id,
+                    doc_id=doc_id,
+                    reason="classification_store_unwired",
+                    effect="classification defaulted to 'internal' (a restricted tag would be lost)",
+                )
             result = await orchestrator.ingest(
                 source=tmp_path,
                 kb_id=kb_id,

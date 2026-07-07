@@ -18,12 +18,15 @@ Acceptance ref:spec.md §3 AC1-AC10 + AC18-AC22 + AC9.1-AC9.3.
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+import structlog
 from azure.core.exceptions import ResourceNotFoundError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -344,6 +347,117 @@ async def test_ingest_without_doc_acl_inherits_kb(
     )
     assert resp.status_code == 202, resp.text
     assert ingest_mock.await_args.kwargs["allowed_principals"] == ["kb-user"]
+
+
+# --------------------------------------------------------------------------- #
+# CH-021 — ingest ACL / classification fail-open observability (保守版)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def _ingest_log_capture(caplog: pytest.LogCaptureFixture) -> Iterator[pytest.LogCaptureFixture]:
+    """Bridge structlog → stdlib logging so `caplog` sees `_run_ingest_pipeline`'s
+    CH-021 fail-open warnings (mirrors `test_audit_log._structlog_capture`). Reset
+    the global structlog config on teardown so it doesn't leak into sibling tests."""
+    structlog.configure(
+        processors=[
+            structlog.processors.add_log_level,
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+    )
+    caplog.set_level(logging.WARNING, logger="api.routes.documents")
+    yield caplog
+    structlog.reset_defaults()
+
+
+@pytest.mark.asyncio
+async def test_ingest_acl_fail_open_warns_when_backend_unwired(
+    kb_service_with_drive: KBService,
+    monkeypatch: pytest.MonkeyPatch,
+    _ingest_log_capture: pytest.LogCaptureFixture,
+) -> None:
+    """CH-021 — RBAC backend 未 wire → `resolve_doc_principals` 回 [] → 此 doc 的
+    chunk 印成 public(空 `allowed_principals` 被 P2.2 filter 當 public)。保守版必須
+    emit 一個固定 event name 的 `ingest_acl_fail_open` warning(令一次 backend 短暫
+    故障不再靜默),reason=`rbac_backend_unwired`(pipeline review I-R4)。"""
+    _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    # `_build_app` 預設不 wire rbac_backend → resolve 落 fail-open 分支。
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+
+    messages = [r.getMessage() for r in _ingest_log_capture.records]
+    acl_warnings = [m for m in messages if "ingest_acl_fail_open" in m]
+    assert acl_warnings, "expected an ingest_acl_fail_open warning when RBAC backend is unwired"
+    assert any("rbac_backend_unwired" in m for m in acl_warnings)
+
+
+@pytest.mark.asyncio
+async def test_ingest_classification_fail_open_warns_when_store_unwired(
+    kb_service_with_drive: KBService,
+    monkeypatch: pytest.MonkeyPatch,
+    _ingest_log_capture: pytest.LogCaptureFixture,
+) -> None:
+    """CH-021 — classification store 未 wire → classification 靜默退回 "internal"
+    (一個本應 restricted 的 doc 會被降級)。保守版 emit `ingest_classification_fail_open`
+    warning(pipeline review I-R5)。"""
+    _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+
+    messages = [r.getMessage() for r in _ingest_log_capture.records]
+    assert any("ingest_classification_fail_open" in m for m in messages), (
+        "expected an ingest_classification_fail_open warning when the store is unwired"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ingest_no_acl_fail_open_warning_when_principals_resolved(
+    kb_service_with_drive: KBService,
+    monkeypatch: pytest.MonkeyPatch,
+    _ingest_log_capture: pytest.LogCaptureFixture,
+) -> None:
+    """CH-021 regression(spec §5「backend 正常時無多餘告警」)— backend wired + KB 有
+    grant → `allowed_principals` 非空 → **不可** emit `ingest_acl_fail_open`。"""
+    _patch_orchestrator(monkeypatch)
+    populator = _populator_mock(upload_result=_FakeUploadResult(succeeded=12))
+    engine = _engine_mock(list_docs=[])
+
+    app = _build_app(kb_service=kb_service_with_drive, populator=populator, engine=engine)
+    rbac = InMemoryRbacBackend()
+    await rbac.add_kb_acl(
+        kb_id="drive_user_manuals",
+        principal_type="user",
+        principal_id="kb-user",
+        access_role="query",
+        granted_by="admin",
+    )
+    app.state.rbac_backend = rbac
+    app.state.doc_acl_store = InMemoryDocAclStore()  # empty → inherit KB grant
+
+    resp = TestClient(app).post(
+        "/kb/drive_user_manuals/documents", files=_docx_files("vendor-manual.docx")
+    )
+    assert resp.status_code == 202, resp.text
+
+    messages = [r.getMessage() for r in _ingest_log_capture.records]
+    assert not any("ingest_acl_fail_open" in m for m in messages), (
+        "resolved principals must NOT trigger an ACL fail-open warning"
+    )
 
 
 @pytest.mark.asyncio
