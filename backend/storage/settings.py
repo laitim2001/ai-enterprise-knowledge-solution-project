@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     #         hot fallback path per architecture.md §7.3 E7 Cohere outage mitigation)
     # off = hybrid-only (W2 baseline behaviour preserved for local dev / CI)
     reranker_kind: Literal["cohere", "voyage", "zeroentropy", "azure", "off"] = "cohere"
+    # CH-020 / ADR-0074 — hot fallback: when reranker_kind="cohere" AND Azure
+    # Search credentials are available, wrap Cohere in a FallbackReranker that
+    # auto-degrades to the Azure built-in semantic ranker on Cohere outage
+    # (architecture.md §7.3 E7 + §8.3 R6). False = escape hatch preserving the
+    # pre-ADR-0074 behaviour (a Cohere failure bubbles). No effect when
+    # reranker_kind != "cohere".
+    reranker_fallback_enabled: bool = True
 
     # Cohere — Path A Azure Marketplace per Q5 Resolved 2026-05-04 (Chris signoff)
     # Endpoint format: https://<deployment>.<region>.models.ai.azure.com/v2/rerank

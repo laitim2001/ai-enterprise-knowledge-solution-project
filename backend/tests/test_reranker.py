@@ -161,6 +161,9 @@ def test_factory_returns_cohere_when_both_set() -> None:
         cohere_endpoint="https://m.example.com",
         cohere_api_key="key",
         cohere_procurement_path="A",
+        # CH-020 / ADR-0074 — isolate plain cohere dispatch from the hot-fallback
+        # wrap (Azure creds in .env would otherwise yield FallbackReranker).
+        reranker_fallback_enabled=False,
     )
     r = make_reranker(settings)
     assert isinstance(r, CohereReranker)

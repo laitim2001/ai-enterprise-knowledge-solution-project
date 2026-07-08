@@ -373,6 +373,10 @@ def test_factory_cohere_parity_w3_d1() -> None:
         cohere_endpoint="https://m.example.com",
         cohere_api_key="key",
         cohere_procurement_path="A",
+        # CH-020 / ADR-0074 — isolate the W3 D1 cohere-dispatch parity from the new
+        # hot-fallback wrap (which would return FallbackReranker when Azure creds are
+        # present in .env). FallbackReranker dispatch is covered in test_reranker_fallback.
+        reranker_fallback_enabled=False,
     )
     r = make_reranker(settings)
     assert isinstance(r, CohereReranker)
