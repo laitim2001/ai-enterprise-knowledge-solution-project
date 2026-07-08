@@ -51,6 +51,7 @@
 | **B-17** | 串流路徑(chat 主路徑)無 CRAG(Q-R2) | 🟠 | `完成`(PR #2 merged,ADR-0073) | [CH-022](../03-implementation/changes/CH-022-streaming-crag-parity/spec.md)(方案 B 純後端信號) |
 | **B-18** | 預設雙重 rerank 冗餘(Q-R4) | 🟠 | `候選` | → 推進 ADR-0039(已 Proposed);不另開 folder |
 | **B-19** | KB reindex 非原子(I-R8) | 🟠 | `候選` | → 併 B-06 / ADR-0043(已有);不另開 folder |
+| **B-21** | born-digital PDF 白行 Docling OCR → parse 慢 ~3x(+~60s 零得着;**2026-07-08 頁面測試發現**,非 2026-07-06 review) | 🟠 | `完成` | [BUG-044](../03-implementation/bugs/BUG-044-pdf-parser-redundant-ocr/report.md)(`do_ocr=False` 預設 + force_scan 保留 OCR;實測 87s→27s) |
 
 ---
 

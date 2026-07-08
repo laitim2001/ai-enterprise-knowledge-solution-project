@@ -20,7 +20,7 @@ from .pdf_parser import DoclingPdfParser
 from .pptx_parser import PptxParser
 
 
-def select_parser(source: Path, *, extract_images: bool = False) -> Parser:
+def select_parser(source: Path, *, extract_images: bool = False, do_ocr: bool = False) -> Parser:
     """Dispatch to the parser implementation by file extension.
 
     Recognized formats: .docx → DoclingDocxParser, .pdf → DoclingPdfParser,
@@ -30,12 +30,17 @@ def select_parser(source: Path, *, extract_images: bool = False) -> Parser:
     pictures (generate_picture_images=True). Threaded from the KB's
     `extract_embedded_images` toggle by the ingest caller; default False keeps every
     existing caller + the .docx / .pptx paths bit-identical.
+
+    `do_ocr` (BUG-044): when True the .pdf parser runs Docling OCR. Default False —
+    Tier 1 born-digital PDFs have a text layer, so OCR is ~60s of waste. The ingest
+    caller threads do_ocr=force_scan so only a user-confirmed scan (ADR-0065) pays it.
+    No effect on .docx / .pptx (no OCR path).
     """
     suffix = source.suffix.lower()
     if suffix == ".docx":
         return DoclingDocxParser()
     if suffix == ".pdf":
-        return DoclingPdfParser(generate_picture_images=extract_images)
+        return DoclingPdfParser(generate_picture_images=extract_images, do_ocr=do_ocr)
     if suffix == ".pptx":
         return PptxParser()
     raise ValueError(

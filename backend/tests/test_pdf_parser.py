@@ -31,6 +31,7 @@ from pathlib import Path
 
 import pytest
 
+from ingestion.parsers import select_parser
 from ingestion.parsers.base import Parser, ParserResult
 from ingestion.parsers.pdf_parser import DoclingPdfParser
 
@@ -76,6 +77,29 @@ def test_pdf_parser_failed_result_no_paragraphs_or_images() -> None:
     assert result.paragraphs == []
     assert result.embedded_images == []
     assert result.tables == []
+
+
+def test_pdf_parser_do_ocr_off_by_default() -> None:
+    """BUG-044 — OCR OFF by default: born-digital Tier 1 PDF has a text layer, so Docling
+    OCR is ~60s of waste for zero text gain (ADR-0019 text-extractable scope)."""
+    parser = DoclingPdfParser()
+    assert parser.do_ocr is False
+
+
+def test_pdf_parser_do_ocr_opt_in() -> None:
+    """BUG-044 — the scan path (force_scan=True) threads do_ocr=True to recover a real
+    scan's text (ADR-0065); that is the only OCR caller."""
+    parser = DoclingPdfParser(do_ocr=True)
+    assert parser.do_ocr is True
+
+
+def test_select_parser_threads_do_ocr_to_pdf() -> None:
+    """BUG-044 — select_parser(do_ocr=...) reaches the .pdf parser; documents.py wires
+    do_ocr=force_scan so a normal (born-digital) upload gets do_ocr=False."""
+    off = select_parser(Path("brochure.pdf"))
+    on = select_parser(Path("scan.pdf"), do_ocr=True)
+    assert isinstance(off, DoclingPdfParser) and off.do_ocr is False
+    assert isinstance(on, DoclingPdfParser) and on.do_ocr is True
 
 
 # Session 2 deferred — real-PDF tests pending sample PDF acquisition from Chris (ADR-0019)
