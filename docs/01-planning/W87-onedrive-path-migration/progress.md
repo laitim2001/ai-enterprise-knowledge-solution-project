@@ -34,7 +34,7 @@ status: in-progress    # in-progress | closed
 - **B2(blocked-on-user)go 決定**:是否進入實際遷移執行,待用戶定。
 
 ### Commits
-- `<pending>` — `docs(planning): kickoff W87 onedrive-path-migration analysis + plan`(待用戶批准 commit)
+- `8738c7e` — `docs(planning): W87 OneDrive 路徑遷移 phase 三件套(plan/checklist/progress)`
 
 ---
 
@@ -90,7 +90,7 @@ status: in-progress    # in-progress | closed
 - **B3 CLOSED**:`LongPathsEnabled=1` 用戶已在 admin PowerShell 跑,已驗 return 1。
 
 ### Commits
-- `<pending>` — `docs(planning): W87 Day 1 — F0 gate + pivot 執行遷移(路徑 B)F2–F4 + 代理繞法`(待用戶批准 commit)
+- `223ae60` — `docs(planning): W87 OneDrive→本地路徑遷移執行(路徑 B)F2-F4 + 代理繞法`
 
 ---
 
