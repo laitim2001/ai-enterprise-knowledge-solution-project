@@ -93,7 +93,7 @@ def test_usage_stats_spend_pct_clamps_at_200() -> None:
     )
     assert stat.spend_pct_used == 200.0
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):  # Pydantic ValidationError is a ValueError subclass
         UsageStats4Stat(
             api_calls_24h=0,
             spend_today_usd=0,

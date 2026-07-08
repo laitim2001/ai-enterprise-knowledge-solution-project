@@ -28,7 +28,6 @@ from generation.citation_image_neighbors import (
     attach_neighbour_images,
 )
 
-
 # ---------- helpers ----------------------------------------------------------
 
 

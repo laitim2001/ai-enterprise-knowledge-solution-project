@@ -24,7 +24,6 @@ from api.auth import AuthenticatedUser, get_current_user
 from api.routes import conversations as conversations_routes
 from conversations import InMemoryConversationStore
 
-
 # --------------------------------------------------------------------------- #
 # Builders
 # --------------------------------------------------------------------------- #

@@ -21,11 +21,9 @@ import pytest
 
 from retrieval.result_fusion import (
     RRF_K_DEFAULT,
-    FusedRetrievalResult,
     fused_retrieve,
 )
 from retrieval.retrieval_engine import RetrievalResult, RetrievedChunk
-
 
 # ---------- helpers ----------------------------------------------------------
 

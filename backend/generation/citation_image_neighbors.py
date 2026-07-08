@@ -89,7 +89,7 @@ async def attach_neighbour_images(
 
     chunks_by_doc: dict[str, list[dict]] = {}
     fetch_errors: list[str] = []
-    for did, result in zip(doc_ids, fetched_chunks):
+    for did, result in zip(doc_ids, fetched_chunks, strict=True):
         if isinstance(result, BaseException):
             fetch_errors.append(f"{did}: {type(result).__name__}: {result}")
             chunks_by_doc[did] = []

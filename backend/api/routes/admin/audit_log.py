@@ -11,7 +11,7 @@ Endpoint is read-only — writes happen at the F2/F3/F4 PATCH hook points.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
@@ -43,7 +43,7 @@ async def list_audit_log(
     # A date-only `?since=YYYY-MM-DD` parses tz-naive — assume UTC so the
     # comparison against tz-aware `created_at` doesn't raise TypeError.
     if since is not None and since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
+        since = since.replace(tzinfo=UTC)
     # Over-fetch by one row to detect whether an older page exists.
     rows = await backend.list_recent(
         limit=limit + 1, action_type=action_type, since=since, cursor=cursor

@@ -17,8 +17,8 @@ from fastapi.testclient import TestClient
 from api.routes.admin import identity as admin_identity
 from api.schemas.admin_identity import IdentityConfig
 from storage.admin_identity_storage import (
-    InMemoryAdminIdentityBackend,
     SUB_RESOURCES,
+    InMemoryAdminIdentityBackend,
     _derive_authority_url,
     default_identity_config,
     default_tenant,

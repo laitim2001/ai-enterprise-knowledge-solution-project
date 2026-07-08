@@ -23,7 +23,7 @@ real value — secret hygiene per ADR-0026 §Consequences.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
 
@@ -282,7 +282,7 @@ async def test_connection(provider_id: str, request: Request) -> TestConnectionR
         provider_id,
         status=test_status,
         detail=result.detail,
-        tested_at=datetime.now(timezone.utc),
+        tested_at=datetime.now(UTC),
     )
     audit = _get_audit_log(request)
     if audit is not None:
@@ -324,7 +324,7 @@ async def rotate_secret(provider_id: str, request: Request) -> RotateSecretResul
         ) from e
     except SecretNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    rotated_at = datetime.now(timezone.utc)
+    rotated_at = datetime.now(UTC)
     masked = _mask_secret(new_value)
     await backend.update_rotation_timestamp(
         provider_id, rotated_at=rotated_at, secret_masked_preview=masked
@@ -375,7 +375,7 @@ async def set_secret(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"failed to store secret for {provider_id!r} in Key Vault ({type(e).__name__})",
         ) from None
-    updated_at = datetime.now(timezone.utc)
+    updated_at = datetime.now(UTC)
     masked = _mask_secret(body.value)
     await backend.update_rotation_timestamp(
         provider_id, rotated_at=updated_at, secret_masked_preview=masked

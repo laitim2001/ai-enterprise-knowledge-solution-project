@@ -13,7 +13,6 @@ with real provider pings.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 

@@ -3,7 +3,7 @@ W24b-wave-c2 F6 filter + cursor cases)."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -133,11 +133,11 @@ async def test_list_recent_filter_by_since() -> None:
             actor=None, action="connection_test", resource=f"r_{i}", payload=None
         )
     # Backdate the two oldest rows so `since` filters them out.
-    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    old = datetime(2020, 1, 1, tzinfo=UTC)
     backend._rows[0].created_at = old
     backend._rows[1].created_at = old
     rows = await backend.list_recent(
-        since=datetime(2021, 1, 1, tzinfo=timezone.utc)
+        since=datetime(2021, 1, 1, tzinfo=UTC)
     )
     assert len(rows) == 2  # only the two recent rows survive
 
@@ -173,7 +173,7 @@ async def test_prune_expired_removes_old_rows() -> None:
             actor=None, action="connection_test", resource=f"r_{i}", payload=None
         )
     # Backdate the two oldest rows well past any retention window.
-    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    old = datetime(2020, 1, 1, tzinfo=UTC)
     backend._rows[0].created_at = old
     backend._rows[1].created_at = old
     removed = await backend.prune_expired(90)

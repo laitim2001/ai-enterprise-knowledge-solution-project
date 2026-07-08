@@ -73,6 +73,22 @@ line-length = 100
 select = ["E", "F", "W", "I", "B", "UP", "TID"]
 ignore = ["E501"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection callables are the framework-idiomatic way to
+# declare request params in argument defaults; B008 (function-call-in-default)
+# is a false positive for them.
+extend-immutable-calls = [
+    "fastapi.Query",
+    "fastapi.Depends",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Cookie",
+    "fastapi.Security",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

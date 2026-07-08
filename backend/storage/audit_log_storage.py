@@ -13,14 +13,14 @@ exercise it in tests, but no FastAPI route surfaces it Tier 1.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
 from api.schemas.audit_log import AuditAction, AuditLogEntry
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @runtime_checkable

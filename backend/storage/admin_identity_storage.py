@@ -13,7 +13,7 @@ tenant + app_registration + msal + roles + policy.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
 from api.schemas.admin_identity import (
@@ -36,7 +36,7 @@ SUB_RESOURCES = ("tenant", "app_registration", "msal", "roles", "policy")
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------- Default seed ----------------------------------------------------

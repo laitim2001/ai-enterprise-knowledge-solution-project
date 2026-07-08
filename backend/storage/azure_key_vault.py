@@ -28,7 +28,7 @@ Threading + lifecycle:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from storage.key_vault import (
@@ -87,7 +87,7 @@ class AzureKeyVaultProvider:
         return SecretMetadata(
             name=secret.name or name,
             enabled=secret.properties.enabled if secret.properties.enabled is not None else True,
-            updated_at=secret.properties.updated_on or datetime.now(timezone.utc),
+            updated_at=secret.properties.updated_on or datetime.now(UTC),
         )
 
     async def delete_secret(self, name: str) -> None:

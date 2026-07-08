@@ -26,7 +26,6 @@ from generation.query_reformulator import (
     _parse_variants,
 )
 
-
 # ---------- helpers ----------------------------------------------------------
 
 

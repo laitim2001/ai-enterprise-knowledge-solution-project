@@ -26,15 +26,13 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 
+from api.schemas.admin import ProviderDeployment
 from api.schemas.admin_api_keys import (
     AlertThresholdPatch,
     IncomingKeysDisabled,
     OutgoingQuotaList,
     OutgoingQuotaRow,
 )
-
-QuotaStatus = Literal["within_limits", "warning", "over_limit"]
-from api.schemas.admin import ProviderDeployment
 from observability.langfuse_tracer import get_langfuse_client
 from observability.realtime_cost import fetch_realtime_usage
 from storage.admin_provider_storage import (
@@ -42,6 +40,8 @@ from storage.admin_provider_storage import (
     ProviderNotFoundError,
 )
 from storage.audit_log_storage import AuditLogBackend
+
+QuotaStatus = Literal["within_limits", "warning", "over_limit"]
 
 router = APIRouter(prefix="/admin/api-keys")
 

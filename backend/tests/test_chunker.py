@@ -6,8 +6,6 @@ End-to-end smoke (real .docx → chunk) lives in scripts/run_chunker_sanity.py.
 
 from pathlib import Path
 
-import pytest
-
 from ingestion.chunker.base import ChunkSpec
 from ingestion.chunker.layout_aware import LayoutAwareChunker
 from ingestion.chunker.strategies import select_chunker

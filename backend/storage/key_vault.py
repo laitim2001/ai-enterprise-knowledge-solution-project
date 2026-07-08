@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import os
 import secrets as _secrets_token_module
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
@@ -93,7 +93,7 @@ class EnvVarProvider:
         return SecretMetadata(
             name=name,
             enabled=True,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
 
     async def delete_secret(self, name: str) -> None:

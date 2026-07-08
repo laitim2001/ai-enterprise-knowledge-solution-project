@@ -35,7 +35,6 @@ from api.auth.dependency import get_current_user
 from api.auth.email_provider import (
     AcsEmailProvider,
     ConsoleEmailProvider,
-    EmailProvider,
     EmailSendError,
     _build_provider_from_settings,
     get_email_provider,
@@ -773,7 +772,7 @@ def mocked_acs_sdk(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
     class FakeEmailClient:
         @classmethod
-        def from_connection_string(cls, conn_str: str) -> "FakeEmailClient":
+        def from_connection_string(cls, conn_str: str) -> FakeEmailClient:
             return cls()
 
         def begin_send(self, message: dict[str, Any]) -> FakePoller:
@@ -832,7 +831,7 @@ async def test_acs_provider_retries_on_transient_error(
 
     class FlakeyEmailClient:
         @classmethod
-        def from_connection_string(cls, conn_str: str) -> "FlakeyEmailClient":
+        def from_connection_string(cls, conn_str: str) -> FlakeyEmailClient:
             return cls()
 
         def begin_send(self, message: dict[str, Any]) -> FakePoller:
@@ -872,7 +871,7 @@ async def test_acs_provider_raises_email_send_error_after_retries(
 
     class FailingEmailClient:
         @classmethod
-        def from_connection_string(cls, conn_str: str) -> "FailingEmailClient":
+        def from_connection_string(cls, conn_str: str) -> FailingEmailClient:
             return cls()
 
         def begin_send(self, message: dict[str, Any]) -> Any:
@@ -911,7 +910,7 @@ async def test_acs_provider_raises_immediately_on_non_transient_error(
 
     class FailingEmailClient:
         @classmethod
-        def from_connection_string(cls, conn_str: str) -> "FailingEmailClient":
+        def from_connection_string(cls, conn_str: str) -> FailingEmailClient:
             return cls()
 
         def begin_send(self, message: dict[str, Any]) -> Any:

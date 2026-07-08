@@ -4,6 +4,10 @@ Per architecture.md §4.1 + §4.4: exposes 18 RESTful endpoints across 8 routers
 W1 scaffold: routes registered, return 501 for non-trivial endpoints (real impl per §6.1 sprint).
 """
 
+# ruff: noqa: E402 — truststore.inject_into_ssl() (below) must run before any
+# ssl / urllib3 / httpx import, which intentionally forces every subsequent
+# import below the module top (Ricoh corp-proxy SSL inspection).
+
 # Use OS trust store (Windows Cert Store) for TLS verification so Ricoh corp
 # proxy SSL inspection is honoured. Must run before any ssl/urllib3/httpx import.
 import truststore
@@ -13,7 +17,7 @@ truststore.inject_into_ssl()
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import structlog  # noqa: E402 — truststore.inject() (above) must precede ssl imports
+import structlog  # truststore.inject() (above) must precede ssl imports
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
