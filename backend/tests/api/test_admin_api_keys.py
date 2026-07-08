@@ -85,10 +85,11 @@ def test_get_outgoing_returns_flattened_per_deployment_rows() -> None:
         r = client.get("/admin/api-keys/outgoing")
         assert r.status_code == 200
         body = r.json()
-        # 9 providers in seed, minus structlog + key_vault (skipped) = 7 providers
+        # 10 providers in seed, minus structlog + key_vault (skipped) = 8 providers
         # but azure_openai has 4 deployments → 4 rows from it
-        # Total = 4 (azure_openai) + 1 each for cohere/azure_search/azure_blob/postgres/langfuse/acs_email = 10 rows
-        assert len(body["rows"]) == 10
+        # Total = 4 (azure_openai) + 1 each for cohere/azure_search/azure_blob/
+        # postgres/langfuse/acs_email/sharepoint (W102/ADR-0072) = 11 rows
+        assert len(body["rows"]) == 11
 
 
 def test_get_outgoing_skips_structlog_and_key_vault() -> None:

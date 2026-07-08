@@ -50,6 +50,29 @@ from storage.rbac_storage import InMemoryRbacBackend
 # --------------------------------------------------------------------------- #
 
 
+@pytest.fixture(autouse=True)
+def _stub_screenshot_uploader(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub ScreenshotUploader so the ingest path never opens a real BlobServiceClient.
+
+    `_run_ingest_pipeline` (documents.py:904) runs `async with ScreenshotUploader(...)`
+    BEFORE the (already-mocked) orchestrator, so its `__aenter__` calls
+    `BlobServiceClient.from_connection_string` and reaches blob storage. These are unit
+    tests (orchestrator + populator are mocked); a local Azurite masked the real
+    connection but CI (no Azurite) times out. Stub it to a no-op async CM so the
+    upload/reindex paths never touch blob. Harmless no-op for non-ingest tests.
+    """
+
+    class _NoopScreenshotUploader:
+        def __init__(self, *args: object, **kwargs: object) -> None: ...
+
+        async def __aenter__(self) -> _NoopScreenshotUploader:
+            return self
+
+        async def __aexit__(self, *exc_info: object) -> None: ...
+
+    monkeypatch.setattr(documents_routes, "ScreenshotUploader", _NoopScreenshotUploader)
+
+
 class _FakeUploadResult:
     """Shape-match for `indexing.populate.IndexUploadResult` — avoid importing the real class."""
 
