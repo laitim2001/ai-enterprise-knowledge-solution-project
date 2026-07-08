@@ -149,11 +149,12 @@ def _patch_orchestrator(
     Returns the `ingest` AsyncMock so tests can assert call args / call count.
     """
     # W74 / ADR-0057 — `_run_ingest_pipeline` now calls `select_parser(path, extract_images=...)`
-    # (per-KB PDF picture toggle); the stub must accept the kwarg or upload/reindex 500s.
+    # (per-KB PDF picture toggle); BUG-044 threads `do_ocr=force_scan` too. The stub must
+    # accept both kwargs or upload/reindex 500s.
     monkeypatch.setattr(
         documents_routes,
         "select_parser",
-        lambda _path, extract_images=False: MagicMock(name="Parser"),
+        lambda _path, extract_images=False, do_ocr=False: MagicMock(name="Parser"),
     )
 
     ingest_mock = AsyncMock(
