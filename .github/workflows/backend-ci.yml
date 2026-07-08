@@ -35,7 +35,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
+          # No `cache: pip` — deps install via uv (below), which populates
+          # ~/.cache/uv, not ~/.cache/pip. setup-python's pip cache-save post-step
+          # errors ("Cache folder ... doesn't exist") when the pip cache dir is
+          # never created, failing the whole job. Drop it. 2026-07-08 B-20 CI-green.
 
       - name: Install uv
         run: pip install --no-cache-dir uv
