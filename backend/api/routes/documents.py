@@ -893,6 +893,10 @@ async def _run_ingest_pipeline(
         parser = select_parser(
             tmp_path,
             extract_images=bool(kb_config and kb_config.extract_embedded_images),
+            # BUG-044 — OCR only for a user-confirmed scan (force_scan). A born-digital
+            # PDF has a text layer, so Docling OCR is ~60s of waste for zero text gain;
+            # the scan path (is_scan_pdf 422 → force_scan=True) is the sole OCR caller.
+            do_ocr=force_scan,
         )
         # BUG-009 — wire the screenshot uploader (was `uploader=None` while R12
         # blocked Azurite). The orchestrator only invokes it for a KB that opted
