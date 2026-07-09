@@ -59,7 +59,9 @@ jobs:
           uv venv .venv
           uv pip install --python .venv/bin/python ".[dev]"
       - run: .venv/bin/python -m ruff check .
-      - run: .venv/bin/python -m pytest -q
+      # BUG-045 (B-23) — `--timeout` kills + names a network-blocked test instead of
+      # hanging until the job timeout (mirrors backend-ci.yml).
+      - run: .venv/bin/python -m pytest -q --timeout=60 --timeout-method=thread
 
   # ---- Stage 2-4: docker build → ACR push → ACA deploy revision ----
   deploy:

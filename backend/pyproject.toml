@@ -20,6 +20,14 @@ dependencies = [
     "docling>=2.0",
     "tiktoken>=0.7",
     "azure-storage-blob>=12.28",
+    # B-22 — async transport for azure.storage.blob.aio (screenshots/uploader.py +
+    # integration/source_store.py). The .aio client needs an async HTTP transport but
+    # does NOT pull one in transitively — aiohttp must be declared, else a clean
+    # install (CI / fresh deploy) fails at runtime with "Unable to create async
+    # transport". Local dev only worked by accident (aiohttp arrived via the `eval`
+    # extras). Safe to declare only after BUG-045 (B-23) stopped unit tests from
+    # constructing real blob clients, which otherwise hang once aiohttp is present.
+    "aiohttp>=3.10",
     "azure-identity>=1.20",
     "openai>=1.50",
     "truststore>=0.10",
@@ -50,6 +58,10 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    # BUG-045 (B-23) safety net — kill + name any test that blocks on the network
+    # (e.g. an un-mocked async blob client) instead of hanging until the CI job
+    # timeout. Wired via `--timeout` in the backend-ci / backend-deploy pytest step.
+    "pytest-timeout>=2.3",
     "ruff>=0.7",
     "mypy>=1.13",
 ]

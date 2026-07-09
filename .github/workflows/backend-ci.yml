@@ -52,4 +52,6 @@ jobs:
         run: .venv/bin/python -m ruff check .
 
       - name: Pytest
-        run: .venv/bin/python -m pytest -q
+        # BUG-045 (B-23) — `--timeout` kills + names any test that blocks on the
+        # network (un-mocked async client) instead of hanging until the job timeout.
+        run: .venv/bin/python -m pytest -q --timeout=60 --timeout-method=thread
