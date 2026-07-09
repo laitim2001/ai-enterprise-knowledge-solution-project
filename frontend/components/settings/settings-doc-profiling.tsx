@@ -40,13 +40,13 @@ import { type PresetMappingItem, profilePresetsApi } from '@/lib/api/profile-pre
 
 // profile label key → 中文縮短顯示名 (mirror mockup ekp-page-settings-tabs.jsx; 顯示層, 非 config data).
 const PROFILE_LABELS: Record<string, string> = {
-  P1_sop_imgdense: 'P1 圖密SOP',
-  P1_sop_text: 'P1 文字SOP',
-  P2_prose: 'P2 散文',
-  P3_slide_imgdense: 'P3 圖密簡報',
-  P3_slide_text: 'P3 文字簡報',
-  P4_scan_imgdense: 'P4 掃描',
-  P5_form: 'P5 表單',
+  P1_sop_imgdense: 'P1 Image-dense SOP',
+  P1_sop_text: 'P1 Text SOP',
+  P2_prose: 'P2 Prose',
+  P3_slide_imgdense: 'P3 Image-dense slides',
+  P3_slide_text: 'P3 Text slides',
+  P4_scan_imgdense: 'P4 Scan',
+  P5_form: 'P5 Form',
 };
 
 const PRESETS_QUERY_KEY = ['profile-presets'] as const;
@@ -54,11 +54,11 @@ const PRESETS_QUERY_KEY = ['profile-presets'] as const;
 // --- effective-config → table cell formatters (mirror mockup display strings) ---
 const fmtNeighbour = (c: DocConfig): string =>
   c.enable_citation_neighbour_images
-    ? `開 · ${c.citation_neighbour_max_aux_images ?? '—'}`
-    : '關';
+    ? `On · ${c.citation_neighbour_max_aux_images ?? '—'}`
+    : 'Off';
 const fmtAnchor = (c: DocConfig): string =>
   c.enable_section_anchored_aux_images
-    ? `section · ${c.section_anchor_nearest ? '近錨' : '章末'} · cap ${c.section_anchor_max_per_anchor ?? 0}`
+    ? `section · ${c.section_anchor_nearest ? 'nearest' : 'end'} · cap ${c.section_anchor_max_per_anchor ?? 0}`
     : '—';
 
 export function SettingsDocProfiling() {
@@ -73,10 +73,10 @@ export function SettingsDocProfiling() {
   const resetMutation = useMutation({
     mutationFn: (profile: string) => profilePresetsApi.delete(profile),
     onSuccess: () => {
-      toast.success('已還原出廠預設');
+      toast.success('Reset to factory default');
       void queryClient.invalidateQueries({ queryKey: PRESETS_QUERY_KEY });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : '還原失敗'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Reset failed'),
   });
 
   return (
@@ -85,11 +85,12 @@ export function SettingsDocProfiling() {
         <Layers size={15} style={{ color: 'oklch(var(--info))', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13 }}>
-            <b>文件分類規則</b> —
-            系統 ingest 時用 rule-based profiler(W72)偵測文件 profile,自動套對應 recall preset。
+            <b>Document classification rules</b> —
+            the system uses a rule-based profiler (W72) at ingest to detect the document profile and
+            automatically apply the matching recall preset.
           </div>
           <div className="text-xs muted" style={{ marginTop: 2 }}>
-            呢度係自動規則嘅指揮中心:調 profile→preset 映射 + 偵測 threshold · ADR-0056 層 A · LLM 退選用保險
+            Command center for automatic rules: tune the profile→preset mapping + detection threshold · ADR-0056 layer A · LLM fallback safeguard
           </div>
         </div>
       </div>
@@ -97,20 +98,20 @@ export function SettingsDocProfiling() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Profile → preset 映射</h3>
+            <h3 className="card-title">Profile → preset mapping</h3>
             <div className="card-desc">
-              每個偵測 profile 套邊套 recall/render preset。改呢度影響所有新 ingest 文件(現有要 re-index)。
+              Which recall/render preset each detected profile applies. Changes here affect all newly ingested documents (existing documents need re-index).
             </div>
           </div>
         </div>
         <div className="card-body" style={{ padding: 0 }}>
           {isLoading ? (
             <div className="text-xs muted" style={{ padding: 16 }}>
-              載入映射中…
+              Loading mappings…
             </div>
           ) : isError ? (
             <div className="banner banner-destructive" style={{ margin: 16 }}>
-              載入失敗:<span className="mono">{error instanceof Error ? error.message : '未知錯誤'}</span>
+              Load failed: <span className="mono">{error instanceof Error ? error.message : 'Unknown error'}</span>
             </div>
           ) : (
             <div className="table-wrap">
@@ -118,11 +119,11 @@ export function SettingsDocProfiling() {
                 <thead>
                   <tr>
                     <th>Profile</th>
-                    <th className="col-num">圖上限</th>
-                    <th>鄰近圖</th>
+                    <th className="col-num">Image cap</th>
+                    <th>Neighbour images</th>
                     <th>inline marker</th>
-                    <th>section 錨定</th>
-                    <th>詳細度</th>
+                    <th>Section anchoring</th>
+                    <th>Detail level</th>
                     <th className="col-shrink" />
                   </tr>
                 </thead>
@@ -139,14 +140,14 @@ export function SettingsDocProfiling() {
                             {item.profile}
                             {item.overridden ? (
                               <span className="badge badge-warning" style={{ marginLeft: 6, fontSize: 9 }}>
-                                已覆寫
+                                Overridden
                               </span>
                             ) : null}
                           </div>
                         </td>
                         <td className="col-num mono">{c.max_images_per_answer ?? '—'}</td>
                         <td className="text-xs">{fmtNeighbour(c)}</td>
-                        <td className="text-xs">{c.enable_inline_image_markers ? '開' : '關'}</td>
+                        <td className="text-xs">{c.enable_inline_image_markers ? 'On' : 'Off'}</td>
                         <td className="text-xs">{fmtAnchor(c)}</td>
                         <td>
                           <span className="badge badge-muted">{c.answer_detail ?? '—'}</span>
@@ -159,9 +160,9 @@ export function SettingsDocProfiling() {
                                 className="btn btn-ghost btn-xs"
                                 onClick={() => resetMutation.mutate(item.profile)}
                                 disabled={resetMutation.isPending}
-                                title="還原出廠預設(刪除覆寫)"
+                                title="Reset to factory default (remove override)"
                               >
-                                還原預設
+                                Reset to default
                               </button>
                             ) : null}
                             <button
@@ -169,7 +170,7 @@ export function SettingsDocProfiling() {
                               className="btn btn-ghost btn-xs"
                               onClick={() => setEditing(item)}
                             >
-                              編輯
+                              Edit
                             </button>
                           </div>
                         </td>
@@ -186,38 +187,38 @@ export function SettingsDocProfiling() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">偵測 threshold</h3>
+            <h3 className="card-title">Detection threshold</h3>
             <div className="card-desc">
-              調 profiler 分類門檻。低於信心門檻 → fallback 保守 preset + 標「待人手確認」。
+              Tune the profiler classification thresholds. Below the confidence threshold → fallback to a conservative preset + flag as &quot;pending manual review&quot;.
             </div>
           </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
           <ThresholdRow
-            label="低信心門檻(confidence)"
+            label="Low-confidence threshold (confidence)"
             value="0.70"
-            hint="低於此 → 黃旗 + fallback 保守 preset"
+            hint="Below this → yellow flag + fallback conservative preset"
           />
           <ThresholdRow
-            label="P1 圖密門檻(img_density)"
+            label="P1 image-dense threshold (img_density)"
             value="0.15"
-            hint="≥ 此 + depth≥3 + list_ratio≥0.3 → P1 圖密SOP"
+            hint="≥ this + depth≥3 + list_ratio≥0.3 → P1 Image-dense SOP"
           />
           <ThresholdRow
-            label="too_small 段落門檻"
+            label="too_small paragraph threshold"
             value="20"
-            hint="少於此段落數 → too_small(唔路由,繼承上層)"
+            hint="Fewer paragraphs than this → too_small (not routed, inherits parent)"
           />
         </div>
         <div className="card-footer">
-          <div className="text-xs muted">改 threshold 只影響將來 ingest · ADR-0056 D2 rule v3</div>
+          <div className="text-xs muted">Changing thresholds only affects future ingest · ADR-0056 D2 rule v3</div>
           <button
             type="button"
             className="btn btn-primary btn-sm"
             disabled
-            title="threshold 寫入維持不做(W79 / ADR-0058:五輪實證已最佳)"
+            title="Threshold write stays disabled (W79 / ADR-0058: five rounds of evidence already optimal)"
           >
-            儲存規則
+            Save rule
           </button>
         </div>
       </div>
@@ -259,10 +260,10 @@ function EditPresetDialog({
   const saveMutation = useMutation({
     mutationFn: (config: DocConfig) => profilePresetsApi.put(item.profile, config),
     onSuccess: () => {
-      toast.success(`已儲存「${label}」映射`);
+      toast.success(`Saved "${label}" mapping`);
       onSaved();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : '儲存失敗'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Save failed'),
   });
 
   const set = <K extends keyof DocConfig>(key: K, val: DocConfig[K]): void =>
@@ -277,23 +278,23 @@ function EditPresetDialog({
     <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>編輯 preset 映射 · {label}</DialogTitle>
+          <DialogTitle>Edit preset mapping · {label}</DialogTitle>
           <DialogDescription>
-            調整呢個 profile 自動套用嘅 recall preset · <span className="mono">{item.profile}</span>
+            Adjust the recall preset this profile applies automatically · <span className="mono">{item.profile}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="banner banner-warning" style={{ marginBottom: 4 }}>
           <div className="text-xs">
-            呢個映射套用到<b>所有新 ingest</b>嘅「{label}」類文件。現有文件要 <b>re-index</b> 先生效;
-            預設值已實證良好,改前請確認。
+            This mapping applies to <b>all newly ingested</b> &quot;{label}&quot; documents. Existing documents need{' '}
+            <b>re-index</b> to take effect; the defaults are already well-proven — please confirm before changing.
           </div>
         </div>
 
         <div style={{ display: 'grid', gap: 14 }}>
           {/* 圖上限 */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">圖上限(max_images_per_answer)</label>
+            <label className="label">Image cap (max_images_per_answer)</label>
             <input
               className="input"
               type="number"
@@ -306,7 +307,7 @@ function EditPresetDialog({
 
           {/* 鄰近圖 + max_aux */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">鄰近圖(citation neighbour images)</label>
+            <label className="label">Neighbour images (citation neighbour images)</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -319,7 +320,7 @@ function EditPresetDialog({
                 }
               />
               <span className="muted text-xs">
-                {draft.enable_citation_neighbour_images ? '開' : '關'}
+                {draft.enable_citation_neighbour_images ? 'On' : 'Off'}
               </span>
             </div>
             {draft.enable_citation_neighbour_images ? (
@@ -330,15 +331,15 @@ function EditPresetDialog({
                 value={draft.citation_neighbour_max_aux_images ?? ''}
                 onChange={(e) => set('citation_neighbour_max_aux_images', num(e.target.value))}
                 style={{ maxWidth: 140, marginTop: 8 }}
-                aria-label="鄰近圖上限(max aux images)"
+                aria-label="Neighbour image cap (max aux images)"
               />
             ) : null}
-            <div className="hint">開 = 同章節鄰近輔助圖入候選;數字 = 輔助圖上限。</div>
+            <div className="hint">On = same-section neighbour aux images enter candidates; number = aux image cap.</div>
           </div>
 
           {/* inline marker */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">inline 圖文標記(inline image markers)</label>
+            <label className="label">Inline markers (inline image markers)</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -348,13 +349,13 @@ function EditPresetDialog({
                 tabIndex={0}
                 onClick={() => set('enable_inline_image_markers', !draft.enable_inline_image_markers)}
               />
-              <span className="muted text-xs">{draft.enable_inline_image_markers ? '開' : '關'}</span>
+              <span className="muted text-xs">{draft.enable_inline_image_markers ? 'On' : 'Off'}</span>
             </div>
           </div>
 
           {/* section 錨定 + cap */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">section 錨定(section-anchored aux images)</label>
+            <label className="label">Section anchoring (section-anchored aux images)</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -367,7 +368,7 @@ function EditPresetDialog({
                 }
               />
               <span className="muted text-xs">
-                {draft.enable_section_anchored_aux_images ? '開' : '關'}
+                {draft.enable_section_anchored_aux_images ? 'On' : 'Off'}
               </span>
             </div>
             {draft.enable_section_anchored_aux_images ? (
@@ -383,7 +384,7 @@ function EditPresetDialog({
                     onClick={() => set('section_anchor_nearest', !draft.section_anchor_nearest)}
                   />
                   <span className="muted text-xs">
-                    錨到最近步驟(nearest):{draft.section_anchor_nearest ? '開' : '關(章節最後)'}
+                    Anchor to nearest step (nearest): {draft.section_anchor_nearest ? 'On' : 'Off (section end)'}
                   </span>
                 </div>
                 <input
@@ -393,19 +394,19 @@ function EditPresetDialog({
                   value={draft.section_anchor_max_per_anchor ?? ''}
                   onChange={(e) => set('section_anchor_max_per_anchor', num(e.target.value))}
                   style={{ maxWidth: 140, marginTop: 8 }}
-                  aria-label="每錨點圖片上限(0 = 無 cap)"
+                  aria-label="Per-anchor image cap (0 = no cap)"
                 />
               </>
             ) : null}
             <div className="hint">
-              開 = aux 圖錨入各自章節(末尾堆→章節內);nearest = 錨到 doc_order 最近步驟(否則章節最後);數字
-              = 每錨點上限(0=無 cap)。
+              On = aux images anchor into their own sections (end pile → within section); nearest = anchor to the
+              nearest step by doc_order (otherwise section end); number = per-anchor cap (0 = no cap).
             </div>
           </div>
 
           {/* 詳細度 */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">答案詳細度(answer_detail)</label>
+            <label className="label">Answer detail (answer_detail)</label>
             <div className="seg" style={{ width: '100%', maxWidth: 280 }}>
               {(['concise', 'detailed'] as const).map((v) => (
                 <button
@@ -425,7 +426,7 @@ function EditPresetDialog({
 
         <DialogFooter>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-            取消
+            Cancel
           </button>
           <button
             type="button"
@@ -433,7 +434,7 @@ function EditPresetDialog({
             onClick={() => saveMutation.mutate(draft)}
             disabled={saveMutation.isPending}
           >
-            {saveMutation.isPending ? <span className="spinner" /> : null} 儲存規則
+            {saveMutation.isPending ? <span className="spinner" /> : null} Save rule
           </button>
         </DialogFooter>
       </DialogContent>

@@ -76,7 +76,7 @@ const TABS = [
   { id: 'api-keys', label: 'API Keys & Quotas', icon: KeyRound },
   { id: 'account', label: 'Account', icon: Activity },
   // W78 / ADR-0056 層 A 段③ — 文件分類規則(admin profiler 指揮中心)
-  { id: 'doc-profiling', label: '文件分類規則', icon: Layers },
+  { id: 'doc-profiling', label: 'Document Classification', icon: Layers },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -232,7 +232,7 @@ function SettingsPageInner() {
           </TabBoundary>
         )}
         {tab === 'doc-profiling' && (
-          <TabBoundary tabName="文件分類規則">
+          <TabBoundary tabName="Document Classification">
             <SettingsDocProfiling />
           </TabBoundary>
         )}

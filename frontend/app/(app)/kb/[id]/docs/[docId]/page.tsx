@@ -223,7 +223,7 @@ export default function DocDetailPage() {
         {(
           [
             { id: 'inspector', label: 'Chunk inspector', icon: Layers },
-            { id: 'config', label: 'Per-doc 配置', icon: Settings },
+            { id: 'config', label: 'Per-doc config', icon: Settings },
           ] as const
         ).map((t) => {
           const Ic = t.icon;

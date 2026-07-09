@@ -633,7 +633,7 @@ function StepDocumentProcessing({
 
         <div className="banner banner-info" style={{ marginTop: 16 }}>
           <div style={{ flex: 1 }} className="text-xs">
-            Per-batch override 唔 supported — config is KB-locked. To change
+            Per-batch override not supported — config is KB-locked. To change
             chunking + multimodal,{' '}
             <Link
               href={`/kb/${kb?.kb_id ?? ''}?tab=settings`}
@@ -714,7 +714,7 @@ function StepExecute({
             {status === 'idle' && 'Ready to upload + ingest'}
             {status === 'running' && 'Pipeline running…'}
             {status === 'indexed' && 'Document indexed — KB ready'}
-            {status === 'scan-confirm' && '掃描件需確認 — OCR 需時較長'}
+            {status === 'scan-confirm' && 'Scanned document needs confirmation — OCR takes longer'}
             {status === 'failed' && 'Upload failed — see error below'}
           </div>
         </div>
@@ -730,7 +730,7 @@ function StepExecute({
         )}
         {status === 'scan-confirm' && (
           <span className="badge badge-warning">
-            <span className="badge-dot" /> 需確認
+            <span className="badge-dot" /> NEEDS CONFIRM
           </span>
         )}
         {status === 'failed' && (
@@ -766,10 +766,10 @@ function StepExecute({
             />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                {file?.name ?? '此文件'} 似乎是掃描件(無文字層)
+                {file?.name ?? 'This document'} appears to be a scanned document (no text layer)
               </div>
               <div className="text-xs muted" style={{ marginTop: 2 }}>
-                需 OCR 辨識,同步處理約需 8–9.5 分鐘,期間此頁會持續等待。確認後按下方「仍要繼續」。
+                Requires OCR; synchronous processing takes ~8–9.5 minutes, and this page keeps waiting throughout. Confirm by clicking &quot;Continue anyway&quot; below.
               </div>
             </div>
           </div>
@@ -784,11 +784,11 @@ function StepExecute({
             <Layers size={15} style={{ color: 'oklch(var(--info))', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>
-                <b>自動文件分類(W72 profiler)</b> —
-                ingest 時偵測每份文件 profile,自動套對應 recall preset。
+                <b>Automatic document classification (W72 profiler)</b> —
+                detects each document&apos;s profile at ingest and applies the matching recall preset.
               </div>
               <div className="text-xs muted" style={{ marginTop: 2 }}>
-                偵測錯可去文件詳情頁一鍵覆寫 · ADR-0056 層 A
+                If misdetected, override with one click on the document detail page · ADR-0056 Layer A
               </div>
             </div>
           </div>
@@ -874,7 +874,7 @@ function StepExecute({
                 }`}
               >
                 <span className="badge-dot" />{' '}
-                {status === 'scan-confirm' ? '需確認' : status.toUpperCase()}
+                {status === 'scan-confirm' ? 'NEEDS CONFIRM' : status.toUpperCase()}
               </span>
             </div>
           )}
@@ -929,7 +929,7 @@ function StepExecute({
             className="btn btn-primary btn-sm"
             onClick={onForceRun}
           >
-            <Upload size={13} /> 仍要繼續(約 8–9.5 分鐘)
+            <Upload size={13} /> Continue anyway (~8–9.5 minutes)
           </button>
         )}
         {status === 'failed' && (

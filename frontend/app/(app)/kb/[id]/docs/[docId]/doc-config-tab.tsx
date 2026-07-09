@@ -54,13 +54,13 @@ import {
 
 // W77 / ADR-0056 層 A 段③ — 文件畫像(L3)helpers per mockup ekp-page-doc-detail.jsx:405-429.
 const DOC_PROFILE_LABELS: Record<string, string> = {
-  P1_sop_imgdense: 'P1 圖密SOP',
-  P1_sop_text: 'P1 文字SOP',
-  P2_prose: 'P2 散文',
-  P3_slide_imgdense: 'P3 圖密簡報',
-  P3_slide_text: 'P3 文字簡報',
-  P4_scan_imgdense: 'P4 掃描',
-  P5_form: 'P5 表單',
+  P1_sop_imgdense: 'P1 Image-dense SOP',
+  P1_sop_text: 'P1 Text SOP',
+  P2_prose: 'P2 Prose',
+  P3_slide_imgdense: 'P3 Image-dense slides',
+  P3_slide_text: 'P3 Text slides',
+  P4_scan_imgdense: 'P4 Scan',
+  P5_form: 'P5 Form',
 };
 
 function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
@@ -75,9 +75,9 @@ function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
         <span className="badge-dot" /> {DOC_PROFILE_LABELS[effective] ?? effective}
       </span>
       {overridden ? (
-        <span className="text-xs muted">已人手覆寫</span>
+        <span className="text-xs muted">Manually overridden</span>
       ) : (
-        <span className="text-xs muted mono">信心 {Math.round(profile.confidence * 100)}%</span>
+        <span className="text-xs muted mono">Confidence {Math.round(profile.confidence * 100)}%</span>
       )}
     </span>
   );
@@ -239,9 +239,9 @@ function DocConfigEditor({
     mutationFn: () => docConfigApi.put(kbId, docId, buildDocConfig()),
     onSuccess: () => {
       onSaved();
-      toast.success('已儲存到此文件');
+      toast.success('Saved to this document');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : '儲存失敗'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Save failed'),
   });
 
   // W79 / ADR-0058 — 人手覆寫 profile mutation. override → 套對應 preset 落 per-doc config +
@@ -252,9 +252,9 @@ function DocConfigEditor({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-detail', docId] });
       void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-config', docId] });
-      toast.success('已套用 profile + 對應 preset(重載頁面睇更新旋鈕)');
+      toast.success('Applied profile + matching preset (reload the page to see updated knobs)');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'profile 覆寫失敗'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Profile override failed'),
   });
 
   // effective profile = manual_override ?? system auto (select 預設 + badge 顯示用).
@@ -267,16 +267,16 @@ function DocConfigEditor({
         <Settings size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13 }}>
-            <b>此文件度身訂做配置</b> — 留空 = 繼承 KB(
-            <span className="mono">{kbName}</span>)再全域。
+            <b>Per-document custom configuration</b> — Leave blank = Inherit from KB (
+            <span className="mono">{kbName}</span>) then global.
             {overriddenCount > 0 && (
               <span className="badge badge-success" style={{ marginLeft: 6, fontSize: 9 }}>
-                {overriddenCount} 項已覆寫
+                {overriddenCount} items overridden
               </span>
             )}
           </div>
           <div className="muted text-xs" style={{ marginTop: 2 }}>
-            解析優先:per-query &gt; <b>per-DOC(此文件)</b> &gt; per-KB &gt; 全域 · ADR-0050 ·
+            Resolution priority: per-query &gt; <b>per-DOC (this document)</b> &gt; per-KB &gt; global · ADR-0050 ·
             <span className="mono">
               {' '}
               PUT /kb/{kbId}/docs/{docId}/config
@@ -291,10 +291,10 @@ function DocConfigEditor({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">文件畫像(自動偵測)</h3>
+              <h3 className="card-title">Document profile (auto-detected)</h3>
               <div className="card-desc">
-                系統由文件結構信號偵測內容類型,自動套對應 recall 流程 preset。偵測錯 → 下方一鍵覆寫。
-                <span className="mono"> W72 profiler · ADR-0056 層 A</span>
+                The system detects the content type from the document&apos;s structure signals and auto-applies the matching recall preset. Wrong detection → override with one click below.
+                <span className="mono"> W72 profiler · ADR-0056 Layer A</span>
               </div>
             </div>
             <DocProfileBadge profile={profile} />
@@ -304,47 +304,47 @@ function DocConfigEditor({
               <div className="banner banner-warning">
                 <Shield size={15} style={{ color: 'oklch(var(--warning))', flexShrink: 0 }} />
                 <div className="text-xs" style={{ flex: 1, lineHeight: 1.5 }}>
-                  <b>低信心偵測</b>(結構信號矛盾)— 已 fallback 保守 preset。建議人手確認下方 profile。
+                  <b>Low-confidence detection</b> (conflicting structure signals) — fell back to a conservative preset. Recommend manually confirming the profile below.
                 </div>
               </div>
             )}
             <div>
               <div className="label" style={{ marginBottom: 8 }}>
-                偵測信號(點解判呢個 profile)
+                Detection signals (why this profile)
               </div>
               <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 <ProfileSignal
-                  label="圖密度 img_density"
+                  label="Image density (img_density)"
                   value={profile.signals.img_density.toFixed(3)}
                 />
                 <ProfileSignal
-                  label="列表比例 list_ratio"
+                  label="List ratio (list_ratio)"
                   value={profile.signals.list_ratio.toFixed(3)}
                 />
-                <ProfileSignal label="標題深度 max_depth" value={profile.signals.max_depth} />
-                <ProfileSignal label="標題數 headings" value={profile.signals.headings} />
+                <ProfileSignal label="Heading depth (max_depth)" value={profile.signals.max_depth} />
+                <ProfileSignal label="Heading count (headings)" value={profile.signals.headings} />
                 {profile.signals.pdf_pages != null && (
                   <>
-                    <ProfileSignal label="PDF 頁數" value={profile.signals.pdf_pages} />
+                    <ProfileSignal label="PDF pages" value={profile.signals.pdf_pages} />
                     <ProfileSignal
-                      label="text-layer 空比例"
+                      label="Empty text-layer ratio"
                       value={(profile.signals.pdf_empty_ratio ?? 0).toFixed(2)}
                     />
                     <ProfileSignal
-                      label="平均字元/頁"
+                      label="Avg chars/page"
                       value={Math.round(profile.signals.pdf_avg_chars ?? 0)}
                     />
                   </>
                 )}
-                <ProfileSignal label="段落數 paragraphs" value={profile.signals.paragraphs} />
+                <ProfileSignal label="Paragraph count (paragraphs)" value={profile.signals.paragraphs} />
               </div>
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                人手覆寫 profile(override)
+                Manual profile override (override)
                 {profile.manual_override != null && (
                   <span className="badge badge-success" style={{ fontSize: 9 }}>
-                    已覆寫 · 系統原判 {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
+                    Overridden · originally classified as {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
                   </span>
                 )}
               </label>
@@ -355,17 +355,17 @@ function DocConfigEditor({
                 onChange={(e) => overrideMutation.mutate(e.target.value)}
                 style={{ maxWidth: 260 }}
               >
-                <option value="P1_sop_imgdense">P1 圖密SOP</option>
-                <option value="P1_sop_text">P1 文字SOP</option>
-                <option value="P2_prose">P2 散文</option>
-                <option value="P3_slide_imgdense">P3 圖密簡報</option>
-                <option value="P3_slide_text">P3 文字簡報</option>
-                <option value="P4_scan_imgdense">P4 掃描</option>
-                <option value="P5_form">P5 表單</option>
+                <option value="P1_sop_imgdense">P1 Image-dense SOP</option>
+                <option value="P1_sop_text">P1 Text SOP</option>
+                <option value="P2_prose">P2 Prose</option>
+                <option value="P3_slide_imgdense">P3 Image-dense slides</option>
+                <option value="P3_slide_text">P3 Text slides</option>
+                <option value="P4_scan_imgdense">P4 Scan</option>
+                <option value="P5_form">P5 Form</option>
               </select>
               <div className="hint">
-                改 profile 即套對應 preset 落下方旋鈕(覆蓋 per-doc 配置)。Admin 覆寫永遠優先於自動偵測
-                (ADR-0056 D6)。{overrideMutation.isPending && ' 套用中…'}
+                Changing the profile immediately applies the matching preset to the knobs below (overrides the per-doc config). Admin override always takes priority over auto-detection
+                (ADR-0056 D6).{overrideMutation.isPending && ' Applying…'}
               </div>
             </div>
           </div>
@@ -376,10 +376,10 @@ function DocConfigEditor({
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Per-document 配置</h3>
+            <h3 className="card-title">Per-document configuration</h3>
             <div className="card-desc">
-              覆寫此文件嘅<b>合成 + 引用後處理</b>行為。未覆寫嘅旋鈕沿用 KB 預設。 全部 runtime —{' '}
-              <b>唔需要重新索引</b>。
+              Override this document&apos;s <b>synthesis + citation post-processing</b> behavior. Knobs not overridden use the KB defaults. All runtime —{' '}
+              <b>no re-indexing needed</b>.
             </div>
           </div>
           <span className="badge badge-info" style={{ fontSize: 9.5 }}>
@@ -390,21 +390,21 @@ function DocConfigEditor({
           {/* answer_detail — synthesis (dominant doc) */}
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              答案詳細度(answer_detail)
+              Answer detail (answer_detail)
               {answerDetail === null ? (
                 <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>
-                  繼承 KB
+                  Inherit from KB
                 </span>
               ) : (
                 <span className="badge badge-success" style={{ fontSize: 9 }}>
-                  <Edit size={9} /> 已覆寫
+                  <Edit size={9} /> Overridden
                 </span>
               )}
             </label>
             <div className="seg" style={{ width: '100%', maxWidth: 380 }}>
               {(
                 [
-                  { v: null, l: '繼承 KB' },
+                  { v: null, l: 'Inherit from KB' },
                   { v: 'concise', l: 'concise' },
                   { v: 'detailed', l: 'detailed' },
                 ] as { v: AnswerDetail; l: string }[]
@@ -422,15 +422,15 @@ function DocConfigEditor({
               ))}
             </div>
             <div className="hint">
-              合成詳細度。程序手冊文件可設 <span className="mono">detailed</span>(逐步列盡); 繼承 =
-              用 KB 設定。
+              Synthesis detail level. Procedure-manual documents can be set to{' '}
+              <span className="mono">detailed</span> (lists every step); Inherit = use the KB setting.
             </div>
           </div>
 
           <DocTuneGroup
             icon={LinkIcon}
             title="Citation post-hoc expansion"
-            desc="答案生成後,為每個引用補充鄰近輔助 chunk,提升完整性。"
+            desc="After the answer is generated, supplement each citation with neighbouring auxiliary chunks to improve completeness."
             enabled={knobs.enable_citation_post_hoc_expansion as boolean | null}
             onToggle={(v) => setKnob('enable_citation_post_hoc_expansion', v)}
             onReset={() => setKnob('enable_citation_post_hoc_expansion', null)}
@@ -454,8 +454,8 @@ function DocConfigEditor({
 
           <DocTuneGroup
             icon={Eye}
-            title="Citation neighbour images + 圖片上限"
-            desc="控制引用鄰近圖片帶入,同每個答案最多顯示幾多張圖(圖洪水收斂)。"
+            title="Citation neighbour images + image cap"
+            desc="Controls bringing in citation-neighbour images and the max images shown per answer (image-flood convergence)."
             enabled={knobs.enable_citation_neighbour_images as boolean | null}
             onToggle={(v) => setKnob('enable_citation_neighbour_images', v)}
             onReset={() => setKnob('enable_citation_neighbour_images', null)}
@@ -476,7 +476,7 @@ function DocConfigEditor({
               onChange={(v) => setKnob('max_images_per_answer', v)}
             />
             <DocSwitchKnob
-              label="章節概覽圖置頂(overview pin)"
+              label="Chapter overview image on top (overview pin)"
               value={knobs.enable_chapter_overview_pin as boolean | null}
               onChange={(v) => setKnob('enable_chapter_overview_pin', v)}
             />
@@ -487,24 +487,24 @@ function DocConfigEditor({
               做主 toggle (section 錨定靠 marker 機制注入 → 主/進階關係); backend 零改動. */}
           <DocTuneGroup
             icon={Tag}
-            title="Inline 圖文錨定(image markers + section 錨定)"
-            desc="答案文字沿原文圖片位置帶 [IMG#…] 標記,令圖文跟原文順序交織顯示。進階:section 錨定把末尾未錨圖注入同章節,並可限每錨點圖數(收斂章節內 clump)。"
+            title="Inline image anchoring (image markers + section anchoring)"
+            desc="Answer text carries [IMG#…] markers at the original image positions, so text and images interleave in the source order. Advanced: section anchoring injects trailing un-anchored images into the same section, and can cap images per anchor (converges intra-section clumps)."
             enabled={knobs.enable_inline_image_markers as boolean | null}
             onToggle={(v) => setKnob('enable_inline_image_markers', v)}
             onReset={() => setKnob('enable_inline_image_markers', null)}
           >
             <DocSwitchKnob
-              label="section 錨定 aux 圖(末尾堆 → 章節內)"
+              label="section-anchored aux images (trailing pile → into section)"
               value={knobs.enable_section_anchored_aux_images as boolean | null}
               onChange={(v) => setKnob('enable_section_anchored_aux_images', v)}
             />
             <DocSwitchKnob
-              label="錨到最近步驟(nearest;否則章節最後)"
+              label="Anchor to nearest step (nearest; else section end)"
               value={knobs.section_anchor_nearest as boolean | null}
               onChange={(v) => setKnob('section_anchor_nearest', v)}
             />
             <DocTuneKnob
-              label="每錨點圖片上限(0 = 無 cap)"
+              label="Max images per anchor (0 = no cap)"
               value={knobs.section_anchor_max_per_anchor as number | null}
               onChange={(v) => setKnob('section_anchor_max_per_anchor', v)}
             />
@@ -512,7 +512,7 @@ function DocConfigEditor({
         </div>
         <div className="card-footer">
           <div className="muted text-xs">
-            配置 scope:per-query &gt; <b>per-DOC(此文件)</b> &gt; per-KB &gt; 全域 · ADR-0050
+            Config scope: per-query &gt; <b>per-DOC (this document)</b> &gt; per-KB &gt; global · ADR-0050
           </div>
           <div className="row">
             <button
@@ -521,7 +521,7 @@ function DocConfigEditor({
               onClick={resetAllToKb}
               disabled={overriddenCount === 0}
             >
-              <RefreshCw size={13} /> 還原全部至 KB
+              <RefreshCw size={13} /> Reset all to KB
             </button>
             <button
               type="button"
@@ -529,7 +529,7 @@ function DocConfigEditor({
               onClick={() => saveMutation.mutate()}
               disabled={!dirty || saveMutation.isPending}
             >
-              {saveMutation.isPending ? <span className="spinner" /> : null} 儲存到此文件
+              {saveMutation.isPending ? <span className="spinner" /> : null} Save to this document
             </button>
           </div>
         </div>
@@ -546,10 +546,10 @@ function DocConfigEditor({
             style={{ color: 'oklch(var(--warning))', flexShrink: 0, marginTop: 2 }}
           />
           <div className="text-xs" style={{ lineHeight: 1.6, flex: 1 }}>
-            <b>檢索入口旋鈕</b>(default_top_k / default_rerank_k / parent-document retrieval)
-            <b>喺 KB 設定</b>,唔可以 per-document 覆寫 —— 呢類旋鈕喺「邊個文件被引用」確定
-            <b>之前</b>
-            已驅動檢索(ADR-0050)。
+            <b>Retrieval-entry knobs</b> (default_top_k / default_rerank_k / parent-document retrieval)
+            <b>are set at the KB level</b> and can&apos;t be overridden per-document —— these knobs drive retrieval
+            <b>before</b>
+            it&apos;s determined which document gets cited (ADR-0050).
           </div>
         </div>
       </div>
@@ -585,11 +585,11 @@ function DocTuneKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> 已覆寫
+            <Edit size={9} /> Overridden
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            繼承 KB
+            Inherit from KB
           </span>
         )}
       </label>
@@ -597,11 +597,11 @@ function DocTuneKnob({
         type="number"
         className="input mono"
         value={value ?? ''}
-        placeholder="繼承 KB"
+        placeholder="Inherit from KB"
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? '此文件覆寫值' : '未覆寫 · 沿用 KB'}</span>
+        <span>{overridden ? "This document's override value" : 'Not overridden · uses KB'}</span>
         {overridden && (
           <button
             type="button"
@@ -618,7 +618,7 @@ function DocTuneKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> 還原至 KB
+            <RefreshCw size={10} /> Reset to KB
           </button>
         )}
       </div>
@@ -643,11 +643,11 @@ function DocSwitchKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> 已覆寫
+            <Edit size={9} /> Overridden
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            繼承 KB
+            Inherit from KB
           </span>
         )}
       </label>
@@ -660,10 +660,10 @@ function DocSwitchKnob({
           tabIndex={0}
           onClick={() => onChange(value === true ? false : true)}
         />
-        <span className="muted text-xs">{overridden ? (value ? '開' : '關') : '繼承'}</span>
+        <span className="muted text-xs">{overridden ? (value ? 'On' : 'Off') : 'Inherit'}</span>
       </div>
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? '此文件覆寫值' : '未覆寫 · 沿用 KB'}</span>
+        <span>{overridden ? "This document's override value" : 'Not overridden · uses KB'}</span>
         {overridden && (
           <button
             type="button"
@@ -680,7 +680,7 @@ function DocSwitchKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> 還原至 KB
+            <RefreshCw size={10} /> Reset to KB
           </button>
         )}
       </div>
@@ -741,11 +741,11 @@ function DocTuneGroup({
             <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
             {overridden ? (
               <span className="badge badge-success" style={{ fontSize: 9 }}>
-                已覆寫
+                Overridden
               </span>
             ) : (
               <span className="badge badge-muted" style={{ fontSize: 9 }}>
-                繼承 KB
+                Inherit from KB
               </span>
             )}
             {overridden && (
@@ -764,7 +764,7 @@ function DocTuneGroup({
                   padding: 0,
                 }}
               >
-                <RefreshCw size={10} /> 還原至 KB
+                <RefreshCw size={10} /> Reset to KB
               </button>
             )}
           </div>
@@ -779,7 +779,7 @@ function DocTuneGroup({
           onClick={() => setOpen(!open)}
           aria-expanded={open}
         >
-          進階 <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+          Advanced <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
         </button>
       </div>
       {open && (
@@ -844,10 +844,10 @@ function DocConfigTestPanel({
               size={14}
               style={{ verticalAlign: '-2px', marginRight: 6, color: 'oklch(var(--accent))' }}
             />
-            試跑(此文件 scope)
+            Test run (this document scope)
           </h3>
           <div className="card-desc">
-            用此文件嘅配置喺真 pipeline 試跑(主導 doc = 此文件)。{' '}
+            Test run with this document&apos;s config on the real pipeline (dominant doc = this document).{' '}
             <span className="mono">
               POST /kb/{kbId}/config-test · doc={docId}
             </span>
@@ -865,7 +865,7 @@ function DocConfigTestPanel({
           }}
         >
           <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
-            <label className="label">測試問題</label>
+            <label className="label">Test query</label>
             <input
               className="input"
               value={testQuery}
@@ -879,7 +879,7 @@ function DocConfigTestPanel({
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">重跑次數</label>
+            <label className="label">Number of runs</label>
             <div className="seg">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -913,7 +913,7 @@ function DocConfigTestPanel({
               tabIndex={0}
               onClick={() => setCompare(!compare)}
             />
-            同繼承 KB 對照(A/B)
+            Compare against inherited KB (A/B)
           </label>
           <button
             type="button"
@@ -923,11 +923,11 @@ function DocConfigTestPanel({
           >
             {mutation.isPending ? (
               <>
-                <span className="spinner" /> 試跑中…
+                <span className="spinner" /> Running…
               </>
             ) : (
               <>
-                <Zap size={14} /> 試跑
+                <Zap size={14} /> Test run
               </>
             )}
           </button>
@@ -938,8 +938,8 @@ function DocConfigTestPanel({
             <div className="empty-icon">
               <Zap size={20} />
             </div>
-            <div className="empty-title">未有試跑結果</div>
-            <div>調整上面旋鈕 → 揀重跑次數 → 撳「試跑」。</div>
+            <div className="empty-title">No test run yet</div>
+            <div>Adjust the knobs above → pick the number of runs → click &quot;Test run&quot;.</div>
           </div>
         )}
 
@@ -952,9 +952,9 @@ function DocConfigTestPanel({
                 gap: 14,
               }}
             >
-              <DocConfigResultCard label="此文件配置(DRAFT)" accent summary={result.draft} />
+              <DocConfigResultCard label="This document's config (DRAFT)" accent summary={result.draft} />
               {result.saved && (
-                <DocConfigResultCard label="繼承 KB(SAVED)" summary={result.saved} />
+                <DocConfigResultCard label="Inherit from KB (SAVED)" summary={result.saved} />
               )}
             </div>
 
@@ -967,9 +967,9 @@ function DocConfigTestPanel({
                 style={{ color: 'oklch(var(--warning))', marginTop: 1, flexShrink: 0 }}
               />
               <span>
-                忠實度對長 / 全面答案有{' '}
-                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高{' '}
-                <b>涵蓋章節數</b> / 字數,多為 bias 而非 config 差,宜一齊判讀。
+                For long / comprehensive answers, faithfulness has a{' '}
+                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— a low score paired with high{' '}
+                <b>Sections covered</b> / word count is usually bias, not a config difference; read them together.
               </span>
             </div>
           </>
@@ -977,7 +977,7 @@ function DocConfigTestPanel({
       </div>
       <div className="card-footer">
         <div className="muted text-xs">
-          N 次重跑取平均 · band = max − min · answer_detail 已納入試跑草稿
+          Average over N runs · band = max − min · answer_detail included in the test-run draft
         </div>
         <button
           type="button"
@@ -985,7 +985,7 @@ function DocConfigTestPanel({
           onClick={onSaveDraft}
           disabled={!dirty || saving}
         >
-          <Download size={13} /> 把草稿儲存到此文件
+          <Download size={13} /> Save draft to this document
         </button>
       </div>
     </div>
@@ -1035,7 +1035,7 @@ function DocConfigResultCard({
         <div
           style={{ gridColumn: '1 / -1', background: 'oklch(var(--card))', padding: '10px 14px' }}
         >
-          <div className="muted text-xs">忠實度(faithfulness · 反幻覺 · 0–1)</div>
+          <div className="muted text-xs">Faithfulness (faithfulness · anti-hallucination · 0–1)</div>
           <div
             className="mono"
             style={{
@@ -1056,43 +1056,43 @@ function DocConfigResultCard({
             )}
             {summary.faithfulness == null && (
               <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
-                未評(無 judge / 已關)
+                Not evaluated (no judge / disabled)
               </span>
             )}
           </div>
           {summary.faithfulness != null && summary.runs.length === 1 && (
             <div className="text-xs" style={{ marginTop: 3, color: 'oklch(var(--warning))' }}>
-              單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band
+              Single judge run · directional · raise runs to ≥2 to see the stability band
             </div>
           )}
         </div>
         <DocConfigMetric
-          k="引用數"
+          k="Citations"
           v={fmt(summary.citation_count)}
           band={summary.citation_count.band}
         />
         <DocConfigMetric
-          k="涵蓋章節數"
+          k="Sections covered"
           v={fmt(summary.distinct_sections)}
-          sub="completeness proxy · 非 recall"
+          sub="completeness proxy · not recall"
           band={summary.distinct_sections.band}
         />
         <DocConfigMetric
-          k="圖片(dedup)"
+          k="Images (dedup)"
           v={fmt(summary.figure_count_dedup)}
           sub={`raw ${fmt(summary.figure_count_raw)}`}
           band={summary.figure_count_dedup.band}
         />
         {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
         <DocConfigMetric
-          k="圖片章節數"
+          k="Image sections"
           v={fmt(summary.image_section_count)}
-          sub="有圖 section 覆蓋 · proxy 非 recall"
+          sub="sections-with-images coverage · proxy not recall"
           band={summary.image_section_count.band}
         />
-        <DocConfigMetric k="延遲 p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
-        <DocConfigMetric k="答案字數" v={String(last?.answer_chars ?? 0)} />
-        <DocConfigMetric k="是否拒答" v={last?.refused ? '是' : '否'} />
+        <DocConfigMetric k="Latency p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
+        <DocConfigMetric k="Answer chars" v={String(last?.answer_chars ?? 0)} />
+        <DocConfigMetric k="Refused?" v={last?.refused ? 'Yes' : 'No'} />
       </div>
     </div>
   );

@@ -977,9 +977,9 @@ function StepMultimodal({
           <OptionRow
             checked={form.image_dense_preset}
             onToggle={(v) => update('image_dense_preset', v)}
-            title="套用圖密召回配方 (image-recall preset)"
-            desc="Rerank top-k 10 · Neighbour max aux images 40 · Max images/answer 80 — image-recall 0.574 → ~1.00 (W62–W68 實證, ADR-0054). 圖密步驟手冊適用;建立後仍可喺 KB Settings 調整。"
-            badge="實證配方"
+            title="Apply image-recall preset"
+            desc="Rerank top-k 10 · Neighbour max aux images 40 · Max images/answer 80 — image-recall 0.574 → ~1.00 (W62–W68 empirical, ADR-0054). For image-dense step-by-step manuals; still adjustable in KB Settings after creation."
+            badge="Proven preset"
           />
         </div>
 

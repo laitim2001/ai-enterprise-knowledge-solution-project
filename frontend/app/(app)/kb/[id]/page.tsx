@@ -122,13 +122,13 @@ function formatRelative(iso: string | null | undefined): string {
 // profile = W72 profiler 分類;低信心 → badge-warning 黃旗 + 信心度;未分析(profile=null,
 // ingest 未成功 / 未 re-index)→ muted「未分析」。
 const PROFILE_LABELS: Record<string, string> = {
-  P1_sop_imgdense: 'P1 圖密SOP',
-  P1_sop_text: 'P1 文字SOP',
-  P2_prose: 'P2 散文',
-  P3_slide_imgdense: 'P3 圖密簡報',
-  P3_slide_text: 'P3 文字簡報',
-  P4_scan_imgdense: 'P4 掃描',
-  P5_form: 'P5 表單',
+  P1_sop_imgdense: 'P1 Image-dense SOP',
+  P1_sop_text: 'P1 Text SOP',
+  P2_prose: 'P2 Prose',
+  P3_slide_imgdense: 'P3 Image-dense slides',
+  P3_slide_text: 'P3 Text slides',
+  P4_scan_imgdense: 'P4 Scan',
+  P5_form: 'P5 Form',
 };
 
 function ProfileBadge({
@@ -141,7 +141,7 @@ function ProfileBadge({
   if (!profile) {
     return (
       <span className="badge badge-muted" style={{ opacity: 0.65 }}>
-        未分析
+        Not analyzed
       </span>
     );
   }
@@ -153,7 +153,7 @@ function ProfileBadge({
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <span
         className={`badge ${low ? 'badge-warning' : 'badge-muted'}`}
-        title={low ? '低信心 — 建議人手確認 profile' : '偵測 profile'}
+        title={low ? 'Low confidence — please verify the profile manually' : 'Detected profile'}
       >
         <span className="badge-dot" /> {label}
       </span>
@@ -1738,7 +1738,7 @@ const TUNE_GROUPS: {
   {
     icon: Layers,
     title: 'Parent-document retrieval',
-    desc: '把命中嘅子 chunk 擴展到所屬父段落,畀 LLM 更完整上下文。',
+    desc: 'Expand matched child chunks to their parent section for fuller LLM context.',
     enableKey: 'enable_parent_doc_retrieval',
     knobs: [
       { key: 'parent_doc_section_depth_offset', label: 'Section depth offset' },
@@ -1749,7 +1749,7 @@ const TUNE_GROUPS: {
   {
     icon: Link2,
     title: 'Citation post-hoc expansion',
-    desc: '答案生成後,為每個引用補充鄰近輔助 chunk,提升完整性。',
+    desc: 'After answer generation, add neighbouring auxiliary chunks to each citation to improve completeness.',
     enableKey: 'enable_citation_post_hoc_expansion',
     knobs: [
       { key: 'citation_expansion_max_aux', label: 'Max aux / citation' },
@@ -1759,8 +1759,8 @@ const TUNE_GROUPS: {
   },
   {
     icon: Eye,
-    title: 'Citation neighbour images + 圖片上限',
-    desc: '控制引用鄰近圖片帶入,同每個答案最多顯示幾多張圖(圖洪水收斂)。',
+    title: 'Citation neighbour images + image cap',
+    desc: 'Control how citation-neighbour images are brought in, and the max images shown per answer (image-flood convergence).',
     enableKey: 'enable_citation_neighbour_images',
     knobs: [
       { key: 'citation_neighbour_max_aux_images', label: 'Neighbour max aux images' },
@@ -1773,8 +1773,8 @@ const TUNE_GROUPS: {
   // strips them until the W71 interleaved render).
   {
     icon: Tag,
-    title: 'Inline image markers(圖文位置標記)',
-    desc: '答案文字沿原文圖片位置帶 [IMG#…] 標記 — 文字+圖片跟原文順序顯示(W71 交織)嘅基建;未啟用交織前顯示層自動剝走標記。OFF = 現狀乾淨文字。',
+    title: 'Inline image markers (image position markers)',
+    desc: 'Answer text carries [IMG#…] markers at the original image positions — the foundation for showing text + images in source order (W71 interleaving); until interleaving is enabled the display layer auto-strips the markers. OFF = current clean text.',
     enableKey: 'enable_inline_image_markers',
     knobs: [],
   },
@@ -1808,11 +1808,11 @@ function KbTuneKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> 已覆寫
+            <Edit size={9} /> Overridden
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            繼承全域
+            Inherit global
           </span>
         )}
       </label>
@@ -1820,11 +1820,11 @@ function KbTuneKnob({
         type="number"
         className="input mono"
         value={value ?? ''}
-        placeholder="繼承全域"
+        placeholder="Inherit global"
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? '此 KB 覆寫值' : '未覆寫 · 沿用全域'}</span>
+        <span>{overridden ? 'Overridden for this KB' : 'Not overridden · using global'}</span>
         {overridden && (
           <button
             type="button"
@@ -1841,7 +1841,7 @@ function KbTuneKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> 還原全域
+            <RefreshCw size={10} /> Reset to global
           </button>
         )}
       </div>
@@ -1904,11 +1904,11 @@ function KbTuneGroup({
             <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
             {overridden ? (
               <span className="badge badge-success" style={{ fontSize: 9 }}>
-                已覆寫
+                Overridden
               </span>
             ) : (
               <span className="badge badge-muted" style={{ fontSize: 9 }}>
-                繼承全域
+                Inherit global
               </span>
             )}
             {overridden && (
@@ -1927,7 +1927,7 @@ function KbTuneGroup({
                   padding: 0,
                 }}
               >
-                <RefreshCw size={10} /> 還原全域
+                <RefreshCw size={10} /> Reset to global
               </button>
             )}
           </div>
@@ -1943,7 +1943,7 @@ function KbTuneGroup({
             onClick={() => setOpen(!open)}
             aria-expanded={open}
           >
-            進階 <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+            Advanced <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
           </button>
         )}
       </div>
@@ -2005,10 +2005,10 @@ function ConfigTestPanel({
               size={14}
               style={{ verticalAlign: '-2px', marginRight: 6, color: 'oklch(var(--accent))' }}
             />
-            試跑(config-test)
+            Test run (config-test)
           </h3>
           <div className="card-desc">
-            唔改全域、唔改已存配置,試吓上面草稿配置喺真 pipeline 嘅效果。{' '}
+            Leaves global and the saved config untouched — try the draft config above against the real pipeline.{' '}
             <span className="mono">POST /kb/{kbId}/config-test</span>
           </div>
         </div>
@@ -2024,7 +2024,7 @@ function ConfigTestPanel({
           }}
         >
           <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
-            <label className="label">測試問題</label>
+            <label className="label">Test question</label>
             <input
               className="input"
               value={testQuery}
@@ -2038,7 +2038,7 @@ function ConfigTestPanel({
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">重跑次數</label>
+            <label className="label">Reruns</label>
             <div className="seg">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -2072,7 +2072,7 @@ function ConfigTestPanel({
               tabIndex={0}
               onClick={() => setCompare(!compare)}
             />
-            同已存配置對照(A/B)
+            Compare to saved config (A/B)
           </label>
           <button
             type="button"
@@ -2082,11 +2082,11 @@ function ConfigTestPanel({
           >
             {mutation.isPending ? (
               <>
-                <span className="spinner" /> 試跑中…
+                <span className="spinner" /> Running…
               </>
             ) : (
               <>
-                <Zap size={14} /> 試跑
+                <Zap size={14} /> Test run
               </>
             )}
           </button>
@@ -2097,8 +2097,8 @@ function ConfigTestPanel({
             <div className="empty-icon">
               <Zap size={20} />
             </div>
-            <div className="empty-title">未有試跑結果</div>
-            <div>調整上面旋鈕 → 揀重跑次數 → 撳「試跑」。</div>
+            <div className="empty-title">No test run yet</div>
+            <div>Adjust the knobs above → pick the number of runs → click &quot;Test run&quot;.</div>
           </div>
         )}
 
@@ -2111,8 +2111,8 @@ function ConfigTestPanel({
                 gap: 14,
               }}
             >
-              <ConfigResultCard label="草稿配置(DRAFT)" accent summary={result.draft} />
-              {result.saved && <ConfigResultCard label="已存配置(SAVED)" summary={result.saved} />}
+              <ConfigResultCard label="Draft config (DRAFT)" accent summary={result.draft} />
+              {result.saved && <ConfigResultCard label="Saved config (SAVED)" summary={result.saved} />}
             </div>
 
             {/* W50 (決策 7 option d) — length-bias caveat: RAGAs faithfulness penalises
@@ -2127,25 +2127,27 @@ function ConfigTestPanel({
                 style={{ color: 'oklch(var(--warning))', marginTop: 1, flexShrink: 0 }}
               />
               <span>
-                忠實度對長 / 全面答案有{' '}
-                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— 低分若配合高{' '}
-                <b>涵蓋章節數</b> / 引用數 / 長答案,多為 bias 而非 config 差,宜對照涵蓋章節數 /
-                引用數 / 字數一齊判讀,勿與完整性混為一談。
+                Faithfulness has a{' '}
+                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> against long / comprehensive
+                answers — a low score paired with high{' '}
+                <b>sections covered</b> / citation count / long answers is usually bias, not a worse config;
+                read it alongside sections covered / citation count / word count, and do not conflate it with
+                completeness.
               </span>
             </div>
 
             {result.draft.per_citation.length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <div className="muted text-xs" style={{ marginBottom: 6 }}>
-                  草稿配置 · 每引用 section + 圖數(最後一 run)
+                  Draft config · sections + images per citation (last run)
                 </div>
                 <div className="table-wrap">
                   <table className="table" style={{ fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <th>引用 chunk</th>
+                        <th>Cited chunk</th>
                         <th>Section</th>
-                        <th className="col-num">圖數</th>
+                        <th className="col-num">Images</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2172,8 +2174,8 @@ function ConfigTestPanel({
       </div>
       <div className="card-footer">
         <div className="muted text-xs">
-          N 次重跑取平均 · band = max − min(越細越穩定)· 忠實度質素軸 + presentation counters 逐 run
-          算 band · N=1 只方向性
+          Mean over N reruns · band = max − min (smaller = more stable) · faithfulness quality axis +
+          presentation counters compute band per run · N=1 is directional only
         </div>
         <button
           type="button"
@@ -2181,7 +2183,7 @@ function ConfigTestPanel({
           onClick={onSaveDraft}
           disabled={!dirty || saving}
         >
-          <Download size={13} /> 把草稿配置儲存到此 KB
+          <Download size={13} /> Save draft config to this KB
         </button>
       </div>
     </div>
@@ -2238,9 +2240,9 @@ function ConfigResultCard({
         >
           <div
             className="muted text-xs"
-            title="RAGAs faithfulness:答案宣稱是否被 retrieved context 支撐(反幻覺)。注意對長/全面答案有 length bias —— claim 多 → 未逐句對上 context 機會大,低分未必代表 config 差,宜對照完整性訊號(引用數 / 字數)判讀,勿與 completeness 混為一談。"
+            title="RAGAs faithfulness: whether the answer's claims are supported by the retrieved context (anti-hallucination). Note the length bias against long/comprehensive answers — more claims → higher chance some are not matched sentence-by-sentence to context; a low score does not necessarily mean a worse config, read it against completeness signals (citation count / word count), and do not conflate it with completeness."
           >
-            忠實度(faithfulness · 反幻覺 · 0–1)
+            Faithfulness (faithfulness · anti-hallucination · 0–1)
           </div>
           <div
             className="mono"
@@ -2262,46 +2264,46 @@ function ConfigResultCard({
             )}
             {summary.faithfulness == null && (
               <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
-                未評(無 judge / 已關)
+                Not evaluated (no judge / off)
               </span>
             )}
           </div>
           {summary.faithfulness != null && summary.runs.length === 1 && (
             <div className="text-xs" style={{ marginTop: 3, color: 'oklch(var(--warning))' }}>
-              單次 judge · 方向性 · 重跑次數調高至 ≥2 先見穩定度 band
+              Single judge run · directional · raise reruns to ≥2 to see the stability band
             </div>
           )}
         </div>
         <ConfigMetric
-          k="引用數"
+          k="Citations"
           v={fmt(summary.citation_count)}
           band={summary.citation_count.band}
         />
         {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
         <ConfigMetric
-          k="涵蓋章節數"
+          k="Sections covered"
           v={fmt(summary.distinct_sections)}
-          sub="completeness proxy · 非 recall"
+          sub="completeness proxy · not recall"
           band={summary.distinct_sections.band}
         />
         <ConfigMetric
-          k="圖片(dedup)"
+          k="Images (dedup)"
           v={fmt(summary.figure_count_dedup)}
           sub={`raw ${fmt(summary.figure_count_raw)}`}
           band={summary.figure_count_dedup.band}
         />
         {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
         <ConfigMetric
-          k="圖片章節數"
+          k="Image sections"
           v={fmt(summary.image_section_count)}
-          sub="有圖 section 覆蓋 · proxy 非 recall"
+          sub="Section-with-image coverage · proxy not recall"
           band={summary.image_section_count.band}
         />
-        <ConfigMetric k="延遲 p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
-        <ConfigMetric k="答案字數" v={String(last?.answer_chars ?? 0)} />
-        <ConfigMetric k="是否拒答" v={last?.refused ? '是' : '否'} />
+        <ConfigMetric k="Latency p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
+        <ConfigMetric k="Answer chars" v={String(last?.answer_chars ?? 0)} />
+        <ConfigMetric k="Refused?" v={last?.refused ? 'Yes' : 'No'} />
         <ConfigMetric
-          k="穩定度"
+          k="Stability"
           v={`band ${summary.citation_count.band}/${summary.figure_count_dedup.band}`}
         />
       </div>
@@ -2572,8 +2574,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               ))}
             </div>
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 改變切分策略 → 影響
-              chunk 邊界,儲存後須 re-index 全部文件先生效。
+              <b style={{ color: 'oklch(var(--warning))' }}>Re-index required.</b> Changing the chunk
+              strategy affects chunk boundaries — after saving, all documents must be re-indexed to take effect.
             </div>
           </div>
           <div className="field">
@@ -2593,12 +2595,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               className="input mono"
               value={maxImages}
               min={1}
-              placeholder="繼承全域 (8)"
+              placeholder="Inherit global (8)"
               onChange={(e) => setMaxImages(e.target.value)}
             />
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>需重新索引。</b> 留空 =
-              沿用全域上限(8)。每 chunk 圖片數上限,超過即 force-split(ADR-0042)。
+              <b style={{ color: 'oklch(var(--warning))' }}>Re-index required.</b> Leave blank =
+              use the global cap (8). Max images per chunk; exceeding it triggers a force-split (ADR-0042).
             </div>
           </div>
           <div className="field">
@@ -2647,7 +2649,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           {/* CH-006 — per-KB synthesis answer detail (query-time, no re-index) */}
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label">
-              答案詳細度 (synthesis){' '}
+              Answer detail (synthesis){' '}
               <Edit
                 size={10}
                 style={{
@@ -2667,13 +2669,13 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                   onClick={() => setAnswerDetail(d)}
                   style={{ flex: 1, padding: '5px 6px', fontSize: 11.5 }}
                 >
-                  {d === 'concise' ? '精簡 concise' : '詳細 detailed'}
+                  {d === 'concise' ? 'Concise (concise)' : 'Detailed (detailed)'}
                 </button>
               ))}
             </div>
             <div className="hint">
-              即時生效 · 無需 re-index。<b>concise</b> = 摘要(預設,≤150 字);
-              <b>detailed</b> = 逐步鋪開每個 sub-step(程序型手冊適用;答案較長 / 成本較高)。
+              Takes effect immediately · no re-index. <b>concise</b> = summary (default, ≤150 chars);
+              <b>detailed</b> = walks through each sub-step (suited to procedural manuals; longer answers / higher cost).
             </div>
           </div>
         </div>
@@ -2685,8 +2687,9 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           <div>
             <h3 className="card-title">Advanced retrieval tuning</h3>
             <div className="card-desc">
-              Per-KB 覆寫檢索 / 引用 / 圖片行為。未覆寫嘅旋鈕沿用全域預設。全部 runtime —{' '}
-              <b>唔需要重新索引</b>(對比上面鎖定嘅 embedding / chunk strategy)。
+              Per-KB overrides for retrieval / citation / image behaviour. Un-overridden knobs use the
+              global defaults. All runtime —{' '}
+              <b>no re-index needed</b> (unlike the locked embedding / chunk strategy above).
             </div>
           </div>
           <span className="badge badge-info" style={{ fontSize: 9.5 }}>
@@ -2709,15 +2712,15 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             <Zap size={15} style={{ color: 'oklch(var(--accent))', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>配方 preset:圖密步驟手冊</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Recipe preset: image-dense step manual</span>
                 <span className="badge badge-success" style={{ fontSize: 9.5 }}>
-                  W62–W68 實證
+                  W62–W68 empirical
                 </span>
               </div>
               <div className="muted text-xs" style={{ marginTop: 3, lineHeight: 1.5 }}>
-                Rerank top-k = 10(上方 General 區)· Neighbour max aux images = 40 · Max images /
-                answer = 80 — image-recall 0.574 → ~1.00(ADR-0054)。
-                套用只填草稿,試跑滿意後撳「儲存到此 KB」先生效。
+                Rerank top-k = 10 (General section above) · Neighbour max aux images = 40 · Max images /
+                answer = 80 — image-recall 0.574 → ~1.00 (ADR-0054).
+                Applying only fills the draft; once the test run looks good, click &quot;Save to this KB&quot; to take effect.
               </div>
             </div>
             <button
@@ -2729,10 +2732,10 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             >
               {presetApplied ? (
                 <>
-                  <Check size={13} /> 已套用
+                  <Check size={13} /> Applied
                 </>
               ) : (
-                '套用配方'
+                'Apply recipe'
               )}
             </button>
           </div>
@@ -2762,7 +2765,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         </div>
         <div className="card-footer">
           <div className="muted text-xs">
-            配置 scope:per-query &gt; <b>per-KB(此頁)</b> &gt; 全域 · ADR-0040
+            Config scope: per-query &gt; <b>per-KB (this page)</b> &gt; global · ADR-0040
           </div>
           <div className="row">
             <button
@@ -2771,14 +2774,14 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               onClick={resetAllKnobs}
               disabled={!TUNE_KNOB_KEYS.some((k) => knobs[k] !== null)}
             >
-              <RefreshCw size={13} /> 還原全部至全域
+              <RefreshCw size={13} /> Reset all to global
             </button>
             <button
               type="submit"
               className="btn btn-primary btn-sm"
               disabled={!dirty || metaMutation.isPending || configMutation.isPending}
             >
-              {configMutation.isPending ? '儲存中…' : '儲存到此 KB'}
+              {configMutation.isPending ? 'Saving…' : 'Save to this KB'}
             </button>
           </div>
         </div>
@@ -3062,7 +3065,7 @@ function ReindexCard({
                 </div>
                 <div>
                   max img{' '}
-                  <b style={{ color: 'oklch(var(--foreground))' }}>{maxImages || '8 (全域)'}</b>
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{maxImages || '8 (global)'}</b>
                 </div>
               </div>
             </div>
