@@ -217,6 +217,20 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 22 條
 
 ---
 
+### Q23 — Multi-language(en/zh)Tier 2 → Tier 1 Promote(NEW 2026-07-13 per ADR-0075 / B-25)
+
+| Field | Content |
+|---|---|
+| **Question** | 是否 approve 把 **Multi-language(en/zh UI)** 由 Tier 2 promote 入 Tier 1(per Q12 Tier 2 governance flow — trigger matrix per architecture.md §11 + Chris approve)?driver = 真實 zh / APAC 需求。 |
+| **Why it matters** | Multi-language 係 architecture.md §11 明列 Tier 2(promote trigger =「業務側擴 APAC」,工作量估 1 個月)。Promote 觸 **H4**(Tier 邊界移動)+ **H1**(i18n 架構)+ **H2**(`next-intl` dependency),依 Q12 governance 需 **Stakeholder(scope/business)+ Chris(架構)雙 approve**。CH-023 已把全站 UI 統一英文做 externalize 地基。**Scope 限 UI chrome 雙語**(介面文字),**非** RAG answer / 文件 content 翻譯(嗰個係另一條 Tier 2 = multi-language retrieval)。最大成本 = **zh 翻譯來源 + 每次新 UI string 雙語同步維護**。技術方案評估見 [ADR-0075](adr/0075-multi-language-i18n-tier2-promote.md)(Proposed)。 |
+| **Default if unanswered** | **維持 Tier 2 defer**(per §11 + Q12 governance)。無 sustained APAC business driver 唔 promote;CH-023 已解決原「語言跳動」痛點(統一英文),雙語屬新 scope 擴張,唔應為偏好 promote Tier 2。 |
+| **Decision** | _[待 Stakeholder 填 — scope/business]_ · **proposed**(用戶 2026-07-13 initial):確認有真實 zh/APAC driver → 傾向 approve promote,scope 限 UI chrome en/zh(非 content 翻譯、非 JP)。**待 Stakeholder 經本 form 正式記錄 APAC driver 具體性**(邊個部門 / 市場 / 時程 / 預期使用者數)+ 確認 promote。 |
+| **Decided By** | _[待填 — Stakeholder(scope,per Q12 governance)+ Chris(架構 H1/H2,per ADR-0075)]_ |
+| **Date** | _[待填]_ |
+| **Status** | `Open` — 等 Stakeholder(scope + APAC driver 具體化)+ Chris(架構 approve ADR-0075)。雙 approve 前 Multi-language 維持 Tier 2,不實作 code。 |
+
+---
+
 ### Q22 — Email Verification Service Vendor(NEW W12 D1 per ADR-0014 hybrid auth)
 
 | Field | Content |
@@ -394,10 +408,13 @@ EKP(Enterprise Knowledge Platform)Tier 1 嘅 12 週 implementation 喺等 22 條
 | Q20 | LLM pick | Dev | | C05 | Open | W3 |
 | Q21 | Reranker pick | Dev | | C04 | `Resolved` (Cohere v4.0-pro;W6 D1 LIVE Azure 2-way reaffirm — faith Δ -11.76pp + rel Δ -9.81pp WORSE → Cohere baseline final) | 2026-05-05 (W6 D1) |
 | Q22 | Email Verification Service vendor(NEW W12 D1 per ADR-0014 hybrid auth) | Stakeholder | 2026-06-10 | C13 (NEW) + C12 (Auth Provider extended per ADR-0014) | `Resolved` (default Azure Communication Services activated;Tier 2 reconsideration trigger if Beta cohort scale > 100/day OR feature gap surface) | 2026-06-10 (W12 D1 evening) |
+| Q23 | Multi-language(en/zh)Tier 2→Tier 1 promote(NEW 2026-07-13 per ADR-0075 / B-25) | Stakeholder(scope)+ Chris(架構) | — (non-critical;post-W101 scope) | frontend(i18n NEW) | `Open` — 待 Stakeholder(APAC driver 具體化)+ Chris(ADR-0075 架構);雙 approve 前維持 Tier 2 defer,不實作 | — |
 
 **Critical path summary**:🔴 6 條(Q1, Q2, Q3, Q4, Q13, Q14)— **全部 `Resolved` as of 2026-04-30**。W1 啟動 cleared。
 
 **OQ status snapshot 2026-06-10 W12 D1 evening**:**17 / 22 Resolved**(Q1 / Q2 / Q3 / Q4 / Q5 / Q7 / Q9 / Q10 / Q11 / Q12 / Q13 / Q14 / Q17 / Q18 / Q19 / Q21 / **Q22 NEW**);**5 / 22 Open**(Q6 / Q8 / Q15 / Q16 / Q20 — 影響 Beta + Tier 2 trigger,unchanged from W6 D5 closeout)。
+
+**OQ status snapshot 2026-07-13**(Q23 NEW):**17 / 23 Resolved**(不變)+ **6 / 23 Open**(Q6 / Q8 / Q15 / Q16 / Q20 + **Q23 NEW** — Multi-language(en/zh)Tier 2→Tier 1 promote,per [ADR-0075](adr/0075-multi-language-i18n-tier2-promote.md) / B-25,等 Stakeholder scope + Chris 架構雙 approve)。**Q23 唔阻 Tier 1**(promote 前維持 Tier 2 defer;non-critical post-W101 scope decision,有別於 W1 啟動 critical 6 條)。CLAUDE.md §8 + session-start.md 的「22 OQ」count 待同步為 23。
 
 **Pending implementation detail**(W1 D5 closeout 2026-05-02:全部 6 critical OQ full Resolved,zero outstanding minor):
 - ~~Q3~~ — ✅ Fully resolved W1 D5(2026-05-02):tier Standard S1 + region eastus2 confirmed by Chris;endpoint + admin key root `.env`(H5 commit `09138d4`);F9 index `ekp-kb-drive-v1` HTTP 201 created W1 D4(commit `349c33e`)
