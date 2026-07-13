@@ -63,3 +63,26 @@ EKP `/query` + `/chat` 嘅 hybrid retrieval mode(per `architecture.md §3.1`)目
 - W42 plan §5 H1 boundary 評估
 - memory `project_azure_search_tier_semantic_billing`(402 root cause analysis + W42 flag workaround + eval index 發現)
 - **W42 F2/F3 closeout 2026-05-29**:G3 chat UI Free-tier LIVE **PASS ⭐**(flag-OFF 3 query 全 200 無 402);G2 Gate 1 R@5 re-verify **INCONCLUSIVE**(`/eval/run` hard-code `kb_id="drive_user_manuals"` → index `ekp-kb-drive-v1` 唔喺 Azure Search service;service 只有 per-KB index `ekp-kb-{kb_id}-v1` ×2)→ Chris 環境受限結案,safety 由本 ADR 理論(Q21 + Cohere override redundant)+ F3 質性證據滿足;production default True 維持不變
+
+---
+
+## Amendment — B-18 default flip to False(2026-07-13)
+
+**Trigger**:pipeline review(`docs/09-analysis/pipeline_review_20260706.md` Q-R4)重新標示「預設雙重 rerank 冗餘」,用戶 approve 走「完整 flip + eval 背書」。本 amendment 記錄 W42 F2 明訂的 default-flip gate(Gate 1 R@5 no-regression)如何滿足,以及 flip 執行。
+
+**Gate 方法調整**:原定 Gate 1 R@5 re-verify 無法執行 —— `eval-set-v0` 是 W1 synthetic placeholder(chunk_id 非真實 index、`validated: false`),無 validated text R@5 ground truth(= B-07 卡用戶的結構性 blocker,非單純 W42 的 `kb_id` hardcode)。改用**不依賴 GT 的 retrieval-overlap A/B**,直接驗證本 ADR 核心論點(「Cohere rerank 作用於同一候選集 → semantic ranker 被 override」)。
+
+**方法**:對 `drive-images-1`(6 真實 drive 財務 manual / 369 chunks)以 9 條真實 query(`docs/eval-set-image-recall-ar.yaml` query_text)打 `POST /kb/{kb_id}/retrieval-test`(retrieve-only,hybrid + Cohere rerank),比較 semantic ON vs OFF 兩臂的最終 top-10 chunk_id。ON 臂用進程環境變數 `HYBRID_USE_SEMANTIC_RANKER=true` 覆蓋 `.env`(pydantic os.environ 優先於 `.env` file,不改檔案),兩臂各 restart backend;ON 生效以「帶/不帶 env var 載入 `Settings` 對比」確認(True vs False)。
+
+**結果**:
+
+| 條件 | ON vs OFF top-10 overlap | 順序一致 | 結論 |
+|---|---|---|---|
+| rerank=true(production 路徑) | **1.00** | **9/9 byte-identical** | Cohere override 令最終結果完全相同 |
+| rerank=false(純 hybrid 對照) | 0.50 | 0/9 | semantic 確實生效(改 hybrid 排序)→ 排除「假 ON」 |
+
+rerank-OFF 兩臂顯著發散(overlap 0.50)證明 semantic ranker 真的在作用;rerank-ON 兩臂完全相同(1.00)證明 Cohere 把它完全 override。→ **移除 semantic ranker 對 production 最終檢索零影響,no-regression 決定性成立**(比原定 R@5 命中率更直接證「flip 前後 byte-identical」)。
+
+**Decision**:`Settings.hybrid_use_semantic_ranker` 預設 `True → False`(`backend/storage/settings.py`)。production hybrid 檢索改行 BM25 + vector + RRF → Cohere rerank,移除冗餘 + Free-tier semantic 配額消耗的中間層。`HybridSearcher` 建構子參數 default(`use_semantic_ranker: bool = True`)與兩個 W42 單元測試不變(測參數行為,非 `Settings` default)。`.env` 既有 `HYBRID_USE_SEMANTIC_RANKER=false` override 與新 default 同值,變冗餘(可移除,未動)。
+
+**Scope note**:overlap A/B 限 `drive-images-1`(唯一有真實多文件內容 + 真實 query 的 not-archived KB)。若未來出現候選集構造(BM25+vector+RRF top-50 邊界)對某 KB 敏感的情況,可用同一 harness 重驗。GA 若升 paid tier,semantic quota 解除,此 flip 仍成立(移除的是已證冗餘的層,非單純配額 workaround)。
