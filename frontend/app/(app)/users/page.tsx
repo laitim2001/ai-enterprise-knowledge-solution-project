@@ -44,6 +44,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Fragment,
@@ -87,10 +88,10 @@ import {
 import { useRole } from '@/lib/hooks/use-role';
 
 const TABS = [
-  { id: 'members', label: 'Members', icon: Users },
-  { id: 'roles', label: 'Roles & permissions', icon: Shield },
-  { id: 'groups', label: 'Groups', icon: Layers },
-  { id: 'audit', label: 'Audit log', icon: Activity },
+  { id: 'members', labelKey: 'tabMembers', icon: Users },
+  { id: 'roles', labelKey: 'tabRoles', icon: Shield },
+  { id: 'groups', labelKey: 'tabGroups', icon: Layers },
+  { id: 'audit', labelKey: 'tabAudit', icon: Activity },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -100,12 +101,12 @@ const VALID_TABS = new Set<TabId>(TABS.map((t) => t.id));
 /** Members-tab seg filter — `admin` / `editor` / `user` map to `UserSummary.role`. */
 type MemberFilter = 'all' | 'admin' | 'editor' | 'user' | 'pending';
 
-const SEG_FILTERS: { id: MemberFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'admin', label: 'Admin' },
-  { id: 'editor', label: 'Editor' },
-  { id: 'user', label: 'User' },
-  { id: 'pending', label: 'Pending' },
+const SEG_FILTERS: { id: MemberFilter; labelKey: string }[] = [
+  { id: 'all', labelKey: 'segAll' },
+  { id: 'admin', labelKey: 'segAdmin' },
+  { id: 'editor', labelKey: 'segEditor' },
+  { id: 'user', labelKey: 'segUser' },
+  { id: 'pending', labelKey: 'segPending' },
 ];
 
 /** 2-char avatar initials from `display_name`, falling back to the email local-part. */
@@ -140,13 +141,14 @@ function TabBoundary({
 // ============================================================================
 
 export default function UsersPage() {
+  const t = useTranslations('Users');
   return (
     <Suspense
       fallback={
         <div className="content">
           <div className="content-wide">
             <div className="page-header">
-              <h1 className="page-title">Users &amp; access</h1>
+              <h1 className="page-title">{t('pageTitle')}</h1>
             </div>
           </div>
         </div>
@@ -158,6 +160,7 @@ export default function UsersPage() {
 }
 
 function UsersPageInner() {
+  const t = useTranslations('Users');
   const role = useRole();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -208,13 +211,13 @@ function UsersPageInner() {
       <div className="content">
         <div className="content-wide">
           <div className="page-header">
-            <h1 className="page-title">Users &amp; access</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
           </div>
           <div
             className="text-xs muted"
             style={{ padding: '48px 18px', textAlign: 'center' }}
           >
-            Loading…
+            {t('loading')}
           </div>
         </div>
       </div>
@@ -225,7 +228,7 @@ function UsersPageInner() {
       <div className="content">
         <div className="content-wide">
           <div className="page-header">
-            <h1 className="page-title">Users &amp; access</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
           </div>
           <div
             className="banner banner-warning"
@@ -235,12 +238,9 @@ function UsersPageInner() {
             <ShieldAlert size={14} aria-hidden="true" />
             <div style={{ flex: 1, lineHeight: 1.55 }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>
-                Admin access required
+                {t('adminRequiredTitle')}
               </div>
-              <div className="text-xs muted">
-                Managing workspace members, roles, and per-KB access needs the
-                Workspace Admin role.
-              </div>
+              <div className="text-xs muted">{t('adminRequiredDesc')}</div>
             </div>
           </div>
         </div>
@@ -254,24 +254,23 @@ function UsersPageInner() {
         {/* Page header — mockup lines 81-90 */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Users &amp; access</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              Workspace members · role assignment · per-KB access. Roles are
-              mapped via Entra ID groups; assignments here update both Postgres{' '}
-              <span className="mono">users</span> table and Entra group
-              membership.
+              {t.rich('subtitle', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </p>
           </div>
           <div className="page-actions">
             <button type="button" className="btn btn-secondary btn-sm">
-              <Download size={13} aria-hidden="true" /> Export CSV
+              <Download size={13} aria-hidden="true" /> {t('exportCsv')}
             </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"
               onClick={() => setInviteOpen(true)}
             >
-              <Plus size={13} aria-hidden="true" /> Invite member
+              <Plus size={13} aria-hidden="true" /> {t('inviteMember')}
             </button>
           </div>
         </div>
@@ -282,42 +281,46 @@ function UsersPageInner() {
           style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}
         >
           <StatCard
-            label="Total members"
+            label={t('statTotalMembers')}
             value={loaded ? String(users.length) : '—'}
             sub={
               loaded
-                ? `${counts.admin} Admin · ${counts.editor} Editor · ${counts.user} User`
+                ? t('statTotalMembersSub', {
+                    admin: counts.admin,
+                    editor: counts.editor,
+                    user: counts.user,
+                  })
                 : '—'
             }
           />
           {/* Session tracking is not a Tier 1 backend surface — W22 B-i placeholder. */}
-          <StatCard label="Active sessions" value="—" sub="—" />
+          <StatCard label={t('statActiveSessions')} value="—" sub="—" />
           <StatCard
-            label="Pending invites"
+            label={t('statPendingInvites')}
             value={loaded ? String(counts.pending) : '—'}
-            sub="Email verification pending"
+            sub={t('statPendingInvitesSub')}
           />
           {/* Per-user query volume needs the query log (Q6 open) — W22 B-i placeholder. */}
-          <StatCard label="Avg queries / user" value="—" sub="—" />
+          <StatCard label={t('statAvgQueries')} value="—" sub="—" />
         </div>
 
         {/* Tab navigation — mockup lines 99-104 */}
-        <div className="tabs" role="tablist" aria-label="User management sections">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
+        <div className="tabs" role="tablist" aria-label={t('tablistAria')}>
+          {TABS.map((tabItem) => {
+            const Icon = tabItem.icon;
+            const active = tab === tabItem.id;
             return (
               <button
-                key={t.id}
+                key={tabItem.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
                 className="tab"
                 data-active={active}
-                onClick={() => handleTabChange(t.id)}
+                onClick={() => handleTabChange(tabItem.id)}
               >
-                <Icon size={14} aria-hidden="true" /> {t.label}
-                {t.id === 'members' && (
+                <Icon size={14} aria-hidden="true" /> {t(tabItem.labelKey)}
+                {tabItem.id === 'members' && (
                   <span className="count">{loaded ? users.length : '—'}</span>
                 )}
               </button>
@@ -327,7 +330,7 @@ function UsersPageInner() {
 
         {/* Tab body — F9.2 ships Members; F9.3 / F9.4 replace the placeholders. */}
         {tab === 'members' && (
-          <TabBoundary tabName="Members">
+          <TabBoundary tabName={t('tabMembers')}>
             <UsersTab
               users={users}
               counts={counts}
@@ -337,17 +340,17 @@ function UsersPageInner() {
           </TabBoundary>
         )}
         {tab === 'roles' && (
-          <TabBoundary tabName="Roles & permissions">
+          <TabBoundary tabName={t('tabRoles')}>
             <RolesTab />
           </TabBoundary>
         )}
         {tab === 'groups' && (
-          <TabBoundary tabName="Groups">
+          <TabBoundary tabName={t('tabGroups')}>
             <GroupsTab />
           </TabBoundary>
         )}
         {tab === 'audit' && (
-          <TabBoundary tabName="Audit log">
+          <TabBoundary tabName={t('tabAudit')}>
             <AuditTab />
           </TabBoundary>
         )}
@@ -373,6 +376,7 @@ function UsersTab({
   isLoading: boolean;
   isError: boolean;
 }) {
+  const t = useTranslations('Users');
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [search, setSearch] = useState('');
   // F4 — which row's ⋯ menu is open + the suspend-confirm target
@@ -416,7 +420,7 @@ function UsersTab({
           </span>
           <input
             className="input"
-            placeholder="Search by name, email, group…"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -430,7 +434,7 @@ function UsersTab({
               data-active={filter === f.id}
               onClick={() => setFilter(f.id)}
             >
-              {f.label}{' '}
+              {t(f.labelKey)}{' '}
               <span className="text-xs mono" style={{ opacity: 0.6 }}>
                 {counts[f.id]}
               </span>
@@ -439,7 +443,7 @@ function UsersTab({
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-secondary btn-sm">
-          <Filter size={13} aria-hidden="true" /> More filters
+          <Filter size={13} aria-hidden="true" /> {t('moreFilters')}
         </button>
       </div>
 
@@ -448,7 +452,7 @@ function UsersTab({
           className="text-xs muted"
           style={{ padding: '48px 18px', textAlign: 'center' }}
         >
-          Loading members…
+          {t('loadingMembers')}
         </div>
       ) : isError ? (
         <div
@@ -459,11 +463,12 @@ function UsersTab({
           <AlertTriangle size={14} aria-hidden="true" />
           <div style={{ flex: 1, lineHeight: 1.55 }}>
             <div style={{ fontSize: 13, fontWeight: 500 }}>
-              Couldn&apos;t load members
+              {t('errorMembersTitle')}
             </div>
             <div className="text-xs">
-              The <span className="mono">/users</span> request failed. Reload
-              the page to retry.
+              {t.rich('errorMembersDesc', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </div>
           </div>
         </div>
@@ -472,7 +477,7 @@ function UsersTab({
           className="text-xs muted"
           style={{ padding: '48px 18px', textAlign: 'center' }}
         >
-          No members match the current filter.
+          {t('emptyMembers')}
         </div>
       ) : (
         <div className="table-wrap">
@@ -484,15 +489,15 @@ function UsersTab({
                     ☐
                   </span>
                 </th>
-                <th>Member</th>
-                <th>Role</th>
-                <th>Auth source</th>
-                <th>Entra group</th>
-                <th className="col-num">Queries (7d)</th>
-                <th className="col-num">KBs owned</th>
-                <th className="col-num">Last login</th>
-                <th>Status</th>
-                <th className="col-shrink" aria-label="Row actions" />
+                <th>{t('colMember')}</th>
+                <th>{t('colRole')}</th>
+                <th>{t('colAuthSource')}</th>
+                <th>{t('colEntraGroup')}</th>
+                <th className="col-num">{t('colQueries7d')}</th>
+                <th className="col-num">{t('colKbsOwned')}</th>
+                <th className="col-num">{t('colLastLogin')}</th>
+                <th>{t('colStatus')}</th>
+                <th className="col-shrink" aria-label={t('rowActions')} />
               </tr>
             </thead>
             <tbody>
@@ -569,7 +574,7 @@ function UsersTab({
                     <button
                       type="button"
                       className="btn btn-ghost btn-icon btn-xs"
-                      aria-label="Row actions"
+                      aria-label={t('rowActions')}
                       aria-haspopup="menu"
                       aria-expanded={menuOpenId === u.oid}
                       onClick={() =>
@@ -620,6 +625,7 @@ function UsersTab({
 // ============================================================================
 
 function InviteDialog({ onClose }: { onClose: () => void }) {
+  const t = useTranslations('Users');
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -633,27 +639,24 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         display_name: displayName.trim() || null,
       }),
     onSuccess: (u) => {
-      toast.success(`Invited ${u.email}`);
+      toast.success(t('toastInvited', { email: u.email }));
       void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
       onClose();
     },
     onError: (e) =>
-      toast.error(e instanceof Error ? e.message : 'Invite failed'),
+      toast.error(e instanceof Error ? e.message : t('toastInviteFailed')),
   });
 
   return (
     <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite member</DialogTitle>
-          <DialogDescription>
-            Pre-authorise an email + workspace role. An invite record is created
-            (status = invited) and a verification email is sent.
-          </DialogDescription>
+          <DialogTitle>{t('inviteTitle')}</DialogTitle>
+          <DialogDescription>{t('inviteDesc')}</DialogDescription>
         </DialogHeader>
         <div className="field">
           <label className="label" htmlFor="invite-email">
-            Email address{' '}
+            {t('inviteEmailLabel')}{' '}
             <span style={{ color: 'oklch(var(--destructive))' }}>*</span>
           </label>
           <input
@@ -667,19 +670,19 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="field">
           <label className="label" htmlFor="invite-name">
-            Display name
+            {t('inviteNameLabel')}
           </label>
           <input
             id="invite-name"
             className="input"
-            placeholder="Optional — derived from email if left blank"
+            placeholder={t('inviteNamePlaceholder')}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
           />
         </div>
         <div className="field">
           <label className="label" htmlFor="invite-role">
-            Workspace role
+            {t('inviteRoleLabel')}
           </label>
           <select
             id="invite-role"
@@ -694,9 +697,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
               Power User · Tier 2
             </option>
           </select>
-          <div className="hint">
-            Power User is a Tier 2 role — not assignable in Tier 1.
-          </div>
+          <div className="hint">{t('inviteRoleHint')}</div>
         </div>
         <DialogFooter>
           <button
@@ -704,7 +705,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
             className="btn btn-ghost btn-sm"
             onClick={onClose}
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -712,7 +713,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
             disabled={!email.trim() || inviteMutation.isPending}
             onClick={() => inviteMutation.mutate()}
           >
-            <Plus size={13} aria-hidden="true" /> Send invite
+            <Plus size={13} aria-hidden="true" /> {t('sendInvite')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -729,6 +730,7 @@ function RowActionMenu({
   onClose: () => void;
   onSuspend: () => void;
 }) {
+  const t = useTranslations('Users');
   const queryClient = useQueryClient();
   const tier1Roles: EkpRoleKey[] = ['admin', 'editor', 'user'];
   const itemStyle: CSSProperties = {
@@ -747,12 +749,17 @@ function RowActionMenu({
   const roleMutation = useMutation({
     mutationFn: (role: EkpRoleKey) => usersApi.changeUserRole(user.oid, role),
     onSuccess: (u) => {
-      toast.success(`${u.display_name} is now ${EKP_ROLE_LABELS[u.role]}`);
+      toast.success(
+        t('toastRoleChanged', {
+          name: u.display_name,
+          role: EKP_ROLE_LABELS[u.role],
+        }),
+      );
       void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
       onClose();
     },
     onError: (e) =>
-      toast.error(e instanceof Error ? e.message : 'Role change failed'),
+      toast.error(e instanceof Error ? e.message : t('toastRoleFailed')),
   });
 
   return (
@@ -783,7 +790,7 @@ function RowActionMenu({
           color: 'oklch(var(--muted-foreground))',
         }}
       >
-        Change role
+        {t('changeRole')}
       </div>
       {tier1Roles.map((rk) => (
         <button
@@ -818,7 +825,7 @@ function RowActionMenu({
         <span style={{ width: 14, display: 'inline-flex', flexShrink: 0 }}>
           <Shield size={12} />
         </span>
-        Suspend member
+        {t('suspendMember')}
       </button>
     </div>
   );
@@ -831,26 +838,30 @@ function SuspendDialog({
   user: UserSummary;
   onClose: () => void;
 }) {
+  const t = useTranslations('Users');
   const queryClient = useQueryClient();
   const suspendMutation = useMutation({
     mutationFn: () => usersApi.suspendUser(user.oid),
     onSuccess: () => {
-      toast.success(`Suspended ${user.display_name}`);
+      toast.success(t('toastSuspended', { name: user.display_name }));
       void queryClient.invalidateQueries({ queryKey: ['users', 'list'] });
       onClose();
     },
     onError: (e) =>
-      toast.error(e instanceof Error ? e.message : 'Suspend failed'),
+      toast.error(e instanceof Error ? e.message : t('toastSuspendFailed')),
   });
 
   return (
     <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Suspend member?</DialogTitle>
+          <DialogTitle>{t('suspendTitle')}</DialogTitle>
           <DialogDescription>
-            <b>{user.display_name}</b> ({user.email}) will lose access to all KBs
-            and can no longer sign in. Re-invite to restore access.
+            {t.rich('suspendDesc', {
+              b: (chunks) => <b>{chunks}</b>,
+              name: user.display_name,
+              email: user.email,
+            })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -859,7 +870,7 @@ function SuspendDialog({
             className="btn btn-ghost btn-sm"
             onClick={onClose}
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -868,7 +879,7 @@ function SuspendDialog({
             disabled={suspendMutation.isPending}
             onClick={() => suspendMutation.mutate()}
           >
-            Suspend member
+            {t('suspendMember')}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -928,6 +939,7 @@ function pivotMatrix(rows: RolePermission[]): MatrixArea[] {
 }
 
 function RolesTab() {
+  const t = useTranslations('Users');
   const rolesQ = useQuery<RoleListResponse>({
     queryKey: ['roles', 'list'],
     queryFn: usersApi.listRoles,
@@ -955,7 +967,7 @@ function RolesTab() {
         className="text-xs muted"
         style={{ padding: '48px 18px', textAlign: 'center' }}
       >
-        Loading roles &amp; permissions…
+        {t('loadingRoles')}
       </div>
     );
   }
@@ -969,11 +981,9 @@ function RolesTab() {
         <AlertTriangle size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Couldn&apos;t load roles
+            {t('errorRolesTitle')}
           </div>
-          <div className="text-xs">
-            A roles / permissions request failed. Reload the page to retry.
-          </div>
+          <div className="text-xs">{t('errorRolesDesc')}</div>
         </div>
       </div>
     );
@@ -993,14 +1003,9 @@ function RolesTab() {
         />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Role-based access control (RBAC)
+            {t('rbacBannerTitle')}
           </div>
-          <div className="text-xs muted">
-            Tier 1: Admin / Editor / End User — view-gating enforced
-            server-side per audit log. Tier 2: Power User adds advanced
-            retrieval tuning. Permissions are not editable per ADR-0024
-            (predefined roles); custom roles are Tier 2.
-          </div>
+          <div className="text-xs muted">{t('rbacBannerDesc')}</div>
         </div>
       </div>
 
@@ -1036,7 +1041,7 @@ function RolesTab() {
                   )}
                   <div className="spacer" />
                   <span className="mono text-xs muted">
-                    {count} member{count !== 1 ? 's' : ''}
+                    {t('roleCardMembers', { count })}
                   </span>
                 </div>
                 <div className="text-sm" style={{ lineHeight: 1.55 }}>
@@ -1052,20 +1057,18 @@ function RolesTab() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Permissions matrix</h3>
-            <div className="card-desc">
-              What each role can do · ✓ = allowed · — = denied
-            </div>
+            <h3 className="card-title">{t('permMatrixTitle')}</h3>
+            <div className="card-desc">{t('permMatrixDesc')}</div>
           </div>
           <button type="button" className="btn btn-ghost btn-sm">
-            <Download size={13} aria-hidden="true" /> Export
+            <Download size={13} aria-hidden="true" /> {t('export')}
           </button>
         </div>
         <div className="card-body card-body-tight">
           <table className="table" style={{ tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th style={{ width: '44%' }}>Permission</th>
+                <th style={{ width: '44%' }}>{t('permColPermission')}</th>
                 <th style={{ textAlign: 'center' }}>Admin</th>
                 <th style={{ textAlign: 'center' }}>Editor</th>
                 <th style={{ textAlign: 'center' }}>User</th>
@@ -1108,11 +1111,11 @@ function RolesTab() {
                           {perm.grants[rk] ? (
                             <Check
                               size={13}
-                              aria-label="Allowed"
+                              aria-label={t('permAllowed')}
                               style={{ color: 'oklch(var(--success))' }}
                             />
                           ) : (
-                            <span className="muted" aria-label="Denied">
+                            <span className="muted" aria-label={t('permDenied')}>
                               —
                             </span>
                           )}
@@ -1134,16 +1137,20 @@ function RolesTab() {
 // Groups tab — mockup `GroupsTab` lines 288-322
 // ============================================================================
 
-/** Relative-time format for the group `synced_at` column. */
-function formatRelative(iso: string | null | undefined): string {
+/** Relative-time format for the group `synced_at` / audit `created_at` columns. */
+function formatRelative(
+  iso: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
   const ts = new Date(iso).getTime();
   if (Number.isNaN(ts)) return '—';
   const mins = Math.floor((Date.now() - ts) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
-  return `${Math.floor(mins / 60 / 24)}d ago`;
+  if (mins < 1) return t('relativeJustNow');
+  if (mins < 60) return t('relativeMinutes', { mins });
+  if (mins < 60 * 24)
+    return t('relativeHours', { hours: Math.floor(mins / 60) });
+  return t('relativeDays', { days: Math.floor(mins / 60 / 24) });
 }
 
 /** Compact a long Entra object id (GUID) to `first4…last4` per the mockup. */
@@ -1153,6 +1160,7 @@ function truncateOid(oid: string | null): string {
 }
 
 function GroupsTab() {
+  const t = useTranslations('Users');
   const groupsQ = useQuery<GroupListResponse>({
     queryKey: ['groups', 'list'],
     queryFn: usersApi.listGroups,
@@ -1178,7 +1186,7 @@ function GroupsTab() {
         className="text-xs muted"
         style={{ padding: '48px 18px', textAlign: 'center' }}
       >
-        Loading groups…
+        {t('loadingGroups')}
       </div>
     );
   }
@@ -1192,11 +1200,12 @@ function GroupsTab() {
         <AlertTriangle size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Couldn&apos;t load groups
+            {t('errorGroupsTitle')}
           </div>
           <div className="text-xs">
-            The <span className="mono">/groups</span> request failed. Reload
-            the page to retry.
+            {t.rich('errorGroupsDesc', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
       </div>
@@ -1210,14 +1219,16 @@ function GroupsTab() {
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Entra ID groups</h3>
+          <h3 className="card-title">{t('entraGroupsTitle')}</h3>
           <div className="card-desc">
-            Synced from <span className="mono">{tenantDomain}</span> tenant ·
-            group → role mapping in Settings → Identity &amp; Auth
+            {t.rich('entraGroupsDesc', {
+              domain: tenantDomain,
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
         <button type="button" className="btn btn-secondary btn-sm">
-          <RefreshCw size={13} aria-hidden="true" /> Sync from Entra
+          <RefreshCw size={13} aria-hidden="true" /> {t('syncFromEntra')}
         </button>
       </div>
       <div className="card-body card-body-tight">
@@ -1226,18 +1237,18 @@ function GroupsTab() {
             className="text-xs muted"
             style={{ padding: '48px 18px', textAlign: 'center' }}
           >
-            No Entra ID groups synced yet.
+            {t('emptyGroups')}
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Group name</th>
-                <th>Object ID</th>
-                <th>EKP role</th>
-                <th className="col-num">Members</th>
-                <th className="col-num">Synced</th>
-                <th className="col-shrink" aria-label="Row actions" />
+                <th>{t('groupColName')}</th>
+                <th>{t('groupColObjectId')}</th>
+                <th>{t('groupColEkpRole')}</th>
+                <th className="col-num">{t('groupColMembers')}</th>
+                <th className="col-num">{t('groupColSynced')}</th>
+                <th className="col-shrink" aria-label={t('rowActions')} />
               </tr>
             </thead>
             <tbody>
@@ -1255,18 +1266,18 @@ function GroupsTab() {
                       {mappedRole ? (
                         <RoleBadge role={mappedRole} />
                       ) : (
-                        <span className="text-xs muted">Not mapped</span>
+                        <span className="text-xs muted">{t('notMapped')}</span>
                       )}
                     </td>
                     <td className="col-num">{g.member_count}</td>
                     <td className="col-num text-xs">
-                      {formatRelative(g.synced_at)}
+                      {formatRelative(g.synced_at, t)}
                     </td>
                     <td className="col-shrink">
                       <button
                         type="button"
                         className="btn btn-ghost btn-icon btn-xs"
-                        aria-label="Row actions"
+                        aria-label={t('rowActions')}
                       >
                         <MoreHorizontal size={13} aria-hidden="true" />
                       </button>
@@ -1312,6 +1323,7 @@ function payloadNote(payload: Record<string, unknown> | null): string {
 }
 
 function AuditTab() {
+  const t = useTranslations('Users');
   const auditQ = useQuery<AuditLogPage>({
     queryKey: ['admin', 'audit-log'],
     queryFn: () => adminApi.listAuditLog(),
@@ -1323,7 +1335,7 @@ function AuditTab() {
         className="text-xs muted"
         style={{ padding: '48px 18px', textAlign: 'center' }}
       >
-        Loading audit log…
+        {t('loadingAudit')}
       </div>
     );
   }
@@ -1337,11 +1349,12 @@ function AuditTab() {
         <AlertTriangle size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Couldn&apos;t load the audit log
+            {t('errorAuditTitle')}
           </div>
           <div className="text-xs">
-            The <span className="mono">/admin/audit-log</span> request failed.
-            Reload the page to retry.
+            {t.rich('errorAuditDesc', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
       </div>
@@ -1354,18 +1367,15 @@ function AuditTab() {
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Workspace audit log</h3>
-          <div className="card-desc">
-            Every role / access / config change is logged with actor + target
-            + timestamp · 90d retention
-          </div>
+          <h3 className="card-title">{t('auditTitle')}</h3>
+          <div className="card-desc">{t('auditDesc')}</div>
         </div>
         <div className="row">
           <button type="button" className="btn btn-secondary btn-sm">
-            <Filter size={13} aria-hidden="true" /> Filter
+            <Filter size={13} aria-hidden="true" /> {t('filter')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm">
-            <Download size={13} aria-hidden="true" /> Export
+            <Download size={13} aria-hidden="true" /> {t('export')}
           </button>
         </div>
       </div>
@@ -1375,7 +1385,7 @@ function AuditTab() {
             className="text-xs muted"
             style={{ padding: '48px 18px', textAlign: 'center' }}
           >
-            No audit events yet.
+            {t('emptyAudit')}
           </div>
         ) : (
           events.map((e, i, arr) => {
@@ -1427,7 +1437,7 @@ function AuditTab() {
                     >
                       {e.action}
                     </span>
-                    <span className="text-xs muted">by</span>
+                    <span className="text-xs muted">{t('auditBy')}</span>
                     <span className="mono text-xs">{e.actor ?? 'system'}</span>
                   </div>
                   <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
@@ -1440,7 +1450,7 @@ function AuditTab() {
                   )}
                 </div>
                 <span className="text-xs muted mono" style={{ flexShrink: 0 }}>
-                  {formatRelative(e.created_at)}
+                  {formatRelative(e.created_at, t)}
                 </span>
               </div>
             );

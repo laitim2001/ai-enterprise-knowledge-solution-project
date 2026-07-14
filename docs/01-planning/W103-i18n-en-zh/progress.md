@@ -17,6 +17,7 @@
 - **測試環境 browser 驗證(2026-07-14)**:frontend dev(port 3002 + `NEXT_PUBLIC_AUTH_MOCK=true` mock 登入,**唔使 backend**;`NODE_TLS_REJECT_UNAUTHORIZED=0` 繞 font MITM)+ Claude-in-Chrome 真實 toggle flow —— dashboard + nav **en↔zh 切換成功**(`html lang` 隨 `NEXT_LOCALE` cookie 切;技術詞/vendor/RAGAs metric 正確保留英文;**layout 冇爆**)。順帶實證 Labs「Multi-Language」item F1 後 stale(留 F6)+ theme-toggle/notifications-menu/user-menu 3 組件 aria 未 externalize(待補)。
 - **F4 批 2 完成**(F4.2 kb-list):`app/(app)/kb/page.tsx` externalize(頁首/subtitle/seg grid-table/export/new KB/filter placeholder/status-cycle/tag/count meta/loading/KbCard/KbTable headers+row actions/KbEmpty/relative time,ICU param);加 KbList namespace(en + zh draft);**Azure AI Search/ADR-0018/R@5/MB/status badge(READY/EMPTY/ARCHIVED)/chunk strategy value 保留英文**。tsc clean + dev HMR 編譯成功。
 - **F4 批 3 完成**(F4.2 topbar 3 組件):externalize `theme-toggle.tsx`(toggle theme / switch light-dark aria+title)+ `notifications-menu.tsx`(header/unread count/mark all read/empty/footer/trigger aria — **mock 通知 sample content 保留英文**)+ `user-menu.tsx`(signing in/open menu/profile/settings/API keys/identity/sign out — **MSAL · httpOnly cookie · 7d TTL + [mock] 保留英文**);加 ThemeToggle/Notifications/UserMenu namespace(en + zh draft)。tsc + eslint clean。**shell chrome 全站每頁可見部分 externalize 完成**。
+- **F4 批 4 完成**(F4.2 users):`app/(app)/users/page.tsx`(1476 行)全 externalize —— page shell + gate(role null loading / non-admin banner)+ header + subtitle(rich `<mono>`)+ 4 stat card + 4 tab(Members/Roles/Groups/Audit)+ 3 dialog(Invite/RowAction/Suspend)+ RolesTab 權限矩陣 + GroupsTab + AuditTab;`formatRelative` 改簽名傳入 `t`(Groups + Audit 共用);TABS / SEG_FILTERS 由 `label` 改 i18n `labelKey`;ICU plural(role card 成員數)+ rich(`<mono>` / `<b>`)。加 Users namespace(en 完整 + zh **draft 初稿待校對**)。**保留英文**:role 專有名(Workspace Admin / Knowledge Editor / End User / Power User + RoleBadge column Admin/Editor/User/Power)、status badge(ACTIVE / PENDING EMAIL / INVITED / SUSPENDED)、TIER 2 / T2 badge、vendor(Entra ID / Postgres)、technical(ADR-0024 / RBAC / Tier 1/2)、API 路徑(`/users` / `/groups` / `/admin/audit-log`)、範例 email(`name@ricoh.com`)、`system` fallback、`EKP_ROLE_LABELS`(backend)。**tsc EXIT=0 + eslint clean**。**browser 驗證**(port 3002 mock auth,backend down):en↔zh 雙向切換 —— 頁首(Users & access ↔ 使用者與存取權限)+ gate loading(Loading… ↔ 載入中…)+ shell / breadcrumb 雙向正確,layout 無爆版。**環境限制**:`useRole()` fetch `/auth/me`(backend down → role 恆 null),頁面卡 gate loading,role-gated 深層(stat / 4 tab / 3 dialog / error 態)frontend-only 驗不到 → 留「整批做完一次過測」開 backend 涵蓋;深層正確性由 tsc / eslint clean + 逐 component 對照 mockup 結構 externalize 保證。
 
 **Decision / deviation(R3)**:
 - **F1.2 採 inline-tagged + doc-version-held convention,非 plan 原寫「version bump」** —— 對齊 architecture.md 既有 amendment 慣例(§3.4 ADR-0023 / §3.7 ADR-0022 / §5 ADR-0024),更接近既有 pattern(§13);doc version held v6,唔 bump v7。architecture.md line 17 歷史 note 保留(審計軌跡)。
@@ -25,7 +26,7 @@
 - **F3.4 CJK font fallback → 🚧 defer F7**(plan deviation R3):font stack 改動觸 design token 4-layer sync(DESIGN_SYSTEM.md §7)+ H7 fidelity;瀏覽器預設已 fallback 顯示 CJK,明確 CJK font stack 歸 F7 逐 view 走查一齊處理。
 - **Build 環境發現(pre-existing,非 W103 引入)**:`next build` 因 `next/font/google` 抓 Google Fonts 撞 Ricoh MITM(`SELF_SIGNED_CERT_IN_CHAIN`)fail;設 `NODE_TLS_REJECT_UNAUTHORIZED=0`(dev-only,同 next.config backend proxy `rejectUnauthorized=false` pattern)繞過後 build 成功。frontend 喺 Ricoh 網絡 build 需此 workaround —— 屬 infra 議題(font import pre-existing,非 i18n),候選記 BACKLOG。
 
-**下一步**:繼續逐 view cluster externalize(kb-detail / chat / settings / integrations / users / login / CH-023 7 檔)+ 3 個 topbar 組件(theme-toggle/notifications-menu/user-menu)+ Labs 釐清(F6)。test env(port 3002)可一路 refresh 睇。
+**下一步**:繼續逐 view cluster externalize(chat / kb-detail / docs / settings / integrations / login / CH-023 7 檔)+ Labs 釐清(F6 toggle 正式化)+ F5.3 zh 校對 + F7 H7 逐 view + F8 closeout。test env(port 3002)可一路 refresh 睇;role-gated 頁(如 users 深層)需開 backend 驗完整視覺。
 
 **Commits**:
 - `29a0bdd` — W103 kickoff(plan approved + checklist + progress + BACKLOG B-25 進行中)。
@@ -37,4 +38,5 @@
 - `cbcdae0` — W103 F4 批 1b dashboard externalize。
 - `21a875c` — W103 F4 批 1b phase docs 同步。
 - `7126b0e` — W103 F4 批 2 kb-list externalize。
-- (見下一 commit)W103 F4 批 3 — topbar 3 組件 externalize。
+- `67ac72d` — W103 F4 批 3 topbar 3 組件 externalize。
+- (本批 commit)W103 F4 批 4 — users(1476 行)externalize + Users namespace(en/zh draft)。
