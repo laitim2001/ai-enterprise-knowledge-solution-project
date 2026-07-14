@@ -340,7 +340,7 @@ Tier 2 list(`docs/architecture.md` §11):
 - Workflow / plugin builder
 - Multi-tenancy
 - Multi-modal retrieval(B 類純圖片搜索)
-- Multi-language(JP / ZH)
+- Multi-language — **JP UI + content/RAG 翻譯**(en/zh UI chrome 已 promote Tier 1,W103 per ADR-0075;architecture.md §11.1 inline-tagged 2026-07-14)
 - Auto-sync from external source
 - Custom LLM fine-tuning
 

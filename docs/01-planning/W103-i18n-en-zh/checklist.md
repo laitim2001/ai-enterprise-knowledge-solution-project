@@ -2,12 +2,12 @@
 
 > 對應 `plan.md` §2 Deliverables + §3 Acceptance Criteria。逐項 tick;🚧 defer 需 reason + target。
 
-## F1 — Tier 邊界 amendment(首)
-- [ ] F1.1 讀 architecture.md §11 Multi-language Tier 2 entry 現狀
-- [ ] F1.2 architecture.md §11 把 Multi-language(en/zh)移出 Tier 2 list(JP retrieval / content 翻譯留 Tier 2)+ version bump
-- [ ] F1.3 CLAUDE.md §5.4 H4 list 同步移除 en/zh(JP / content 翻譯留低)
-- [ ] F1.4 ADR-0075 impl note(amendment 落地引用)
-- [ ] F1.5 surface diff 畀用戶確認(content-lock 改動)
+## F1 — Tier 邊界 amendment(首)✅
+- [x] F1.1 讀 architecture.md 現狀(§2.2 / §5.0 / §11.1 / line 17 四處定位)
+- [x] F1.2 architecture.md §2.2 + §5.0 + §11.1 + line 8 把 Multi-language(en/zh)移出 Tier 2(JP + content/RAG 翻譯留 Tier 2)—— **採 inline-tagged + doc-version-held convention,非 version bump**(R3 deviation,對齊 ADR-0022/0023/0024)
+- [x] F1.3 CLAUDE.md §5.4 H4 list 同步移除 en/zh(JP / content 翻譯留低)
+- [x] F1.4 ADR-0075 §Implementation Notes 記 amendment 落地
+- [x] F1.5 surface diff 畀用戶確認(2026-07-14 用戶確認 diff OK)
 
 ## F2 — next-intl 裝機 + R8 驗證
 - [ ] F2.1 R8 corp-proxy 裝機探測(ADR-0017;Ricoh MITM)

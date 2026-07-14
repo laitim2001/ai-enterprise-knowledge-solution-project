@@ -5,7 +5,7 @@
 **Status**:**v6**(W11 D2 cont stakeholder approval cycle increment 2026-06-10)— v5.1 baseline + Tier 1 UI expansion + hybrid auth model amendments
 **目標讀者**:Claude Code(實作執行)、Chris(技術 Lead)、Project Stakeholder
 **Timeline**:Tier 1 = ~17–18 週(POC 6w + Beta 4w + UI Foundation 4w + Staged Rollout 3-4w;原 12w 因 W11 D2 cont UI scope expansion + production launch defer to W16+)
-**最後更新**:2026-06-10(v6 stakeholder amendment cycle increment;v5.1 frozen 2026-05-05;v5 frozen 2026-04-27)
+**最後更新**:2026-07-14(§2.2 / §5.0 / §11.1 inline-tagged amendment — en/zh UI chrome i18n 由 Tier 2 promote 入 Tier 1 per ADR-0075 / W103,**doc version held v6**;同 §3.4 ADR-0023 / §3.7 ADR-0022 / §5 ADR-0024 convention)｜2026-06-10 v6 stakeholder amendment cycle increment;v5.1 frozen 2026-05-05;v5 frozen 2026-04-27)
 
 > **v5.1 → v6 嘅 3 個 amendments**(scope expansion,實作影響重大 — 觸發 5-7 weeks production launch defer):
 > 1. **§5 UI Specifications expanded from 6 views → 9 views** — 新增 §5.9 View 7 Landing / §5.10 View 8 Login / §5.11 View 9 Register。觸發 W12 phase pivot from `production-launch` → `ui-foundation-discovery`(W11 D2 cont decision per stakeholder ack)。Reason:W3 D4 shadcn/ui upgrade deferral never resolved;W7-W8 「React polish」delivery 不足;current frontend completion ~15-20% vs §5 spec(per W11 D2 cont gap surface)。Multi-sprint UI sprint W12-W15 commits to Dify-leaning aesthetic + shadcn/ui foundation + tokens.ts consumption。
@@ -173,7 +173,7 @@ support multi-format document ingestion、advanced/agentic RAG retrieval、moder
 - ❌ Workflow / plugin builder(Tier 2)
 - ❌ Multi-tenancy(Tier 2)
 - ❌ Multi-modal retrieval / B 類圖片搜索(Tier 2)
-- ❌ Multi-language(English-first;Tier 2 加 JP/ZH)
+- ❌ Multi-language — **content / RAG 翻譯**(multi-language retrieval)+ **JP UI**(皆 Tier 2)。**en/zh UI chrome 雙語已 promote Tier 1**(W103,ADR-0075 — §11.1 + CLAUDE.md §5.4 H4;inline-tagged 2026-07-14)
 - ❌ Auto-sync from external source(POC 階段手動 upload)
 - ❌ Custom LLM fine-tuning(Tier 2)
 
@@ -860,7 +860,7 @@ Document Upload
 **Top bar**:
 - **App name / logo**(左)— link → `/dashboard`(無 marketing tagline — internal tool)
 - **Global search**(中)— command-palette(Cmd/Ctrl+K)。**Tier 1 scope = quick-jump**:filter KB names / recent documents / recent traces + 「Ask in chat: …」action → `/chat?q=…`。(更 rich 嘅「semantic search-as-you-type across all chunks」屬 Tier 2 candidate — Tier 1 keep lightweight。)
-- **Language toggle** — **present-but-disabled affordance**。i18n(multi-language JP/ZH)係 **Tier 2** per §11;Tier 1 唔起 i18n machinery(per CLAUDE.md §5.4 H4),呢個 toggle 同 login page 嘅 disabled「Forgot password?」一樣係 coming-soon control(ADR-0014 pattern)
+- **Language toggle** — **en/zh 雙語切換**(UI chrome)。**en/zh UI chrome i18n 已由 Tier 2 promote 入 Tier 1**(W103,ADR-0075;JP UI + content/RAG 翻譯仍 Tier 2 per §11.1)。實作 in-progress —— toggle 由 present-but-disabled(ADR-0014 coming-soon pattern)→ **W103 F6 啟用**(disabled→enabled);未啟用前維持 disabled 狀態(inline-tagged 2026-07-14)
 - **Theme toggle**(`<ThemeToggle>` — Light / Dark / System,已實)
 - **User profile / settings**(`<UserMenu>` — avatar + display name;menu:Profile / Settings(→ `/settings`)/ Sign out)
 
@@ -1430,7 +1430,7 @@ KB-level config:embedding model lock、chunk strategy default、retrieval defaul
 | **Workflow / Plugin builder** | 業務側要求 customizable pipeline per KB | 2–3 個月 |
 | **Multi-tenancy** | 第二個 organization 用同一 platform | 1.5 個月 |
 | **Multi-modal retrieval(B 類)** | Production 顯示 > 5% 純圖片 query | 1.5 個月 |
-| **Multi-language(JP / ZH)** | 業務側擴 APAC | 1 個月 |
+| **Multi-language — JP UI + content/RAG 翻譯**(en/zh UI chrome **已 promote Tier 1**,W103 / ADR-0075 / inline-tagged 2026-07-14) | JP UI:業務擴 APAC-JP;content 翻譯:多語 corpus 需求 | 1 個月 |
 | **Auto-sync from external source** | Production 顯示 manual upload 係 ops bottleneck | 1 個月 |
 | **Custom LLM fine-tuning** | Generic LLM 喺 domain term 顯著弱 | 視情況 |
 

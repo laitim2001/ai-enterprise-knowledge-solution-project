@@ -82,3 +82,12 @@ Promote **Multi-language(en/zh)** 入 Tier 1,建 i18n 機制:
 | **Chris**(技術 Lead) | H1 i18n 架構 + H2 `next-intl` dependency | ✅ Approved 2026-07-14 |
 
 **雙 approve 完成(2026-07-14)。** 下一步 → 建 i18n multi-day phase plan(§10 R1)+ H7 design sub-gate;**implement code 前需 phase plan committed**。Tier 邊界 amendment(architecture.md §11 Multi-language 移出 Tier 2 + CLAUDE.md §5.4 H4)為 phase 首個 deliverable。
+
+## Implementation Notes
+
+- **2026-07-14 — W103 kickoff**:i18n multi-day phase plan `docs/01-planning/W103-i18n-en-zh/plan.md` committed(§10 R1 gate 過)+ 用戶 approve → phase `active`。翻譯來源 = Claude draft 初稿 + 用戶校對(decision-form Q23 (a))。
+- **2026-07-14 — W103 F1 Tier 邊界 amendment 落地**:採 EKP **inline-tagged + doc-version-held** convention(同 §3.4 ADR-0023 / §3.7 ADR-0022 / §5 ADR-0024,**非** version bump v6→v7)——
+  - architecture.md §2.2(Tier 1 Out of Scope)+ §5.0(Language toggle 說明)+ §11.1(Tier 2 Backlog)+ line 8 最後更新註:en/zh UI chrome i18n 由 Tier 2 移出 → Tier 1;**JP UI + content/RAG 翻譯(multi-language retrieval)留 Tier 2**。
+  - CLAUDE.md §5.4 H4 list 同步(en/zh 移出;JP + content 翻譯留低)。
+  - architecture.md line 17 歷史 amendment note(ADR-0024 W18 描述)**保留不動**(audit trail);當前 Tier 邊界權威以 §2.2 / §5.0 / §11.1 body 為準。
+  - Language toggle 實際啟用(disabled→enabled)= W103 F6,非本 amendment。
