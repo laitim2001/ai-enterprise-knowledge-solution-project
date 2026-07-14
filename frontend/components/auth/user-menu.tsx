@@ -23,6 +23,7 @@
  */
 
 import { ChevronDown, Key, LogOut, Settings as SettingsIcon, Shield, User as UserIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -45,6 +46,7 @@ function getInitials(username: string): string {
 }
 
 export function UserMenu() {
+  const t = useTranslations('UserMenu');
   const user = useCurrentUser();
   const role = useRole();
   const signOut = useAuthStore((s) => s.signOut);
@@ -52,7 +54,7 @@ export function UserMenu() {
 
   if (!user) {
     return (
-      <div className="text-xs text-muted-foreground">Signing in…</div>
+      <div className="text-xs text-muted-foreground">{t('signingIn')}</div>
     );
   }
 
@@ -66,8 +68,8 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Open user menu"
-          title="Account"
+          aria-label={t('openMenu')}
+          title={t('account')}
           className="btn btn-ghost btn-sm"
           style={{ paddingLeft: 4, paddingRight: 8, gap: 8 }}
         >
@@ -121,19 +123,19 @@ export function UserMenu() {
         <div style={{ padding: 6 }}>
           <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
             <UserIcon className="icon" size={14} />
-            <span>Profile</span>
+            <span>{t('profile')}</span>
           </Link>
           <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
             <SettingsIcon className="icon" size={14} />
-            <span>Settings</span>
+            <span>{t('settings')}</span>
           </Link>
           <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
             <Key className="icon" size={14} />
-            <span>API keys &amp; quotas</span>
+            <span>{t('apiKeys')}</span>
           </Link>
           <Link href="/settings" className="nav-item" style={{ padding: '7px 10px' }}>
             <Shield className="icon" size={14} />
-            <span>Identity &amp; Auth</span>
+            <span>{t('identityAuth')}</span>
           </Link>
           <div className="hr" />
           <button
@@ -154,7 +156,7 @@ export function UserMenu() {
             }}
           >
             <LogOut size={14} />
-            <span>Sign out</span>
+            <span>{t('signOut')}</span>
           </button>
         </div>
 

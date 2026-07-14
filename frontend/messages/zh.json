@@ -155,5 +155,31 @@
     "relativeMinutes": "{mins} 分鐘前",
     "relativeHours": "{hours} 小時前",
     "relativeDays": "{days} 天前"
+  },
+  "ThemeToggle": {
+    "toggleTheme": "切換主題",
+    "switchToLight": "切換至淺色模式",
+    "switchToDark": "切換至深色模式"
+  },
+  "Notifications": {
+    "title": "通知",
+    "allCaughtUp": "全部已讀",
+    "unread": "{count} 則未讀",
+    "markAllRead": "全部標為已讀",
+    "empty": "尚無通知。",
+    "footerAlert": "警示規則在儀表板 → 系統健康",
+    "footerSettings": "通知設定 →",
+    "triggerLabel": "通知",
+    "triggerUnread": "通知 — {count} 則未讀"
+  },
+  "UserMenu": {
+    "signingIn": "登入中…",
+    "openMenu": "開啟使用者選單",
+    "account": "帳戶",
+    "profile": "個人檔案",
+    "settings": "設定",
+    "apiKeys": "API 金鑰與配額",
+    "identityAuth": "身分與驗證",
+    "signOut": "登出"
   }
 }

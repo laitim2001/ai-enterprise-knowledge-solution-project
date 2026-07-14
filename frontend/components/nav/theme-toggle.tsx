@@ -15,10 +15,12 @@
  */
 
 import { Layers, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 export function ThemeToggle() {
+  const t = useTranslations('ThemeToggle');
   const { setTheme, resolvedTheme } = useTheme();
   // `resolvedTheme` is undefined during SSR (next-themes resolves it client-side
   // from localStorage / system pref), so gate the icon on a mounted flag to keep
@@ -32,8 +34,8 @@ export function ThemeToggle() {
     <button
       type="button"
       className="btn btn-ghost btn-icon btn-sm"
-      aria-label="Toggle theme"
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={t('toggleTheme')}
+      title={isDark ? t('switchToLight') : t('switchToDark')}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >
       {isDark ? <Sparkles size={15} /> : <Layers size={15} />}

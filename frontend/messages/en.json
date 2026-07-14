@@ -155,5 +155,31 @@
     "relativeMinutes": "{mins}m ago",
     "relativeHours": "{hours}h ago",
     "relativeDays": "{days}d ago"
+  },
+  "ThemeToggle": {
+    "toggleTheme": "Toggle theme",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "allCaughtUp": "All caught up",
+    "unread": "{count} unread",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications yet.",
+    "footerAlert": "Alert rules in Dashboard → System health",
+    "footerSettings": "Notification settings →",
+    "triggerLabel": "Notifications",
+    "triggerUnread": "Notifications — {count} unread"
+  },
+  "UserMenu": {
+    "signingIn": "Signing in…",
+    "openMenu": "Open user menu",
+    "account": "Account",
+    "profile": "Profile",
+    "settings": "Settings",
+    "apiKeys": "API keys & quotas",
+    "identityAuth": "Identity & Auth",
+    "signOut": "Sign out"
   }
 }

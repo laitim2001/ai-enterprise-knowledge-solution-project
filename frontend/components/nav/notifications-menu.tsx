@@ -46,6 +46,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -140,6 +141,7 @@ const ICON_FOR: Record<NotificationKind, { Icon: LucideIcon; colorVar: string }>
 const ICON_FOR_FALLBACK = { Icon: Activity, colorVar: 'oklch(var(--muted-foreground))' };
 
 export function NotificationsMenu() {
+  const t = useTranslations('Notifications');
   const [locallyReadIds, setLocallyReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -198,7 +200,7 @@ export function NotificationsMenu() {
     <div
       className="topbar-popmenu"
       role="menu"
-      aria-label="Notifications"
+      aria-label={t('title')}
       style={{
         // Mockup `ekp-shell.jsx:86-101` PopMenu — viewport-anchored absolute
         // positioning. With createPortal to document.body, `position: fixed`
@@ -226,9 +228,9 @@ export function NotificationsMenu() {
         }}
       >
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>Notifications</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{t('title')}</div>
           <div className="text-xs muted">
-            {unreadCount === 0 ? 'All caught up' : `${unreadCount} unread`}
+            {unreadCount === 0 ? t('allCaughtUp') : t('unread', { count: unreadCount })}
           </div>
         </div>
         <div className="spacer" />
@@ -238,7 +240,7 @@ export function NotificationsMenu() {
           onClick={handleMarkAllRead}
           disabled={unreadCount === 0}
         >
-          Mark all read
+          {t('markAllRead')}
         </button>
       </div>
 
@@ -249,7 +251,7 @@ export function NotificationsMenu() {
             className="text-xs muted"
             style={{ padding: '24px 14px', textAlign: 'center' }}
           >
-            No notifications yet.
+            {t('empty')}
           </div>
         ) : (
           items.map((n) => {
@@ -351,7 +353,7 @@ export function NotificationsMenu() {
         }}
       >
         <span className="text-xs muted">
-          Alert rules in Dashboard → System health
+          {t('footerAlert')}
         </span>
         <div className="spacer" />
         <Link
@@ -359,7 +361,7 @@ export function NotificationsMenu() {
           onClick={() => setOpen(false)}
           className="btn btn-ghost btn-xs"
         >
-          Notification settings →
+          {t('footerSettings')}
         </Link>
       </div>
     </div>
@@ -373,12 +375,12 @@ export function NotificationsMenu() {
         data-popmenu-trigger="notifications"
         aria-label={
           unreadCount > 0
-            ? `Notifications — ${unreadCount} unread`
-            : 'Notifications'
+            ? t('triggerUnread', { count: unreadCount })
+            : t('triggerLabel')
         }
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Notifications"
+        title={t('triggerLabel')}
         style={{ position: 'relative' }}
         onClick={() => setOpen((o) => !o)}
       >

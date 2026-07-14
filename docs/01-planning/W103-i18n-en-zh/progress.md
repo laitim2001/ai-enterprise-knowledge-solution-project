@@ -16,6 +16,7 @@
 - **F4 批 1b 完成**(F4.2 dashboard):`dashboard/page.tsx` 全 chrome 抽 `t()`(page header / 4 stat / KB summary + table / recent queries / latest eval / system health / quick actions / relative time,ICU param);加 Dashboard namespace(en 完整 + zh draft);**RAGAs metrics + vendor 元件名 + status badge word(READY/OK/DEGRADED)+ technical identifier(cohere-v4.0-pro/ADR/BM25)保留英文**。tsc + build 17 routes SSR clean。**批 1(app-shell + dashboard)完成 — pattern 驗證可複製**。
 - **測試環境 browser 驗證(2026-07-14)**:frontend dev(port 3002 + `NEXT_PUBLIC_AUTH_MOCK=true` mock 登入,**唔使 backend**;`NODE_TLS_REJECT_UNAUTHORIZED=0` 繞 font MITM)+ Claude-in-Chrome 真實 toggle flow —— dashboard + nav **en↔zh 切換成功**(`html lang` 隨 `NEXT_LOCALE` cookie 切;技術詞/vendor/RAGAs metric 正確保留英文;**layout 冇爆**)。順帶實證 Labs「Multi-Language」item F1 後 stale(留 F6)+ theme-toggle/notifications-menu/user-menu 3 組件 aria 未 externalize(待補)。
 - **F4 批 2 完成**(F4.2 kb-list):`app/(app)/kb/page.tsx` externalize(頁首/subtitle/seg grid-table/export/new KB/filter placeholder/status-cycle/tag/count meta/loading/KbCard/KbTable headers+row actions/KbEmpty/relative time,ICU param);加 KbList namespace(en + zh draft);**Azure AI Search/ADR-0018/R@5/MB/status badge(READY/EMPTY/ARCHIVED)/chunk strategy value 保留英文**。tsc clean + dev HMR 編譯成功。
+- **F4 批 3 完成**(F4.2 topbar 3 組件):externalize `theme-toggle.tsx`(toggle theme / switch light-dark aria+title)+ `notifications-menu.tsx`(header/unread count/mark all read/empty/footer/trigger aria — **mock 通知 sample content 保留英文**)+ `user-menu.tsx`(signing in/open menu/profile/settings/API keys/identity/sign out — **MSAL · httpOnly cookie · 7d TTL + [mock] 保留英文**);加 ThemeToggle/Notifications/UserMenu namespace(en + zh draft)。tsc + eslint clean。**shell chrome 全站每頁可見部分 externalize 完成**。
 
 **Decision / deviation(R3)**:
 - **F1.2 採 inline-tagged + doc-version-held convention,非 plan 原寫「version bump」** —— 對齊 architecture.md 既有 amendment 慣例(§3.4 ADR-0023 / §3.7 ADR-0022 / §5 ADR-0024),更接近既有 pattern(§13);doc version held v6,唔 bump v7。architecture.md line 17 歷史 note 保留(審計軌跡)。
@@ -35,4 +36,5 @@
 - `808c218` — W103 F4 批 1a app-shell externalize + LanguageToggle 臨時通。
 - `cbcdae0` — W103 F4 批 1b dashboard externalize。
 - `21a875c` — W103 F4 批 1b phase docs 同步。
-- (見下一 commit)W103 F4 批 2 — kb-list externalize。
+- `7126b0e` — W103 F4 批 2 kb-list externalize。
+- (見下一 commit)W103 F4 批 3 — topbar 3 組件 externalize。
