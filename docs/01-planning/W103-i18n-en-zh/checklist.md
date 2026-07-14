@@ -9,11 +9,11 @@
 - [x] F1.4 ADR-0075 §Implementation Notes 記 amendment 落地
 - [x] F1.5 surface diff 畀用戶確認(2026-07-14 用戶確認 diff OK)
 
-## F2 — next-intl 裝機 + R8 驗證
-- [ ] F2.1 R8 corp-proxy 裝機探測(ADR-0017;Ricoh MITM)
-- [ ] F2.2 next-intl 裝入 frontend(pnpm)
-- [ ] F2.3 裝唔到 → STOP + fallback 議(記 progress)
-- [ ] F2.4 版本鎖定 + package.json 記錄
+## F2 — next-intl 裝機 + R8 驗證 ✅
+- [x] F2.1 R8 corp-proxy 裝機探測 — registry 可達,`pnpm view` / `add` 無代理攔截(Ricoh MITM 未阻 npmjs)
+- [x] F2.2 next-intl 4.13.2 裝入 frontend(peerDeps `next ^14` + `react ^18` 完全相容,無需降 v3)
+- [x] F2.3 裝唔到 fallback — N/A(裝成功,無需 fallback)
+- [x] F2.4 版本鎖定 package.json(`next-intl: ^4.13.2`)+ pnpm-lock.yaml + tsc baseline clean
 
 ## F3 — i18n 機制搭建
 - [ ] F3.1 D-2 locale 機制拍板(甲 cookie / 乙 `/[locale]/` routing)— Chris 拍板
