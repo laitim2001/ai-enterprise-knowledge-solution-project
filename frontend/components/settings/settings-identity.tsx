@@ -27,6 +27,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2, Plus, ShieldCheck, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -54,6 +55,7 @@ import {
 } from '@/lib/schemas/admin/identity';
 
 export function SettingsIdentity() {
+  const t = useTranslations('SettingsIdentity');
   const [config, setConfig] = useState<IdentityConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,17 +67,17 @@ export function SettingsIdentity() {
         if (!cancelled) setConfig(c);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message ?? 'Failed to load identity config');
+        if (!cancelled) setError(err.message ?? t('errFallback'));
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   if (error) {
     return (
       <div className="banner banner-destructive">
-        Failed to load identity config: <span className="mono">{error}</span>
+        {t('loadFailed')} <span className="mono">{error}</span>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export function SettingsIdentity() {
         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-        Loading identity configuration…
+        {t('loading')}
       </div>
     );
   }
@@ -96,14 +98,8 @@ export function SettingsIdentity() {
       <div className="banner banner-info">
         <ShieldCheck size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Entra ID + MSAL configuration
-          </div>
-          <div className="text-xs muted">
-            Hybrid auth per ADR-0014: Entra ID SSO + self-register fallback.
-            Transport: httpOnly cookie + CSRF double-submit + /auth/refresh
-            rotation per ADR-0022. Changes are audit-logged.
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{t('bannerTitle')}</div>
+          <div className="text-xs muted">{t('bannerDesc')}</div>
         </div>
       </div>
 
@@ -145,6 +141,7 @@ function CardSaveRow({
   error: Error | null;
   justSaved: boolean;
 }) {
+  const t = useTranslations('SettingsIdentity');
   return (
     <div
       style={{
@@ -163,7 +160,7 @@ function CardSaveRow({
         {pending ? (
           <Loader2 size={12} className="animate-spin" aria-hidden="true" />
         ) : null}{' '}
-        Save changes
+        {t('saveChanges')}
       </button>
       {error ? (
         <span
@@ -174,7 +171,7 @@ function CardSaveRow({
         </span>
       ) : null}
       {justSaved && !isDirty ? (
-        <span className="text-xs muted">Saved</span>
+        <span className="text-xs muted">{t('saved')}</span>
       ) : null}
     </div>
   );
@@ -185,6 +182,7 @@ function CardSaveRow({
 // ============================================================================
 
 function TenantCard({ initial }: { initial: EntraTenantConfig }) {
+  const t = useTranslations('SettingsIdentity');
   const {
     register,
     handleSubmit,
@@ -213,7 +211,7 @@ function TenantCard({ initial }: { initial: EntraTenantConfig }) {
   return (
     <form className="card" onSubmit={onSubmit}>
       <div className="card-header">
-        <h3 className="card-title">Entra ID tenant</h3>
+        <h3 className="card-title">{t('tenantTitle')}</h3>
         <span className="badge badge-success">
           <span className="badge-dot" /> CONFIGURED
         </span>
@@ -224,7 +222,7 @@ function TenantCard({ initial }: { initial: EntraTenantConfig }) {
       >
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="tenant-id">
-            Tenant ID
+            {t('tenantIdLabel')}
           </label>
           <input
             id="tenant-id"
@@ -236,12 +234,12 @@ function TenantCard({ initial }: { initial: EntraTenantConfig }) {
           {errors.tenant_id ? (
             <FieldError message={errors.tenant_id.message} />
           ) : (
-            <div className="hint">Ricoh corporate Entra tenant</div>
+            <div className="hint">{t('tenantIdHint')}</div>
           )}
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="tenant-domain">
-            Tenant domain
+            {t('tenantDomainLabel')}
           </label>
           <input
             id="tenant-domain"
@@ -254,7 +252,7 @@ function TenantCard({ initial }: { initial: EntraTenantConfig }) {
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="tenant-authority">
-            Authority URL
+            {t('authorityLabel')}
           </label>
           <input
             id="tenant-authority"
@@ -264,20 +262,20 @@ function TenantCard({ initial }: { initial: EntraTenantConfig }) {
             disabled
             value={watch('authority_url') ?? ''}
           />
-          <div className="hint">Derived from tenant + cloud instance</div>
+          <div className="hint">{t('authorityHint')}</div>
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="tenant-cloud">
-            Cloud instance
+            {t('cloudLabel')}
           </label>
           <select
             id="tenant-cloud"
             className="select"
             {...register('cloud_instance')}
           >
-            <option value="azure_public">Azure Public Cloud</option>
-            <option value="azure_government">Azure Government</option>
-            <option value="azure_china_21vianet">Azure China 21Vianet</option>
+            <option value="azure_public">{t('cloudPublic')}</option>
+            <option value="azure_government">{t('cloudGov')}</option>
+            <option value="azure_china_21vianet">{t('cloudChina')}</option>
           </select>
         </div>
       </div>
@@ -300,6 +298,7 @@ function AppRegistrationCard({
 }: {
   initial: AppRegistrationConfig;
 }) {
+  const t = useTranslations('SettingsIdentity');
   const {
     register,
     handleSubmit,
@@ -335,10 +334,11 @@ function AppRegistrationCard({
     <form className="card" onSubmit={onSubmit}>
       <div className="card-header">
         <div>
-          <h3 className="card-title">App registration</h3>
+          <h3 className="card-title">{t('appRegTitle')}</h3>
           <div className="card-desc">
             <span className="mono">{initial.client_id}</span>
-            {' · enterprise application in Entra ID'}
+            {' · '}
+            {t('appRegDesc')}
           </div>
         </div>
       </div>
@@ -353,7 +353,7 @@ function AppRegistrationCard({
         >
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" htmlFor="app-client-id">
-              Application (client) ID
+              {t('appClientIdLabel')}
             </label>
             <input
               id="app-client-id"
@@ -365,24 +365,26 @@ function AppRegistrationCard({
             <FieldError message={errors.client_id?.message} />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Client secret</label>
+            <label className="label">{t('clientSecretLabel')}</label>
             <ApiKeyInput
               value={initial.client_secret_masked_preview}
               rotateDisabled
-              rotateDisabledReason="Wave C2 — rotation requires Entra Graph SDK"
-              ariaLabel="Entra app client secret"
+              rotateDisabledReason={t('secretRotateDisabledReason')}
+              ariaLabel={t('secretAriaLabel')}
             />
             <div className="hint">
               {initial.client_secret_kv_ref
-                ? `Stored in Key Vault as ${initial.client_secret_kv_ref}`
-                : 'Not provisioned'}
+                ? t('secretStoredHint', {
+                    ref: initial.client_secret_kv_ref,
+                  })
+                : t('secretNotProvisioned')}
             </div>
           </div>
         </div>
 
         {/* Redirect URIs — editable list. */}
         <div className="field" style={{ marginBottom: 12 }}>
-          <label className="label">Redirect URIs (web)</label>
+          <label className="label">{t('redirectUrisLabel')}</label>
           <div className="col" style={{ gap: 4 }}>
             {uris.map((_, i) => (
               <div
@@ -392,14 +394,14 @@ function AppRegistrationCard({
                 <input
                   className="input mono"
                   style={{ fontSize: 11.5, height: 28 }}
-                  aria-label={`Redirect URI ${i + 1}`}
+                  aria-label={t('redirectUriAria', { n: i + 1 })}
                   aria-invalid={errors.redirect_uris?.[i] ? 'true' : undefined}
                   {...register(`redirect_uris.${i}`)}
                 />
                 <button
                   type="button"
                   className="btn btn-ghost btn-icon btn-xs"
-                  aria-label={`Remove redirect URI ${i + 1}`}
+                  aria-label={t('removeRedirectUriAria', { n: i + 1 })}
                   onClick={() =>
                     setValue(
                       'redirect_uris',
@@ -420,7 +422,7 @@ function AppRegistrationCard({
                 setValue('redirect_uris', [...uris, ''], { shouldDirty: true })
               }
             >
-              <Plus size={11} aria-hidden="true" /> Add redirect URI
+              <Plus size={11} aria-hidden="true" /> {t('addRedirectUri')}
             </button>
           </div>
           <FieldError
@@ -436,7 +438,7 @@ function AppRegistrationCard({
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
         >
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">API permissions (scopes)</label>
+            <label className="label">{t('scopesLabel')}</label>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {initial.scopes.map((s) => (
                 <span key={s} className="badge badge-muted">
@@ -447,18 +449,16 @@ function AppRegistrationCard({
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" htmlFor="app-audience">
-              Sign-in audience
+              {t('audienceLabel')}
             </label>
             <select
               id="app-audience"
               className="select"
               {...register('sign_in_audience')}
             >
-              <option value="single">
-                Single tenant (this Entra org only)
-              </option>
+              <option value="single">{t('audienceSingle')}</option>
               <option value="multi_disabled" disabled>
-                Multi-tenant (Tier 2)
+                {t('audienceMulti')}
               </option>
             </select>
           </div>
@@ -479,6 +479,7 @@ function AppRegistrationCard({
 // ============================================================================
 
 function MsalCard({ initial }: { initial: MsalConfig }) {
+  const t = useTranslations('SettingsIdentity');
   const {
     register,
     handleSubmit,
@@ -508,8 +509,8 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
   return (
     <form className="card" onSubmit={onSubmit}>
       <div className="card-header">
-        <h3 className="card-title">MSAL &amp; session</h3>
-        <div className="card-desc">httpOnly cookie + CSRF · per ADR-0022</div>
+        <h3 className="card-title">{t('msalTitle')}</h3>
+        <div className="card-desc">{t('msalDesc')}</div>
       </div>
       <div
         className="card-body"
@@ -517,22 +518,22 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
       >
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="msal-cache">
-            Token cache strategy
+            {t('tokenCacheLabel')}
           </label>
           <select
             id="msal-cache"
             className="select"
             {...register('token_cache_strategy')}
           >
-            <option value="memory">In-memory (per-replica)</option>
+            <option value="memory">{t('cacheMemory')}</option>
             <option value="distributed_disabled" disabled>
-              Distributed (Redis · Tier 2)
+              {t('cacheDistributed')}
             </option>
           </select>
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="msal-ttl">
-            Session TTL
+            {t('sessionTtlLabel')}
           </label>
           <input
             id="msal-ttl"
@@ -545,7 +546,7 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="msal-refresh">
-            Refresh token rotation
+            {t('refreshRotationLabel')}
           </label>
           <input
             id="msal-refresh"
@@ -558,7 +559,7 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="msal-csrf">
-            CSRF token rotation
+            {t('csrfRotationLabel')}
           </label>
           <input
             id="msal-csrf"
@@ -570,7 +571,7 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
           <FieldError message={errors.csrf_token_rotation?.message} />
         </div>
         <div className="field" style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
-          <label className="label">Cookie settings</label>
+          <label className="label">{t('cookieSettingsLabel')}</label>
           <div
             style={{
               padding: '8px 10px',
@@ -601,25 +602,23 @@ function MsalCard({ initial }: { initial: MsalConfig }) {
 // ============================================================================
 
 function RoleMappingCard({ mappings }: { mappings: RoleMapping[] }) {
+  const t = useTranslations('SettingsIdentity');
   return (
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Role mapping</h3>
-          <div className="card-desc">
-            Map Entra security groups → EKP roles · Tier 1 has 3 active roles ·
-            Power User is Tier 2 (ADR-0027 fallback) · editing roles is Wave C+
-          </div>
+          <h3 className="card-title">{t('roleMappingTitle')}</h3>
+          <div className="card-desc">{t('roleMappingDesc')}</div>
         </div>
       </div>
       <div className="card-body card-body-tight">
         <table className="table">
           <thead>
             <tr>
-              <th>EKP role</th>
-              <th>Entra group</th>
-              <th>Group ID</th>
-              <th className="col-num">Members</th>
+              <th>{t('colEkpRole')}</th>
+              <th>{t('colEntraGroup')}</th>
+              <th>{t('colGroupId')}</th>
+              <th className="col-num">{t('colMembers')}</th>
             </tr>
           </thead>
           <tbody>
@@ -676,6 +675,7 @@ function RoleMappingCard({ mappings }: { mappings: RoleMapping[] }) {
 // ============================================================================
 
 function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
+  const t = useTranslations('SettingsIdentity');
   const {
     register,
     handleSubmit,
@@ -708,14 +708,12 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
   return (
     <form className="card" onSubmit={onSubmit}>
       <div className="card-header">
-        <h3 className="card-title">Sign-in policy</h3>
+        <h3 className="card-title">{t('policyTitle')}</h3>
       </div>
       <div className="card-body">
         {/* Allowed email domains — editable list. */}
         <div className="field">
-          <label className="label">
-            Allowed email domains for self-register
-          </label>
+          <label className="label">{t('allowedDomainsLabel')}</label>
           <div className="col" style={{ gap: 4 }}>
             {domains.map((_, i) => (
               <div
@@ -725,7 +723,7 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
                 <input
                   className="input mono"
                   style={{ fontSize: 11.5, height: 28, maxWidth: 280 }}
-                  aria-label={`Allowed domain ${i + 1}`}
+                  aria-label={t('allowedDomainAria', { n: i + 1 })}
                   aria-invalid={
                     errors.allowed_email_domains?.[i] ? 'true' : undefined
                   }
@@ -734,7 +732,7 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
                 <button
                   type="button"
                   className="btn btn-ghost btn-icon btn-xs"
-                  aria-label={`Remove domain ${i + 1}`}
+                  aria-label={t('removeDomainAria', { n: i + 1 })}
                   onClick={() =>
                     setValue(
                       'allowed_email_domains',
@@ -757,13 +755,10 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
                 })
               }
             >
-              <Plus size={11} aria-hidden="true" /> Add domain
+              <Plus size={11} aria-hidden="true" /> {t('addDomain')}
             </button>
           </div>
-          <div className="hint">
-            Self-register requires matching email domain · email verification
-            mandatory
-          </div>
+          <div className="hint">{t('allowedDomainsHint')}</div>
         </div>
 
         <div className="row" style={{ marginBottom: 10 }}>
@@ -772,7 +767,7 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
             className="switch"
             data-on={mfaAdmin}
             aria-pressed={mfaAdmin}
-            aria-label="Require MFA for Workspace Admin role"
+            aria-label={t('mfaAdminAria')}
             onClick={() =>
               setValue('require_mfa_workspace_admin', !mfaAdmin, {
                 shouldDirty: true,
@@ -780,19 +775,19 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
             }
           />
           <span className="text-xs" style={{ flex: 1 }}>
-            Require MFA for Workspace Admin role
+            {t('mfaAdminLabel')}
           </span>
         </div>
 
         <DisabledAffordance
           variant="p1-strict"
-          reason="Wave D+ — full-tenant MFA enforcement is Tier 2 scope"
-          tier2Trigger="Tier 2 — post-Beta governance"
+          reason={t('mfaAllReason')}
+          tier2Trigger={t('mfaAllTier2')}
         >
           <div className="row" style={{ marginBottom: 10 }}>
             <span className="switch" data-on={false} />
             <span className="text-xs" style={{ flex: 1 }}>
-              Require MFA for all roles (Tier 2)
+              {t('mfaAllLabel')}
             </span>
           </div>
         </DisabledAffordance>
@@ -803,7 +798,7 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
             className="switch"
             data-on={autoDisableDays > 0}
             aria-pressed={autoDisableDays > 0}
-            aria-label="Auto-disable inactive accounts"
+            aria-label={t('autoDisableAria')}
             onClick={() =>
               setValue(
                 'auto_disable_after_days',
@@ -816,17 +811,17 @@ function SignInPolicyCard({ initial }: { initial: SignInPolicyConfig }) {
             className="text-xs"
             style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            Auto-disable accounts after
+            {t('autoDisableBefore')}
             <input
               type="number"
               className="input mono"
               min={0}
               style={{ width: 64, height: 26, fontSize: 12 }}
-              aria-label="Auto-disable after days"
+              aria-label={t('autoDisableDaysAria')}
               aria-invalid={errors.auto_disable_after_days ? 'true' : undefined}
               {...register('auto_disable_after_days', { valueAsNumber: true })}
             />
-            days of inactivity (0 = never)
+            {t('autoDisableAfter')}
           </span>
         </div>
         <FieldError message={errors.auto_disable_after_days?.message} />

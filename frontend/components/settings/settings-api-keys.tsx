@@ -18,6 +18,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -42,6 +43,7 @@ function formatNum(n: number | null): string {
 }
 
 export function SettingsApiKeys() {
+  const t = useTranslations('SettingsApiKeys');
   const [stats, setStats] = useState<UsageStats4Stat | null>(null);
   const [outgoing, setOutgoing] = useState<OutgoingQuotaList | null>(null);
   const [incoming, setIncoming] = useState<IncomingKeysDisabled | null>(null);
@@ -72,7 +74,7 @@ export function SettingsApiKeys() {
   if (error) {
     return (
       <div className="banner banner-destructive">
-        Failed to load API Keys tab: <span className="mono">{error}</span>
+        {t('loadFailed')} <span className="mono">{error}</span>
       </div>
     );
   }
@@ -83,7 +85,7 @@ export function SettingsApiKeys() {
         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-        Loading usage statistics…
+        {t('loading')}
       </div>
     );
   }
@@ -96,36 +98,46 @@ export function SettingsApiKeys() {
         style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}
       >
         <Stat
-          label="API calls today"
+          label={t('statApiCalls')}
           value={formatNum(stats.api_calls_24h)}
           sub={
             stats.realtime_status === 'no_client'
-              ? 'Langfuse not wired'
+              ? t('subLangfuseNotWired')
               : stats.api_calls_delta_pct != null
-                ? `${stats.api_calls_delta_pct > 0 ? '↑' : '↓'} ${Math.abs(stats.api_calls_delta_pct).toFixed(1)}% vs prior 24h`
-                : 'Last 24h'
+                ? t('subVsPrior', {
+                    arrow: stats.api_calls_delta_pct > 0 ? '↑' : '↓',
+                    pct: Math.abs(stats.api_calls_delta_pct).toFixed(1),
+                  })
+                : t('subLast24h')
           }
         />
         <Stat
-          label="Spend today"
+          label={t('statSpend')}
           value={`$${stats.spend_today_usd.toFixed(2)}`}
-          sub={`cap $${stats.spend_cap_daily_usd.toFixed(0)}/day · ${stats.spend_pct_used.toFixed(0)}% used`}
+          sub={t('spendSub', {
+            cap: stats.spend_cap_daily_usd.toFixed(0),
+            pct: stats.spend_pct_used.toFixed(0),
+          })}
           warn={stats.spend_pct_used >= 80}
         />
         <Stat
-          label="Token throughput"
-          value={`${formatNum(stats.token_throughput_tpm)}/min`}
+          label={t('statToken')}
+          value={t('tokenPerMin', {
+            value: formatNum(stats.token_throughput_tpm),
+          })}
           sub={
-            stats.token_throughput_p95_in_cap ? 'P95 in TPM cap' : 'P95 over cap'
+            stats.token_throughput_p95_in_cap
+              ? t('subP95InCap')
+              : t('subP95OverCap')
           }
         />
         <Stat
-          label="Rate limit hits"
+          label={t('statRateLimit')}
           value={stats.rate_limit_hits_24h.toString()}
           sub={
             stats.rate_limit_hits_24h === 0
-              ? 'Last 24h · all clear'
-              : 'Last 24h · investigate'
+              ? t('subAllClear')
+              : t('subInvestigate')
           }
           warn={stats.rate_limit_hits_24h > 0}
         />
@@ -135,11 +147,8 @@ export function SettingsApiKeys() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Outgoing API quotas (per deployment)</h3>
-            <div className="card-desc">
-              Real-time TPM / RPM utilization · alerts fire at the configured
-              threshold % per row
-            </div>
+            <h3 className="card-title">{t('outgoingTitle')}</h3>
+            <div className="card-desc">{t('outgoingDesc')}</div>
           </div>
         </div>
         <div className="card-body card-body-tight">
@@ -158,15 +167,12 @@ export function SettingsApiKeys() {
         <div className="card-header">
           <div>
             <h3 className="card-title">
-              Incoming API keys{' '}
+              {t('incomingTitle')}{' '}
               <span className="badge badge-muted" style={{ marginLeft: 4 }}>
                 Tier 2
               </span>
             </h3>
-            <div className="card-desc">
-              Issued to external applications that call EKP /query · per-key
-              scoped to KB(s) + rate limit
-            </div>
+            <div className="card-desc">{t('incomingDesc')}</div>
           </div>
           <DisabledAffordance
             variant="p1-strict"
@@ -174,7 +180,7 @@ export function SettingsApiKeys() {
             tier2Trigger={incoming.tier2_trigger}
           >
             <button className="btn btn-secondary btn-sm" disabled>
-              <KeyRound size={13} aria-hidden="true" /> Generate key
+              <KeyRound size={13} aria-hidden="true" /> {t('generateKey')}
             </button>
           </DisabledAffordance>
         </div>
@@ -187,7 +193,8 @@ export function SettingsApiKeys() {
               lineHeight: 1.5,
             }}
           >
-            {incoming.reason} Wave D+ promotion trigger: {incoming.tier2_trigger}.
+            {incoming.reason} {t('promotionTriggerLabel')}{' '}
+            {incoming.tier2_trigger}.
           </div>
         </div>
       </div>
@@ -231,6 +238,7 @@ function OutgoingQuotaRowItem({
   row: OutgoingQuotaRow;
   isLast: boolean;
 }) {
+  const t = useTranslations('SettingsApiKeys');
   const {
     register,
     handleSubmit,
@@ -300,7 +308,7 @@ function OutgoingQuotaRowItem({
             fontSize: 12,
           }}
         >
-          <label htmlFor={inputId}>Alert threshold:</label>
+          <label htmlFor={inputId}>{t('alertThreshold')}</label>
           <input
             id={inputId}
             type="number"
@@ -320,7 +328,7 @@ function OutgoingQuotaRowItem({
             {isSubmitting ? (
               <Loader2 size={12} className="animate-spin" aria-hidden="true" />
             ) : null}{' '}
-            Save
+            {t('save')}
           </button>
         </div>
         {errors.alert_threshold_pct ? (

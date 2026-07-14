@@ -43,6 +43,7 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -58,6 +59,7 @@ import { kbApi, type KbStatus } from '@/lib/api/kb';
 import { DocConfigTab } from './doc-config-tab';
 
 export default function DocDetailPage() {
+  const t = useTranslations('DocDetail');
   const params = useParams<{ id: string; docId: string }>();
   const router = useRouter();
   const kbId = params.id;
@@ -92,7 +94,7 @@ export default function DocDetailPage() {
         <div className="content-wide">
           <div className="banner banner-info">
             <span className="spinner" />
-            <div style={{ flex: 1 }}>Loading document detail…</div>
+            <div style={{ flex: 1 }}>{t('loadingDetail')}</div>
           </div>
         </div>
       </div>
@@ -105,8 +107,10 @@ export default function DocDetailPage() {
           <div className="banner banner-error">
             <AlertTriangle size={16} />
             <div style={{ flex: 1 }}>
-              Failed to load document {docId}:{' '}
-              {String((docQuery.error as Error)?.message ?? 'unknown')}
+              {t('errorLoadDoc', {
+                docId,
+                msg: String((docQuery.error as Error)?.message ?? 'unknown'),
+              })}
             </div>
           </div>
         </div>
@@ -138,7 +142,7 @@ export default function DocDetailPage() {
               className="btn btn-ghost btn-xs btn-ghost-muted"
               onClick={() => router.push('/kb')}
             >
-              <ChevronLeft size={12} /> Knowledge
+              <ChevronLeft size={12} /> {t('backKnowledge')}
             </button>
             <span className="muted text-xs">·</span>
             <button
@@ -187,10 +191,12 @@ export default function DocDetailPage() {
               <b style={{ color: 'oklch(var(--foreground))' }}>{doc.chunk_strategy ?? '—'}</b>
             </span>
             <span>
-              · {doc.total_chunks} chunks ({doc.low_value_chunks} low_value)
+              {t('subtitleChunks', { total: doc.total_chunks, lowValue: doc.low_value_chunks })}
             </span>
-            {doc.total_tokens != null && <span>· {doc.total_tokens.toLocaleString()} tokens</span>}
-            <span>· {doc.total_images} embedded images</span>
+            {doc.total_tokens != null && (
+              <span>{t('subtitleTokens', { tokens: doc.total_tokens.toLocaleString() })}</span>
+            )}
+            <span>{t('subtitleImages', { count: doc.total_images })}</span>
           </div>
         </div>
         <div className="page-actions">
@@ -201,11 +207,11 @@ export default function DocDetailPage() {
               rel="noreferrer"
               className="btn btn-secondary btn-sm"
             >
-              <LinkIcon size={13} /> Open source
+              <LinkIcon size={13} /> {t('btnOpenSource')}
             </a>
           )}
           <button type="button" className="btn btn-secondary btn-sm" disabled>
-            <RefreshCw size={13} /> Re-process
+            <RefreshCw size={13} /> {t('btnReprocess')}
           </button>
           <button
             type="button"
@@ -213,7 +219,7 @@ export default function DocDetailPage() {
             style={{ color: 'oklch(var(--destructive))' }}
             disabled
           >
-            <Trash2 size={13} /> Delete
+            <Trash2 size={13} /> {t('btnDelete')}
           </button>
         </div>
       </div>
@@ -222,22 +228,22 @@ export default function DocDetailPage() {
       <div className="tabs">
         {(
           [
-            { id: 'inspector', label: 'Chunk inspector', icon: Layers },
-            { id: 'config', label: 'Per-doc config', icon: Settings },
+            { id: 'inspector', labelKey: 'tabInspector', icon: Layers },
+            { id: 'config', labelKey: 'tabConfig', icon: Settings },
           ] as const
-        ).map((t) => {
-          const Ic = t.icon;
+        ).map((tabDef) => {
+          const Ic = tabDef.icon;
           return (
             <div
-              key={t.id}
+              key={tabDef.id}
               className="tab"
-              data-active={tab === t.id}
+              data-active={tab === tabDef.id}
               role="tab"
-              aria-selected={tab === t.id}
+              aria-selected={tab === tabDef.id}
               tabIndex={0}
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tabDef.id)}
             >
-              <Ic size={14} /> {t.label}
+              <Ic size={14} /> {t(tabDef.labelKey)}
             </div>
           );
         })}
@@ -256,28 +262,28 @@ export default function DocDetailPage() {
               >
                 {[
                   {
-                    label: 'Parse',
+                    label: t('stageParse'),
                     value: doc.parse_duration_ms != null ? `${doc.parse_duration_ms}ms` : '—',
-                    sub: 'Docling layout-aware',
+                    sub: t('stageParseSub'),
                   },
                   {
-                    label: 'Extract',
+                    label: t('stageExtract'),
                     value: `${doc.total_images} imgs`,
-                    sub: 'SHA256 dedup applied',
+                    sub: t('stageExtractSub'),
                   },
                   {
-                    label: 'Chunk',
-                    value: `${doc.total_chunks} chunks`,
-                    sub: `${doc.chunk_strategy ?? 'auto'} strategy`,
+                    label: t('stageChunk'),
+                    value: t('stageChunkValue', { count: doc.total_chunks }),
+                    sub: t('stageChunkSub', { strategy: doc.chunk_strategy ?? 'auto' }),
                   },
                   {
-                    label: 'Embed',
+                    label: t('stageEmbed'),
                     value: doc.embed_duration_ms != null ? `${doc.embed_duration_ms}ms` : '—',
                     sub: `${kb.config.embedding_model} ${kb.config.embedding_dimension}d`,
                   },
                   {
-                    label: 'Index',
-                    value: 'upserted',
+                    label: t('stageIndex'),
+                    value: t('stageIndexValue'),
                     sub: `ekp-kb-${kbId}-v1`,
                   },
                 ].map((s, i) => (
@@ -302,7 +308,7 @@ export default function DocDetailPage() {
                         placeItems: 'center',
                         flexShrink: 0,
                       }}
-                      title={s.value === '—' ? 'Stage timing — Wave C+ instrumentation' : undefined}
+                      title={s.value === '—' ? t('stageTimingTooltip') : undefined}
                     >
                       <Layers size={15} />
                     </div>
@@ -340,19 +346,17 @@ export default function DocDetailPage() {
               <div className="card-header">
                 <div>
                   <h3 className="card-title">
-                    Extracted images{' '}
+                    {t('imgStripTitle')}{' '}
                     <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
-                      {doc.image_refs.length} total · SHA256 deduplicated
+                      {t('imgStripCount', { count: doc.image_refs.length })}
                     </span>
                   </h3>
                   <div className="card-desc">
-                    Each chunk references images via{' '}
-                    <span className="mono">embedded_image_positions</span>; orchestrator resolves to{' '}
-                    <span className="mono">ImageRef.blob_url</span>.
+                    {t.rich('imgStripDesc', { mono: (c) => <span className="mono">{c}</span> })}
                   </div>
                 </div>
                 <Link href={`/kb/${kbId}?tab=images`} className="btn btn-ghost btn-sm">
-                  View all in Image Library →
+                  {t('btnViewAllImages')}
                 </Link>
               </div>
               <div className="card-body" style={{ padding: '14px 18px' }}>
@@ -385,7 +389,7 @@ export default function DocDetailPage() {
               <div className="card-header" style={{ padding: '10px 14px' }}>
                 <div>
                   <h3 className="card-title" style={{ fontSize: 12.5 }}>
-                    Document outline
+                    {t('outlineTitle')}
                   </h3>
                 </div>
               </div>
@@ -399,7 +403,7 @@ export default function DocDetailPage() {
               >
                 {doc.outline.length === 0 ? (
                   <div className="muted text-xs" style={{ padding: '8px 14px' }}>
-                    (No structured outline — text-only doc.)
+                    {t('outlineEmpty')}
                   </div>
                 ) : (
                   doc.outline.map((s, i) => {
@@ -433,9 +437,11 @@ export default function DocDetailPage() {
                 )}
               </div>
               <div className="card-footer" style={{ padding: '8px 12px' }}>
-                <span className="muted mono text-xs">{doc.outline.length} sections</span>
+                <span className="muted mono text-xs">
+                  {t('outlineSectionCount', { count: doc.outline.length })}
+                </span>
                 <button type="button" className="btn btn-ghost btn-xs" disabled>
-                  Export TOC
+                  {t('btnExportToc')}
                 </button>
               </div>
             </div>
@@ -444,17 +450,17 @@ export default function DocDetailPage() {
             <div className="card">
               <div className="card-header">
                 <div>
-                  <h3 className="card-title">Chunks</h3>
+                  <h3 className="card-title">{t('chunksTitle')}</h3>
                   <div className="card-desc">
-                    {chunkList.length.toLocaleString()} chunks in this document
+                    {t('chunksInDoc', { count: chunkList.length.toLocaleString() })}
                   </div>
                 </div>
                 <div className="row">
                   <button type="button" className="btn btn-secondary btn-xs" disabled>
-                    <Filter size={12} /> All
+                    <Filter size={12} /> {t('filterAll')}
                   </button>
                   <button type="button" className="btn btn-secondary btn-xs" disabled>
-                    <Layers size={12} /> With images
+                    <Layers size={12} /> {t('filterWithImages')}
                   </button>
                   <button type="button" className="btn btn-secondary btn-xs muted" disabled>
                     low_value
@@ -464,17 +470,17 @@ export default function DocDetailPage() {
               <div className="card-body card-body-tight">
                 {chunksQuery.isLoading && (
                   <div style={{ padding: 14 }} className="muted text-xs">
-                    Loading chunks…
+                    {t('loadingChunks')}
                   </div>
                 )}
                 {chunksQuery.isError && (
                   <div style={{ padding: 14 }} className="text-xs">
-                    Failed to load chunks: {String((chunksQuery.error as Error)?.message)}
+                    {t('errorLoadChunks', { msg: String((chunksQuery.error as Error)?.message) })}
                   </div>
                 )}
                 {chunkList.length === 0 && !chunksQuery.isLoading && (
                   <div className="muted text-xs" style={{ padding: 14 }}>
-                    No chunks listed.
+                    {t('noChunksListed')}
                   </div>
                 )}
                 {chunkList.map((c, i) => {
@@ -557,9 +563,7 @@ export default function DocDetailPage() {
               {!selectedChunk && (
                 <div className="card">
                   <div className="card-body">
-                    <div className="muted text-xs">
-                      Select a chunk to inspect metadata + embedding preview.
-                    </div>
+                    <div className="muted text-xs">{t('selectChunkPrompt')}</div>
                   </div>
                 </div>
               )}
@@ -680,13 +684,14 @@ function ChunkInspector({
   embeddingDim: number;
   embeddingModel: string;
 }) {
+  const t = useTranslations('DocDetail');
   return (
     <>
       <div className="card">
         <div className="card-header" style={{ padding: '12px 16px' }}>
           <div>
             <h3 className="card-title" style={{ fontSize: 13 }}>
-              Chunk inspector
+              {t('inspectorTitle')}
             </h3>
             <div className="muted mono text-xs" style={{ marginTop: 2, wordBreak: 'break-all' }}>
               {chunk.chunk_id}
@@ -696,7 +701,7 @@ function ChunkInspector({
             <button
               type="button"
               className="btn btn-ghost btn-icon btn-xs"
-              aria-label="Copy chunk id"
+              aria-label={t('ariaCopyChunkId')}
               onClick={() => {
                 void navigator.clipboard.writeText(chunk.chunk_id);
               }}
@@ -706,7 +711,7 @@ function ChunkInspector({
             <button
               type="button"
               className="btn btn-ghost btn-icon btn-xs"
-              aria-label="Edit"
+              aria-label={t('ariaEdit')}
               disabled
             >
               <Edit size={12} />
@@ -727,10 +732,10 @@ function ChunkInspector({
               chunk_index <b style={{ marginLeft: 2 }}>{chunk.chunk_index}</b>
             </span>
             <span className="badge badge-muted">
-              of <b style={{ marginLeft: 2 }}>{chunk.chunk_total}</b>
+              {t('badgeOf')} <b style={{ marginLeft: 2 }}>{chunk.chunk_total}</b>
             </span>
             {chunk.low_value_flag && <span className="badge badge-warning">low_value</span>}
-            {!chunk.enabled && <span className="badge badge-error">disabled</span>}
+            {!chunk.enabled && <span className="badge badge-error">{t('badgeDisabled')}</span>}
           </div>
 
           {/* section_path */}
@@ -759,7 +764,7 @@ function ChunkInspector({
               textTransform: 'uppercase',
             }}
           >
-            Linked chunks
+            {t('linkedChunksLabel')}
           </div>
           <div
             className="mono text-xs"
@@ -788,7 +793,7 @@ function ChunkInspector({
               textTransform: 'uppercase',
             }}
           >
-            Embedding vector{' '}
+            {t('embeddingVectorLabel')}{' '}
             <span
               style={{
                 fontWeight: 500,
@@ -830,7 +835,7 @@ function ChunkInspector({
                 marginTop: 4,
               }}
             >
-              … +{embeddingDim - SYNTHETIC_VECTOR_PREVIEW.length} more dims …
+              {t('moreDims', { count: embeddingDim - SYNTHETIC_VECTOR_PREVIEW.length })}
             </span>
           </div>
         </div>
@@ -839,7 +844,7 @@ function ChunkInspector({
             {embeddingModel} · MRL truncate {embeddingDim}d
           </div>
           <button type="button" className="btn btn-ghost btn-xs" disabled>
-            Full JSON →
+            {t('btnFullJson')}
           </button>
         </div>
       </div>
@@ -854,7 +859,7 @@ function ChunkInspector({
               textTransform: 'uppercase',
             }}
           >
-            Chunk text
+            {t('chunkTextLabel')}
           </div>
           <div
             style={{
@@ -869,10 +874,7 @@ function ChunkInspector({
             }}
           >
             <div style={{ fontWeight: 500, marginBottom: 6 }}>{chunk.chunk_title}</div>
-            <div className="muted text-xs">
-              Body text not surfaced via list_chunks (chunk_text_preview only via retrieval-test or
-              /query). Use Retrieval Testing tab for full chunk text.
-            </div>
+            <div className="muted text-xs">{t('chunkTextNotSurfaced')}</div>
           </div>
         </div>
       </div>

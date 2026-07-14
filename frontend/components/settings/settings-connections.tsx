@@ -26,6 +26,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { CheckCircle2, Loader2, PlugZap } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   type Dispatch,
   type SetStateAction,
@@ -59,16 +60,18 @@ const CATEGORY_ORDER: ProviderCategory[] = [
   'integration',
 ];
 
-const CATEGORY_LABEL: Record<ProviderCategory, string> = {
-  llm: 'LLM & Embedding',
-  retrieval: 'Retrieval',
-  storage: 'Search & Storage',
-  observability: 'Observability',
-  identity: 'Identity & Email',
-  integration: 'Source Integrations',
+// Backend `ProviderCategory` literal → i18n key (resolved with `t` at render).
+const CATEGORY_LABEL_KEY: Record<ProviderCategory, string> = {
+  llm: 'categoryLlm',
+  retrieval: 'categoryRetrieval',
+  storage: 'categoryStorage',
+  observability: 'categoryObservability',
+  identity: 'categoryIdentity',
+  integration: 'categoryIntegration',
 };
 
 export function SettingsConnections() {
+  const t = useTranslations('SettingsConnections');
   const [summaries, setSummaries] = useState<ProviderSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,17 +83,17 @@ export function SettingsConnections() {
         if (!cancelled) setSummaries(rows);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message ?? 'Failed to load connections');
+        if (!cancelled) setError(err.message ?? t('errFallback'));
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   if (error) {
     return (
       <div className="banner banner-destructive">
-        Failed to load connections: <span className="mono">{error}</span>
+        {t('loadFailed')} <span className="mono">{error}</span>
       </div>
     );
   }
@@ -101,7 +104,7 @@ export function SettingsConnections() {
         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-        Loading connections…
+        {t('loading')}
       </div>
     );
   }
@@ -109,7 +112,7 @@ export function SettingsConnections() {
   // Group by category preserving the canonical order.
   const grouped = CATEGORY_ORDER.map((cat) => ({
     category: cat,
-    label: CATEGORY_LABEL[cat],
+    label: t(CATEGORY_LABEL_KEY[cat]),
     rows: summaries.filter((s) => s.category === cat),
   })).filter((g) => g.rows.length > 0);
 
@@ -118,14 +121,8 @@ export function SettingsConnections() {
       <div className="banner banner-info">
         <PlugZap size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
-            External service connections
-          </div>
-          <div className="text-xs muted">
-            Every endpoint, secret, and connection string is managed here
-            (persisted in Azure Key Vault when configured; `.env` fallback
-            in dev). Secret values are never shown — only masked previews.
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{t('bannerTitle')}</div>
+          <div className="text-xs muted">{t('bannerDesc')}</div>
         </div>
       </div>
 
@@ -169,6 +166,7 @@ type ConnectionEdit = {
 };
 
 function ProviderRow({ summary }: { summary: ProviderSummary }) {
+  const t = useTranslations('SettingsConnections');
   const [detail, setDetail] = useState<ProviderConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastTestDetail, setLastTestDetail] = useState<string | null>(null);
@@ -274,7 +272,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
           {loading ? (
             <>
               <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-              Loading provider config…
+              {t('loadingDetail')}
             </>
           ) : (
             <button
@@ -282,7 +280,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
               className="btn btn-ghost btn-sm"
               onClick={() => void ensureDetail()}
             >
-              Load configuration
+              {t('loadConfig')}
             </button>
           )}
         </div>
@@ -307,7 +305,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
             >
               <div className="field" style={{ marginBottom: 0 }}>
                 <label className="label" htmlFor={`dn-${idBase}`}>
-                  Display name
+                  {t('displayNameLabel')}
                 </label>
                 <input
                   id={`dn-${idBase}`}
@@ -326,7 +324,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label className="label" htmlFor={`rg-${idBase}`}>
-                  Region
+                  {t('regionLabel')}
                 </label>
                 <input
                   id={`rg-${idBase}`}
@@ -339,7 +337,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
                 style={{ gridColumn: '1 / -1', marginBottom: 0 }}
               >
                 <label className="label" htmlFor={`ep-${idBase}`}>
-                  Endpoint URL
+                  {t('endpointLabel')}
                 </label>
                 <input
                   id={`ep-${idBase}`}
@@ -367,14 +365,14 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
                 {patchMutation.isPending ? (
                   <Loader2 size={12} className="animate-spin" aria-hidden="true" />
                 ) : null}{' '}
-                Save changes
+                {t('saveChanges')}
               </button>
               {patchMutation.isError ? (
                 <span
                   className="text-xs"
                   style={{ color: 'oklch(var(--destructive))' }}
                 >
-                  {patchMutation.error?.message ?? 'Update failed'}
+                  {patchMutation.error?.message ?? t('updateFailed')}
                 </span>
               ) : null}
             </div>
@@ -384,29 +382,27 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
           {detail.secret_kv_ref ? (
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="label">
-                Secret · <span className="mono text-xs">{detail.secret_kv_ref}</span>
+                {t('secretLabel')}{' '}
+                <span className="mono text-xs">{detail.secret_kv_ref}</span>
               </label>
               <ApiKeyInput
                 value={detail.secret_masked_preview}
                 onRotate={() => rotateMutation.mutate()}
                 rotateDisabled={rotateMutation.isPending}
-                ariaLabel={`Secret for ${detail.display_name}`}
+                ariaLabel={t('secretAriaLabel', { name: detail.display_name })}
               />
               {detail.last_rotated_at ? (
                 <div className="hint">
-                  Last rotated{' '}
+                  {t('lastRotatedHint')}{' '}
                   <span className="mono">{detail.last_rotated_at}</span>
                 </div>
               ) : (
-                <div className="hint">
-                  Not rotated yet — click the refresh icon to mint a new value
-                  in Key Vault.
-                </div>
+                <div className="hint">{t('notRotatedHint')}</div>
               )}
             </div>
           ) : (
             <div className="hint" style={{ marginBottom: 12 }}>
-              Managed-identity provider — no rotatable secret.
+              {t('managedIdentityHint')}
             </div>
           )}
 
@@ -414,7 +410,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
           {detail.deployments.length > 0 ? (
             <div style={{ marginBottom: 12 }}>
               <div className="label" style={{ marginBottom: 6 }}>
-                Deployments
+                {t('deploymentsLabel')}
               </div>
               <DeploymentsTable deployments={detail.deployments} />
             </div>
@@ -435,7 +431,7 @@ function ProviderRow({ summary }: { summary: ProviderSummary }) {
               ) : (
                 <CheckCircle2 size={12} aria-hidden="true" />
               )}{' '}
-              Test connection
+              {t('testConnection')}
             </button>
             {lastTestDetail ? (
               <span className="text-xs muted">{lastTestDetail}</span>
@@ -461,6 +457,7 @@ function SharePointConfig({
   detail: ProviderConfig;
   setDetail: Dispatch<SetStateAction<ProviderConfig | null>>;
 }) {
+  const t = useTranslations('SettingsConnections');
   const [tenantId, setTenantId] = useState(detail.settings.tenant_id ?? '');
   const [clientId, setClientId] = useState(detail.settings.client_id ?? '');
   const [secret, setSecret] = useState('');
@@ -496,10 +493,10 @@ function SharePointConfig({
     <div style={{ marginBottom: 14 }}>
       <div className="banner banner-info" style={{ marginBottom: 12 }}>
         <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-          Configure the Entra app used to import from SharePoint. IT must also grant
-          the app <b>Sites.Selected (read)</b> on each target site — that per-site
-          grant stays an IT action. Unset fields fall back to{' '}
-          <span className="mono">.env</span>.
+          {t.rich('spBanner', {
+            b: (chunks) => <b>{chunks}</b>,
+            mono: (chunks) => <span className="mono">{chunks}</span>,
+          })}
         </div>
       </div>
 
@@ -514,7 +511,7 @@ function SharePointConfig({
       >
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor={`sp-tenant-${idBase}`}>
-            Tenant ID
+            {t('spTenantLabel')}
           </label>
           <input
             id={`sp-tenant-${idBase}`}
@@ -527,7 +524,7 @@ function SharePointConfig({
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor={`sp-client-${idBase}`}>
-            App (client) ID
+            {t('spClientLabel')}
           </label>
           <input
             id={`sp-client-${idBase}`}
@@ -551,14 +548,14 @@ function SharePointConfig({
           {patchSettings.isPending ? (
             <Loader2 size={12} className="animate-spin" aria-hidden="true" />
           ) : null}{' '}
-          Save tenant / client
+          {t('spSaveTenantClient')}
         </button>
         {patchSettings.isError ? (
           <span
             className="text-xs"
             style={{ color: 'oklch(var(--destructive))' }}
           >
-            {patchSettings.error?.message ?? 'Update failed'}
+            {patchSettings.error?.message ?? t('updateFailed')}
           </span>
         ) : null}
       </div>
@@ -566,12 +563,12 @@ function SharePointConfig({
       {/* Client secret — user-supplied, written to Key Vault (set-secret, H5). */}
       <div className="field" style={{ marginBottom: 0 }}>
         <label className="label">
-          Client secret ·{' '}
+          {t('spSecretLabel')}{' '}
           <span className="mono text-xs">{detail.secret_kv_ref}</span>
           {detail.secret_masked_preview ? (
             <span className="text-xs muted">
               {' '}
-              · stored {detail.secret_masked_preview}
+              {t('spStored', { preview: detail.secret_masked_preview })}
             </span>
           ) : null}
         </label>
@@ -583,8 +580,8 @@ function SharePointConfig({
             style={{ fontSize: 12, flex: 1 }}
             placeholder={
               detail.secret_masked_preview
-                ? 'Enter a new secret to replace…'
-                : 'Paste the Azure-issued client secret…'
+                ? t('spPlaceholderReplace')
+                : t('spPlaceholderNew')
             }
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
@@ -598,15 +595,13 @@ function SharePointConfig({
             {setSecretMutation.isPending ? (
               <Loader2 size={12} className="animate-spin" aria-hidden="true" />
             ) : null}{' '}
-            Store secret
+            {t('spStoreSecret')}
           </button>
         </div>
-        <div className="hint">
-          Written straight to Key Vault — never shown, logged, or committed (H5).
-        </div>
+        <div className="hint">{t('spSecretHint')}</div>
         {setSecretMutation.isError ? (
           <div className="hint" style={{ color: 'oklch(var(--destructive))' }}>
-            {setSecretMutation.error?.message ?? 'Failed to store secret'}
+            {setSecretMutation.error?.message ?? t('spStoreFailed')}
           </div>
         ) : null}
       </div>

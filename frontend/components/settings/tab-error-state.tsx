@@ -11,6 +11,7 @@
  */
 
 import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface TabErrorStateProps {
   /** Human label of the tab, e.g. "Connections". */
@@ -20,6 +21,7 @@ interface TabErrorStateProps {
 }
 
 export function TabErrorState({ tabName, onRetry }: TabErrorStateProps) {
+  const t = useTranslations('SettingsTabError');
   return (
     <div
       className="banner banner-destructive"
@@ -29,19 +31,16 @@ export function TabErrorState({ tabName, onRetry }: TabErrorStateProps) {
       <AlertTriangle size={14} aria-hidden="true" />
       <div style={{ flex: 1, lineHeight: 1.55 }}>
         <div style={{ fontSize: 13, fontWeight: 500 }}>
-          The {tabName} tab hit an error
+          {t('title', { tabName })}
         </div>
-        <div className="text-xs">
-          Something went wrong rendering this tab. Retry, or reload the page if
-          it persists.
-        </div>
+        <div className="text-xs">{t('desc')}</div>
       </div>
       <button
         type="button"
         className="btn btn-secondary btn-sm"
         onClick={onRetry}
       >
-        Retry
+        {t('retry')}
       </button>
     </div>
   );

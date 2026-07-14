@@ -43,6 +43,7 @@ import {
   Sparkles,
   TriangleAlert,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
@@ -93,12 +94,12 @@ type UpdateFn = <K extends keyof WizardForm>(key: K, value: WizardForm[K]) => vo
 // auto-derive slugify; both now reject exactly what Azure Blob would reject.
 const KB_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const STEPS: ReadonlyArray<{ id: number; label: string; hint: string }> = [
-  { id: 0, label: 'Identity', hint: 'Name + kb_id' },
-  { id: 1, label: 'Format & chunking', hint: 'Embedding + chunker' },
-  { id: 2, label: 'Multimodal', hint: 'Images + screenshots' },
-  { id: 3, label: 'Retrieval defaults', hint: 'Top-K + rerank-K' },
-  { id: 4, label: 'Review & create', hint: 'Provisions index' },
+const STEPS: ReadonlyArray<{ id: number; labelKey: string; hintKey: string }> = [
+  { id: 0, labelKey: 'stepIdentityLabel', hintKey: 'stepIdentityHint' },
+  { id: 1, labelKey: 'stepFormatLabel', hintKey: 'stepFormatHint' },
+  { id: 2, labelKey: 'stepMultimodalLabel', hintKey: 'stepMultimodalHint' },
+  { id: 3, labelKey: 'stepRetrievalLabel', hintKey: 'stepRetrievalHint' },
+  { id: 4, labelKey: 'stepReviewLabel', hintKey: 'stepReviewHint' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ const STEPS: ReadonlyArray<{ id: number; label: string; hint: string }> = [
 // ──────────────────────────────────────────────────────────────────────────
 
 export default function KbNewPage() {
+  const t = useTranslations('KbNew');
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -213,20 +215,16 @@ export default function KbNewPage() {
                 className="btn btn-ghost btn-xs btn-ghost-muted"
                 style={{ textDecoration: 'none' }}
               >
-                <ChevronLeft size={12} /> Knowledge
+                <ChevronLeft size={12} /> {t('backToKnowledge')}
               </Link>
             </div>
-            <h1 className="page-title">Create a new knowledge base</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              A KB is an isolated <b>multimodal</b> retrieval namespace — text
-              chunks <b>+ embedded images</b>, with cross-doc SHA256 dedup.
-              Queries return text answers{' '}
-              <b>with relevant screenshots inline</b>. We&apos;ll provision an
-              Azure AI Search index{' '}
-              <span className="mono">
-                ekp-kb-{form.kb_id || '{kb_id}'}-v1
-              </span>{' '}
-              plus a Blob container for the images.
+              {t.rich('subtitle', {
+                b: (chunks) => <b>{chunks}</b>,
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+                indexId: form.kb_id || '{kb_id}',
+              })}
             </p>
           </div>
         </div>
@@ -277,9 +275,9 @@ export default function KbNewPage() {
                         fontWeight: step === s.id ? 600 : 500,
                       }}
                     >
-                      {s.label}
+                      {t(s.labelKey)}
                     </div>
-                    <div className="text-xs muted">{s.hint}</div>
+                    <div className="text-xs muted">{t(s.hintKey)}</div>
                   </div>
                 </div>
                 {i < STEPS.length - 1 && (
@@ -353,6 +351,7 @@ function StepIdentity({
   update: UpdateFn;
   onNext: () => void;
 }) {
+  const t = useTranslations('KbNew');
   const trimmedName = form.name.trim();
   const trimmedId = form.kb_id.trim();
   const idValid = trimmedId.length > 0 && KB_ID_PATTERN.test(trimmedId);
@@ -361,27 +360,25 @@ function StepIdentity({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">KB identity</h3>
+        <h3 className="card-title">{t('identityCardTitle')}</h3>
       </div>
       <div className="card-body">
         <div className="field">
           <label className="label" htmlFor="kbnew-name">
-            Name
+            {t('nameLabel')}
           </label>
           <input
             id="kbnew-name"
             className="input"
             value={form.name}
             onChange={(e) => update('name', e.target.value)}
-            placeholder="e.g. Customer Service SOP"
+            placeholder={t('namePlaceholder')}
           />
-          <div className="hint">
-            Display name shown to users · editable after creation
-          </div>
+          <div className="hint">{t('nameHint')}</div>
         </div>
         <div className="field">
           <label className="label" htmlFor="kbnew-desc">
-            Description
+            {t('descLabel')}
           </label>
           <textarea
             id="kbnew-desc"
@@ -389,11 +386,9 @@ function StepIdentity({
             rows={3}
             value={form.description}
             onChange={(e) => update('description', e.target.value)}
-            placeholder="What this KB contains and who uses it…"
+            placeholder={t('descPlaceholder')}
           />
-          <div className="hint">
-            Helps members understand scope · editable after creation
-          </div>
+          <div className="hint">{t('descHint')}</div>
         </div>
         <div className="field">
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -421,7 +416,7 @@ function StepIdentity({
                 aria-checked={form.kb_id_auto}
                 tabIndex={0}
               />
-              <span className="text-xs muted">Auto-derive from name</span>
+              <span className="text-xs muted">{t('autoDeriveLabel')}</span>
             </div>
           </div>
           <input
@@ -434,15 +429,13 @@ function StepIdentity({
             style={{ marginTop: 6 }}
           />
           <div className="hint">
-            <b style={{ color: 'oklch(var(--warning))' }}>
-              Locked after creation.
-            </b>{' '}
-            Forms the Azure AI Search index name{' '}
-            <span className="mono">
-              ekp-kb-{form.kb_id || '{kb_id}'}-v1
-            </span>{' '}
-            and Blob container. Must be lowercase, hyphen/underscore only · max
-            40 chars.
+            {t.rich('kbIdHint', {
+              b: (chunks) => (
+                <b style={{ color: 'oklch(var(--warning))' }}>{chunks}</b>
+              ),
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+              indexId: form.kb_id || '{kb_id}',
+            })}
           </div>
           {!idValid && trimmedId.length > 0 && (
             <div
@@ -450,20 +443,20 @@ function StepIdentity({
               style={{ color: 'oklch(var(--destructive))' }}
               role="alert"
             >
-              Only lowercase letters, digits, hyphens, and underscores.
+              {t('kbIdError')}
             </div>
           )}
         </div>
       </div>
       <div className="card-footer">
-        <div className="text-xs muted mono">Step 1 of 5</div>
+        <div className="text-xs muted mono">{t('step1of5')}</div>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           disabled={!canContinue}
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -485,6 +478,7 @@ function StepConfig({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const t = useTranslations('KbNew');
   const embeddings: Array<{
     id: KbConfig['embedding_model'];
     label: string;
@@ -494,13 +488,13 @@ function StepConfig({
     {
       id: 'text-embedding-3-large',
       label: 'embed-3-large',
-      hint: '1024d MRL · best recall · Azure OpenAI',
+      hint: t('embedLargeHint'),
       supported: true,
     },
     {
       id: 'text-embedding-3-small' as KbConfig['embedding_model'],
       label: 'embed-3-small',
-      hint: '1536d · faster + cheaper',
+      hint: t('embedSmallHint'),
       supported: false,
     },
   ];
@@ -517,26 +511,26 @@ function StepConfig({
   }> = [
     {
       id: 'auto',
-      label: 'Auto',
-      hint: 'Detect doc_format → pick layout_aware (docx/pdf) / slide_based (pptx)',
+      label: t('chunkerAutoLabel'),
+      hint: t('chunkerAutoHint'),
       supported: true,
     },
     {
       id: 'layout_aware',
-      label: 'Layout-aware',
-      hint: 'Docling · preserves headings, tables, lists, image positions',
+      label: t('chunkerLayoutLabel'),
+      hint: t('chunkerLayoutHint'),
       supported: true,
     },
     {
       id: 'slide_based',
-      label: 'Slide-based',
-      hint: 'python-pptx · one chunk per slide (recommended for .pptx-heavy KBs)',
+      label: t('chunkerSlideLabel'),
+      hint: t('chunkerSlideHint'),
       supported: true,
     },
     {
       id: 'heading_aware',
-      label: 'Heading-aware',
-      hint: 'Standalone heading-bounded · W3+ deferred (NotImplementedError)',
+      label: t('chunkerHeadingLabel'),
+      hint: t('chunkerHeadingHint'),
       supported: false,
     },
   ];
@@ -544,9 +538,9 @@ function StepConfig({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Indexing configuration</h3>
+        <h3 className="card-title">{t('configCardTitle')}</h3>
         <span className="badge badge-warning">
-          <Shield size={10} /> Locked after creation
+          <Shield size={10} /> {t('configLockedBadge')}
         </span>
       </div>
       <div className="card-body">
@@ -556,15 +550,15 @@ function StepConfig({
             style={{ color: 'oklch(var(--warning))' }}
           />
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-            These choices affect the index schema and embedding vectors.
-            Changing them later requires a <b>full re-index</b> (re-parse +
-            re-embed every document into a new v
-            {`{n+1}`} index).
+            {t.rich('configWarnBanner', {
+              b: (chunks) => <b>{chunks}</b>,
+              nPlus1: '{n+1}',
+            })}
           </div>
         </div>
 
         <div className="field">
-          <label className="label">Embedding model</label>
+          <label className="label">{t('embeddingModelLabel')}</label>
           <div
             style={{
               display: 'grid',
@@ -622,7 +616,7 @@ function StepConfig({
         </div>
 
         <div className="field">
-          <label className="label">Embedding dimension</label>
+          <label className="label">{t('embeddingDimensionLabel')}</label>
           <div className="seg" style={{ width: '100%', maxWidth: 320 }}>
             {dimensions.map((d) => (
               <button
@@ -637,13 +631,11 @@ function StepConfig({
               </button>
             ))}
           </div>
-          <div className="hint">
-            MRL truncate · 1024d is W2 baseline (best recall/cost ratio per Q19)
-          </div>
+          <div className="hint">{t('dimensionHint')}</div>
         </div>
 
         <div className="field">
-          <label className="label">Chunk strategy</label>
+          <label className="label">{t('chunkStrategyLabel')}</label>
           <div
             style={{
               display: 'grid',
@@ -701,14 +693,14 @@ function StepConfig({
       </div>
       <div className="card-footer">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}>
-          ← Back
+          ← {t('back')}
         </button>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -730,40 +722,43 @@ function StepMultimodal({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const t = useTranslations('KbNew');
   const pipeline = [
     {
       i: 1,
-      label: 'Parse',
+      label: t('pipelineParseLabel'),
       ic: '📄',
-      note: 'Docling / python-pptx · extracts EmbeddedImage{sha256, alt_text, doc_order}',
+      note: t('pipelineParseNote', {
+        schema: 'EmbeddedImage{sha256, alt_text, doc_order}',
+      }),
       tier2: false,
     },
     {
       i: 2,
-      label: 'Caption',
+      label: t('pipelineCaptionLabel'),
       ic: '🤖',
-      note: 'Vision model fills alt_text when source has none',
+      note: t('pipelineCaptionNote'),
       tier2: true,
     },
     {
       i: 3,
-      label: 'Dedup',
+      label: t('pipelineDedupLabel'),
       ic: '🔗',
-      note: 'SHA256 → upload once · reference many',
+      note: t('pipelineDedupNote'),
       tier2: false,
     },
     {
       i: 4,
-      label: 'Bind to chunks',
+      label: t('pipelineBindLabel'),
       ic: '🔀',
-      note: 'Chunker → embedded_image_positions → ImageRef',
+      note: t('pipelineBindNote'),
       tier2: false,
     },
     {
       i: 5,
-      label: 'Index',
+      label: t('pipelineIndexLabel'),
       ic: '📦',
-      note: 'Azure AI Search · embedded_images_json field',
+      note: t('pipelineIndexNote'),
       tier2: false,
     },
   ];
@@ -778,19 +773,19 @@ function StepMultimodal({
     {
       id: 'gpt-5.5-vision',
       label: 'GPT-5.5 Vision',
-      hint: 'Highest quality captions · ~$0.002/img',
+      hint: t('captionGptHint'),
       tier2: true,
     },
     {
       id: 'azure-doc-intel',
       label: 'Azure Doc Intelligence',
-      hint: 'Structured (OCR + layout) · ~$0.001/img',
+      hint: t('captionAzureHint'),
       tier2: true,
     },
     {
       id: 'off',
-      label: 'Off — source alt_text only',
-      hint: 'Current Beta behaviour · 0 cost',
+      label: t('captionOffLabel'),
+      hint: t('captionOffHint'),
       tier2: false,
       recommended: true,
     },
@@ -799,9 +794,9 @@ function StepMultimodal({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Multimodal — images &amp; screenshots</h3>
+        <h3 className="card-title">{t('multimodalCardTitle')}</h3>
         <span className="badge badge-info">
-          <Layers size={10} /> Text + image retrieval
+          <Layers size={10} /> {t('textImageRetrieval')}
         </span>
       </div>
       <div className="card-body">
@@ -825,19 +820,18 @@ function StepMultimodal({
           >
             <Layers size={14} style={{ color: 'oklch(var(--info))' }} />
             <span style={{ fontSize: 13, fontWeight: 600 }}>
-              How text + image retrieval works in this KB
+              {t('heroTitle')}
             </span>
           </div>
           <div
             className="text-xs"
             style={{ lineHeight: 1.65, marginBottom: 12 }}
           >
-            For .docx / .pdf / .pptx that contain both <b>text and images</b>{' '}
-            (e.g. user manuals, training decks), images are extracted alongside
-            text and bound to their parent text chunk via{' '}
-            <span className="mono">embedded_image_positions: [&quot;img@{`{doc_order}`}&quot;]</span>
-            . At query time, citations carry{' '}
-            <b>both the text excerpt and the associated screenshot</b>.
+            {t.rich('heroDesc', {
+              b: (chunks) => <b>{chunks}</b>,
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+              docOrder: '{doc_order}',
+            })}
           </div>
 
           <div
@@ -923,8 +917,7 @@ function StepMultimodal({
             >
               T2
             </span>
-            = Tier 2 preview, not yet implemented in the current Beta. Other
-            steps are active today.
+            {t('t2Legend')}
           </div>
         </div>
 
@@ -941,35 +934,31 @@ function StepMultimodal({
             <span className="badge-dot" /> ACTIVE
           </span>
           <span className="nav-section-label" style={{ padding: 0 }}>
-            Image extraction sources
+            {t('sectionImageExtraction')}
           </span>
         </div>
         <div className="col" style={{ gap: 8, marginBottom: 18 }}>
           <OptionRow
             checked={form.extract_embedded_images}
             onToggle={(v) => update('extract_embedded_images', v)}
-            title="Embedded images from documents"
-            desc="Docling extracts inline PNG/JPG from .docx + .pdf; python-pptx pulls picture shapes from .pptx. Uses source-provided alt_text when present."
-            badge="Primary source"
+            title={t('optEmbeddedTitle')}
+            desc={t('optEmbeddedDesc')}
+            badge={t('optEmbeddedBadge')}
           />
           <OptionRow
             checked={form.slide_screenshots}
             onToggle={(v) => update('slide_screenshots', v)}
-            title="Whole-slide screenshots for .pptx"
-            desc="When a slide is image-heavy or layout-critical, capture the rendered slide as a single screenshot bound to that slide's chunk."
+            title={t('optSlideTitle')}
+            desc={t('optSlideDesc')}
             tier2
           />
           <OptionRow
             checked={form.render_pdf_pages}
             onToggle={(v) => update('render_pdf_pages', v)}
-            title="Render PDF pages as screenshots"
-            desc="For PDFs where layout is critical (forms, diagrams), capture each page as a screenshot. Increases Blob storage ~10× per doc."
+            title={t('optPdfTitle')}
+            desc={t('optPdfDesc')}
             tier2
-            warn={
-              form.render_pdf_pages
-                ? 'Triples ingestion time and Blob storage cost'
-                : null
-            }
+            warn={form.render_pdf_pages ? t('optPdfWarn') : null}
           />
           {/* W69 image-recall preset — same IMAGE_DENSE_PRESET as the KB Detail
               Settings 「套用配方」row, surfaced at create time so an image-heavy
@@ -977,9 +966,9 @@ function StepMultimodal({
           <OptionRow
             checked={form.image_dense_preset}
             onToggle={(v) => update('image_dense_preset', v)}
-            title="Apply image-recall preset"
-            desc="Rerank top-k 10 · Neighbour max aux images 40 · Max images/answer 80 — image-recall 0.574 → ~1.00 (W62–W68 empirical, ADR-0054). For image-dense step-by-step manuals; still adjustable in KB Settings after creation."
-            badge="Proven preset"
+            title={t('optPresetTitle')}
+            desc={t('optPresetDesc')}
+            badge={t('optPresetBadge')}
           />
         </div>
 
@@ -994,10 +983,10 @@ function StepMultimodal({
         >
           <span className="badge badge-accent">TIER 2 PREVIEW</span>
           <span className="nav-section-label" style={{ padding: 0 }}>
-            Image captioning
+            {t('sectionCaptioning')}
           </span>
           <span className="text-xs muted" style={{ marginLeft: 4 }}>
-            · auto-fills empty alt_text · no vision pipeline in Beta yet
+            {t('captioningNote')}
           </span>
         </div>
         <div className="field" style={{ marginBottom: 18, opacity: 0.85 }}>
@@ -1089,7 +1078,7 @@ function StepMultimodal({
             <span className="badge-dot" /> ACTIVE
           </span>
           <span className="nav-section-label" style={{ padding: 0 }}>
-            Image deduplication
+            {t('sectionDedup')}
           </span>
         </div>
         <div className="field" style={{ marginBottom: 18 }}>
@@ -1103,18 +1092,16 @@ function StepMultimodal({
               )
             }
           >
-            <option value="sha256">
-              SHA256 content hash · cross-document (active)
-            </option>
-            <option value="none">Off — no deduplication</option>
+            <option value="sha256">{t('dedupSha256')}</option>
+            <option value="none">{t('dedupNone')}</option>
             <option value="perceptual" disabled>
-              Perceptual hash · fuzzy match — Tier 2
+              {t('dedupPerceptual')}
             </option>
           </select>
           <div className="hint">
-            Same image (byte-for-byte) appearing in N documents → uploaded once
-            to Blob, referenced N× from chunk records. Implemented in{' '}
-            <span className="mono">ingestion/screenshots/extractor.py</span>.
+            {t.rich('dedupHint', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
 
@@ -1129,15 +1116,13 @@ function StepMultimodal({
         >
           <span className="badge badge-accent">TIER 2 PREVIEW</span>
           <span className="nav-section-label" style={{ padding: 0 }}>
-            low_value image filter
+            {t('sectionLowValue')}
           </span>
-          <span className="text-xs muted">
-            · auto-skip logos, decorations, page numbers
-          </span>
+          <span className="text-xs muted">{t('lowValueNote')}</span>
         </div>
         <div className="field" style={{ marginBottom: 18, opacity: 0.85 }}>
           <label className="label" htmlFor="kbnew-low-value">
-            Threshold ·{' '}
+            {t('thresholdLabel')} ·{' '}
             <span className="mono text-xs muted">
               {form.low_value_threshold.toFixed(2)}
             </span>
@@ -1161,10 +1146,9 @@ function StepMultimodal({
             >
               T2
             </span>
-            Distinct from the chunk-level{' '}
-            <span className="mono">low_value_flag</span> already in the codebase
-            (which marks under-floor text chunks). This image-level filter
-            requires a vision classifier — Tier 2.
+            {t.rich('lowValueHint', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
 
@@ -1183,7 +1167,7 @@ function StepMultimodal({
             <Eye size={9} /> UI BEHAVIOR
           </span>
           <span className="nav-section-label" style={{ padding: 0 }}>
-            Query-time rendering
+            {t('sectionQueryTime')}
           </span>
         </div>
         <div
@@ -1202,15 +1186,12 @@ function StepMultimodal({
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 500 }}>
-              Render inline images in chat answers
+              {t('renderInlineTitle')}
             </div>
             <div className="text-xs muted" style={{ lineHeight: 1.5 }}>
-              Backend <span className="mono">/query</span> always returns{' '}
-              <span className="mono">embedded_images</span> on citations. This
-              flag is purely a Chat-UI rendering preference — when OFF,
-              screenshots are still extracted + bound + searchable (visible in
-              Document Detail / Image Library), the chat surface just hides
-              them.
+              {t.rich('renderInlineDesc', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </div>
           </div>
         </div>
@@ -1228,28 +1209,26 @@ function StepMultimodal({
           }}
         >
           <b style={{ color: 'oklch(var(--foreground))' }}>
-            Expected query behaviour with these settings:
+            {t('outcomeTitle')}
           </b>{' '}
-          A user asks &quot;How do I configure posting definitions for
-          multi-currency journals?&quot; → retrieval returns 5 chunks; 3 carry
-          screenshots from the GL Setup manual; chat answer cites them as{' '}
-          <span className="mono">[1][2][3]</span>{' '}
-          {form.return_images_in_chat
-            ? 'with screenshots rendered inline beneath the relevant paragraphs'
-            : 'with screenshots collapsed (text-only mode)'}
-          .
+          {t.rich('outcomeBody', {
+            mono: (chunks) => <span className="mono">{chunks}</span>,
+            mode: form.return_images_in_chat
+              ? t('outcomeModeInline')
+              : t('outcomeModeCollapsed'),
+          })}
         </div>
       </div>
       <div className="card-footer">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}>
-          ← Back
+          ← {t('back')}
         </button>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -1371,27 +1350,28 @@ function StepDefaults({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const t = useTranslations('KbNew');
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Retrieval defaults</h3>
+        <h3 className="card-title">{t('defaultsCardTitle')}</h3>
         <span className="badge badge-success">
-          <Edit3 size={10} /> Editable later
+          <Edit3 size={10} /> {t('editableLater')}
         </span>
       </div>
       <div className="card-body">
         <div className="banner banner-info" style={{ marginBottom: 16 }}>
           <Sparkles size={14} style={{ color: 'oklch(var(--info))' }} />
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-            These are the <b>default</b> per-query parameters. Any chat or
-            retrieval-test call can override them. You can also tune these
-            later from the KB Settings tab — no re-index needed.
+            {t.rich('defaultsBanner', {
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </div>
         </div>
 
         <div className="field">
           <label className="label" htmlFor="kbnew-topk">
-            Default top_k (retrieve before rerank) ·{' '}
+            {t('topKLabel')} ·{' '}
             <span className="mono text-xs">{form.default_top_k}</span>
           </label>
           <input
@@ -1416,15 +1396,15 @@ function StepDefaults({
               marginTop: 4,
             }}
           >
-            <span>10 (fast)</span>
-            <span>50 (W2 baseline)</span>
-            <span>100 (thorough)</span>
+            <span>{t('topKFast')}</span>
+            <span>{t('topKBaseline')}</span>
+            <span>{t('topKThorough')}</span>
           </div>
         </div>
 
         <div className="field">
           <label className="label" htmlFor="kbnew-rerankk">
-            Default rerank_k (final chunks passed to LLM) ·{' '}
+            {t('rerankKLabel')} ·{' '}
             <span className="mono text-xs">{form.default_rerank_k}</span>
           </label>
           <input
@@ -1438,35 +1418,29 @@ function StepDefaults({
             }
             style={{ width: '100%' }}
           />
-          <div className="hint">
-            After Cohere reranks the top_k, only the top rerank_k chunks become
-            LLM context. Higher = more grounding but more tokens.
-          </div>
+          <div className="hint">{t('rerankKHint')}</div>
         </div>
 
         <div className="field" style={{ marginBottom: 0 }}>
           <label className="label" htmlFor="kbnew-reranker">
-            Default reranker
+            {t('rerankerLabel')}
           </label>
           <select id="kbnew-reranker" className="select" disabled>
-            <option>cohere-v4.0-pro (production lock · ADR-0012)</option>
+            <option>{t('rerankerOption')}</option>
           </select>
-          <div className="hint">
-            Workspace-wide locked per ADR-0012 · per-KB override available in
-            Tier 2
-          </div>
+          <div className="hint">{t('rerankerHint')}</div>
         </div>
       </div>
       <div className="card-footer">
         <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}>
-          ← Back
+          ← {t('back')}
         </button>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -1490,91 +1464,92 @@ function StepReview({
   pending: boolean;
   error: Error | null;
 }) {
+  const t = useTranslations('KbNew');
   const rows: Array<{
     k: string;
     v: ReactNode;
     locked: boolean;
     mono?: boolean;
   }> = [
-    { k: 'Name', v: form.name || '—', locked: false },
-    { k: 'Description', v: form.description || '—', locked: false },
+    { k: t('rowName'), v: form.name || '—', locked: false },
+    { k: t('rowDescription'), v: form.description || '—', locked: false },
     { k: 'kb_id', v: form.kb_id || '—', locked: true, mono: true },
     {
-      k: 'Index name',
+      k: t('rowIndexName'),
       v: `ekp-kb-${form.kb_id || '{kb_id}'}-v1`,
       locked: true,
       mono: true,
     },
     {
-      k: 'Blob container',
+      k: t('rowBlobContainer'),
       v: `ekp-kb-${form.kb_id || '{kb_id}'}-screenshots`,
       locked: true,
       mono: true,
     },
     {
-      k: 'Embedding model',
+      k: t('rowEmbeddingModel'),
       v: `${form.embedding_model} · ${form.embedding_dimension}d`,
       locked: true,
       mono: true,
     },
     {
-      k: 'Chunk strategy',
+      k: t('rowChunkStrategy'),
       v: form.chunk_strategy,
       locked: true,
       mono: true,
     },
     {
-      k: 'Embedded images',
+      k: t('rowEmbeddedImages'),
       v: form.extract_embedded_images
-        ? 'Extracted (Docling + python-pptx)'
-        : 'Disabled',
+        ? t('valExtracted')
+        : t('valDisabled'),
       locked: true,
     },
     {
-      k: 'Slide screenshots',
-      v: form.slide_screenshots ? 'On (per-slide capture for .pptx)' : 'Off',
+      k: t('rowSlideScreenshots'),
+      v: form.slide_screenshots ? t('valSlideOn') : t('valOff'),
       locked: true,
     },
     {
-      k: 'PDF page render',
-      v: form.render_pdf_pages ? 'On (page-as-screenshot)' : 'Off',
+      k: t('rowPdfRender'),
+      v: form.render_pdf_pages ? t('valPdfOn') : t('valOff'),
       locked: true,
     },
     {
-      k: 'Captioning model',
+      k: t('rowCaptioningModel'),
       v: form.captioning_model === 'off'
-        ? 'Off (source alt_text only)'
+        ? t('valCaptioningOff')
         : form.captioning_model,
       locked: true,
       mono: form.captioning_model !== 'off',
     },
     {
-      k: 'low_value threshold',
+      k: t('rowLowValueThreshold'),
       v: form.low_value_threshold.toFixed(2),
       locked: true,
       mono: true,
     },
     {
-      k: 'Dedup',
-      v: `${form.dedup_strategy} (cross-doc)`,
+      k: t('rowDedup'),
+      v: t('valDedup', { strategy: form.dedup_strategy }),
       locked: true,
       mono: true,
     },
     {
-      k: 'Return images in chat',
+      k: t('rowReturnImages'),
       v: form.return_images_in_chat
-        ? 'Yes — inline screenshots'
-        : 'No — text-only',
+        ? t('valReturnYes')
+        : t('valReturnNo'),
       locked: false,
     },
     {
-      k: 'Default top_k',
+      k: t('rowDefaultTopK'),
       v: String(form.default_top_k),
       locked: false,
       mono: true,
     },
     {
-      k: 'Default rerank_k',
+      k: t('rowDefaultRerankK'),
       v: String(form.default_rerank_k),
       locked: false,
       mono: true,
@@ -1584,7 +1559,7 @@ function StepReview({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Review &amp; create</h3>
+        <h3 className="card-title">{t('reviewCardTitle')}</h3>
       </div>
       <div className="card-body card-body-tight">
         {rows.map((r, i, arr) => (
@@ -1621,11 +1596,11 @@ function StepReview({
             </span>
             {r.locked ? (
               <span className="badge badge-warning">
-                <Shield size={10} /> Locked
+                <Shield size={10} /> {t('lockedBadge')}
               </span>
             ) : (
               <span className="badge badge-success">
-                <Edit3 size={10} /> Editable
+                <Edit3 size={10} /> {t('editableBadge')}
               </span>
             )}
           </div>
@@ -1641,7 +1616,7 @@ function StepReview({
           }}
           role="alert"
         >
-          Create failed — {error.message}
+          {t('createFailed')} {error.message}
         </div>
       )}
       <div className="card-footer">
@@ -1651,7 +1626,7 @@ function StepReview({
           onClick={onBack}
           disabled={pending}
         >
-          ← Back
+          ← {t('back')}
         </button>
         <button
           type="button"
@@ -1660,7 +1635,7 @@ function StepReview({
           disabled={pending}
         >
           <Check size={14} />{' '}
-          {pending ? 'Provisioning…' : 'Create KB & provision index'}
+          {pending ? t('provisioning') : t('createKb')}
         </button>
       </div>
     </div>

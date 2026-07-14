@@ -47,6 +47,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -69,14 +70,14 @@ import type { AuthenticatedUser } from '@/lib/auth/types';
 import { useAuthStore, useCurrentUser } from '@/lib/providers/auth-provider';
 
 const TABS = [
-  { id: 'profile', label: 'Profile', icon: Users },
-  { id: 'appearance', label: 'Appearance', icon: Sparkles },
-  { id: 'connections', label: 'Connections', icon: PlugZap },
-  { id: 'identity', label: 'Identity & Auth', icon: ShieldCheck },
-  { id: 'api-keys', label: 'API Keys & Quotas', icon: KeyRound },
-  { id: 'account', label: 'Account', icon: Activity },
+  { id: 'profile', labelKey: 'tabProfile', icon: Users },
+  { id: 'appearance', labelKey: 'tabAppearance', icon: Sparkles },
+  { id: 'connections', labelKey: 'tabConnections', icon: PlugZap },
+  { id: 'identity', labelKey: 'tabIdentity', icon: ShieldCheck },
+  { id: 'api-keys', labelKey: 'tabApiKeys', icon: KeyRound },
+  { id: 'account', labelKey: 'tabAccount', icon: Activity },
   // W78 / ADR-0056 層 A 段③ — 文件分類規則(admin profiler 指揮中心)
-  { id: 'doc-profiling', label: 'Document Classification', icon: Layers },
+  { id: 'doc-profiling', labelKey: 'tabDocProfiling', icon: Layers },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -115,13 +116,14 @@ function TabBoundary({
 }
 
 export default function SettingsPage() {
+  const t = useTranslations('Settings');
   return (
     <Suspense
       fallback={
         <div className="content">
           <div className="content-narrow" style={{ maxWidth: 1080 }}>
             <div className="page-header">
-              <h1 className="page-title">Settings</h1>
+              <h1 className="page-title">{t('pageTitle')}</h1>
             </div>
           </div>
         </div>
@@ -133,6 +135,7 @@ export default function SettingsPage() {
 }
 
 function SettingsPageInner() {
+  const t = useTranslations('Settings');
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') as TabId | null;
@@ -165,32 +168,31 @@ function SettingsPageInner() {
       <div className="content-narrow" style={{ maxWidth: 1080 }}>
         <div className="page-header">
           <div>
-            <h1 className="page-title">Settings</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              Profile · theme · all external service connections · Entra ID +
-              MSAL config · API quotas. <b>Zero hardcoded credentials</b> —
-              every endpoint, secret, and connection string is managed here
-              and persisted in Azure Key Vault.
+              {t.rich('subtitle', {
+                b: (chunks) => <b>{chunks}</b>,
+              })}
             </p>
           </div>
         </div>
 
         {/* Tab navigation */}
-        <div className="tabs" role="tablist" aria-label="Settings sections">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
+        <div className="tabs" role="tablist" aria-label={t('tablistAria')}>
+          {TABS.map((tabItem) => {
+            const Icon = tabItem.icon;
+            const active = tab === tabItem.id;
             return (
               <button
-                key={t.id}
+                key={tabItem.id}
                 type="button"
                 role="tab"
                 aria-selected={active}
                 className="tab"
                 data-active={active}
-                onClick={() => handleTabChange(t.id)}
+                onClick={() => handleTabChange(tabItem.id)}
               >
-                <Icon size={14} aria-hidden="true" /> {t.label}
+                <Icon size={14} aria-hidden="true" /> {t(tabItem.labelKey)}
               </button>
             );
           })}
@@ -198,12 +200,12 @@ function SettingsPageInner() {
 
         {/* Tab body — each wrapped in a tab-scoped error boundary (F4). */}
         {tab === 'profile' && (
-          <TabBoundary tabName="Profile">
+          <TabBoundary tabName={t('tabProfile')}>
             <ProfileTab user={user} />
           </TabBoundary>
         )}
         {tab === 'appearance' && (
-          <TabBoundary tabName="Appearance">
+          <TabBoundary tabName={t('tabAppearance')}>
             <AppearanceTab
               mounted={mounted}
               resolvedTheme={resolvedTheme ?? null}
@@ -212,27 +214,27 @@ function SettingsPageInner() {
           </TabBoundary>
         )}
         {tab === 'connections' && (
-          <TabBoundary tabName="Connections">
+          <TabBoundary tabName={t('tabConnections')}>
             <SettingsConnections />
           </TabBoundary>
         )}
         {tab === 'identity' && (
-          <TabBoundary tabName="Identity & Auth">
+          <TabBoundary tabName={t('tabIdentity')}>
             <SettingsIdentity />
           </TabBoundary>
         )}
         {tab === 'api-keys' && (
-          <TabBoundary tabName="API Keys & Quotas">
+          <TabBoundary tabName={t('tabApiKeys')}>
             <SettingsApiKeys />
           </TabBoundary>
         )}
         {tab === 'account' && (
-          <TabBoundary tabName="Account">
+          <TabBoundary tabName={t('tabAccount')}>
             <AccountTab onSignOut={() => void signOut()} />
           </TabBoundary>
         )}
         {tab === 'doc-profiling' && (
-          <TabBoundary tabName="Document Classification">
+          <TabBoundary tabName={t('tabDocProfiling')}>
             <SettingsDocProfiling />
           </TabBoundary>
         )}
@@ -245,19 +247,20 @@ function SettingsPageInner() {
 // ProfileTab — preserved from W22 F8.1 ProfileCard logic
 // ============================================================================
 function ProfileTab({ user }: { user: AuthenticatedUser | null }) {
+  const t = useTranslations('Settings');
   const initials = computeInitials(user?.preferredUsername);
   const username = user?.preferredUsername ?? '—';
   const role = 'Workspace Admin';
   const sessionLine = user
     ? user.isMock
-      ? 'mock auth — dev mode'
-      : 'Entra ID SSO · MSAL session active'
-    : 'Signing in…';
+      ? t('sessionMockAuth')
+      : t('sessionEntra')
+    : t('signingIn');
 
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Profile</h3>
+        <h3 className="card-title">{t('profileTitle')}</h3>
       </div>
       <div
         className="card-body"
@@ -279,11 +282,11 @@ function ProfileTab({ user }: { user: AuthenticatedUser | null }) {
         </div>
         <DisabledAffordance
           variant="p1-strict"
-          reason="Wave C2 — profile edit requires Entra Graph SDK + RBAC"
-          tier2Trigger="Tier 2 — post-W22 governance (ADR-0027)"
+          reason={t('editProfileReason')}
+          tier2Trigger={t('editProfileTier2')}
         >
           <button className="btn btn-secondary btn-sm" disabled>
-            Edit profile
+            {t('editProfile')}
             <span className="badge badge-muted" style={{ marginLeft: 6 }}>
               Tier 2
             </span>
@@ -306,24 +309,24 @@ function AppearanceTab({
   resolvedTheme: string | null;
   setTheme: (theme: string) => void;
 }) {
+  const t = useTranslations('Settings');
   const isLight = mounted && resolvedTheme === 'light';
   const isDark = mounted && resolvedTheme === 'dark';
 
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Appearance</h3>
+        <h3 className="card-title">{t('appearanceTitle')}</h3>
       </div>
       <div className="card-body">
         <div className="row" style={{ padding: '4px 0' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 500, fontSize: 13.5 }}>Theme</div>
-            <div className="text-xs muted">
-              Warm Charcoal (light) / Warm Neutral Dark (dark) · 100% oklch
-              tokens
+            <div style={{ fontWeight: 500, fontSize: 13.5 }}>
+              {t('themeLabel')}
             </div>
+            <div className="text-xs muted">{t('themeDesc')}</div>
           </div>
-          <div className="seg" role="tablist" aria-label="Theme preference">
+          <div className="seg" role="tablist" aria-label={t('themePreferenceAria')}>
             <button
               type="button"
               role="tab"
@@ -332,7 +335,7 @@ function AppearanceTab({
               aria-selected={isLight}
               onClick={() => setTheme('light')}
             >
-              Light
+              {t('themeLight')}
             </button>
             <button
               type="button"
@@ -342,34 +345,34 @@ function AppearanceTab({
               aria-selected={isDark}
               onClick={() => setTheme('dark')}
             >
-              Dark
+              {t('themeDark')}
             </button>
           </div>
         </div>
         <div className="hr" />
         <div className="row" style={{ padding: '4px 0' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 500, fontSize: 13.5 }}>Density</div>
-            <div className="text-xs muted">
-              Compact / Comfortable layout density — Wave C2 promote
+            <div style={{ fontWeight: 500, fontSize: 13.5 }}>
+              {t('densityLabel')}
             </div>
+            <div className="text-xs muted">{t('densityDesc')}</div>
           </div>
           <DisabledAffordance
             variant="p1-strict"
-            reason="Wave C2 — density toggle requires layout token system"
-            tier2Trigger="Tier 2 — post-Beta"
+            reason={t('densityReason')}
+            tier2Trigger={t('densityTier2')}
           >
-            <div className="seg" aria-label="Density (disabled)">
+            <div className="seg" aria-label={t('densityDisabledAria')}>
               <button
                 type="button"
                 className="seg-btn"
                 disabled
                 data-active={true}
               >
-                Comfortable
+                {t('densityComfortable')}
               </button>
               <button type="button" className="seg-btn" disabled>
-                Compact
+                {t('densityCompact')}
               </button>
             </div>
           </DisabledAffordance>
@@ -377,18 +380,18 @@ function AppearanceTab({
         <div className="hr" />
         <div className="row" style={{ padding: '4px 0' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 500, fontSize: 13.5 }}>Language</div>
-            <div className="text-xs muted">
-              JP / ZH support is Tier 2 — disabled per ADR-0024
+            <div style={{ fontWeight: 500, fontSize: 13.5 }}>
+              {t('languageLabel')}
             </div>
+            <div className="text-xs muted">{t('languageDesc')}</div>
           </div>
           <DisabledAffordance
             variant="p1-strict"
-            reason="Wave D+ — multi-language support (JP / ZH) is Tier 2 scope"
-            tier2Trigger="Tier 2 — post-Beta scope"
+            reason={t('languageReason')}
+            tier2Trigger={t('languageTier2')}
           >
-            <select className="select" disabled aria-label="Language">
-              <option>English</option>
+            <select className="select" disabled aria-label={t('languageSelectAria')}>
+              <option>{t('languageOptionEnglish')}</option>
             </select>
           </DisabledAffordance>
         </div>
@@ -401,20 +404,21 @@ function AppearanceTab({
 // AccountTab — preserved Sign-out + Rotate session + Audit log surface (F5)
 // ============================================================================
 function AccountTab({ onSignOut }: { onSignOut: () => void }) {
+  const t = useTranslations('Settings');
   return (
     <div className="col" style={{ gap: 16 }}>
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Session</h3>
+          <h3 className="card-title">{t('sessionTitle')}</h3>
         </div>
         <div className="card-body" style={{ display: 'flex', gap: 8 }}>
           <DisabledAffordance
             variant="p1-strict"
-            reason="Wave C+ — session rotation requires re-MSAL flow + token refresh"
-            tier2Trigger="Tier 2 — post-W22 governance"
+            reason={t('rotateReason')}
+            tier2Trigger={t('rotateTier2')}
           >
             <button className="btn btn-secondary btn-sm" disabled>
-              <RefreshCw size={13} aria-hidden="true" /> Rotate session
+              <RefreshCw size={13} aria-hidden="true" /> {t('rotateSession')}
               <span className="badge badge-muted" style={{ marginLeft: 6 }}>
                 Tier 2
               </span>
@@ -426,7 +430,7 @@ function AccountTab({ onSignOut }: { onSignOut: () => void }) {
             className="btn btn-destructive btn-sm"
             onClick={onSignOut}
           >
-            <LogOut size={13} aria-hidden="true" /> Sign out
+            <LogOut size={13} aria-hidden="true" /> {t('signOut')}
           </button>
         </div>
       </div>
@@ -441,17 +445,17 @@ function AccountTab({ onSignOut }: { onSignOut: () => void }) {
             className="card-title"
             style={{ color: 'oklch(var(--destructive))' }}
           >
-            Danger zone
+            {t('dangerZoneTitle')}
           </h3>
         </div>
         <div className="card-body">
           <DisabledAffordance
             variant="p1-strict"
-            reason="Wave D+ — account deletion is Tier 2 (requires RBAC + audit hooks)"
-            tier2Trigger="Tier 2 — post-Beta governance"
+            reason={t('deleteReason')}
+            tier2Trigger={t('deleteTier2')}
           >
             <button className="btn btn-destructive btn-sm" disabled>
-              Delete my account
+              {t('deleteAccount')}
               <span className="badge badge-muted" style={{ marginLeft: 6 }}>
                 Tier 2
               </span>

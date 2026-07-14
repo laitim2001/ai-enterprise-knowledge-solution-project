@@ -24,6 +24,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layers } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -38,30 +39,50 @@ import {
 import type { DocConfig } from '@/lib/api/doc-config';
 import { type PresetMappingItem, profilePresetsApi } from '@/lib/api/profile-presets';
 
-// profile label key → 中文縮短顯示名 (mirror mockup ekp-page-settings-tabs.jsx; 顯示層, 非 config data).
+// profile label key → i18n key (顯示層 friendly name; 非 config data). Resolved via
+// `profileLabel(profile, t)`, falling back to the raw profile id for unknown profiles.
 const PROFILE_LABELS: Record<string, string> = {
-  P1_sop_imgdense: 'P1 Image-dense SOP',
-  P1_sop_text: 'P1 Text SOP',
-  P2_prose: 'P2 Prose',
-  P3_slide_imgdense: 'P3 Image-dense slides',
-  P3_slide_text: 'P3 Text slides',
-  P4_scan_imgdense: 'P4 Scan',
-  P5_form: 'P5 Form',
+  P1_sop_imgdense: 'profileP1SopImgdense',
+  P1_sop_text: 'profileP1SopText',
+  P2_prose: 'profileP2Prose',
+  P3_slide_imgdense: 'profileP3SlideImgdense',
+  P3_slide_text: 'profileP3SlideText',
+  P4_scan_imgdense: 'profileP4Scan',
+  P5_form: 'profileP5Form',
 };
+
+/** Resolve a profile id to its translated friendly name (raw id when unmapped). */
+function profileLabel(
+  profile: string,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  const key = PROFILE_LABELS[profile];
+  return key ? t(key) : profile;
+}
 
 const PRESETS_QUERY_KEY = ['profile-presets'] as const;
 
 // --- effective-config → table cell formatters (mirror mockup display strings) ---
-const fmtNeighbour = (c: DocConfig): string =>
+const fmtNeighbour = (
+  c: DocConfig,
+  t: ReturnType<typeof useTranslations>,
+): string =>
   c.enable_citation_neighbour_images
-    ? `On · ${c.citation_neighbour_max_aux_images ?? '—'}`
-    : 'Off';
-const fmtAnchor = (c: DocConfig): string =>
+    ? t('neighbourOn', { n: c.citation_neighbour_max_aux_images ?? '—' })
+    : t('off');
+const fmtAnchor = (
+  c: DocConfig,
+  t: ReturnType<typeof useTranslations>,
+): string =>
   c.enable_section_anchored_aux_images
-    ? `section · ${c.section_anchor_nearest ? 'nearest' : 'end'} · cap ${c.section_anchor_max_per_anchor ?? 0}`
+    ? t('anchorValue', {
+        mode: c.section_anchor_nearest ? t('anchorNearest') : t('anchorEnd'),
+        cap: c.section_anchor_max_per_anchor ?? 0,
+      })
     : '—';
 
 export function SettingsDocProfiling() {
+  const t = useTranslations('SettingsDocProfiling');
   const { data, isLoading, isError, error } = useQuery({
     queryKey: PRESETS_QUERY_KEY,
     queryFn: () => profilePresetsApi.list(),
@@ -73,10 +94,11 @@ export function SettingsDocProfiling() {
   const resetMutation = useMutation({
     mutationFn: (profile: string) => profilePresetsApi.delete(profile),
     onSuccess: () => {
-      toast.success('Reset to factory default');
+      toast.success(t('toastReset'));
       void queryClient.invalidateQueries({ queryKey: PRESETS_QUERY_KEY });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Reset failed'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : t('toastResetFailed')),
   });
 
   return (
@@ -85,12 +107,12 @@ export function SettingsDocProfiling() {
         <Layers size={15} style={{ color: 'oklch(var(--info))', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13 }}>
-            <b>Document classification rules</b> —
-            the system uses a rule-based profiler (W72) at ingest to detect the document profile and
-            automatically apply the matching recall preset.
+            {t.rich('bannerText', {
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </div>
           <div className="text-xs muted" style={{ marginTop: 2 }}>
-            Command center for automatic rules: tune the profile→preset mapping + detection threshold · ADR-0056 layer A · LLM fallback safeguard
+            {t('bannerDesc')}
           </div>
         </div>
       </div>
@@ -98,32 +120,33 @@ export function SettingsDocProfiling() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Profile → preset mapping</h3>
-            <div className="card-desc">
-              Which recall/render preset each detected profile applies. Changes here affect all newly ingested documents (existing documents need re-index).
-            </div>
+            <h3 className="card-title">{t('mappingTitle')}</h3>
+            <div className="card-desc">{t('mappingDesc')}</div>
           </div>
         </div>
         <div className="card-body" style={{ padding: 0 }}>
           {isLoading ? (
             <div className="text-xs muted" style={{ padding: 16 }}>
-              Loading mappings…
+              {t('loadingMappings')}
             </div>
           ) : isError ? (
             <div className="banner banner-destructive" style={{ margin: 16 }}>
-              Load failed: <span className="mono">{error instanceof Error ? error.message : 'Unknown error'}</span>
+              {t('loadFailed')}{' '}
+              <span className="mono">
+                {error instanceof Error ? error.message : t('unknownError')}
+              </span>
             </div>
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Profile</th>
-                    <th className="col-num">Image cap</th>
-                    <th>Neighbour images</th>
-                    <th>inline marker</th>
-                    <th>Section anchoring</th>
-                    <th>Detail level</th>
+                    <th>{t('colProfile')}</th>
+                    <th className="col-num">{t('colImageCap')}</th>
+                    <th>{t('colNeighbour')}</th>
+                    <th>{t('colInlineMarker')}</th>
+                    <th>{t('colSectionAnchor')}</th>
+                    <th>{t('colDetailLevel')}</th>
                     <th className="col-shrink" />
                   </tr>
                 </thead>
@@ -134,21 +157,21 @@ export function SettingsDocProfiling() {
                       <tr key={item.profile}>
                         <td>
                           <span className="badge badge-muted">
-                            <span className="badge-dot" /> {PROFILE_LABELS[item.profile] ?? item.profile}
+                            <span className="badge-dot" /> {profileLabel(item.profile, t)}
                           </span>
                           <div className="text-xs muted mono">
                             {item.profile}
                             {item.overridden ? (
                               <span className="badge badge-warning" style={{ marginLeft: 6, fontSize: 9 }}>
-                                Overridden
+                                {t('overridden')}
                               </span>
                             ) : null}
                           </div>
                         </td>
                         <td className="col-num mono">{c.max_images_per_answer ?? '—'}</td>
-                        <td className="text-xs">{fmtNeighbour(c)}</td>
-                        <td className="text-xs">{c.enable_inline_image_markers ? 'On' : 'Off'}</td>
-                        <td className="text-xs">{fmtAnchor(c)}</td>
+                        <td className="text-xs">{fmtNeighbour(c, t)}</td>
+                        <td className="text-xs">{c.enable_inline_image_markers ? t('on') : t('off')}</td>
+                        <td className="text-xs">{fmtAnchor(c, t)}</td>
                         <td>
                           <span className="badge badge-muted">{c.answer_detail ?? '—'}</span>
                         </td>
@@ -160,9 +183,9 @@ export function SettingsDocProfiling() {
                                 className="btn btn-ghost btn-xs"
                                 onClick={() => resetMutation.mutate(item.profile)}
                                 disabled={resetMutation.isPending}
-                                title="Reset to factory default (remove override)"
+                                title={t('resetTitle')}
                               >
-                                Reset to default
+                                {t('resetToDefault')}
                               </button>
                             ) : null}
                             <button
@@ -170,7 +193,7 @@ export function SettingsDocProfiling() {
                               className="btn btn-ghost btn-xs"
                               onClick={() => setEditing(item)}
                             >
-                              Edit
+                              {t('edit')}
                             </button>
                           </div>
                         </td>
@@ -187,38 +210,36 @@ export function SettingsDocProfiling() {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Detection threshold</h3>
-            <div className="card-desc">
-              Tune the profiler classification thresholds. Below the confidence threshold → fallback to a conservative preset + flag as &quot;pending manual review&quot;.
-            </div>
+            <h3 className="card-title">{t('thresholdTitle')}</h3>
+            <div className="card-desc">{t('thresholdDesc')}</div>
           </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
           <ThresholdRow
-            label="Low-confidence threshold (confidence)"
+            label={t('th1Label')}
             value="0.70"
-            hint="Below this → yellow flag + fallback conservative preset"
+            hint={t('th1Hint')}
           />
           <ThresholdRow
-            label="P1 image-dense threshold (img_density)"
+            label={t('th2Label')}
             value="0.15"
-            hint="≥ this + depth≥3 + list_ratio≥0.3 → P1 Image-dense SOP"
+            hint={t('th2Hint')}
           />
           <ThresholdRow
-            label="too_small paragraph threshold"
+            label={t('th3Label')}
             value="20"
-            hint="Fewer paragraphs than this → too_small (not routed, inherits parent)"
+            hint={t('th3Hint')}
           />
         </div>
         <div className="card-footer">
-          <div className="text-xs muted">Changing thresholds only affects future ingest · ADR-0056 D2 rule v3</div>
+          <div className="text-xs muted">{t('thresholdFooter')}</div>
           <button
             type="button"
             className="btn btn-primary btn-sm"
             disabled
-            title="Threshold write stays disabled (W79 / ADR-0058: five rounds of evidence already optimal)"
+            title={t('saveRuleDisabledTitle')}
           >
-            Save rule
+            {t('saveRule')}
           </button>
         </div>
       </div>
@@ -254,16 +275,18 @@ function EditPresetDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('SettingsDocProfiling');
   const [draft, setDraft] = useState<DocConfig>(item.config);
-  const label = PROFILE_LABELS[item.profile] ?? item.profile;
+  const label = profileLabel(item.profile, t);
 
   const saveMutation = useMutation({
     mutationFn: (config: DocConfig) => profilePresetsApi.put(item.profile, config),
     onSuccess: () => {
-      toast.success(`Saved "${label}" mapping`);
+      toast.success(t('toastSaved', { label }));
       onSaved();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Save failed'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : t('toastSaveFailed')),
   });
 
   const set = <K extends keyof DocConfig>(key: K, val: DocConfig[K]): void =>
@@ -278,23 +301,25 @@ function EditPresetDialog({
     <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit preset mapping · {label}</DialogTitle>
+          <DialogTitle>{t('dialogTitle', { label })}</DialogTitle>
           <DialogDescription>
-            Adjust the recall preset this profile applies automatically · <span className="mono">{item.profile}</span>
+            {t('dialogDesc')} <span className="mono">{item.profile}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="banner banner-warning" style={{ marginBottom: 4 }}>
           <div className="text-xs">
-            This mapping applies to <b>all newly ingested</b> &quot;{label}&quot; documents. Existing documents need{' '}
-            <b>re-index</b> to take effect; the defaults are already well-proven — please confirm before changing.
+            {t.rich('editWarning', {
+              b: (chunks) => <b>{chunks}</b>,
+              label,
+            })}
           </div>
         </div>
 
         <div style={{ display: 'grid', gap: 14 }}>
           {/* 圖上限 */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Image cap (max_images_per_answer)</label>
+            <label className="label">{t('fieldImageCap')}</label>
             <input
               className="input"
               type="number"
@@ -307,7 +332,7 @@ function EditPresetDialog({
 
           {/* 鄰近圖 + max_aux */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Neighbour images (citation neighbour images)</label>
+            <label className="label">{t('fieldNeighbour')}</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -320,7 +345,7 @@ function EditPresetDialog({
                 }
               />
               <span className="muted text-xs">
-                {draft.enable_citation_neighbour_images ? 'On' : 'Off'}
+                {draft.enable_citation_neighbour_images ? t('on') : t('off')}
               </span>
             </div>
             {draft.enable_citation_neighbour_images ? (
@@ -331,15 +356,15 @@ function EditPresetDialog({
                 value={draft.citation_neighbour_max_aux_images ?? ''}
                 onChange={(e) => set('citation_neighbour_max_aux_images', num(e.target.value))}
                 style={{ maxWidth: 140, marginTop: 8 }}
-                aria-label="Neighbour image cap (max aux images)"
+                aria-label={t('neighbourCapAria')}
               />
             ) : null}
-            <div className="hint">On = same-section neighbour aux images enter candidates; number = aux image cap.</div>
+            <div className="hint">{t('neighbourHint')}</div>
           </div>
 
           {/* inline marker */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Inline markers (inline image markers)</label>
+            <label className="label">{t('fieldInlineMarkers')}</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -349,13 +374,13 @@ function EditPresetDialog({
                 tabIndex={0}
                 onClick={() => set('enable_inline_image_markers', !draft.enable_inline_image_markers)}
               />
-              <span className="muted text-xs">{draft.enable_inline_image_markers ? 'On' : 'Off'}</span>
+              <span className="muted text-xs">{draft.enable_inline_image_markers ? t('on') : t('off')}</span>
             </div>
           </div>
 
           {/* section 錨定 + cap */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Section anchoring (section-anchored aux images)</label>
+            <label className="label">{t('fieldSectionAnchor')}</label>
             <div className="row" style={{ gap: 8, alignItems: 'center', paddingTop: 4 }}>
               <span
                 className="switch"
@@ -368,7 +393,7 @@ function EditPresetDialog({
                 }
               />
               <span className="muted text-xs">
-                {draft.enable_section_anchored_aux_images ? 'On' : 'Off'}
+                {draft.enable_section_anchored_aux_images ? t('on') : t('off')}
               </span>
             </div>
             {draft.enable_section_anchored_aux_images ? (
@@ -384,7 +409,8 @@ function EditPresetDialog({
                     onClick={() => set('section_anchor_nearest', !draft.section_anchor_nearest)}
                   />
                   <span className="muted text-xs">
-                    Anchor to nearest step (nearest): {draft.section_anchor_nearest ? 'On' : 'Off (section end)'}
+                    {t('anchorNearestLabel')}{' '}
+                    {draft.section_anchor_nearest ? t('on') : t('offSectionEnd')}
                   </span>
                 </div>
                 <input
@@ -394,19 +420,16 @@ function EditPresetDialog({
                   value={draft.section_anchor_max_per_anchor ?? ''}
                   onChange={(e) => set('section_anchor_max_per_anchor', num(e.target.value))}
                   style={{ maxWidth: 140, marginTop: 8 }}
-                  aria-label="Per-anchor image cap (0 = no cap)"
+                  aria-label={t('perAnchorCapAria')}
                 />
               </>
             ) : null}
-            <div className="hint">
-              On = aux images anchor into their own sections (end pile → within section); nearest = anchor to the
-              nearest step by doc_order (otherwise section end); number = per-anchor cap (0 = no cap).
-            </div>
+            <div className="hint">{t('sectionAnchorHint')}</div>
           </div>
 
           {/* 詳細度 */}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Answer detail (answer_detail)</label>
+            <label className="label">{t('fieldAnswerDetail')}</label>
             <div className="seg" style={{ width: '100%', maxWidth: 280 }}>
               {(['concise', 'detailed'] as const).map((v) => (
                 <button
@@ -426,7 +449,7 @@ function EditPresetDialog({
 
         <DialogFooter>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -434,7 +457,7 @@ function EditPresetDialog({
             onClick={() => saveMutation.mutate(draft)}
             disabled={saveMutation.isPending}
           >
-            {saveMutation.isPending ? <span className="spinner" /> : null} Save rule
+            {saveMutation.isPending ? <span className="spinner" /> : null} {t('saveRule')}
           </button>
         </DialogFooter>
       </DialogContent>
