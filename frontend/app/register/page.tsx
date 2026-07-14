@@ -37,6 +37,7 @@
  */
 
 import { ArrowLeft, Inbox, Loader2, PartyPopper, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -84,6 +85,7 @@ const MIN_PASSWORD_LENGTH = 12;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterPage() {
+  const t = useTranslations('Register');
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [info, setInfo] = useState<AccountInfo>(EMPTY_INFO);
@@ -91,7 +93,7 @@ export default function RegisterPage() {
   const [isPending, setIsPending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const errors = validateAccountInfo(info);
+  const errors = validateAccountInfo(info, t);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -109,11 +111,11 @@ export default function RegisterPage() {
         password: info.password,
         display_name: info.displayName,
       });
-      toast.success('Verification email sent — check your inbox.');
+      toast.success(t('toastVerifSent'));
       setStep(2);
       setResendCooldown(RESEND_COOLDOWN_SEC);
     } catch (err) {
-      handleRegisterError(err);
+      handleRegisterError(err, t);
     } finally {
       setIsPending(false);
     }
@@ -122,7 +124,7 @@ export default function RegisterPage() {
   async function handleStep2Submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (code.some((c) => !c)) {
-      toast.error('Enter all 6 digits.');
+      toast.error(t('toastEnterAllDigits'));
       return;
     }
     setIsPending(true);
@@ -131,10 +133,10 @@ export default function RegisterPage() {
         email: info.email,
         code: code.join(''),
       });
-      toast.success('Email verified!');
+      toast.success(t('toastEmailVerified'));
       setStep(3);
     } catch (err) {
-      handleVerifyError(err);
+      handleVerifyError(err, t);
     } finally {
       setIsPending(false);
     }
@@ -145,9 +147,9 @@ export default function RegisterPage() {
     try {
       await authApi.resendVerification({ email: info.email });
       setResendCooldown(RESEND_COOLDOWN_SEC);
-      toast.info('Verification email resent.');
+      toast.info(t('toastVerifResent'));
     } catch (err) {
-      handleResendError(err);
+      handleResendError(err, t);
     }
   }
 
@@ -202,6 +204,7 @@ function Step1({
   onChange: (next: AccountInfo) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
 }) {
+  const t = useTranslations('Register');
   const isFormValid = Object.keys(errors).length === 0;
 
   return (
@@ -217,7 +220,7 @@ function Step1({
             marginBottom: 6,
           }}
         >
-          Create your account
+          {t('createAccount')}
         </h1>
         <p
           style={{
@@ -226,21 +229,27 @@ function Step1({
             margin: 0,
           }}
         >
-          Self-register with email · SSO via{' '}
-          <Link
-            href="/login"
-            style={{ color: 'oklch(var(--foreground))', fontWeight: 500, textDecoration: 'none' }}
-          >
-            Sign in
-          </Link>{' '}
-          if you have Entra ID.
+          {t.rich('step1Subtitle', {
+            signin: (chunks) => (
+              <Link
+                href="/login"
+                style={{
+                  color: 'oklch(var(--foreground))',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       </div>
 
       {/* Full name — mockup lines 142-145 */}
       <div className="field">
         <label className="label" htmlFor="reg-display-name">
-          Full name
+          {t('fullName')}
         </label>
         <input
           id="reg-display-name"
@@ -267,7 +276,7 @@ function Step1({
       {/* Email — mockup lines 147-151 */}
       <div className="field">
         <label className="label" htmlFor="reg-email">
-          Work email
+          {t('workEmail')}
         </label>
         <input
           id="reg-email"
@@ -281,8 +290,9 @@ function Step1({
           required
         />
         <div className="hint">
-          We&apos;ll send a 6-digit verification code · Beta cohort restricted to{' '}
-          <span className="mono">@ricoh.com</span>
+          {t.rich('emailHint', {
+            mono: (chunks) => <span className="mono">{chunks}</span>,
+          })}
         </div>
         {errors.email && (
           <div
@@ -298,22 +308,20 @@ function Step1({
       {/* Password — mockup lines 153-157 */}
       <div className="field">
         <label className="label" htmlFor="reg-password">
-          Password
+          {t('password')}
         </label>
         <input
           id="reg-password"
           className="input"
           type="password"
           autoComplete="new-password"
-          placeholder="At least 12 characters"
+          placeholder={t('passwordPlaceholder')}
           value={info.password}
           onChange={(e) => onChange({ ...info, password: e.target.value })}
           disabled={isPending}
           required
         />
-        <div className="hint">
-          Scrypt-hashed via ADR-0022 · ≥ 12 chars, ≥ 1 number, ≥ 1 symbol
-        </div>
+        <div className="hint">{t('passwordHint')}</div>
         {errors.password && (
           <div
             className="hint"
@@ -348,24 +356,26 @@ function Step1({
             color: 'oklch(var(--muted-foreground))',
           }}
         >
-          I agree to the{' '}
-          <a
-            href="#"
-            style={{ color: 'oklch(var(--accent))' }}
-            onClick={(e) => e.preventDefault()}
-          >
-            Terms of Use
-          </a>{' '}
-          and{' '}
-          <a
-            href="#"
-            style={{ color: 'oklch(var(--accent))' }}
-            onClick={(e) => e.preventDefault()}
-          >
-            Privacy Policy
-          </a>{' '}
-          · I understand my queries are logged for evaluation (Langfuse) and
-          visible only to me.
+          {t.rich('terms', {
+            terms: (chunks) => (
+              <a
+                href="#"
+                style={{ color: 'oklch(var(--accent))' }}
+                onClick={(e) => e.preventDefault()}
+              >
+                {chunks}
+              </a>
+            ),
+            privacy: (chunks) => (
+              <a
+                href="#"
+                style={{ color: 'oklch(var(--accent))' }}
+                onClick={(e) => e.preventDefault()}
+              >
+                {chunks}
+              </a>
+            ),
+          })}
         </span>
       </div>
       {errors.acceptedTerms && (
@@ -392,10 +402,10 @@ function Step1({
         {isPending ? (
           <>
             <Loader2 className="animate-spin" size={14} />
-            Creating account…
+            {t('creatingAccount')}
           </>
         ) : (
-          'Create account →'
+          t('createAccountBtn')
         )}
       </button>
 
@@ -408,7 +418,7 @@ function Step1({
           color: 'oklch(var(--muted-foreground))',
         }}
       >
-        Already have an account?{' '}
+        {t('alreadyHaveAccount')}{' '}
         <Link
           href="/login"
           style={{
@@ -417,7 +427,7 @@ function Step1({
             textDecoration: 'none',
           }}
         >
-          Sign in
+          {t('signIn')}
         </Link>
       </div>
     </form>
@@ -449,6 +459,7 @@ function Step2({
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   onBack: () => void;
 }) {
+  const t = useTranslations('Register');
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
@@ -519,7 +530,7 @@ function Step2({
             marginBottom: 8,
           }}
         >
-          Check your inbox
+          {t('checkInbox')}
         </h1>
         <p
           style={{
@@ -532,9 +543,12 @@ function Step2({
             marginRight: 'auto',
           }}
         >
-          We sent a 6-digit code to{' '}
-          <b style={{ color: 'oklch(var(--foreground))' }}>{email}</b>. Enter
-          it below to activate your account.
+          {t.rich('step2Subtitle', {
+            email,
+            b: (chunks) => (
+              <b style={{ color: 'oklch(var(--foreground))' }}>{chunks}</b>
+            ),
+          })}
         </p>
       </div>
 
@@ -544,7 +558,7 @@ function Step2({
           className="label"
           style={{ textAlign: 'center', width: '100%' }}
         >
-          Verification code
+          {t('verificationCode')}
         </label>
         <div
           style={{
@@ -570,7 +584,7 @@ function Step2({
               onKeyDown={(e) => handleBoxKeyDown(idx, e)}
               onPaste={idx === 0 ? handlePaste : undefined}
               disabled={isPending}
-              aria-label={`Digit ${idx + 1}`}
+              aria-label={t('digitAria', { n: idx + 1 })}
               style={{
                 width: 44,
                 height: 48,
@@ -602,7 +616,7 @@ function Step2({
             textTransform: 'uppercase',
           }}
         >
-          What happens next
+          {t('whatHappensNext')}
         </div>
         <ol
           style={{
@@ -613,13 +627,16 @@ function Step2({
             color: 'oklch(var(--foreground))',
           }}
         >
-          <li>Enter the 6-digit code (expires in 24h)</li>
+          <li>{t('nextStep1')}</li>
           <li>
-            You&apos;ll be auto-signed in and routed to{' '}
-            <span className="mono">/dashboard</span>
+            {t.rich('nextStep2', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </li>
           <li>
-            Your workspace is <b>Ricoh · RAPO</b> (Beta cohort)
+            {t.rich('nextStep3', {
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </li>
         </ol>
       </div>
@@ -634,10 +651,10 @@ function Step2({
         {isPending ? (
           <>
             <Loader2 className="animate-spin" size={14} />
-            Verifying…
+            {t('verifying')}
           </>
         ) : (
-          'Verify email →'
+          t('verifyEmailBtn')
         )}
       </button>
 
@@ -651,8 +668,8 @@ function Step2({
       >
         <RefreshCw size={13} />
         {resendCooldown > 0
-          ? `Resend in ${resendCooldown}s`
-          : 'Resend verification code'}
+          ? t('resendIn', { sec: resendCooldown })
+          : t('resendCode')}
       </button>
 
       {/* Back — mockup lines 113-115 */}
@@ -663,7 +680,7 @@ function Step2({
         onClick={onBack}
         disabled={isPending}
       >
-        <ArrowLeft size={13} /> Change email
+        <ArrowLeft size={13} /> {t('changeEmail')}
       </button>
 
       {/* ACS footer block — mockup lines 117-128 */}
@@ -701,6 +718,7 @@ function Step3({
   displayName: string;
   onContinue: () => void;
 }) {
+  const t = useTranslations('Register');
   return (
     <div>
       <div style={{ textAlign: 'center', padding: '12px 0 24px' }}>
@@ -727,7 +745,7 @@ function Step3({
             marginBottom: 8,
           }}
         >
-          Welcome, {displayName || 'friend'}!
+          {t('welcomeName', { name: displayName || t('friend') })}
         </h1>
         <p
           style={{
@@ -740,7 +758,7 @@ function Step3({
             marginRight: 'auto',
           }}
         >
-          Your account is ready. Head to your dashboard to get started.
+          {t('accountReady')}
         </p>
       </div>
 
@@ -761,7 +779,7 @@ function Step3({
             textTransform: 'uppercase',
           }}
         >
-          Default knowledge base
+          {t('defaultKb')}
         </div>
         <div
           style={{
@@ -775,7 +793,7 @@ function Step3({
             cursor: 'default',
           }}
           aria-disabled="true"
-          title="Multi-KB selector — Tier 1 ships with a single shared KB per Q7 default"
+          title={t('multiKbTitle')}
         >
           <span className="mono" style={{ fontSize: 13 }}>
             drive_user_manuals
@@ -794,7 +812,7 @@ function Step3({
             marginTop: 8,
           }}
         >
-          Multi-KB selection arrives later — Tier 1 ships with a single shared KB.
+          {t('multiKbHint')}
         </div>
       </div>
 
@@ -804,7 +822,7 @@ function Step3({
         style={{ width: '100%', justifyContent: 'center' }}
         onClick={onContinue}
       >
-        Go to your dashboard →
+        {t('goToDashboard')}
       </button>
     </div>
   );
@@ -814,36 +832,41 @@ function Step3({
 // Validation + error handling (preserved from W20 F7.2)
 // ──────────────────────────────────────────────────────────────────────────
 
-function validateAccountInfo(info: AccountInfo): Record<string, string> {
+function validateAccountInfo(
+  info: AccountInfo,
+  t: ReturnType<typeof useTranslations>,
+): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (!info.displayName.trim()) errors.displayName = 'Required.';
+  if (!info.displayName.trim()) errors.displayName = t('errRequired');
 
-  if (!info.email) errors.email = 'Required.';
+  if (!info.email) errors.email = t('errRequired');
   else if (!EMAIL_PATTERN.test(info.email))
-    errors.email = 'Invalid email format.';
+    errors.email = t('errInvalidEmail');
 
-  if (!info.password) errors.password = 'Required.';
+  if (!info.password) errors.password = t('errRequired');
   else if (info.password.length < MIN_PASSWORD_LENGTH)
-    errors.password = `Min ${MIN_PASSWORD_LENGTH} characters.`;
+    errors.password = t('errMinChars', { min: MIN_PASSWORD_LENGTH });
   else if (!/\d/.test(info.password))
-    errors.password = 'Must include a number.';
+    errors.password = t('errNeedNumber');
   else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(info.password))
-    errors.password = 'Must include a symbol.';
+    errors.password = t('errNeedSymbol');
 
-  if (!info.acceptedTerms)
-    errors.acceptedTerms = 'Accept the Terms of Use and Privacy Policy to continue.';
+  if (!info.acceptedTerms) errors.acceptedTerms = t('errAcceptTerms');
 
   return errors;
 }
 
-function handleRegisterError(err: unknown): void {
+function handleRegisterError(
+  err: unknown,
+  t: ReturnType<typeof useTranslations>,
+): void {
   if (err instanceof ApiError) {
     if (err.code === AuthErrorCodes.EMAIL_ALREADY_EXISTS) {
-      toast.error('An account with that email already exists.', {
-        description: err.actionableHint ?? 'Sign in instead, or use a different email.',
+      toast.error(t('errEmailExists'), {
+        description: err.actionableHint ?? t('errEmailExistsDesc'),
       });
     } else if (err.code === AuthErrorCodes.INVALID_EMAIL) {
-      toast.error('Email format is invalid.');
+      toast.error(t('errInvalidEmailToast'));
     } else if (err.code === AuthErrorCodes.WEAK_PASSWORD) {
       toast.error(err.message);
     } else {
@@ -851,37 +874,43 @@ function handleRegisterError(err: unknown): void {
     }
     return;
   }
-  toast.error('Registration failed.', {
+  toast.error(t('errRegFailed'), {
     description: err instanceof Error ? err.message : String(err),
   });
 }
 
-function handleVerifyError(err: unknown): void {
+function handleVerifyError(
+  err: unknown,
+  t: ReturnType<typeof useTranslations>,
+): void {
   if (err instanceof ApiError) {
     if (err.code === AuthErrorCodes.VERIFICATION_EXPIRED) {
-      toast.error('Verification code has expired.', {
-        description: err.actionableHint ?? 'Request a new code via Resend.',
+      toast.error(t('errVerifExpired'), {
+        description: err.actionableHint ?? t('errVerifExpiredDesc'),
       });
     } else if (err.code === AuthErrorCodes.VERIFICATION_FAILED) {
-      toast.error('Verification code is incorrect.');
+      toast.error(t('errVerifIncorrect'));
     } else {
       toast.error(err.message);
     }
     return;
   }
-  toast.error('Verification failed.', {
+  toast.error(t('errVerifFailed'), {
     description: err instanceof Error ? err.message : String(err),
   });
 }
 
-function handleResendError(err: unknown): void {
+function handleResendError(
+  err: unknown,
+  t: ReturnType<typeof useTranslations>,
+): void {
   if (err instanceof ApiError && err.code === AuthErrorCodes.RESEND_RATE_LIMITED) {
-    toast.error('Resend rate limit hit.', {
-      description: err.actionableHint ?? 'Wait a bit before trying again.',
+    toast.error(t('errResendLimit'), {
+      description: err.actionableHint ?? t('errResendLimitDesc'),
     });
     return;
   }
-  toast.error('Resend failed.', {
+  toast.error(t('errResendFailed'), {
     description: err instanceof Error ? err.message : String(err),
   });
 }
