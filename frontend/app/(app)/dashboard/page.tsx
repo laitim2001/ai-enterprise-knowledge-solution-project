@@ -49,6 +49,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 
 import { apiClient } from '@/lib/api-client';
@@ -132,6 +133,7 @@ function statusLabel(status: ComponentStatus): string {
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
+  const t = useTranslations('Dashboard');
   const user = useCurrentUser();
   const displayName = user?.preferredUsername.split('@')[0] ?? 'there';
 
@@ -167,12 +169,12 @@ export default function DashboardPage() {
   // /health overall — drives the page-header status pill.
   const healthOk = healthQuery.data?.status === 'ok';
   const healthLabel = healthQuery.isPending
-    ? 'Checking system health…'
+    ? t('healthChecking')
     : healthQuery.isError
-      ? 'Backend unreachable'
+      ? t('healthUnreachable')
       : healthOk
-        ? 'System healthy'
-        : 'System degraded';
+        ? t('healthHealthy')
+        : t('healthDegraded');
   const healthDotClass = healthQuery.isPending
     ? 'queued'
     : healthQuery.isError || !healthOk
@@ -185,19 +187,19 @@ export default function DashboardPage() {
         {/* Page header — mockup lines 18-33 */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Welcome back, {displayName}</h1>
+            <h1 className="page-title">{t('welcomeBack', { name: displayName })}</h1>
             <p className="page-subtitle">
-              <span className={`status-dot ${healthDotClass}`} /> EKP Beta ·{' '}
+              <span className={`status-dot ${healthDotClass}`} /> {t('betaTagline')} ·{' '}
               <span className="mono">ekp-beta.ricoh.com</span> · {healthLabel} ·
-              {' '}Last eval pass <b>—</b>
+              {' '}{t('lastEvalPass')} <b>—</b>
             </p>
           </div>
           <div className="page-actions">
             <Link href="/eval" className="btn btn-secondary btn-sm">
-              <Activity size={14} /> View latest eval
+              <Activity size={14} /> {t('viewLatestEval')}
             </Link>
             <Link href="/chat" className="btn btn-primary btn-sm">
-              <MessageCircle size={14} /> Ask the knowledge base
+              <MessageCircle size={14} /> {t('askKnowledgeBase')}
             </Link>
           </div>
         </div>
@@ -206,50 +208,53 @@ export default function DashboardPage() {
         <div className="stat-grid">
           <div className="stat">
             <div className="stat-label">
-              <Database size={13} /> Knowledge bases
+              <Database size={13} /> {t('statKnowledgeBases')}
             </div>
             <div className="stat-value">
               {activeKbs.length}
-              <span className="stat-unit"> active</span>
+              <span className="stat-unit"> {t('statActive')}</span>
             </div>
             <div className="stat-meta">
               {indexingKbCount > 0 ? (
                 <>
-                  <span className="status-dot indexing" /> {indexingKbCount} indexing
+                  <span className="status-dot indexing" /> {t('statIndexing', { count: indexingKbCount })}
                 </>
               ) : (
                 <>
-                  <span className="status-dot ready" /> All ready
+                  <span className="status-dot ready" /> {t('statAllReady')}
                 </>
               )}
             </div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <FileText size={13} /> Documents
+              <FileText size={13} /> {t('statDocuments')}
             </div>
             <div className="stat-value">{totalDocs.toLocaleString()}</div>
             <div className="stat-meta">
               <span>
-                {totalChunks.toLocaleString()} chunks · {totalStorageMb.toFixed(0)} MB
+                {t('statChunksStorage', {
+                  chunks: totalChunks.toLocaleString(),
+                  mb: totalStorageMb.toFixed(0),
+                })}
               </span>
             </div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <Zap size={13} /> Recall @ 5
+              <Zap size={13} /> {t('statRecall')}
             </div>
             <div className="stat-value">
               —<span className="stat-unit">%</span>
             </div>
-            <div className="stat-meta muted">No cached eval · run from /eval</div>
+            <div className="stat-meta muted">{t('statNoCachedEval')}</div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <Activity size={13} /> Today&apos;s spend
+              <Activity size={13} /> {t('statTodaySpend')}
             </div>
             <div className="stat-value">—</div>
-            <div className="stat-meta muted">Cost tracking is not enabled yet</div>
+            <div className="stat-meta muted">{t('statCostDisabled')}</div>
           </div>
         </div>
 
@@ -291,41 +296,42 @@ function KbSummaryCard({
   kbs: KbStatus[];
   loading: boolean;
 }) {
+  const t = useTranslations('Dashboard');
   return (
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Knowledge bases</h3>
+          <h3 className="card-title">{t('kbCardTitle')}</h3>
           <div className="card-desc">
             Per-KB index <span className="mono">ekp-kb-{'{kb_id}'}-v1</span> · ADR-0018 namespace
           </div>
         </div>
         <Link href="/kb" className="btn btn-secondary btn-sm">
-          View all <ChevronRight size={13} />
+          {t('kbCardViewAll')} <ChevronRight size={13} />
         </Link>
       </div>
       <div className="card-body card-body-tight">
         {loading ? (
           <div className="text-xs muted" style={{ padding: '24px 18px', textAlign: 'center' }}>
-            Loading knowledge bases…
+            {t('kbCardLoading')}
           </div>
         ) : kbs.length === 0 ? (
           <div className="text-xs muted" style={{ padding: '24px 18px', textAlign: 'center' }}>
-            No knowledge bases yet ·{' '}
+            {t('kbCardEmpty')}
             <Link href="/kb/new" style={{ color: 'oklch(var(--accent))', fontWeight: 500 }}>
-              Create your first →
+              {t('kbCardCreateFirst')}
             </Link>
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th className="col-num">Docs</th>
-                <th className="col-num">Chunks</th>
+                <th>{t('kbColName')}</th>
+                <th>{t('kbColStatus')}</th>
+                <th className="col-num">{t('kbColDocs')}</th>
+                <th className="col-num">{t('kbColChunks')}</th>
                 <th className="col-num">R@5</th>
-                <th className="col-num">Last indexed</th>
+                <th className="col-num">{t('kbColLastIndexed')}</th>
               </tr>
             </thead>
             <tbody>
@@ -341,6 +347,7 @@ function KbSummaryCard({
 }
 
 function KbRow({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('Dashboard');
   return (
     <tr>
       <td>
@@ -378,7 +385,7 @@ function KbRow({ kb }: { kb: KbStatus }) {
       <td className="col-num">{kb.total_chunks.toLocaleString()}</td>
       {/* R@5 — W22 B-i placeholder until backend `recall_at_5` per-KB field */}
       <td className="col-num">—%</td>
-      <td className="col-num text-xs">{formatRelative(kb.last_indexed_at)}</td>
+      <td className="col-num text-xs">{formatRelative(kb.last_indexed_at, t)}</td>
     </tr>
   );
 }
@@ -393,20 +400,21 @@ function RecentQueriesCard() {
   // visually empty,matches mockup behavior when MOCK_RECENT_QUERIES=[]。
   // Single muted-text placeholder preserves the card-body slot per mockup
   // `.card-body.card-body-tight` padding without inventing a CTA mockup lacks。
+  const t = useTranslations('Dashboard');
   return (
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Recent queries</h3>
+          <h3 className="card-title">{t('recentQueriesTitle')}</h3>
           <div className="card-desc">
-            Last 24h · CRAG-triggered queries marked with{' '}
+            {t('recentQueriesDesc')}{' '}
             <span className="badge badge-accent" style={{ marginLeft: 2 }}>
               <span className="badge-dot" /> CRAG
             </span>
           </div>
         </div>
         <Link href="/traces" className="btn btn-ghost btn-sm">
-          All traces <ChevronRight size={13} />
+          {t('recentQueriesAllTraces')} <ChevronRight size={13} />
         </Link>
       </div>
       <div className="card-body card-body-tight">
@@ -414,7 +422,7 @@ function RecentQueriesCard() {
           className="text-xs muted"
           style={{ padding: '32px 18px', textAlign: 'center' }}
         >
-          No queries recorded yet — query logging is not enabled.
+          {t('recentQueriesEmpty')}
         </div>
       </div>
     </div>
@@ -430,6 +438,7 @@ function LatestEvalCard() {
   // button。Backend no cached-eval-run endpoint yet → 4 placeholder metric
   // boxes with "—%" preserve grid structure;delta-arrow omitted(no baseline
   // to compare against until 2 eval runs land)。
+  const t = useTranslations('Dashboard');
   const metrics = [
     { label: 'Recall@5' },
     { label: 'Faithfulness' },
@@ -440,12 +449,12 @@ function LatestEvalCard() {
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Latest eval</h3>
+          <h3 className="card-title">{t('latestEvalTitle')}</h3>
           <div className="card-desc">
             RAGAs · <span className="mono">eval-set-v1-draft</span> · — q
           </div>
         </div>
-        <Link href="/eval" className="btn btn-ghost btn-icon btn-sm" aria-label="Open eval">
+        <Link href="/eval" className="btn btn-ghost btn-icon btn-sm" aria-label={t('openEval')}>
           <ChevronRight size={13} />
         </Link>
       </div>
@@ -475,18 +484,18 @@ function LatestEvalCard() {
               —<span className="stat-unit" style={{ fontSize: 11 }}>%</span>
             </div>
             <div className="text-xs mono muted" style={{ marginTop: 2 }}>
-              no baseline
+              {t('latestEvalNoBaseline')}
             </div>
           </div>
         ))}
       </div>
       <div className="card-footer">
         <div className="text-xs muted mono">
-          Reranker locked ·{' '}
+          {t('latestEvalRerankerLocked')} ·{' '}
           <b style={{ color: 'oklch(var(--foreground))' }}>cohere-v4.0-pro</b> · ADR-0012
         </div>
         <Link href="/eval" className="btn btn-ghost btn-xs">
-          Shootout →
+          {t('latestEvalShootout')}
         </Link>
       </div>
     </div>
@@ -502,6 +511,7 @@ function SystemHealthCard({
 }: {
   healthQuery: ReturnType<typeof useQuery<HealthResponse>>;
 }) {
+  const t = useTranslations('Dashboard');
   const data = healthQuery.data;
   const components = data?.components;
   const overallOk = data?.status === 'ok';
@@ -510,8 +520,8 @@ function SystemHealthCard({
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">System health</h3>
-          <div className="card-desc">Live · per-component connectivity</div>
+          <h3 className="card-title">{t('systemHealthTitle')}</h3>
+          <div className="card-desc">{t('systemHealthDesc')}</div>
         </div>
         {healthQuery.isPending ? (
           <span className="badge badge-muted">
@@ -535,10 +545,10 @@ function SystemHealthCard({
         {!components ? (
           <div className="text-xs muted" style={{ padding: '18px', textAlign: 'center' }}>
             {healthQuery.isPending
-              ? 'Checking…'
+              ? t('systemHealthChecking')
               : healthQuery.isError
-                ? 'Backend unreachable.'
-                : '/health returned thin payload (pre-W20 build).'}
+                ? t('systemHealthUnreachable')
+                : t('systemHealthThinPayload')}
           </div>
         ) : (
           COMPONENT_ORDER.map((key) => {
@@ -593,6 +603,7 @@ function SystemHealthCard({
 // ──────────────────────────────────────────────────────────────────────────
 
 function QuickActionsCard() {
+  const t = useTranslations('Dashboard');
   const actions: Array<{
     icon: LucideIcon;
     label: string;
@@ -603,35 +614,35 @@ function QuickActionsCard() {
   }> = [
     {
       icon: Upload,
-      label: 'Upload documents',
-      hint: '3-step pipeline wizard',
+      label: t('quickUploadLabel'),
+      hint: t('quickUploadHint'),
       href: '/kb',
     },
     {
       icon: Search,
-      label: 'Retrieval testing',
-      hint: 'Compare BM25 / Vector / Hybrid',
+      label: t('quickRetrievalLabel'),
+      hint: t('quickRetrievalHint'),
       href: '/kb',
     },
     {
       icon: Plus,
-      label: 'New knowledge base',
-      hint: 'Per-KB index',
+      label: t('quickNewKbLabel'),
+      hint: t('quickNewKbHint'),
       href: '/kb/new',
     },
     {
       icon: Key,
-      label: 'API access',
-      hint: 'Tier 2 — disabled',
+      label: t('quickApiLabel'),
+      hint: t('quickApiHint'),
       disabled: true,
-      disabledReason: 'API access — Tier 2 post-Beta',
+      disabledReason: t('quickApiDisabledReason'),
     },
   ];
 
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Quick actions</h3>
+        <h3 className="card-title">{t('quickActionsTitle')}</h3>
       </div>
       <div
         className="card-body"
@@ -694,13 +705,16 @@ function QuickActionsCard() {
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(
+  iso: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
   const ts = new Date(iso).getTime();
   if (Number.isNaN(ts)) return '—';
   const mins = Math.floor((Date.now() - ts) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
-  return `${Math.floor(mins / 60 / 24)}d ago`;
+  if (mins < 1) return t('relativeJustNow');
+  if (mins < 60) return t('relativeMinutes', { mins });
+  if (mins < 60 * 24) return t('relativeHours', { hours: Math.floor(mins / 60) });
+  return t('relativeDays', { days: Math.floor(mins / 60 / 24) });
 }
