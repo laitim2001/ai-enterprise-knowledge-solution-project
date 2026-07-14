@@ -95,6 +95,7 @@ import {
   Star,
   X as XIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   Children,
@@ -639,6 +640,7 @@ function ConversationHistoryPanel({
   onActiveDeleted: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations('Chat');
   const [search, setSearch] = useState('');
   const listQuery = useQuery({
     queryKey: ['conversations'],
@@ -679,12 +681,12 @@ function ConversationHistoryPanel({
       else older.push(c);
     }
     return [
-      { id: 'today', label: 'Today', items: today },
-      { id: 'yesterday', label: 'Yesterday', items: yesterday },
-      { id: 'this-week', label: 'This week', items: thisWeek },
-      { id: 'older', label: 'Older', items: older },
+      { id: 'today', label: t('groupToday'), items: today },
+      { id: 'yesterday', label: t('groupYesterday'), items: yesterday },
+      { id: 'this-week', label: t('groupThisWeek'), items: thisWeek },
+      { id: 'older', label: t('groupOlder'), items: older },
     ];
-  }, [filtered]);
+  }, [filtered, t]);
 
   return (
     <aside
@@ -712,7 +714,7 @@ function ConversationHistoryPanel({
             marginBottom: 8,
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Conversations</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{t('convTitle')}</span>
           <span className="badge badge-accent" style={{ fontSize: 10, fontWeight: 600 }}>
             BETA+
           </span>
@@ -720,7 +722,7 @@ function ConversationHistoryPanel({
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-xs"
-            title="Close history"
+            title={t('closeHistory')}
             onClick={onClose}
           >
             <XIcon size={12} />
@@ -732,7 +734,7 @@ function ConversationHistoryPanel({
           style={{ width: '100%', justifyContent: 'flex-start', gap: 8 }}
           onClick={handleNewChat}
         >
-          <Plus size={13} /> New chat
+          <Plus size={13} /> {t('newChat')}
         </button>
         <div className="input-search-wrap" style={{ marginTop: 8 }}>
           <span className="icon-leading">
@@ -740,7 +742,7 @@ function ConversationHistoryPanel({
           </span>
           <input
             className="input"
-            placeholder="Search conversations…"
+            placeholder={t('searchConv')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ height: 28, fontSize: 12.5 }}
@@ -763,18 +765,18 @@ function ConversationHistoryPanel({
         }}
       >
         <Shield size={11} />
-        <span>Server-side per ADR-0031 · scoped to user · Postgres backing</span>
+        <span>{t('privacyNotice')}</span>
       </div>
 
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
         {listQuery.isPending ? (
           <div className="muted text-xs" style={{ padding: '24px 8px', textAlign: 'center' }}>
-            Loading…
+            {t('loading')}
           </div>
         ) : conversations.length === 0 ? (
           <div className="muted text-xs" style={{ padding: '24px 8px', textAlign: 'center' }}>
-            No conversations yet.
+            {t('noConversations')}
           </div>
         ) : (
           groups.map((g) => {
@@ -821,9 +823,7 @@ function ConversationHistoryPanel({
         }}
       >
         <Inbox size={11} />
-        <span>
-          {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
-        </span>
+        <span>{t('convCount', { count: conversations.length })}</span>
       </div>
     </aside>
   );
@@ -840,6 +840,7 @@ function ConversationItem({
   onClick: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations('Chat');
   const [hover, setHover] = useState(false);
   return (
     <div
@@ -881,13 +882,13 @@ function ConversationItem({
             lineHeight: 1.35,
           }}
         >
-          {conv.title || 'Untitled'}
+          {conv.title || t('untitled')}
         </span>
         {hover && (
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-xs"
-            title="Delete conversation"
+            title={t('deleteConv')}
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
@@ -968,6 +969,7 @@ function ChatHeader({
   focusMode: boolean;
   onToggleFocus: () => void;
 }) {
+  const t = useTranslations('Chat');
   // CH-018 — the selector lists only ACTIVE (non-archived) KBs; archived KBs are
   // soft-deleted and shouldn't be a pickable target for new questions (same
   // non-archived semantics as the sidebar badge CH-016 / dashboard stat CH-017).
@@ -995,7 +997,7 @@ function ChatHeader({
         <button
           type="button"
           className="btn btn-ghost btn-icon btn-sm"
-          title="Show conversation history"
+          title={t('showHistory')}
           onClick={onToggleHistory}
         >
           <Inbox size={14} />
@@ -1010,12 +1012,12 @@ function ChatHeader({
           style={{ height: 28 }}
         >
           {kbOptions.length === 0 ? (
-            <option value="">No knowledge bases yet</option>
+            <option value="">{t('noKbsYet')}</option>
           ) : (
             kbOptions.map((k) => (
               <option key={k.kb_id} value={k.kb_id}>
                 {k.name || k.kb_id}
-                {k.archived ? ' (archived)' : ''}
+                {k.archived ? t('archivedSuffix') : ''}
               </option>
             ))
           )}
@@ -1024,8 +1026,10 @@ function ChatHeader({
           <>
             <span className="muted text-xs">·</span>
             <span className="muted mono text-xs">
-              {activeKb.total_chunks.toLocaleString()} chunks · {activeKb.total_screenshots}{' '}
-              screenshots
+              {t('chunksScreenshots', {
+                chunks: activeKb.total_chunks.toLocaleString(),
+                screenshots: activeKb.total_screenshots,
+              })}
             </span>
           </>
         )}
@@ -1041,7 +1045,7 @@ function ChatHeader({
           data-on={cragEnabled}
           role="switch"
           aria-checked={cragEnabled}
-          aria-label="CRAG L2 self-correction"
+          aria-label={t('cragAria')}
           tabIndex={0}
           onClick={onToggleCrag}
           onKeyDown={(e) => {
@@ -1049,14 +1053,14 @@ function ChatHeader({
           }}
         />
         <span className="muted text-xs" style={{ marginLeft: 12 }}>
-          Show images
+          {t('showImages')}
         </span>
         <span
           className="switch"
           data-on={showImages}
           role="switch"
           aria-checked={showImages}
-          aria-label="Show images in answers"
+          aria-label={t('showImagesAria')}
           tabIndex={0}
           onClick={onToggleImages}
           onKeyDown={(e) => {
@@ -1068,7 +1072,7 @@ function ChatHeader({
         <button
           type="button"
           className="btn btn-ghost btn-icon btn-sm"
-          title={focusMode ? 'Exit focus mode (restore panels)' : 'Focus mode (hide all panels)'}
+          title={focusMode ? t('focusModeOff') : t('focusModeOn')}
           onClick={onToggleFocus}
           style={{
             // Active highlight mirrors the BookOpen sources toggle below.
@@ -1081,7 +1085,7 @@ function ChatHeader({
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-sm"
-            title={sourcesCollapsed ? 'Show sources panel' : 'Hide sources panel'}
+            title={sourcesCollapsed ? t('showSources') : t('hideSources')}
             onClick={onToggleSources}
             style={{
               background: !sourcesCollapsed ? 'oklch(var(--muted))' : 'transparent',
@@ -1148,6 +1152,7 @@ function ChatThread({
 }
 
 function EmptyState() {
+  const t = useTranslations('Chat');
   return (
     <div
       style={{
@@ -1178,11 +1183,10 @@ function EmptyState() {
           marginBottom: 6,
         }}
       >
-        Ask about Ricoh financial software
+        {t('emptyTitle')}
       </div>
       <div style={{ fontSize: 13, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
-        AR / AP / FA / CB / GL / BM · D365 F&O ERP corpus · Cohere v4.0-pro rerank · Image-grounded
-        citations.
+        {t('emptyDesc')}
       </div>
     </div>
   );
