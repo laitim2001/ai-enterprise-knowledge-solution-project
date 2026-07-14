@@ -40,6 +40,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -64,6 +65,7 @@ const DOC_PROFILE_LABELS: Record<string, string> = {
 };
 
 function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
+  const t = useTranslations('DocConfig');
   // W79 / ADR-0058 — effective = manual_override ?? system auto profile.
   const effective = profile.manual_override ?? profile.profile;
   const overridden = profile.manual_override != null;
@@ -75,9 +77,11 @@ function DocProfileBadge({ profile }: { profile: DocProfileInfo }) {
         <span className="badge-dot" /> {DOC_PROFILE_LABELS[effective] ?? effective}
       </span>
       {overridden ? (
-        <span className="text-xs muted">Manually overridden</span>
+        <span className="text-xs muted">{t('manuallyOverridden')}</span>
       ) : (
-        <span className="text-xs muted mono">Confidence {Math.round(profile.confidence * 100)}%</span>
+        <span className="text-xs muted mono">
+          {t('confidence', { pct: Math.round(profile.confidence * 100) })}
+        </span>
       )}
     </span>
   );
@@ -131,6 +135,7 @@ export function DocConfigTab({
   kbName: string;
   profile?: DocProfileInfo | null;
 }) {
+  const t = useTranslations('DocConfig');
   const queryClient = useQueryClient();
   const configQuery = useQuery<DocConfig>({
     queryKey: ['kb', kbId, 'doc-config', docId],
@@ -142,7 +147,7 @@ export function DocConfigTab({
     return (
       <div className="banner banner-info">
         <span className="spinner" />
-        <div style={{ flex: 1 }}>Loading per-document config…</div>
+        <div style={{ flex: 1 }}>{t('loadingConfig')}</div>
       </div>
     );
   }
@@ -151,8 +156,9 @@ export function DocConfigTab({
       <div className="banner banner-error">
         <AlertTriangle size={16} />
         <div style={{ flex: 1 }}>
-          Failed to load per-document config:{' '}
-          {String((configQuery.error as Error)?.message ?? 'unknown')}
+          {t('errorLoadConfig', {
+            msg: String((configQuery.error as Error)?.message ?? 'unknown'),
+          })}
         </div>
       </div>
     );
@@ -189,6 +195,7 @@ function DocConfigEditor({
   saved: DocConfig;
   onSaved: () => void;
 }) {
+  const t = useTranslations('DocConfig');
   const [answerDetail, setAnswerDetail] = useState<AnswerDetail>(saved.answer_detail ?? null);
   const [knobs, setKnobs] = useState<DocKnobState>(() => {
     const init = {} as DocKnobState;
@@ -239,9 +246,9 @@ function DocConfigEditor({
     mutationFn: () => docConfigApi.put(kbId, docId, buildDocConfig()),
     onSuccess: () => {
       onSaved();
-      toast.success('Saved to this document');
+      toast.success(t('toastSaved'));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Save failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastSaveFailed')),
   });
 
   // W79 / ADR-0058 — 人手覆寫 profile mutation. override → 套對應 preset 落 per-doc config +
@@ -252,9 +259,9 @@ function DocConfigEditor({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-detail', docId] });
       void queryClient.invalidateQueries({ queryKey: ['kb', kbId, 'doc-config', docId] });
-      toast.success('Applied profile + matching preset (reload the page to see updated knobs)');
+      toast.success(t('toastProfileApplied'));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Profile override failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastProfileFailed')),
   });
 
   // effective profile = manual_override ?? system auto (select 預設 + badge 顯示用).
@@ -267,20 +274,24 @@ function DocConfigEditor({
         <Settings size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13 }}>
-            <b>Per-document custom configuration</b> — Leave blank = Inherit from KB (
-            <span className="mono">{kbName}</span>) then global.
+            {t.rich('scopeBannerText', {
+              kbName,
+              b: (c) => <b>{c}</b>,
+              mono: (c) => <span className="mono">{c}</span>,
+            })}
             {overriddenCount > 0 && (
               <span className="badge badge-success" style={{ marginLeft: 6, fontSize: 9 }}>
-                {overriddenCount} items overridden
+                {t('badgeItemsOverridden', { count: overriddenCount })}
               </span>
             )}
           </div>
           <div className="muted text-xs" style={{ marginTop: 2 }}>
-            Resolution priority: per-query &gt; <b>per-DOC (this document)</b> &gt; per-KB &gt; global · ADR-0050 ·
-            <span className="mono">
-              {' '}
-              PUT /kb/{kbId}/docs/{docId}/config
-            </span>
+            {t.rich('resolutionPriority', {
+              kbId,
+              docId,
+              b: (c) => <b>{c}</b>,
+              mono: (c) => <span className="mono">{c}</span>,
+            })}
           </div>
         </div>
       </div>
@@ -291,9 +302,9 @@ function DocConfigEditor({
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">Document profile (auto-detected)</h3>
+              <h3 className="card-title">{t('cardProfileTitle')}</h3>
               <div className="card-desc">
-                The system detects the content type from the document&apos;s structure signals and auto-applies the matching recall preset. Wrong detection → override with one click below.
+                {t('cardProfileDesc')}
                 <span className="mono"> W72 profiler · ADR-0056 Layer A</span>
               </div>
             </div>
@@ -304,47 +315,49 @@ function DocConfigEditor({
               <div className="banner banner-warning">
                 <Shield size={15} style={{ color: 'oklch(var(--warning))', flexShrink: 0 }} />
                 <div className="text-xs" style={{ flex: 1, lineHeight: 1.5 }}>
-                  <b>Low-confidence detection</b> (conflicting structure signals) — fell back to a conservative preset. Recommend manually confirming the profile below.
+                  {t.rich('lowConfDetection', { b: (c) => <b>{c}</b> })}
                 </div>
               </div>
             )}
             <div>
               <div className="label" style={{ marginBottom: 8 }}>
-                Detection signals (why this profile)
+                {t('detectionSignalsLabel')}
               </div>
               <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 <ProfileSignal
-                  label="Image density (img_density)"
+                  label={t('signalImgDensity')}
                   value={profile.signals.img_density.toFixed(3)}
                 />
                 <ProfileSignal
-                  label="List ratio (list_ratio)"
+                  label={t('signalListRatio')}
                   value={profile.signals.list_ratio.toFixed(3)}
                 />
-                <ProfileSignal label="Heading depth (max_depth)" value={profile.signals.max_depth} />
-                <ProfileSignal label="Heading count (headings)" value={profile.signals.headings} />
+                <ProfileSignal label={t('signalMaxDepth')} value={profile.signals.max_depth} />
+                <ProfileSignal label={t('signalHeadings')} value={profile.signals.headings} />
                 {profile.signals.pdf_pages != null && (
                   <>
-                    <ProfileSignal label="PDF pages" value={profile.signals.pdf_pages} />
+                    <ProfileSignal label={t('signalPdfPages')} value={profile.signals.pdf_pages} />
                     <ProfileSignal
-                      label="Empty text-layer ratio"
+                      label={t('signalEmptyRatio')}
                       value={(profile.signals.pdf_empty_ratio ?? 0).toFixed(2)}
                     />
                     <ProfileSignal
-                      label="Avg chars/page"
+                      label={t('signalAvgChars')}
                       value={Math.round(profile.signals.pdf_avg_chars ?? 0)}
                     />
                   </>
                 )}
-                <ProfileSignal label="Paragraph count (paragraphs)" value={profile.signals.paragraphs} />
+                <ProfileSignal label={t('signalParagraphs')} value={profile.signals.paragraphs} />
               </div>
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                Manual profile override (override)
+                {t('manualOverrideLabel')}
                 {profile.manual_override != null && (
                   <span className="badge badge-success" style={{ fontSize: 9 }}>
-                    Overridden · originally classified as {DOC_PROFILE_LABELS[profile.profile] ?? profile.profile}
+                    {t('badgeOverriddenOrigin', {
+                      label: DOC_PROFILE_LABELS[profile.profile] ?? profile.profile,
+                    })}
                   </span>
                 )}
               </label>
@@ -364,8 +377,8 @@ function DocConfigEditor({
                 <option value="P5_form">P5 Form</option>
               </select>
               <div className="hint">
-                Changing the profile immediately applies the matching preset to the knobs below (overrides the per-doc config). Admin override always takes priority over auto-detection
-                (ADR-0056 D6).{overrideMutation.isPending && ' Applying…'}
+                {t('overrideHint')}
+                {overrideMutation.isPending && t('applyingSuffix')}
               </div>
             </div>
           </div>
@@ -376,35 +389,34 @@ function DocConfigEditor({
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Per-document configuration</h3>
+            <h3 className="card-title">{t('cardPerDocTitle')}</h3>
             <div className="card-desc">
-              Override this document&apos;s <b>synthesis + citation post-processing</b> behavior. Knobs not overridden use the KB defaults. All runtime —{' '}
-              <b>no re-indexing needed</b>.
+              {t.rich('cardPerDocDesc', { b: (c) => <b>{c}</b> })}
             </div>
           </div>
           <span className="badge badge-info" style={{ fontSize: 9.5 }}>
-            <Edit size={10} /> Runtime · no re-index
+            <Edit size={10} /> {t('badgeRuntimeNoReindex')}
           </span>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
           {/* answer_detail — synthesis (dominant doc) */}
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              Answer detail (answer_detail)
+              {t('labelAnswerDetail')}
               {answerDetail === null ? (
                 <span className="badge badge-muted" style={{ fontSize: 9, fontWeight: 500 }}>
-                  Inherit from KB
+                  {t('badgeInheritFromKb')}
                 </span>
               ) : (
                 <span className="badge badge-success" style={{ fontSize: 9 }}>
-                  <Edit size={9} /> Overridden
+                  <Edit size={9} /> {t('badgeOverridden')}
                 </span>
               )}
             </label>
             <div className="seg" style={{ width: '100%', maxWidth: 380 }}>
               {(
                 [
-                  { v: null, l: 'Inherit from KB' },
+                  { v: null, l: t('inheritFromKb') },
                   { v: 'concise', l: 'concise' },
                   { v: 'detailed', l: 'detailed' },
                 ] as { v: AnswerDetail; l: string }[]
@@ -422,31 +434,30 @@ function DocConfigEditor({
               ))}
             </div>
             <div className="hint">
-              Synthesis detail level. Procedure-manual documents can be set to{' '}
-              <span className="mono">detailed</span> (lists every step); Inherit = use the KB setting.
+              {t.rich('answerDetailHint', { mono: (c) => <span className="mono">{c}</span> })}
             </div>
           </div>
 
           <DocTuneGroup
             icon={LinkIcon}
-            title="Citation post-hoc expansion"
-            desc="After the answer is generated, supplement each citation with neighbouring auxiliary chunks to improve completeness."
+            title={t('groupCitationExpTitle')}
+            desc={t('groupCitationExpDesc')}
             enabled={knobs.enable_citation_post_hoc_expansion as boolean | null}
             onToggle={(v) => setKnob('enable_citation_post_hoc_expansion', v)}
             onReset={() => setKnob('enable_citation_post_hoc_expansion', null)}
           >
             <DocTuneKnob
-              label="Max aux / citation"
+              label={t('knobMaxAuxPerCitation')}
               value={knobs.citation_expansion_max_aux as number | null}
               onChange={(v) => setKnob('citation_expansion_max_aux', v)}
             />
             <DocTuneKnob
-              label="Expansion window"
+              label={t('knobExpansionWindow')}
               value={knobs.citation_expansion_window as number | null}
               onChange={(v) => setKnob('citation_expansion_window', v)}
             />
             <DocTuneKnob
-              label="Section path prefix depth"
+              label={t('knobSectionPathPrefixDepth')}
               value={knobs.citation_expansion_section_path_prefix_depth as number | null}
               onChange={(v) => setKnob('citation_expansion_section_path_prefix_depth', v)}
             />
@@ -454,29 +465,29 @@ function DocConfigEditor({
 
           <DocTuneGroup
             icon={Eye}
-            title="Citation neighbour images + image cap"
-            desc="Controls bringing in citation-neighbour images and the max images shown per answer (image-flood convergence)."
+            title={t('groupNeighbourImgTitle')}
+            desc={t('groupNeighbourImgDesc')}
             enabled={knobs.enable_citation_neighbour_images as boolean | null}
             onToggle={(v) => setKnob('enable_citation_neighbour_images', v)}
             onReset={() => setKnob('enable_citation_neighbour_images', null)}
           >
             <DocTuneKnob
-              label="Neighbour max aux images"
+              label={t('knobNeighbourMaxAuxImages')}
               value={knobs.citation_neighbour_max_aux_images as number | null}
               onChange={(v) => setKnob('citation_neighbour_max_aux_images', v)}
             />
             <DocTuneKnob
-              label="Neighbour prefix depth"
+              label={t('knobNeighbourPrefixDepth')}
               value={knobs.citation_neighbour_section_path_prefix_depth as number | null}
               onChange={(v) => setKnob('citation_neighbour_section_path_prefix_depth', v)}
             />
             <DocTuneKnob
-              label="Max images / answer"
+              label={t('knobMaxImagesPerAnswer')}
               value={knobs.max_images_per_answer as number | null}
               onChange={(v) => setKnob('max_images_per_answer', v)}
             />
             <DocSwitchKnob
-              label="Chapter overview image on top (overview pin)"
+              label={t('knobOverviewPin')}
               value={knobs.enable_chapter_overview_pin as boolean | null}
               onChange={(v) => setKnob('enable_chapter_overview_pin', v)}
             />
@@ -487,24 +498,24 @@ function DocConfigEditor({
               做主 toggle (section 錨定靠 marker 機制注入 → 主/進階關係); backend 零改動. */}
           <DocTuneGroup
             icon={Tag}
-            title="Inline image anchoring (image markers + section anchoring)"
-            desc="Answer text carries [IMG#…] markers at the original image positions, so text and images interleave in the source order. Advanced: section anchoring injects trailing un-anchored images into the same section, and can cap images per anchor (converges intra-section clumps)."
+            title={t('groupInlineAnchorTitle')}
+            desc={t('groupInlineAnchorDesc')}
             enabled={knobs.enable_inline_image_markers as boolean | null}
             onToggle={(v) => setKnob('enable_inline_image_markers', v)}
             onReset={() => setKnob('enable_inline_image_markers', null)}
           >
             <DocSwitchKnob
-              label="section-anchored aux images (trailing pile → into section)"
+              label={t('knobSectionAnchored')}
               value={knobs.enable_section_anchored_aux_images as boolean | null}
               onChange={(v) => setKnob('enable_section_anchored_aux_images', v)}
             />
             <DocSwitchKnob
-              label="Anchor to nearest step (nearest; else section end)"
+              label={t('knobAnchorNearest')}
               value={knobs.section_anchor_nearest as boolean | null}
               onChange={(v) => setKnob('section_anchor_nearest', v)}
             />
             <DocTuneKnob
-              label="Max images per anchor (0 = no cap)"
+              label={t('knobMaxPerAnchor')}
               value={knobs.section_anchor_max_per_anchor as number | null}
               onChange={(v) => setKnob('section_anchor_max_per_anchor', v)}
             />
@@ -512,7 +523,7 @@ function DocConfigEditor({
         </div>
         <div className="card-footer">
           <div className="muted text-xs">
-            Config scope: per-query &gt; <b>per-DOC (this document)</b> &gt; per-KB &gt; global · ADR-0050
+            {t.rich('configScopeDoc', { b: (c) => <b>{c}</b> })}
           </div>
           <div className="row">
             <button
@@ -521,7 +532,7 @@ function DocConfigEditor({
               onClick={resetAllToKb}
               disabled={overriddenCount === 0}
             >
-              <RefreshCw size={13} /> Reset all to KB
+              <RefreshCw size={13} /> {t('btnResetAllToKb')}
             </button>
             <button
               type="button"
@@ -529,7 +540,7 @@ function DocConfigEditor({
               onClick={() => saveMutation.mutate()}
               disabled={!dirty || saveMutation.isPending}
             >
-              {saveMutation.isPending ? <span className="spinner" /> : null} Save to this document
+              {saveMutation.isPending ? <span className="spinner" /> : null} {t('btnSaveToDoc')}
             </button>
           </div>
         </div>
@@ -546,10 +557,7 @@ function DocConfigEditor({
             style={{ color: 'oklch(var(--warning))', flexShrink: 0, marginTop: 2 }}
           />
           <div className="text-xs" style={{ lineHeight: 1.6, flex: 1 }}>
-            <b>Retrieval-entry knobs</b> (default_top_k / default_rerank_k / parent-document retrieval)
-            <b>are set at the KB level</b> and can&apos;t be overridden per-document —— these knobs drive retrieval
-            <b>before</b>
-            it&apos;s determined which document gets cited (ADR-0050).
+            {t.rich('retrievalEntryExplainer', { b: (c) => <b>{c}</b> })}
           </div>
         </div>
       </div>
@@ -578,6 +586,7 @@ function DocTuneKnob({
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
+  const t = useTranslations('DocConfig');
   const overridden = value !== null;
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -585,11 +594,11 @@ function DocTuneKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> Overridden
+            <Edit size={9} /> {t('badgeOverridden')}
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            Inherit from KB
+            {t('badgeInheritFromKb')}
           </span>
         )}
       </label>
@@ -597,11 +606,11 @@ function DocTuneKnob({
         type="number"
         className="input mono"
         value={value ?? ''}
-        placeholder="Inherit from KB"
+        placeholder={t('badgeInheritFromKb')}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? "This document's override value" : 'Not overridden · uses KB'}</span>
+        <span>{overridden ? t('knobOverrideValue') : t('knobNotOverridden')}</span>
         {overridden && (
           <button
             type="button"
@@ -618,7 +627,7 @@ function DocTuneKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> Reset to KB
+            <RefreshCw size={10} /> {t('resetToKb')}
           </button>
         )}
       </div>
@@ -636,6 +645,7 @@ function DocSwitchKnob({
   value: boolean | null;
   onChange: (v: boolean | null) => void;
 }) {
+  const t = useTranslations('DocConfig');
   const overridden = value !== null;
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -643,11 +653,11 @@ function DocSwitchKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> Overridden
+            <Edit size={9} /> {t('badgeOverridden')}
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            Inherit from KB
+            {t('badgeInheritFromKb')}
           </span>
         )}
       </label>
@@ -660,10 +670,12 @@ function DocSwitchKnob({
           tabIndex={0}
           onClick={() => onChange(value === true ? false : true)}
         />
-        <span className="muted text-xs">{overridden ? (value ? 'On' : 'Off') : 'Inherit'}</span>
+        <span className="muted text-xs">
+          {overridden ? (value ? t('switchOn') : t('switchOff')) : t('switchInherit')}
+        </span>
       </div>
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? "This document's override value" : 'Not overridden · uses KB'}</span>
+        <span>{overridden ? t('knobOverrideValue') : t('knobNotOverridden')}</span>
         {overridden && (
           <button
             type="button"
@@ -680,7 +692,7 @@ function DocSwitchKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> Reset to KB
+            <RefreshCw size={10} /> {t('resetToKb')}
           </button>
         )}
       </div>
@@ -707,6 +719,7 @@ function DocTuneGroup({
   onReset: () => void;
   children: ReactNode;
 }) {
+  const t = useTranslations('DocConfig');
   const [open, setOpen] = useState(false);
   const overridden = enabled !== null;
   return (
@@ -741,11 +754,11 @@ function DocTuneGroup({
             <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
             {overridden ? (
               <span className="badge badge-success" style={{ fontSize: 9 }}>
-                Overridden
+                {t('badgeOverridden')}
               </span>
             ) : (
               <span className="badge badge-muted" style={{ fontSize: 9 }}>
-                Inherit from KB
+                {t('badgeInheritFromKb')}
               </span>
             )}
             {overridden && (
@@ -764,7 +777,7 @@ function DocTuneGroup({
                   padding: 0,
                 }}
               >
-                <RefreshCw size={10} /> Reset to KB
+                <RefreshCw size={10} /> {t('resetToKb')}
               </button>
             )}
           </div>
@@ -779,7 +792,8 @@ function DocTuneGroup({
           onClick={() => setOpen(!open)}
           aria-expanded={open}
         >
-          Advanced <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+          {t('btnAdvanced')}{' '}
+          <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
         </button>
       </div>
       {open && (
@@ -817,6 +831,7 @@ function DocConfigTestPanel({
   saving: boolean;
   dirty: boolean;
 }) {
+  const t = useTranslations('DocConfig');
   const [testQuery, setTestQuery] = useState(
     'How do I process and confirm journal voucher transactions?',
   );
@@ -831,7 +846,7 @@ function DocConfigTestPanel({
         draft_config: draftConfig,
         compare_to_saved: compare,
       }),
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'config-test failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastConfigTestFailed')),
   });
   const result = mutation.data;
 
@@ -844,10 +859,10 @@ function DocConfigTestPanel({
               size={14}
               style={{ verticalAlign: '-2px', marginRight: 6, color: 'oklch(var(--accent))' }}
             />
-            Test run (this document scope)
+            {t('testRunTitle')}
           </h3>
           <div className="card-desc">
-            Test run with this document&apos;s config on the real pipeline (dominant doc = this document).{' '}
+            {t('testRunDesc')}{' '}
             <span className="mono">
               POST /kb/{kbId}/config-test · doc={docId}
             </span>
@@ -865,7 +880,7 @@ function DocConfigTestPanel({
           }}
         >
           <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
-            <label className="label">Test query</label>
+            <label className="label">{t('labelTestQuery')}</label>
             <input
               className="input"
               value={testQuery}
@@ -879,7 +894,7 @@ function DocConfigTestPanel({
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Number of runs</label>
+            <label className="label">{t('labelNumberOfRuns')}</label>
             <div className="seg">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -913,7 +928,7 @@ function DocConfigTestPanel({
               tabIndex={0}
               onClick={() => setCompare(!compare)}
             />
-            Compare against inherited KB (A/B)
+            {t('labelCompareInheritedKb')}
           </label>
           <button
             type="button"
@@ -923,11 +938,11 @@ function DocConfigTestPanel({
           >
             {mutation.isPending ? (
               <>
-                <span className="spinner" /> Running…
+                <span className="spinner" /> {t('running')}
               </>
             ) : (
               <>
-                <Zap size={14} /> Test run
+                <Zap size={14} /> {t('btnTestRun')}
               </>
             )}
           </button>
@@ -938,8 +953,8 @@ function DocConfigTestPanel({
             <div className="empty-icon">
               <Zap size={20} />
             </div>
-            <div className="empty-title">No test run yet</div>
-            <div>Adjust the knobs above → pick the number of runs → click &quot;Test run&quot;.</div>
+            <div className="empty-title">{t('noTestRunYet')}</div>
+            <div>{t('noTestRunDesc')}</div>
           </div>
         )}
 
@@ -952,9 +967,9 @@ function DocConfigTestPanel({
                 gap: 14,
               }}
             >
-              <DocConfigResultCard label="This document's config (DRAFT)" accent summary={result.draft} />
+              <DocConfigResultCard label={t('cardThisDocDraft')} accent summary={result.draft} />
               {result.saved && (
-                <DocConfigResultCard label="Inherit from KB (SAVED)" summary={result.saved} />
+                <DocConfigResultCard label={t('cardInheritKbSaved')} summary={result.saved} />
               )}
             </div>
 
@@ -967,25 +982,24 @@ function DocConfigTestPanel({
                 style={{ color: 'oklch(var(--warning))', marginTop: 1, flexShrink: 0 }}
               />
               <span>
-                For long / comprehensive answers, faithfulness has a{' '}
-                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> —— a low score paired with high{' '}
-                <b>Sections covered</b> / word count is usually bias, not a config difference; read them together.
+                {t.rich('lengthBiasCaveat', {
+                  bWarn: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+                  b: (c) => <b>{c}</b>,
+                })}
               </span>
             </div>
           </>
         )}
       </div>
       <div className="card-footer">
-        <div className="muted text-xs">
-          Average over N runs · band = max − min · answer_detail included in the test-run draft
-        </div>
+        <div className="muted text-xs">{t('footerAvgRuns')}</div>
         <button
           type="button"
           className="btn btn-secondary btn-sm"
           onClick={onSaveDraft}
           disabled={!dirty || saving}
         >
-          <Download size={13} /> Save draft to this document
+          <Download size={13} /> {t('btnSaveDraftToDoc')}
         </button>
       </div>
     </div>
@@ -1002,6 +1016,7 @@ function DocConfigResultCard({
   accent?: boolean;
   summary: ConfigRunSummary;
 }) {
+  const t = useTranslations('DocConfig');
   const last = summary.runs[summary.runs.length - 1];
   const fmt = (b: { mean: number }) =>
     Number.isInteger(b.mean) ? String(b.mean) : b.mean.toFixed(1);
@@ -1035,7 +1050,7 @@ function DocConfigResultCard({
         <div
           style={{ gridColumn: '1 / -1', background: 'oklch(var(--card))', padding: '10px 14px' }}
         >
-          <div className="muted text-xs">Faithfulness (faithfulness · anti-hallucination · 0–1)</div>
+          <div className="muted text-xs">{t('faithfulnessLabel')}</div>
           <div
             className="mono"
             style={{
@@ -1056,43 +1071,46 @@ function DocConfigResultCard({
             )}
             {summary.faithfulness == null && (
               <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
-                Not evaluated (no judge / disabled)
+                {t('notEvaluated')}
               </span>
             )}
           </div>
           {summary.faithfulness != null && summary.runs.length === 1 && (
             <div className="text-xs" style={{ marginTop: 3, color: 'oklch(var(--warning))' }}>
-              Single judge run · directional · raise runs to ≥2 to see the stability band
+              {t('singleJudgeRun')}
             </div>
           )}
         </div>
         <DocConfigMetric
-          k="Citations"
+          k={t('metricCitations')}
           v={fmt(summary.citation_count)}
           band={summary.citation_count.band}
         />
         <DocConfigMetric
-          k="Sections covered"
+          k={t('metricSectionsCovered')}
           v={fmt(summary.distinct_sections)}
-          sub="completeness proxy · not recall"
+          sub={t('subSectionsCovered')}
           band={summary.distinct_sections.band}
         />
         <DocConfigMetric
-          k="Images (dedup)"
+          k={t('metricImagesDedup')}
           v={fmt(summary.figure_count_dedup)}
-          sub={`raw ${fmt(summary.figure_count_raw)}`}
+          sub={t('subRaw', { n: fmt(summary.figure_count_raw) })}
           band={summary.figure_count_dedup.band}
         />
         {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
         <DocConfigMetric
-          k="Image sections"
+          k={t('metricImageSections')}
           v={fmt(summary.image_section_count)}
-          sub="sections-with-images coverage · proxy not recall"
+          sub={t('subImageSections')}
           band={summary.image_section_count.band}
         />
-        <DocConfigMetric k="Latency p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
-        <DocConfigMetric k="Answer chars" v={String(last?.answer_chars ?? 0)} />
-        <DocConfigMetric k="Refused?" v={last?.refused ? 'Yes' : 'No'} />
+        <DocConfigMetric
+          k={t('metricLatencyP50')}
+          v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`}
+        />
+        <DocConfigMetric k={t('metricAnswerChars')} v={String(last?.answer_chars ?? 0)} />
+        <DocConfigMetric k={t('metricRefused')} v={last?.refused ? t('valueYes') : t('valueNo')} />
       </div>
     </div>
   );

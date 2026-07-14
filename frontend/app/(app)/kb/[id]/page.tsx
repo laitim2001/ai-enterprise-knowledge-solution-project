@@ -51,6 +51,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -92,29 +93,32 @@ const VALID_TABS = [
 ] as const;
 type TabKey = (typeof VALID_TABS)[number];
 
-const TAB_DEFS: { id: TabKey; label: string; icon: LucideIcon }[] = [
-  { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'chunks', label: 'Chunks', icon: Layers },
-  { id: 'images', label: 'Images', icon: ImageIcon },
-  { id: 'chunking-lab', label: 'Chunking Lab', icon: Zap },
-  { id: 'pipeline', label: 'Pipeline', icon: Zap },
-  { id: 'retrieval', label: 'Retrieval Testing', icon: Search },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon },
-  { id: 'access', label: 'Access', icon: Shield },
+const TAB_DEFS: { id: TabKey; labelKey: string; icon: LucideIcon }[] = [
+  { id: 'documents', labelKey: 'tabDocuments', icon: FileText },
+  { id: 'chunks', labelKey: 'tabChunks', icon: Layers },
+  { id: 'images', labelKey: 'tabImages', icon: ImageIcon },
+  { id: 'chunking-lab', labelKey: 'tabChunkingLab', icon: Zap },
+  { id: 'pipeline', labelKey: 'tabPipeline', icon: Zap },
+  { id: 'retrieval', labelKey: 'tabRetrievalTesting', icon: Search },
+  { id: 'settings', labelKey: 'tabSettings', icon: SettingsIcon },
+  { id: 'access', labelKey: 'tabAccess', icon: Shield },
 ];
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(
+  iso: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return '—';
   const diff = Date.now() - then;
   const minutes = Math.round(diff / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('relativeJustNow');
+  if (minutes < 60) return t('relativeMinutes', { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('relativeHours', { hours });
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t('relativeDays', { days });
   return new Date(iso).toLocaleDateString();
 }
 
@@ -138,10 +142,11 @@ function ProfileBadge({
   profile?: string | null;
   confidence?: number | null;
 }) {
+  const t = useTranslations('KbDetail');
   if (!profile) {
     return (
       <span className="badge badge-muted" style={{ opacity: 0.65 }}>
-        Not analyzed
+        {t('profileNotAnalyzed')}
       </span>
     );
   }
@@ -153,7 +158,7 @@ function ProfileBadge({
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <span
         className={`badge ${low ? 'badge-warning' : 'badge-muted'}`}
-        title={low ? 'Low confidence — please verify the profile manually' : 'Detected profile'}
+        title={low ? t('profileLowConfTitle') : t('profileDetectedTitle')}
       >
         <span className="badge-dot" /> {label}
       </span>
@@ -165,6 +170,7 @@ function ProfileBadge({
 }
 
 export default function KbDetailPage() {
+  const t = useTranslations('KbDetail');
   const params = useParams<{ id: string }>();
   const kbId = params.id;
   const router = useRouter();
@@ -193,7 +199,7 @@ export default function KbDetailPage() {
         <div className="content-wide">
           <div className="banner banner-info">
             <span className="spinner" />
-            <div style={{ flex: 1 }}>Loading KB…</div>
+            <div style={{ flex: 1 }}>{t('loadingKb')}</div>
           </div>
         </div>
       </div>
@@ -206,7 +212,10 @@ export default function KbDetailPage() {
           <div className="banner banner-error">
             <AlertTriangle size={16} />
             <div style={{ flex: 1 }}>
-              Failed to load KB {kbId}: {String((query.error as Error)?.message ?? 'unknown')}
+              {t('errorLoadKb', {
+                kbId,
+                msg: String((query.error as Error)?.message ?? 'unknown'),
+              })}
             </div>
           </div>
         </div>
@@ -233,7 +242,7 @@ export default function KbDetailPage() {
                 className="btn btn-ghost btn-xs btn-ghost-muted"
                 onClick={() => router.push('/kb')}
               >
-                <ChevronLeft size={12} /> Knowledge
+                <ChevronLeft size={12} /> {t('backKnowledge')}
               </button>
               <span className="muted mono text-xs">·</span>
               <span className="muted mono text-xs">ekp-kb-{kb.kb_id}-v1</span>
@@ -258,21 +267,21 @@ export default function KbDetailPage() {
               className="btn btn-secondary btn-sm"
               onClick={() => handleTabChange('retrieval')}
             >
-              <Search size={13} /> Retrieval test
+              <Search size={13} /> {t('btnRetrievalTest')}
             </button>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => handleTabChange('settings')}
             >
-              <RefreshCw size={13} /> Re-index
+              <RefreshCw size={13} /> {t('btnReindex')}
             </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"
               onClick={() => router.push(`/kb/${kb.kb_id}/upload`)}
             >
-              <Upload size={13} /> Upload documents
+              <Upload size={13} /> {t('btnUploadDocuments')}
             </button>
           </div>
         </div>
@@ -282,39 +291,36 @@ export default function KbDetailPage() {
             <AlertTriangle size={16} style={{ color: 'oklch(var(--warning))' }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                {kb.failed_documents.length} document
-                {kb.failed_documents.length > 1 ? 's' : ''} failed to index
+                {t('failedToIndex', { count: kb.failed_documents.length })}
               </div>
-              <div className="muted text-xs">
-                Review parser errors in the Documents tab → &ldquo;failed&rdquo; filter.
-              </div>
+              <div className="muted text-xs">{t('failedBannerDesc')}</div>
             </div>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
               onClick={() => handleTabChange('documents')}
             >
-              View errors
+              {t('btnViewErrors')}
             </button>
           </div>
         )}
 
         {/* Tabs */}
-        <div className="tabs" role="tablist" aria-label="KB sections">
-          {TAB_DEFS.map((t) => {
-            const Ic = t.icon;
-            const count = totalCounts[t.id];
+        <div className="tabs" role="tablist" aria-label={t('tablistAria')}>
+          {TAB_DEFS.map((tabDef) => {
+            const Ic = tabDef.icon;
+            const count = totalCounts[tabDef.id];
             return (
               <button
-                key={t.id}
+                key={tabDef.id}
                 type="button"
                 role="tab"
-                aria-selected={activeTab === t.id}
+                aria-selected={activeTab === tabDef.id}
                 className="tab"
-                data-active={activeTab === t.id}
-                onClick={() => handleTabChange(t.id)}
+                data-active={activeTab === tabDef.id}
+                onClick={() => handleTabChange(tabDef.id)}
               >
-                <Ic size={14} /> {t.label}
+                <Ic size={14} /> {t(tabDef.labelKey)}
                 {count != null && <span className="count">{count.toLocaleString()}</span>}
               </button>
             );
@@ -338,6 +344,7 @@ export default function KbDetailPage() {
 type DocStatusFilter = 'all' | 'indexed' | 'indexing' | 'failed' | 'queued';
 
 function DocumentsTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const router = useRouter();
   const [filter, setFilter] = useState<DocStatusFilter>('all');
   const docs = useQuery<DocumentSummary[]>({
@@ -361,7 +368,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
     return (
       <div className="banner banner-info">
         <span className="spinner" />
-        <div style={{ flex: 1 }}>Loading documents…</div>
+        <div style={{ flex: 1 }}>{t('loadingDocuments')}</div>
       </div>
     );
   }
@@ -370,8 +377,9 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-error">
         <AlertTriangle size={16} />
         <div style={{ flex: 1 }}>
-          Failed to load documents — backend unreachable or Azure AI Search not configured.{' '}
-          {String((docs.error as Error)?.message ?? 'unknown')}
+          {t('errorLoadDocuments', {
+            msg: String((docs.error as Error)?.message ?? 'unknown'),
+          })}
         </div>
       </div>
     );
@@ -382,15 +390,15 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
         <div className="empty-icon">
           <Upload size={20} />
         </div>
-        <div className="empty-title">No documents yet</div>
-        <div>Word, PDF, or PowerPoint — ingestion pipeline parses + chunks + embeds.</div>
+        <div className="empty-title">{t('emptyDocsTitle')}</div>
+        <div>{t('emptyDocsDesc')}</div>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           style={{ marginTop: 12 }}
           onClick={() => router.push(`/kb/${kb.kb_id}/upload`)}
         >
-          <Upload size={13} /> Upload Document
+          <Upload size={13} /> {t('btnUploadDocument')}
         </button>
       </div>
     );
@@ -410,7 +418,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
           <span className="icon-leading">
             <Search size={14} />
           </span>
-          <input className="input" placeholder="Search documents by title or doc_id…" />
+          <input className="input" placeholder={t('searchDocsPlaceholder')} />
         </div>
         <div className="seg">
           {(['all', 'indexed', 'indexing', 'failed', 'queued'] as DocStatusFilter[]).map((f) => (
@@ -421,7 +429,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
               data-active={filter === f}
               onClick={() => setFilter(f)}
             >
-              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              {t(`docFilter_${f}`)}
               <span className="mono text-xs" style={{ opacity: 0.6 }}>
                 {filterCounts[f]}
               </span>
@@ -430,7 +438,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-secondary btn-sm" disabled>
-          <Download size={13} /> Export CSV
+          <Download size={13} /> {t('btnExportCsv')}
         </button>
       </div>
 
@@ -438,14 +446,14 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
         <table className="table">
           <thead>
             <tr>
-              <th>Document</th>
-              <th>Type</th>
-              <th className="col-num">Chunks</th>
-              <th>Tags</th>
-              <th>Profile</th>
-              <th>Status</th>
-              <th className="col-num">Indexed</th>
-              <th className="col-shrink" aria-label="row actions" />
+              <th>{t('colDocument')}</th>
+              <th>{t('colType')}</th>
+              <th className="col-num">{t('colChunks')}</th>
+              <th>{t('colTags')}</th>
+              <th>{t('colProfile')}</th>
+              <th>{t('colStatus')}</th>
+              <th className="col-num">{t('colIndexed')}</th>
+              <th className="col-shrink" aria-label={t('rowActions')} />
             </tr>
           </thead>
           <tbody>
@@ -496,12 +504,12 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
                     <span className="badge-dot" /> INDEXED
                   </span>
                 </td>
-                <td className="col-num text-xs">{formatRelative(d.last_indexed_at)}</td>
+                <td className="col-num text-xs">{formatRelative(d.last_indexed_at, t)}</td>
                 <td className="col-shrink">
                   <button
                     type="button"
                     className="btn btn-ghost btn-icon btn-xs"
-                    aria-label="More actions"
+                    aria-label={t('moreActions')}
                   >
                     <MoreHorizontal size={14} />
                   </button>
@@ -522,14 +530,14 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
         }}
       >
         <div className="muted">
-          Showing {filtered.length} of {all.length}
+          {t('showingCount', { shown: filtered.length, total: all.length })}
         </div>
         <div className="row">
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-xs"
             disabled
-            aria-label="Previous page"
+            aria-label={t('prevPage')}
           >
             <ChevronLeft size={13} />
           </button>
@@ -538,7 +546,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
             type="button"
             className="btn btn-ghost btn-icon btn-xs"
             disabled
-            aria-label="Next page"
+            aria-label={t('nextPage')}
           >
             <ChevronRight size={13} />
           </button>
@@ -550,6 +558,7 @@ function DocumentsTab({ kb }: { kb: KbStatus }) {
 
 // ── Tab: Chunks ─────────────────────────────────────────────────────────────
 function ChunksTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const router = useRouter();
   const searchParams = useSearchParams();
   const docs = useQuery<DocumentSummary[]>({
@@ -576,7 +585,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
     return (
       <div className="banner banner-info">
         <span className="spinner" />
-        <div style={{ flex: 1 }}>Loading documents…</div>
+        <div style={{ flex: 1 }}>{t('loadingDocuments')}</div>
       </div>
     );
   }
@@ -586,8 +595,8 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         <div className="empty-icon">
           <Layers size={20} />
         </div>
-        <div className="empty-title">No chunks yet</div>
-        <div>Upload a document first — chunks emit during ingestion.</div>
+        <div className="empty-title">{t('emptyChunksTitle')}</div>
+        <div>{t('emptyChunksDesc')}</div>
       </div>
     );
   }
@@ -603,7 +612,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         }}
       >
         <label className="label" style={{ marginBottom: 0 }}>
-          Document
+          {t('labelDocument')}
         </label>
         <select
           className="select"
@@ -618,7 +627,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         >
           {docList.map((d) => (
             <option key={d.doc_id} value={d.doc_id}>
-              {d.doc_title || d.doc_id} ({d.total_chunks} chunks)
+              {d.doc_title || d.doc_id} ({t('optionChunks', { count: d.total_chunks })})
             </option>
           ))}
         </select>
@@ -628,21 +637,21 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">Browse chunks</h3>
+              <h3 className="card-title">{t('browseChunksTitle')}</h3>
               <div className="card-desc">
-                {chunkList.length.toLocaleString()} chunks in selected doc
+                {t('chunksInSelectedDoc', { count: chunkList.length.toLocaleString() })}
               </div>
             </div>
           </div>
           <div className="card-body card-body-tight" style={{ maxHeight: 540, overflowY: 'auto' }}>
             {chunks.isLoading && (
               <div style={{ padding: 14 }} className="muted text-xs">
-                Loading chunks…
+                {t('loadingChunks')}
               </div>
             )}
             {chunks.isError && (
               <div style={{ padding: 14 }} className="text-xs">
-                Failed to load chunks: {String((chunks.error as Error)?.message)}
+                {t('errorLoadChunks', { msg: String((chunks.error as Error)?.message) })}
               </div>
             )}
             {chunkList.map((c) => {
@@ -679,7 +688,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">Chunk preview</h3>
+              <h3 className="card-title">{t('chunkPreviewTitle')}</h3>
               <div className="card-desc">
                 {activeChunk ? <span className="mono">{activeChunk.chunk_id}</span> : '—'}
               </div>
@@ -688,7 +697,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-icon btn-sm"
-                aria-label="Edit"
+                aria-label={t('ariaEdit')}
                 disabled
               >
                 <Edit size={14} />
@@ -696,13 +705,13 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-icon btn-sm"
-                aria-label="Copy"
+                aria-label={t('ariaCopy')}
                 onClick={() => {
                   if (activeChunk) {
                     void navigator.clipboard
                       .writeText(activeChunk.chunk_id)
-                      .then(() => toast.success('Chunk id copied'))
-                      .catch(() => toast.error('Copy failed'));
+                      .then(() => toast.success(t('toastChunkIdCopied')))
+                      .catch(() => toast.error(t('toastCopyFailed')));
                   }
                 }}
               >
@@ -725,25 +734,24 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
                     chunk_index <b style={{ marginLeft: 2 }}>{activeChunk.chunk_index}</b>
                   </span>
                   <span className="badge badge-muted">
-                    of <b style={{ marginLeft: 2 }}>{activeChunk.chunk_total}</b>
+                    {t('badgeOf')} <b style={{ marginLeft: 2 }}>{activeChunk.chunk_total}</b>
                   </span>
                   {activeChunk.low_value_flag && (
                     <span className="badge badge-warning">low_value</span>
                   )}
-                  {!activeChunk.enabled && <span className="badge badge-error">disabled</span>}
+                  {!activeChunk.enabled && (
+                    <span className="badge badge-error">{t('badgeDisabled')}</span>
+                  )}
                 </div>
                 <div className="section-path text-sm" style={{ marginBottom: 14 }}>
                   {activeChunk.section_path.map((s, j) => (
                     <span key={j}>{s}</span>
                   ))}
                 </div>
-                <div className="muted text-xs">
-                  Chunk body text not bulk-listed — use Retrieval Testing tab to view full chunk
-                  text per query.
-                </div>
+                <div className="muted text-xs">{t('chunkBodyNotListed')}</div>
               </>
             ) : (
-              <div className="muted text-xs">Select a chunk to preview.</div>
+              <div className="muted text-xs">{t('selectChunkToPreview')}</div>
             )}
           </div>
           {activeChunk && (
@@ -752,7 +760,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
                 embedding_model · {kb.config.embedding_model} · {kb.config.embedding_dimension}d MRL
               </div>
               <button type="button" className="btn btn-ghost btn-xs" disabled>
-                View raw embedding →
+                {t('btnViewRawEmbedding')}
               </button>
             </div>
           )}
@@ -764,6 +772,7 @@ function ChunksTab({ kb }: { kb: KbStatus }) {
 
 // ── Tab: Images ─────────────────────────────────────────────────────────────
 function ImagesTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const images = useQuery({
     queryKey: ['kb', kb.kb_id, 'images'],
     queryFn: () => kbApi.listImages(kb.kb_id, 200, 0),
@@ -782,29 +791,26 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
       >
         <div className="stat">
           <div className="stat-label">
-            <Layers size={13} /> Extracted images
+            <Layers size={13} /> {t('statExtractedImages')}
           </div>
           <div className="stat-value">{kb.total_screenshots}</div>
           <div className="stat-meta">
-            Across {kb.total_documents} document
-            {kb.total_documents === 1 ? '' : 's'}
+            {t('statAcrossDocs', { count: kb.total_documents })}
           </div>
         </div>
         <div className="stat">
           <div className="stat-label">
-            <Shield size={13} /> SHA256 dedup
+            <Shield size={13} /> {t('statSha256Dedup')}
           </div>
           <div className="stat-value">
             {dedupSavings}
-            <span className="stat-unit"> deduped</span>
+            <span className="stat-unit">{t('statUnitDeduped')}</span>
           </div>
-          <div className="stat-meta">
-            Same hash → single Blob; {totalRefs} chunk references total
-          </div>
+          <div className="stat-meta">{t('statSha256Sub', { refs: totalRefs })}</div>
         </div>
         <div className="stat">
           <div className="stat-label">
-            <Database size={13} /> Blob storage
+            <Database size={13} /> {t('statBlobStorage')}
           </div>
           <div className="stat-value">
             {(totalSizeKb / 1024).toFixed(1)}
@@ -814,17 +820,17 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
         </div>
         <div className="stat">
           <div className="stat-label">
-            <AlertTriangle size={13} /> low_value flagged
+            <AlertTriangle size={13} /> {t('statLowValueFlagged')}
           </div>
           <div className="stat-value">0</div>
-          <div className="stat-meta">Excluded from retrieval — logos, decorations</div>
+          <div className="stat-meta">{t('statLowValueSub')}</div>
         </div>
       </div>
 
       <div className="banner banner-info" style={{ marginBottom: 16 }}>
         <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1, lineHeight: 1.5 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>How chunks reference images</div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{t('howChunksRefImagesTitle')}</div>
           <div className="muted mono text-xs" style={{ marginTop: 2 }}>
             Parser extracts{' '}
             <b style={{ color: 'oklch(var(--foreground))' }}>
@@ -852,24 +858,24 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
           <span className="icon-leading">
             <Search size={14} />
           </span>
-          <input className="input" placeholder="Search by alt text or SHA256…" />
+          <input className="input" placeholder={t('searchImagesPlaceholder')} />
         </div>
         <div className="spacer" />
         <button type="button" className="btn btn-secondary btn-sm" disabled>
-          <Download size={13} /> Export manifest
+          <Download size={13} /> {t('btnExportManifest')}
         </button>
       </div>
 
       {images.isLoading ? (
         <div className="banner banner-info">
           <span className="spinner" />
-          <div style={{ flex: 1 }}>Loading images…</div>
+          <div style={{ flex: 1 }}>{t('loadingImages')}</div>
         </div>
       ) : images.isError ? (
         <div className="banner banner-error">
           <AlertTriangle size={16} />
           <div style={{ flex: 1 }}>
-            Failed to load images: {String((images.error as Error)?.message ?? 'unknown')}
+            {t('errorLoadImages', { msg: String((images.error as Error)?.message ?? 'unknown') })}
           </div>
         </div>
       ) : items.length === 0 ? (
@@ -877,8 +883,8 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
           <div className="empty-icon">
             <ImageIcon size={20} />
           </div>
-          <div className="empty-title">No images extracted yet</div>
-          <div>Embedded images appear once a doc with figures is ingested.</div>
+          <div className="empty-title">{t('emptyImagesTitle')}</div>
+          <div>{t('emptyImagesDesc')}</div>
         </div>
       ) : (
         <div
@@ -898,6 +904,7 @@ function ImagesTab({ kb }: { kb: KbStatus }) {
 }
 
 function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
+  const t = useTranslations('KbDetail');
   const colors = [
     'oklch(var(--accent))',
     'oklch(0.62 0.13 200)',
@@ -945,7 +952,7 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={img.url}
-            alt={img.ocr_text || 'screenshot thumbnail'}
+            alt={img.ocr_text || t('altScreenshotThumbnail')}
             loading="lazy"
             onError={() => setImgError(true)}
             style={{
@@ -969,7 +976,7 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
             borderRadius: 3,
           }}
         >
-          {img.page_num != null ? `p.${img.page_num}` : '—'}
+          {img.page_num != null ? t('pageAbbrev', { n: img.page_num }) : '—'}
         </span>
       </div>
       <div style={{ padding: '10px 12px' }}>
@@ -985,7 +992,7 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
             WebkitBoxOrient: 'vertical',
           }}
         >
-          {img.ocr_text || <span className="muted">(no ocr text)</span>}
+          {img.ocr_text || <span className="muted">{t('noOcrText')}</span>}
         </div>
         <div
           className="muted mono text-xs"
@@ -1008,7 +1015,7 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
           }}
         >
           <span className="badge badge-muted" style={{ fontSize: 10 }}>
-            {img.screenshot_type || 'screenshot'}
+            {img.screenshot_type || t('badgeScreenshot')}
           </span>
         </div>
       </div>
@@ -1019,39 +1026,40 @@ function ImageCard({ img, idx }: { img: KbImageItem; idx: number }) {
 // ── Tab: Chunking Lab ───────────────────────────────────────────────────────
 const CHUNK_STRATEGIES: {
   id: KbConfig['chunk_strategy'];
-  label: string;
-  hint: string;
+  labelKey: string;
+  hintKey: string;
   supported: boolean;
-  skip_reason?: string;
+  skipReasonKey?: string;
 }[] = [
   {
     id: 'layout_aware',
-    label: 'Layout-aware',
-    hint: 'Docling — preserves tables, lists, sections',
+    labelKey: 'stratLayoutAwareLabel',
+    hintKey: 'stratLayoutAwareHint',
     supported: true,
   },
   {
     id: 'slide_based',
-    label: 'Slide-based',
-    hint: 'python-pptx — one chunk per slide',
+    labelKey: 'stratSlideBasedLabel',
+    hintKey: 'stratSlideBasedHint',
     supported: true,
   },
   {
     id: 'heading_aware',
-    label: 'Heading-aware',
-    hint: 'Splits at H1/H2/H3 — for narrative docs',
+    labelKey: 'stratHeadingAwareLabel',
+    hintKey: 'stratHeadingAwareHint',
     supported: false,
-    skip_reason: 'NotImplementedError — W3+ deferred per ingestion/chunker/strategies.py',
+    skipReasonKey: 'stratHeadingAwareSkipReason',
   },
   {
     id: 'auto',
-    label: 'Auto',
-    hint: 'Detect doc type, pick strategy',
+    labelKey: 'stratAutoLabel',
+    hintKey: 'stratAutoHint',
     supported: true,
   },
 ];
 
 function ChunkingLabTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const [activeStrategy, setActiveStrategy] = useState<KbConfig['chunk_strategy']>(
     kb.config.chunk_strategy,
   );
@@ -1068,7 +1076,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
         overlap,
       }),
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : 'preview failed';
+      const msg = e instanceof Error ? e.message : t('previewFailedToast');
       toast.error(msg);
     },
   });
@@ -1078,13 +1086,9 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-info" style={{ marginBottom: 16 }}>
         <Sparkles size={15} style={{ color: 'oklch(var(--info))' }} />
         <div style={{ flex: 1, lineHeight: 1.5 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Preview chunking on a sample document</div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{t('previewChunkingTitle')}</div>
           <div className="muted text-xs" style={{ marginTop: 2 }}>
-            Strategies are picked by <span className="mono">ingestion/chunker/strategies.py</span>.
-            Only <span className="mono">layout_aware</span> and{' '}
-            <span className="mono">slide_based</span> are implemented;{' '}
-            <span className="mono">heading_aware</span> raises{' '}
-            <span className="mono">NotImplementedError</span> (W3+ deferred).
+            {t.rich('chunkingLabExplainer', { mono: (c) => <span className="mono">{c}</span> })}
           </div>
         </div>
       </div>
@@ -1100,15 +1104,15 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">Sample text</h3>
-              <div className="card-desc">Paste a few paragraphs to preview chunk boundaries</div>
+              <h3 className="card-title">{t('sampleTextTitle')}</h3>
+              <div className="card-desc">{t('sampleTextDesc')}</div>
             </div>
           </div>
           <div className="card-body">
             <textarea
               className="input"
               rows={6}
-              placeholder="Paste sample document text…"
+              placeholder={t('sampleTextPlaceholder')}
               value={sampleText}
               onChange={(e) => setSampleText(e.target.value)}
             />
@@ -1117,12 +1121,12 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
 
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">Chunking parameters</h3>
+            <h3 className="card-title">{t('chunkingParamsTitle')}</h3>
           </div>
           <div className="card-body">
             <div className="field" style={{ marginBottom: 12 }}>
               <label className="label">
-                Chunk size (tokens){' '}
+                {t('labelChunkSize')}{' '}
                 <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
                   {chunkSize}
                 </span>
@@ -1139,7 +1143,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label className="label">
-                Overlap{' '}
+                {t('labelOverlap')}{' '}
                 <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
                   {overlap}
                 </span>
@@ -1159,7 +1163,7 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
       </div>
 
       <h3 className="card-title" style={{ marginBottom: 10 }}>
-        Strategy comparison
+        {t('strategyComparisonTitle')}
       </h3>
       <div
         style={{
@@ -1193,13 +1197,13 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
                 marginBottom: 4,
               }}
             >
-              <span style={{ fontWeight: 600, fontSize: 13.5 }}>{s.label}</span>
-              {!s.supported && <span className="badge badge-muted">N/A</span>}
+              <span style={{ fontWeight: 600, fontSize: 13.5 }}>{t(s.labelKey)}</span>
+              {!s.supported && <span className="badge badge-muted">{t('badgeNa')}</span>}
             </div>
             <div className="muted text-xs" style={{ marginBottom: 10, lineHeight: 1.4 }}>
-              {s.hint}
+              {t(s.hintKey)}
             </div>
-            {!s.supported && s.skip_reason && (
+            {!s.supported && s.skipReasonKey && (
               <div className="muted text-xs" style={{ lineHeight: 1.5, padding: '8px 0' }}>
                 <span
                   style={{
@@ -1207,9 +1211,9 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
                     fontWeight: 500,
                   }}
                 >
-                  Not available ·
+                  {t('notAvailablePrefix')}
                 </span>
-                {s.skip_reason}
+                {t(s.skipReasonKey)}
               </div>
             )}
           </div>
@@ -1220,10 +1224,13 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
         <div className="card-header">
           <div>
             <h3 className="card-title">
-              Output preview · {CHUNK_STRATEGIES.find((s) => s.id === activeStrategy)?.label}
+              {t('outputPreview')} ·{' '}
+              {t(
+                CHUNK_STRATEGIES.find((s) => s.id === activeStrategy)?.labelKey ?? 'stratAutoLabel',
+              )}
             </h3>
             <div className="card-desc">
-              First {preview.data?.items.length ?? 0} chunks from sample text
+              {t('outputPreviewDesc', { count: preview.data?.items.length ?? 0 })}
             </div>
           </div>
           <button
@@ -1234,11 +1241,11 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
           >
             {preview.isPending ? (
               <>
-                <span className="spinner" /> Running…
+                <span className="spinner" /> {t('running')}
               </>
             ) : (
               <>
-                <Zap size={13} /> Run preview
+                <Zap size={13} /> {t('btnRunPreview')}
               </>
             )}
           </button>
@@ -1295,12 +1302,12 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
                 <AlertTriangle size={20} />
               </div>
               <div className="empty-title">
-                {preview.isError ? 'Preview failed' : 'No preview yet'}
+                {preview.isError ? t('previewFailed') : t('noPreviewYet')}
               </div>
               <div>
                 {preview.isError
                   ? String((preview.error as Error)?.message ?? 'unknown')
-                  : 'Paste sample text + click Run preview.'}
+                  : t('pastePreviewHint')}
               </div>
             </div>
           )}
@@ -1312,34 +1319,35 @@ function ChunkingLabTab({ kb }: { kb: KbStatus }) {
 
 // ── Tab: Pipeline ───────────────────────────────────────────────────────────
 function PipelineTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const stages = [
     {
-      name: '1. Source ingestion',
-      desc: 'SharePoint / Drive / share folder',
+      name: t('stage1Name'),
+      desc: t('stage1Desc'),
       duration: '—',
     },
     {
-      name: '2. Document extraction',
+      name: t('stage2Name'),
       desc: 'Docling (PDF + DOCX) · python-pptx (slide_based)',
       duration: 'avg 8s/doc',
     },
     {
-      name: '3. Chunking',
-      desc: `${kb.config.chunk_strategy} · 800 tokens · 100 overlap`,
+      name: t('stage3Name'),
+      desc: t('stage3Desc', { strategy: kb.config.chunk_strategy }),
       duration: 'avg 1s/doc',
     },
     {
-      name: '4. Embedding',
+      name: t('stage4Name'),
       desc: `Azure OpenAI ${kb.config.embedding_model} · ${kb.config.embedding_dimension}d MRL truncate`,
       duration: 'avg 0.4s/chunk',
     },
     {
-      name: '5. Index upsert',
+      name: t('stage5Name'),
       desc: `ekp-kb-${kb.kb_id}-v1 · HNSW vector + BM25 lexical`,
       duration: 'avg 0.1s/chunk',
     },
     {
-      name: '6. Eval suite (nightly)',
+      name: t('stage6Name'),
       desc: 'RAGAs 4-metric · per W17 F3',
       duration: '—',
     },
@@ -1349,19 +1357,19 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
       <div className="banner banner-success" style={{ marginBottom: 16 }}>
         <Check size={15} style={{ color: 'oklch(var(--success))' }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500 }}>Pipeline healthy</div>
+          <div style={{ fontWeight: 500 }}>{t('pipelineHealthy')}</div>
           <div className="muted text-xs">
-            All stages running within SLOs · last full re-index {formatRelative(kb.last_indexed_at)}
+            {t('pipelineHealthyDesc', { when: formatRelative(kb.last_indexed_at, t) })}
           </div>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" disabled>
-          Trigger full re-index
+          {t('btnTriggerFullReindex')}
         </button>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Indexing pipeline</h3>
+          <h3 className="card-title">{t('indexingPipelineTitle')}</h3>
         </div>
         <div className="card-body card-body-tight">
           {stages.map((s, i) => (
@@ -1414,6 +1422,7 @@ function PipelineTab({ kb }: { kb: KbStatus }) {
 
 // ── Tab: Retrieval Testing ──────────────────────────────────────────────────
 function RetrievalTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const [query, setQuery] = useState('How do I configure multi-currency posting definitions?');
   const [mode, setMode] = useState<RetrievalMode>('hybrid');
   const [topK, setTopK] = useState(5);
@@ -1431,7 +1440,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
         score_threshold: mode === 'fulltext' ? undefined : scoreThreshold,
       }),
     onError: (e) => {
-      const msg = e instanceof Error ? e.message : 'retrieval failed';
+      const msg = e instanceof Error ? e.message : t('retrievalFailedToast');
       toast.error(msg);
     },
   });
@@ -1443,13 +1452,13 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Query</h3>
-            <div className="card-desc">Pure retrieval pass · no LLM synthesis · ADR-0021</div>
+            <h3 className="card-title">{t('queryTitle')}</h3>
+            <div className="card-desc">{t('queryDesc')}</div>
           </div>
         </div>
         <div className="card-body">
           <div className="field">
-            <label className="label">Query</label>
+            <label className="label">{t('labelQuery')}</label>
             <textarea
               className="input"
               rows={4}
@@ -1459,13 +1468,13 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
           </div>
 
           <div className="field">
-            <label className="label">Retrieval mode</label>
+            <label className="label">{t('labelRetrievalMode')}</label>
             <div className="seg" style={{ width: '100%' }}>
               {(
                 [
-                  { id: 'hybrid', label: 'Hybrid', hint: 'BM25 + Vector + RRF' },
-                  { id: 'vector', label: 'Vector', hint: 'Dense only' },
-                  { id: 'fulltext', label: 'Full-text', hint: 'BM25 only' },
+                  { id: 'hybrid', label: t('modeHybridLabel'), hint: t('modeHybridHint') },
+                  { id: 'vector', label: t('modeVectorLabel'), hint: t('modeVectorHint') },
+                  { id: 'fulltext', label: t('modeFulltextLabel'), hint: t('modeFulltextHint') },
                 ] as { id: RetrievalMode; label: string; hint: string }[]
               ).map((m) => (
                 <button
@@ -1492,7 +1501,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
 
           <div className="field">
             <label className="label">
-              Top-K <span className="muted mono text-xs">retrieve before rerank</span>
+              Top-K <span className="muted mono text-xs">{t('topKHint')}</span>
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <input
@@ -1511,9 +1520,9 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
 
           <div className="field">
             <label className="label">
-              Score threshold{' '}
+              {t('labelScoreThreshold')}{' '}
               <span className="muted mono text-xs" style={{ marginLeft: 6 }}>
-                {mode === 'fulltext' ? 'n/a — BM25 unbounded' : '0.0 – 1.0'}
+                {mode === 'fulltext' ? t('scoreThresholdNa') : '0.0 – 1.0'}
               </span>
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1542,7 +1551,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
               aria-checked={rerank}
               tabIndex={0}
             />
-            <span style={{ fontSize: 13 }}>Apply rerank after retrieval</span>
+            <span style={{ fontSize: 13 }}>{t('labelApplyRerank')}</span>
           </div>
 
           <button
@@ -1554,11 +1563,11 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
           >
             {mutation.isPending ? (
               <>
-                <span className="spinner" /> Running…
+                <span className="spinner" /> {t('running')}
               </>
             ) : (
               <>
-                <Zap size={14} /> Run retrieval
+                <Zap size={14} /> {t('btnRunRetrieval')}
               </>
             )}
           </button>
@@ -1582,8 +1591,8 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
             <div className="empty-icon">
               <Search size={20} />
             </div>
-            <div className="empty-title">No results yet</div>
-            <div>Tune the query + parameters → click Run retrieval.</div>
+            <div className="empty-title">{t('noResultsYet')}</div>
+            <div>{t('noResultsDesc')}</div>
           </div>
         )}
 
@@ -1598,14 +1607,14 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                   }}
                 >
                   {[
-                    { label: 'Embed', val: `${result.embed_latency_ms}ms` },
-                    { label: 'Search', val: `${result.search_latency_ms}ms` },
+                    { label: t('metricEmbed'), val: `${result.embed_latency_ms}ms` },
+                    { label: t('metricSearch'), val: `${result.search_latency_ms}ms` },
                     {
-                      label: 'Rerank',
+                      label: t('metricRerank'),
                       val: result.reranked ? `${result.rerank_latency_ms}ms` : '—',
                     },
-                    { label: 'Total', val: `${result.total_latency_ms}ms` },
-                    { label: 'Hits', val: String(result.total_hits) },
+                    { label: t('metricTotal'), val: `${result.total_latency_ms}ms` },
+                    { label: t('metricHits'), val: String(result.total_hits) },
                   ].map((m, i) => (
                     <div
                       key={m.label}
@@ -1634,13 +1643,13 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
 
             <div className="row" style={{ marginBottom: 12, alignItems: 'center' }}>
               <h3 className="card-title">
-                Ranked chunks{' '}
+                {t('rankedChunksTitle')}{' '}
                 <span className="muted mono text-xs" style={{ marginLeft: 8 }}>
-                  {result.chunks.length} of {result.total_hits} (threshold)
+                  {t('rankedChunksMeta', { shown: result.chunks.length, total: result.total_hits })}
                 </span>
               </h3>
               <div className="spacer" />
-              <span className="muted text-xs">Visualization →</span>
+              <span className="muted text-xs">{t('vizLabel')}</span>
               <div className="seg">
                 <button
                   type="button"
@@ -1648,7 +1657,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                   data-active={vizMode === 'list'}
                   onClick={() => setVizMode('list')}
                 >
-                  List
+                  {t('vizList')}
                 </button>
                 <button
                   type="button"
@@ -1656,7 +1665,7 @@ function RetrievalTab({ kb }: { kb: KbStatus }) {
                   data-active={vizMode === 'bars'}
                   onClick={() => setVizMode('bars')}
                 >
-                  Bars
+                  {t('vizBars')}
                 </button>
               </div>
             </div>
@@ -1730,42 +1739,42 @@ type KnobState = Record<TuneKnobKey, number | boolean | null>;
 
 const TUNE_GROUPS: {
   icon: LucideIcon;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   enableKey: TuneKnobKey;
-  knobs: { key: TuneKnobKey; label: string }[];
+  knobs: { key: TuneKnobKey; labelKey: string }[];
 }[] = [
   {
     icon: Layers,
-    title: 'Parent-document retrieval',
-    desc: 'Expand matched child chunks to their parent section for fuller LLM context.',
+    titleKey: 'tuneParentTitle',
+    descKey: 'tuneParentDesc',
     enableKey: 'enable_parent_doc_retrieval',
     knobs: [
-      { key: 'parent_doc_section_depth_offset', label: 'Section depth offset' },
-      { key: 'parent_doc_top_k', label: 'Parent top_k' },
-      { key: 'parent_doc_max_tokens_per_parent', label: 'Max tokens / parent' },
+      { key: 'parent_doc_section_depth_offset', labelKey: 'knobSectionDepthOffset' },
+      { key: 'parent_doc_top_k', labelKey: 'knobParentTopK' },
+      { key: 'parent_doc_max_tokens_per_parent', labelKey: 'knobMaxTokensPerParent' },
     ],
   },
   {
     icon: Link2,
-    title: 'Citation post-hoc expansion',
-    desc: 'After answer generation, add neighbouring auxiliary chunks to each citation to improve completeness.',
+    titleKey: 'tuneCitationExpTitle',
+    descKey: 'tuneCitationExpDesc',
     enableKey: 'enable_citation_post_hoc_expansion',
     knobs: [
-      { key: 'citation_expansion_max_aux', label: 'Max aux / citation' },
-      { key: 'citation_expansion_window', label: 'Expansion window' },
-      { key: 'citation_expansion_section_path_prefix_depth', label: 'Section path prefix depth' },
+      { key: 'citation_expansion_max_aux', labelKey: 'knobMaxAuxPerCitation' },
+      { key: 'citation_expansion_window', labelKey: 'knobExpansionWindow' },
+      { key: 'citation_expansion_section_path_prefix_depth', labelKey: 'knobSectionPathPrefixDepth' },
     ],
   },
   {
     icon: Eye,
-    title: 'Citation neighbour images + image cap',
-    desc: 'Control how citation-neighbour images are brought in, and the max images shown per answer (image-flood convergence).',
+    titleKey: 'tuneNeighbourImgTitle',
+    descKey: 'tuneNeighbourImgDesc',
     enableKey: 'enable_citation_neighbour_images',
     knobs: [
-      { key: 'citation_neighbour_max_aux_images', label: 'Neighbour max aux images' },
-      { key: 'citation_neighbour_section_path_prefix_depth', label: 'Neighbour prefix depth' },
-      { key: 'max_images_per_answer', label: 'Max images / answer' },
+      { key: 'citation_neighbour_max_aux_images', labelKey: 'knobNeighbourMaxAuxImages' },
+      { key: 'citation_neighbour_section_path_prefix_depth', labelKey: 'knobNeighbourPrefixDepth' },
+      { key: 'max_images_per_answer', labelKey: 'knobMaxImagesPerAnswer' },
     ],
   },
   // W70 (ADR-0055) — bool-only knob (no 進階 numeric grid; mockup ekp-page-kb.jsx
@@ -1773,8 +1782,8 @@ const TUNE_GROUPS: {
   // strips them until the W71 interleaved render).
   {
     icon: Tag,
-    title: 'Inline image markers (image position markers)',
-    desc: 'Answer text carries [IMG#…] markers at the original image positions — the foundation for showing text + images in source order (W71 interleaving); until interleaving is enabled the display layer auto-strips the markers. OFF = current clean text.',
+    titleKey: 'tuneInlineMarkersTitle',
+    descKey: 'tuneInlineMarkersDesc',
     enableKey: 'enable_inline_image_markers',
     knobs: [],
   },
@@ -1801,6 +1810,7 @@ function KbTuneKnob({
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
+  const t = useTranslations('KbDetail');
   const overridden = value !== null;
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -1808,11 +1818,11 @@ function KbTuneKnob({
         {label}
         {overridden ? (
           <span className="badge badge-success" style={{ fontSize: 9 }}>
-            <Edit size={9} /> Overridden
+            <Edit size={9} /> {t('badgeOverridden')}
           </span>
         ) : (
           <span className="badge badge-muted" style={{ fontSize: 9 }}>
-            Inherit global
+            {t('inheritGlobal')}
           </span>
         )}
       </label>
@@ -1820,11 +1830,11 @@ function KbTuneKnob({
         type="number"
         className="input mono"
         value={value ?? ''}
-        placeholder="Inherit global"
+        placeholder={t('inheritGlobal')}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
       <div className="hint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <span>{overridden ? 'Overridden for this KB' : 'Not overridden · using global'}</span>
+        <span>{overridden ? t('overriddenForKb') : t('notOverriddenGlobal')}</span>
         {overridden && (
           <button
             type="button"
@@ -1841,7 +1851,7 @@ function KbTuneKnob({
               font: 'inherit',
             }}
           >
-            <RefreshCw size={10} /> Reset to global
+            <RefreshCw size={10} /> {t('resetToGlobal')}
           </button>
         )}
       </div>
@@ -1870,6 +1880,7 @@ function KbTuneGroup({
   onReset: () => void;
   children?: ReactNode;
 }) {
+  const t = useTranslations('KbDetail');
   const [open, setOpen] = useState(false);
   const overridden = enabled !== null;
   return (
@@ -1904,11 +1915,11 @@ function KbTuneGroup({
             <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
             {overridden ? (
               <span className="badge badge-success" style={{ fontSize: 9 }}>
-                Overridden
+                {t('badgeOverridden')}
               </span>
             ) : (
               <span className="badge badge-muted" style={{ fontSize: 9 }}>
-                Inherit global
+                {t('inheritGlobal')}
               </span>
             )}
             {overridden && (
@@ -1927,7 +1938,7 @@ function KbTuneGroup({
                   padding: 0,
                 }}
               >
-                <RefreshCw size={10} /> Reset to global
+                <RefreshCw size={10} /> {t('resetToGlobal')}
               </button>
             )}
           </div>
@@ -1943,7 +1954,8 @@ function KbTuneGroup({
             onClick={() => setOpen(!open)}
             aria-expanded={open}
           >
-            Advanced <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
+            {t('btnAdvanced')}{' '}
+            <ChevronRight size={11} style={{ transform: open ? 'rotate(90deg)' : 'none' }} />
           </button>
         )}
       </div>
@@ -1980,6 +1992,7 @@ function ConfigTestPanel({
   saving: boolean;
   dirty: boolean;
 }) {
+  const t = useTranslations('KbDetail');
   const [testQuery, setTestQuery] = useState('How do I configure the address book sync?');
   const [runs, setRuns] = useState(3);
   const [compare, setCompare] = useState(true);
@@ -1992,7 +2005,7 @@ function ConfigTestPanel({
         draft_config: draftConfig,
         compare_to_saved: compare,
       }),
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'config-test failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastConfigTestFailed')),
   });
   const result = mutation.data;
 
@@ -2005,10 +2018,10 @@ function ConfigTestPanel({
               size={14}
               style={{ verticalAlign: '-2px', marginRight: 6, color: 'oklch(var(--accent))' }}
             />
-            Test run (config-test)
+            {t('configTestTitle')}
           </h3>
           <div className="card-desc">
-            Leaves global and the saved config untouched — try the draft config above against the real pipeline.{' '}
+            {t('configTestDesc')}{' '}
             <span className="mono">POST /kb/{kbId}/config-test</span>
           </div>
         </div>
@@ -2024,7 +2037,7 @@ function ConfigTestPanel({
           }}
         >
           <div className="field" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
-            <label className="label">Test question</label>
+            <label className="label">{t('labelTestQuestion')}</label>
             <input
               className="input"
               value={testQuery}
@@ -2038,7 +2051,7 @@ function ConfigTestPanel({
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label className="label">Reruns</label>
+            <label className="label">{t('labelReruns')}</label>
             <div className="seg">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -2072,7 +2085,7 @@ function ConfigTestPanel({
               tabIndex={0}
               onClick={() => setCompare(!compare)}
             />
-            Compare to saved config (A/B)
+            {t('labelCompareToSaved')}
           </label>
           <button
             type="button"
@@ -2082,11 +2095,11 @@ function ConfigTestPanel({
           >
             {mutation.isPending ? (
               <>
-                <span className="spinner" /> Running…
+                <span className="spinner" /> {t('running')}
               </>
             ) : (
               <>
-                <Zap size={14} /> Test run
+                <Zap size={14} /> {t('btnTestRun')}
               </>
             )}
           </button>
@@ -2097,8 +2110,8 @@ function ConfigTestPanel({
             <div className="empty-icon">
               <Zap size={20} />
             </div>
-            <div className="empty-title">No test run yet</div>
-            <div>Adjust the knobs above → pick the number of runs → click &quot;Test run&quot;.</div>
+            <div className="empty-title">{t('noTestRunYet')}</div>
+            <div>{t('noTestRunDesc')}</div>
           </div>
         )}
 
@@ -2111,8 +2124,10 @@ function ConfigTestPanel({
                 gap: 14,
               }}
             >
-              <ConfigResultCard label="Draft config (DRAFT)" accent summary={result.draft} />
-              {result.saved && <ConfigResultCard label="Saved config (SAVED)" summary={result.saved} />}
+              <ConfigResultCard label={t('cardDraftConfig')} accent summary={result.draft} />
+              {result.saved && (
+                <ConfigResultCard label={t('cardSavedConfig')} summary={result.saved} />
+              )}
             </div>
 
             {/* W50 (決策 7 option d) — length-bias caveat: RAGAs faithfulness penalises
@@ -2127,27 +2142,25 @@ function ConfigTestPanel({
                 style={{ color: 'oklch(var(--warning))', marginTop: 1, flexShrink: 0 }}
               />
               <span>
-                Faithfulness has a{' '}
-                <b style={{ color: 'oklch(var(--warning))' }}>length bias</b> against long / comprehensive
-                answers — a low score paired with high{' '}
-                <b>sections covered</b> / citation count / long answers is usually bias, not a worse config;
-                read it alongside sections covered / citation count / word count, and do not conflate it with
-                completeness.
+                {t.rich('lengthBiasCaveat', {
+                  bWarn: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+                  b: (c) => <b>{c}</b>,
+                })}
               </span>
             </div>
 
             {result.draft.per_citation.length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <div className="muted text-xs" style={{ marginBottom: 6 }}>
-                  Draft config · sections + images per citation (last run)
+                  {t('perCitationTitle')}
                 </div>
                 <div className="table-wrap">
                   <table className="table" style={{ fontSize: 12 }}>
                     <thead>
                       <tr>
-                        <th>Cited chunk</th>
-                        <th>Section</th>
-                        <th className="col-num">Images</th>
+                        <th>{t('colCitedChunk')}</th>
+                        <th>{t('colSection')}</th>
+                        <th className="col-num">{t('colImages')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2173,17 +2186,14 @@ function ConfigTestPanel({
         )}
       </div>
       <div className="card-footer">
-        <div className="muted text-xs">
-          Mean over N reruns · band = max − min (smaller = more stable) · faithfulness quality axis +
-          presentation counters compute band per run · N=1 is directional only
-        </div>
+        <div className="muted text-xs">{t('configTestFooter')}</div>
         <button
           type="button"
           className="btn btn-secondary btn-sm"
           onClick={onSaveDraft}
           disabled={!dirty || saving}
         >
-          <Download size={13} /> Save draft config to this KB
+          <Download size={13} /> {t('btnSaveDraftConfig')}
         </button>
       </div>
     </div>
@@ -2199,6 +2209,7 @@ function ConfigResultCard({
   accent?: boolean;
   summary: ConfigRunSummary;
 }) {
+  const t = useTranslations('KbDetail');
   const last = summary.runs[summary.runs.length - 1];
   const fmt = (b: { mean: number }) =>
     Number.isInteger(b.mean) ? String(b.mean) : b.mean.toFixed(1);
@@ -2238,11 +2249,8 @@ function ConfigResultCard({
             padding: '10px 14px',
           }}
         >
-          <div
-            className="muted text-xs"
-            title="RAGAs faithfulness: whether the answer's claims are supported by the retrieved context (anti-hallucination). Note the length bias against long/comprehensive answers — more claims → higher chance some are not matched sentence-by-sentence to context; a low score does not necessarily mean a worse config, read it against completeness signals (citation count / word count), and do not conflate it with completeness."
-          >
-            Faithfulness (faithfulness · anti-hallucination · 0–1)
+          <div className="muted text-xs" title={t('faithfulnessTooltip')}>
+            {t('faithfulnessLabel')}
           </div>
           <div
             className="mono"
@@ -2264,47 +2272,53 @@ function ConfigResultCard({
             )}
             {summary.faithfulness == null && (
               <span className="muted text-xs" style={{ fontWeight: 400, marginLeft: 6 }}>
-                Not evaluated (no judge / off)
+                {t('notEvaluated')}
               </span>
             )}
           </div>
           {summary.faithfulness != null && summary.runs.length === 1 && (
             <div className="text-xs" style={{ marginTop: 3, color: 'oklch(var(--warning))' }}>
-              Single judge run · directional · raise reruns to ≥2 to see the stability band
+              {t('singleJudgeRun')}
             </div>
           )}
         </div>
         <ConfigMetric
-          k="Citations"
+          k={t('metricCitations')}
           v={fmt(summary.citation_count)}
           band={summary.citation_count.band}
         />
         {/* W51 (決策 7 option d) — completeness/coverage proxy (breadth, NOT recall) */}
         <ConfigMetric
-          k="Sections covered"
+          k={t('metricSectionsCovered')}
           v={fmt(summary.distinct_sections)}
-          sub="completeness proxy · not recall"
+          sub={t('subSectionsCovered')}
           band={summary.distinct_sections.band}
         />
         <ConfigMetric
-          k="Images (dedup)"
+          k={t('metricImagesDedup')}
           v={fmt(summary.figure_count_dedup)}
-          sub={`raw ${fmt(summary.figure_count_raw)}`}
+          sub={t('subRaw', { n: fmt(summary.figure_count_raw) })}
           band={summary.figure_count_dedup.band}
         />
         {/* W65 — image-axis coverage proxy (mirror of 涵蓋章節數; wide text + narrow image = b-1 risk) */}
         <ConfigMetric
-          k="Image sections"
+          k={t('metricImageSections')}
           v={fmt(summary.image_section_count)}
-          sub="Section-with-image coverage · proxy not recall"
+          sub={t('subImageSections')}
           band={summary.image_section_count.band}
         />
-        <ConfigMetric k="Latency p50" v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`} />
-        <ConfigMetric k="Answer chars" v={String(last?.answer_chars ?? 0)} />
-        <ConfigMetric k="Refused?" v={last?.refused ? 'Yes' : 'No'} />
         <ConfigMetric
-          k="Stability"
-          v={`band ${summary.citation_count.band}/${summary.figure_count_dedup.band}`}
+          k={t('metricLatencyP50')}
+          v={`${(summary.latency_ms.mean / 1000).toFixed(1)}s`}
+        />
+        <ConfigMetric k={t('metricAnswerChars')} v={String(last?.answer_chars ?? 0)} />
+        <ConfigMetric k={t('metricRefused')} v={last?.refused ? t('valueYes') : t('valueNo')} />
+        <ConfigMetric
+          k={t('metricStability')}
+          v={t('stabilityValue', {
+            a: summary.citation_count.band,
+            b: summary.figure_count_dedup.band,
+          })}
         />
       </div>
     </div>
@@ -2334,6 +2348,7 @@ function ConfigMetric({ k, v, sub, band }: { k: string; v: string; sub?: string;
 
 // ── Tab: Settings ───────────────────────────────────────────────────────────
 function SettingsTab({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const queryClient = useQueryClient();
   const [name, setName] = useState(kb.name);
   const [description, setDescription] = useState(kb.description);
@@ -2437,9 +2452,9 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['kb', kb.kb_id], updated);
-      toast.success('Metadata saved');
+      toast.success(t('toastMetadataSaved'));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'save failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastSaveFailed')),
   });
 
   const configMutation = useMutation({
@@ -2448,9 +2463,9 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     // refetch the full KB rather than writing the response into the cache.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['kb', kb.kb_id] });
-      toast.success('Config saved');
+      toast.success(t('toastConfigSaved'));
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'save failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastSaveFailed')),
   });
 
   function handleSave(e: FormEvent) {
@@ -2470,19 +2485,19 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
     >
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">General</h3>
+          <h3 className="card-title">{t('cardGeneral')}</h3>
           <span className="badge badge-success">
-            <Edit size={10} /> Editable
+            <Edit size={10} /> {t('badgeEditable')}
           </span>
         </div>
         <div className="card-body">
           <div className="field">
-            <label className="label">Name</label>
+            <label className="label">{t('labelName')}</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
             <div className="hint">PATCH /kb/{kb.kb_id} · KbMetadataPatch.name</div>
           </div>
           <div className="field">
-            <label className="label">Description</label>
+            <label className="label">{t('labelDescription')}</label>
             <textarea
               className="input"
               rows={3}
@@ -2504,9 +2519,11 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             </label>
             <input className="input mono" disabled value={kb.kb_id} />
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b> Forms index{' '}
-              <span className="mono">ekp-kb-{kb.kb_id}-v1</span> · cannot be changed without
-              recreating the KB.
+              {t.rich('generalKbIdHint', {
+                kbId: kb.kb_id,
+                b: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+                mono: (c) => <span className="mono">{c}</span>,
+              })}
             </div>
           </div>
         </div>
@@ -2514,15 +2531,15 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Retrieval config</h3>
+          <h3 className="card-title">{t('cardRetrievalConfig')}</h3>
           <span className="badge badge-warning">
-            <Shield size={10} /> Mix of locked + editable
+            <Shield size={10} /> {t('badgeMixLockedEditable')}
           </span>
         </div>
         <div className="card-body">
           <div className="field">
             <label className="label">
-              Embedding model{' '}
+              {t('labelEmbeddingModel')}{' '}
               <Shield
                 size={11}
                 style={{
@@ -2536,13 +2553,15 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               <option>{kb.config.embedding_model}</option>
             </select>
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>Locked.</b>{' '}
-              {kb.config.embedding_dimension}d MRL truncate · changing requires full re-index.
+              {t.rich('embeddingModelHint', {
+                dim: kb.config.embedding_dimension,
+                b: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+              })}
             </div>
           </div>
           <div className="field">
             <label className="label">
-              Chunk strategy{' '}
+              {t('labelChunkStrategy')}{' '}
               <RefreshCw
                 size={11}
                 style={{
@@ -2574,13 +2593,14 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               ))}
             </div>
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>Re-index required.</b> Changing the chunk
-              strategy affects chunk boundaries — after saving, all documents must be re-indexed to take effect.
+              {t.rich('chunkStrategyHint', {
+                b: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+              })}
             </div>
           </div>
           <div className="field">
             <label className="label">
-              Max images / chunk{' '}
+              {t('labelMaxImagesPerChunk')}{' '}
               <RefreshCw
                 size={11}
                 style={{
@@ -2595,17 +2615,18 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               className="input mono"
               value={maxImages}
               min={1}
-              placeholder="Inherit global (8)"
+              placeholder={t('placeholderInheritGlobal8')}
               onChange={(e) => setMaxImages(e.target.value)}
             />
             <div className="hint">
-              <b style={{ color: 'oklch(var(--warning))' }}>Re-index required.</b> Leave blank =
-              use the global cap (8). Max images per chunk; exceeding it triggers a force-split (ADR-0042).
+              {t.rich('maxImagesHint', {
+                b: (c) => <b style={{ color: 'oklch(var(--warning))' }}>{c}</b>,
+              })}
             </div>
           </div>
           <div className="field">
             <label className="label">
-              Default top_k (retrieval){' '}
+              {t('labelDefaultTopK')}{' '}
               <Edit
                 size={10}
                 style={{
@@ -2623,11 +2644,11 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               max={100}
               onChange={(e) => setTopK(+e.target.value)}
             />
-            <div className="hint">Editable any time · doesn&rsquo;t require re-index</div>
+            <div className="hint">{t('topKHint2')}</div>
           </div>
           <div className="field">
             <label className="label">
-              Default rerank_k{' '}
+              {t('labelDefaultRerankK')}{' '}
               <Edit
                 size={10}
                 style={{
@@ -2649,7 +2670,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
           {/* CH-006 — per-KB synthesis answer detail (query-time, no re-index) */}
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label">
-              Answer detail (synthesis){' '}
+              {t('labelAnswerDetail')}{' '}
               <Edit
                 size={10}
                 style={{
@@ -2669,13 +2690,12 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                   onClick={() => setAnswerDetail(d)}
                   style={{ flex: 1, padding: '5px 6px', fontSize: 11.5 }}
                 >
-                  {d === 'concise' ? 'Concise (concise)' : 'Detailed (detailed)'}
+                  {d === 'concise' ? t('segConcise') : t('segDetailed')}
                 </button>
               ))}
             </div>
             <div className="hint">
-              Takes effect immediately · no re-index. <b>concise</b> = summary (default, ≤150 chars);
-              <b>detailed</b> = walks through each sub-step (suited to procedural manuals; longer answers / higher cost).
+              {t.rich('answerDetailHint', { b: (c) => <b>{c}</b> })}
             </div>
           </div>
         </div>
@@ -2685,15 +2705,13 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       <div className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-header">
           <div>
-            <h3 className="card-title">Advanced retrieval tuning</h3>
+            <h3 className="card-title">{t('advancedTuningTitle')}</h3>
             <div className="card-desc">
-              Per-KB overrides for retrieval / citation / image behaviour. Un-overridden knobs use the
-              global defaults. All runtime —{' '}
-              <b>no re-index needed</b> (unlike the locked embedding / chunk strategy above).
+              {t.rich('advancedTuningDesc', { b: (c) => <b>{c}</b> })}
             </div>
           </div>
           <span className="badge badge-info" style={{ fontSize: 9.5 }}>
-            <Edit size={10} /> Runtime · no re-index
+            <Edit size={10} /> {t('badgeRuntimeNoReindex')}
           </span>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 12 }}>
@@ -2712,15 +2730,13 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             <Zap size={15} style={{ color: 'oklch(var(--accent))', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>Recipe preset: image-dense step manual</span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{t('presetTitle')}</span>
                 <span className="badge badge-success" style={{ fontSize: 9.5 }}>
-                  W62–W68 empirical
+                  {t('presetBadge')}
                 </span>
               </div>
               <div className="muted text-xs" style={{ marginTop: 3, lineHeight: 1.5 }}>
-                Rerank top-k = 10 (General section above) · Neighbour max aux images = 40 · Max images /
-                answer = 80 — image-recall 0.574 → ~1.00 (ADR-0054).
-                Applying only fills the draft; once the test run looks good, click &quot;Save to this KB&quot; to take effect.
+                {t('presetDesc')}
               </div>
             </div>
             <button
@@ -2732,10 +2748,10 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             >
               {presetApplied ? (
                 <>
-                  <Check size={13} /> Applied
+                  <Check size={13} /> {t('btnApplied')}
                 </>
               ) : (
-                'Apply recipe'
+                t('btnApplyRecipe')
               )}
             </button>
           </div>
@@ -2744,8 +2760,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
             <KbTuneGroup
               key={g.enableKey}
               icon={g.icon}
-              title={g.title}
-              desc={g.desc}
+              title={t(g.titleKey)}
+              desc={t(g.descKey)}
               enabled={knobs[g.enableKey] as boolean | null}
               onToggle={(v) => setKnob(g.enableKey, v)}
               onReset={() => setKnob(g.enableKey, null)}
@@ -2754,7 +2770,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
                 ? g.knobs.map((kn) => (
                     <KbTuneKnob
                       key={kn.key}
-                      label={kn.label}
+                      label={t(kn.labelKey)}
                       value={knobs[kn.key] as number | null}
                       onChange={(v) => setKnob(kn.key, v)}
                     />
@@ -2765,7 +2781,7 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
         </div>
         <div className="card-footer">
           <div className="muted text-xs">
-            Config scope: per-query &gt; <b>per-KB (this page)</b> &gt; global · ADR-0040
+            {t.rich('configScopeKb', { b: (c) => <b>{c}</b> })}
           </div>
           <div className="row">
             <button
@@ -2774,14 +2790,14 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               onClick={resetAllKnobs}
               disabled={!TUNE_KNOB_KEYS.some((k) => knobs[k] !== null)}
             >
-              <RefreshCw size={13} /> Reset all to global
+              <RefreshCw size={13} /> {t('btnResetAllGlobal')}
             </button>
             <button
               type="submit"
               className="btn btn-primary btn-sm"
               disabled={!dirty || metaMutation.isPending || configMutation.isPending}
             >
-              {configMutation.isPending ? 'Saving…' : 'Save to this KB'}
+              {configMutation.isPending ? t('saving') : t('btnSaveToKb')}
             </button>
           </div>
         </div>
@@ -2798,7 +2814,8 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
       <div className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-footer">
           <div className="muted text-xs">
-            Last indexed: <span className="mono">{formatRelative(kb.last_indexed_at)}</span>
+            {t('lastIndexedLabel')}{' '}
+            <span className="mono">{formatRelative(kb.last_indexed_at, t)}</span>
           </div>
           <div className="row">
             <button
@@ -2821,14 +2838,14 @@ function SettingsTab({ kb }: { kb: KbStatus }) {
               }}
               disabled={!dirty}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               className="btn btn-primary btn-sm"
               disabled={!dirty || metaMutation.isPending || configMutation.isPending}
             >
-              {metaMutation.isPending || configMutation.isPending ? 'Saving…' : 'Save changes'}
+              {metaMutation.isPending || configMutation.isPending ? t('saving') : t('btnSaveChanges')}
             </button>
           </div>
         </div>
@@ -2855,6 +2872,7 @@ function ReindexCard({
   chunkStrategy: KbConfig['chunk_strategy'];
   maxImages: string;
 }) {
+  const t = useTranslations('KbDetail');
   const queryClient = useQueryClient();
   const [showExplainer, setShowExplainer] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -2867,12 +2885,16 @@ function ReindexCard({
       const skipped = summary.skipped_no_source.length;
       const failed = summary.failed.length;
       toast.success(
-        `Re-indexed ${summary.documents_reindexed}/${summary.documents_total} documents · ${summary.chunks_total.toLocaleString()} chunks` +
-          (skipped ? ` · ${skipped} skipped (no source)` : '') +
-          (failed ? ` · ${failed} failed` : ''),
+        t('toastReindexed', {
+          done: summary.documents_reindexed,
+          total: summary.documents_total,
+          chunks: summary.chunks_total.toLocaleString(),
+        }) +
+          (skipped ? t('toastReindexSkippedSuffix', { skipped }) : '') +
+          (failed ? t('toastReindexFailedSuffix', { failed }) : ''),
       );
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 're-index failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastReindexError')),
   });
 
   const summary = reindexMutation.data;
@@ -2881,18 +2903,15 @@ function ReindexCard({
     <div className="card" style={{ gridColumn: '1 / -1' }}>
       <div className="card-header">
         <div>
-          <h3 className="card-title">Re-indexing</h3>
-          <div className="card-desc">
-            Re-parse every document from its stored original source under the current config. Needed
-            after a chunk_strategy or image-cap change.
-          </div>
+          <h3 className="card-title">{t('reindexTitle')}</h3>
+          <div className="card-desc">{t('reindexDesc')}</div>
         </div>
         <button
           type="button"
           className="btn btn-ghost btn-sm"
           onClick={() => setShowExplainer((v) => !v)}
         >
-          {showExplainer ? 'Hide details' : 'What is this?'}{' '}
+          {showExplainer ? t('btnHideDetails') : t('btnWhatIsThis')}{' '}
           <ChevronRight size={11} style={{ transform: showExplainer ? 'rotate(90deg)' : 'none' }} />
         </button>
       </div>
@@ -2909,33 +2928,25 @@ function ReindexCard({
             }}
           >
             <p style={{ marginTop: 0, marginBottom: 10 }}>
-              <b>What happens during a re-index:</b>
+              <b>{t('explainerWhatHappens')}</b>
             </p>
             <ol style={{ paddingLeft: 22, marginBottom: 10, lineHeight: 1.8 }}>
+              <li>{t('explainerStep1')}</li>
+              <li>{t.rich('explainerStep2', { b: (c) => <b>{c}</b> })}</li>
               <li>
-                Each document is re-fetched from its stored original source (Word / PDF / PPT).
+                {t.rich('explainerStep3', {
+                  kbId: kb.kb_id,
+                  mono: (c) => <span className="mono">{c}</span>,
+                })}
               </li>
-              <li>
-                Its existing chunks are removed, then it&rsquo;s re-parsed via the <b>current</b>{' '}
-                chunker config (chunk_strategy + max images / chunk).
-              </li>
-              <li>
-                Each chunk is re-embedded and upserted into{' '}
-                <span className="mono">ekp-kb-{kb.kb_id}-v1</span>.
-              </li>
-              <li>Repeats per document — synchronous, in-place (Tier 1: no task queue).</li>
+              <li>{t('explainerStep4')}</li>
             </ol>
             <p style={{ marginBottom: 8 }}>
-              <b>When you need to re-index:</b>
-              <span className="muted">
-                {' '}
-                chunk_strategy change · max-images-per-chunk change · Docling parser upgrade.
-              </span>
+              <b>{t('explainerWhenTitle')}</b>
+              <span className="muted"> {t('explainerWhenList')}</span>
             </p>
             <p style={{ marginBottom: 0 }} className="muted text-xs">
-              Docs ingested before W46 (no stored source) are skipped + reported — re-upload them to
-              make them reindexable. Zero-downtime v1→v2 atomic switch + eval gate stays a Track A
-              enhancement.
+              {t('explainerNote')}
             </p>
             <div
               style={{
@@ -2951,19 +2962,16 @@ function ReindexCard({
               }}
             >
               <div>
-                <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs to
-                re-parse
+                <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b>{' '}
+                {t('statDocsToReparse')}
               </div>
               <div>
                 <b style={{ color: 'oklch(var(--foreground))' }}>
                   {kb.total_chunks.toLocaleString()}
                 </b>{' '}
-                chunks to rebuild
+                {t('statChunksToRebuild')}
               </div>
-              <div>
-                in-place · <b style={{ color: 'oklch(var(--foreground))' }}>brief</b> inconsistency
-                window
-              </div>
+              <div>{t.rich('statInPlace', { b: (c) => <b style={{ color: 'oklch(var(--foreground))' }}>{c}</b> })}</div>
             </div>
           </div>
         </div>
@@ -2981,12 +2989,17 @@ function ReindexCard({
             )}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                Re-indexed {summary.documents_reindexed} / {summary.documents_total} documents ·{' '}
-                {summary.chunks_total.toLocaleString()} chunks rebuilt
+                {t('summaryReindexed', {
+                  done: summary.documents_reindexed,
+                  total: summary.documents_total,
+                  chunks: summary.chunks_total.toLocaleString(),
+                })}
               </div>
               <div className="muted mono text-xs">
-                skipped (no source): {summary.skipped_no_source.length} · failed:{' '}
-                {summary.failed.length}
+                {t('summarySkippedFailed', {
+                  skipped: summary.skipped_no_source.length,
+                  failed: summary.failed.length,
+                })}
               </div>
             </div>
           </div>
@@ -2994,12 +3007,12 @@ function ReindexCard({
       )}
       <div className="card-footer">
         <div className="muted text-xs">
-          Last re-index: <span className="mono">{formatRelative(kb.last_indexed_at)}</span> ·
-          current version <span className="mono">v1</span>
+          {t('lastReindexLabel')} <span className="mono">{formatRelative(kb.last_indexed_at, t)}</span>{' '}
+          {t('currentVersionLabel')} <span className="mono">v1</span>
         </div>
         <div className="row">
           <button type="button" className="btn btn-secondary btn-sm" disabled>
-            <Download size={13} /> Export config (YAML)
+            <Download size={13} /> {t('btnExportConfigYaml')}
           </button>
           <button
             type="button"
@@ -3008,7 +3021,7 @@ function ReindexCard({
             disabled={kb.archived || reindexMutation.isPending}
           >
             <RefreshCw size={13} />{' '}
-            {reindexMutation.isPending ? 'Re-indexing…' : 'Trigger re-index now'}
+            {reindexMutation.isPending ? t('reindexing') : t('btnTriggerReindexNow')}
           </button>
         </div>
       </div>
@@ -3022,21 +3035,15 @@ function ReindexCard({
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Re-index this knowledge base?</h2>
-              <p className="modal-desc">
-                Re-parses every document from its stored original source under the current config.
-                Each document is briefly unavailable while it rebuilds.
-              </p>
+              <h2 className="modal-title">{t('modalReindexTitle')}</h2>
+              <p className="modal-desc">{t('modalReindexDesc')}</p>
             </div>
             <div className="modal-body">
               <div className="banner banner-warning" style={{ marginBottom: 14 }}>
                 <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500 }}>Save config changes first</div>
-                  <div className="muted text-xs">
-                    Re-index uses the saved config. Unsaved chunk_strategy / image-cap edits
-                    won&rsquo;t apply until saved.
-                  </div>
+                  <div style={{ fontWeight: 500 }}>{t('modalSaveFirstTitle')}</div>
+                  <div className="muted text-xs">{t('modalSaveFirstDesc')}</div>
                 </div>
               </div>
               <div
@@ -3052,20 +3059,24 @@ function ReindexCard({
                 }}
               >
                 <div>
-                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b>{' '}
+                  {t('statDocs')}
                 </div>
                 <div>
                   <b style={{ color: 'oklch(var(--foreground))' }}>
                     {kb.total_chunks.toLocaleString()}
                   </b>{' '}
-                  chunks
+                  {t('statChunks')}
                 </div>
                 <div>
-                  strategy <b style={{ color: 'oklch(var(--foreground))' }}>{chunkStrategy}</b>
+                  {t('statStrategy')}{' '}
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{chunkStrategy}</b>
                 </div>
                 <div>
-                  max img{' '}
-                  <b style={{ color: 'oklch(var(--foreground))' }}>{maxImages || '8 (global)'}</b>
+                  {t('statMaxImg')}{' '}
+                  <b style={{ color: 'oklch(var(--foreground))' }}>
+                    {maxImages || t('fallback8Global')}
+                  </b>
                 </div>
               </div>
             </div>
@@ -3076,7 +3087,7 @@ function ReindexCard({
                 onClick={() => setShowModal(false)}
                 disabled={reindexMutation.isPending}
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -3086,8 +3097,8 @@ function ReindexCard({
               >
                 <RefreshCw size={13} />{' '}
                 {reindexMutation.isPending
-                  ? 'Re-indexing…'
-                  : `Re-index ${kb.total_documents} documents`}
+                  ? t('reindexing')
+                  : t('btnReindexNDocuments', { n: kb.total_documents })}
               </button>
             </div>
           </div>
@@ -3098,6 +3109,7 @@ function ReindexCard({
 }
 
 function DangerZone({ kb }: { kb: KbStatus }) {
+  const t = useTranslations('KbDetail');
   const queryClient = useQueryClient();
   const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -3106,10 +3118,10 @@ function DangerZone({ kb }: { kb: KbStatus }) {
     onSuccess: (updated) => {
       queryClient.setQueryData(['kb', kb.kb_id], updated);
       void queryClient.invalidateQueries({ queryKey: ['kb'] });
-      toast.success(`KB archived — read-only`);
+      toast.success(t('toastKbArchived'));
       router.push('/kb');
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'archive failed'),
+    onError: (e) => toast.error(e instanceof Error ? e.message : t('toastArchiveFailed')),
   });
   // W87 — hard-delete: drops Postgres record + Azure index (DELETE /kb/{id}).
   const deleteMutation = useMutation({
@@ -3117,7 +3129,7 @@ function DangerZone({ kb }: { kb: KbStatus }) {
     onSuccess: () => {
       setShowDeleteModal(false);
       void queryClient.invalidateQueries({ queryKey: ['kb'] });
-      toast.success('KB deleted — record + Azure index dropped');
+      toast.success(t('toastKbDeleted'));
       router.push('/kb');
     },
     onError: (e) => {
@@ -3125,13 +3137,10 @@ function DangerZone({ kb }: { kb: KbStatus }) {
       // Per kb.py the orphan index can be cleared via scripts/create_index.py.
       if (e instanceof ApiError && e.status === 502) {
         setShowDeleteModal(false);
-        toast.error(
-          'Record removed, but the Azure index drop failed — it may linger. ' +
-            'Clear it manually via scripts/create_index.py delete.',
-        );
+        toast.error(t('toastDeletePartial'));
         return;
       }
-      toast.error(e instanceof Error ? e.message : 'delete failed');
+      toast.error(e instanceof Error ? e.message : t('toastDeleteFailed'));
     },
   });
 
@@ -3146,9 +3155,9 @@ function DangerZone({ kb }: { kb: KbStatus }) {
       <div className="card-header" style={{ background: 'oklch(var(--destructive) / 0.04)' }}>
         <div>
           <h3 className="card-title" style={{ color: 'oklch(var(--destructive))' }}>
-            Danger zone
+            {t('dangerZoneTitle')}
           </h3>
-          <div className="card-desc">Irreversible · audit-logged</div>
+          <div className="card-desc">{t('dangerZoneDesc')}</div>
         </div>
       </div>
       <div className="card-body" style={{ display: 'flex', gap: 8 }}>
@@ -3159,7 +3168,7 @@ function DangerZone({ kb }: { kb: KbStatus }) {
           disabled={kb.archived || archiveMutation.isPending}
         >
           <Archive size={14} />
-          {kb.archived ? ' Already archived' : ' Archive KB (read-only)'}
+          {kb.archived ? t('btnAlreadyArchived') : t('btnArchiveKb')}
         </button>
         <div className="spacer" />
         <button
@@ -3168,7 +3177,7 @@ function DangerZone({ kb }: { kb: KbStatus }) {
           onClick={() => setShowDeleteModal(true)}
           disabled={deleteMutation.isPending}
         >
-          <Trash2 size={14} /> Delete KB
+          <Trash2 size={14} /> {t('btnDeleteKb')}
         </button>
       </div>
 
@@ -3183,22 +3192,20 @@ function DangerZone({ kb }: { kb: KbStatus }) {
         >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Delete this knowledge base?</h2>
+              <h2 className="modal-title">{t('modalDeleteTitle')}</h2>
               <p className="modal-desc">
-                Permanently removes the KB record and drops its Azure AI Search index
-                <span style={{ fontFamily: 'var(--font-mono)' }}> ekp-kb-{kb.kb_id}-v1</span>.
-                Irreversible — re-create + re-index to restore.
+                {t.rich('modalDeleteDesc', {
+                  kbId: kb.kb_id,
+                  mono: (c) => <span style={{ fontFamily: 'var(--font-mono)' }}>{c}</span>,
+                })}
               </p>
             </div>
             <div className="modal-body">
               <div className="banner banner-warning" style={{ marginBottom: 14 }}>
                 <AlertTriangle size={15} style={{ color: 'oklch(var(--warning))' }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500 }}>This cannot be undone</div>
-                  <div className="muted text-xs">
-                    Screenshot blobs are retained (cleared separately). The Azure index
-                    slot is freed immediately.
-                  </div>
+                  <div style={{ fontWeight: 500 }}>{t('modalCannotUndo')}</div>
+                  <div className="muted text-xs">{t('modalDeleteNote')}</div>
                 </div>
               </div>
               <div
@@ -3214,13 +3221,14 @@ function DangerZone({ kb }: { kb: KbStatus }) {
                 }}
               >
                 <div>
-                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b> docs
+                  <b style={{ color: 'oklch(var(--foreground))' }}>{kb.total_documents}</b>{' '}
+                  {t('statDocs')}
                 </div>
                 <div>
                   <b style={{ color: 'oklch(var(--foreground))' }}>
                     {kb.total_chunks.toLocaleString()}
                   </b>{' '}
-                  chunks
+                  {t('statChunks')}
                 </div>
               </div>
             </div>
@@ -3231,7 +3239,7 @@ function DangerZone({ kb }: { kb: KbStatus }) {
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleteMutation.isPending}
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -3240,7 +3248,7 @@ function DangerZone({ kb }: { kb: KbStatus }) {
                 disabled={deleteMutation.isPending}
               >
                 <Trash2 size={13} />{' '}
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete permanently'}
+                {deleteMutation.isPending ? t('deleting') : t('btnDeletePermanently')}
               </button>
             </div>
           </div>

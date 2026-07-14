@@ -55,6 +55,7 @@ import {
   Shield,
   Zap,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 
 import { DisabledAffordance } from '@/components/ui/disabled-affordance';
@@ -301,6 +302,7 @@ export default function TraceDetailPage({
   params: { traceId: string };
 }) {
   const traceId = params.traceId;
+  const t = useTranslations('Traces');
 
   const query = useQuery<TraceDetail>({
     queryKey: ['debug', 'trace', traceId],
@@ -354,7 +356,7 @@ export default function TraceDetailPage({
             className="text-xs muted"
             style={{ padding: 24, textAlign: 'center' }}
           >
-            Loading trace {traceId}…
+            {t('loadingTrace', { traceId })}
           </div>
         </div>
       </div>
@@ -368,16 +370,18 @@ export default function TraceDetailPage({
           <div className="card" style={{ borderColor: 'oklch(var(--destructive) / 0.3)' }}>
             <div className="card-header">
               <div>
-                <h3 className="card-title">Trace unavailable</h3>
+                <h3 className="card-title">{t('traceUnavailableTitle')}</h3>
                 <div className="card-desc">
-                  {(query.error as Error)?.message ?? 'Unknown error'}
+                  {(query.error as Error)?.message ?? t('unknownError')}
                 </div>
               </div>
             </div>
             <div className="card-body">
               <p className="text-xs muted">
-                Trace ID <span className="mono">{traceId}</span> could not be loaded.
-                Try opening directly in Langfuse:
+                {t.rich('traceCouldNotLoad', {
+                  id: traceId,
+                  mono: (chunks) => <span className="mono">{chunks}</span>,
+                })}
               </p>
               <a
                 className="btn btn-secondary btn-sm"
@@ -386,7 +390,7 @@ export default function TraceDetailPage({
                 rel="noopener noreferrer"
                 style={{ marginTop: 8 }}
               >
-                <ExternalLink size={13} /> Open in Langfuse ↗
+                <ExternalLink size={13} /> {t('openInLangfuse')}
               </a>
             </div>
           </div>
@@ -402,9 +406,9 @@ export default function TraceDetailPage({
           <div className="card" style={{ borderColor: 'oklch(var(--warning) / 0.3)' }}>
             <div className="card-header">
               <div>
-                <h3 className="card-title">Observability degraded</h3>
+                <h3 className="card-title">{t('observabilityDegradedTitle')}</h3>
                 <div className="card-desc">
-                  Status: <span className="mono">{data.status}</span>
+                  {t('statusLabel')} <span className="mono">{data.status}</span>
                   {data.note ? ` · ${data.note}` : ''}
                 </div>
               </div>
@@ -416,7 +420,7 @@ export default function TraceDetailPage({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <ExternalLink size={13} /> Open in Langfuse ↗
+                <ExternalLink size={13} /> {t('openInLangfuse')}
               </a>
             </div>
           </div>
@@ -452,43 +456,46 @@ export default function TraceDetailPage({
         >
           <div className="stat">
             <div className="stat-label">
-              <Clock size={13} /> Total latency
+              <Clock size={13} /> {t('statTotalLatency')}
             </div>
             <div className="stat-value">
               {(totalLatency / 1000).toFixed(2)}
               <span className="stat-unit">s</span>
             </div>
             <div className="stat-meta">
-              <span className="trend-up">p95 4.21s</span> · within SLO
+              <span className="trend-up">p95 4.21s</span> · {t('withinSlo')}
             </div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <Cpu size={13} /> Tokens
+              <Cpu size={13} /> {t('statTokens')}
             </div>
             <div className="stat-value">
               {(totalIn / 1000).toFixed(1)}
               <span className="stat-unit">k</span>
             </div>
             <div className="stat-meta">
-              {totalOut} out · {totalIn.toLocaleString()} in
+              {t('tokensMeta', {
+                out: String(totalOut),
+                in: totalIn.toLocaleString(),
+              })}
             </div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <Activity size={13} /> Cost
+              <Activity size={13} /> {t('statCost')}
             </div>
             <div className="stat-value">
               <DisabledAffordance
                 variant="p3-preview"
-                reason="Wave C+ — per-trace total cost requires Langfuse cost aggregation extension"
-                tier2Trigger="Tier 2 — post-W22 governance"
+                reason={t('costWaveCReason')}
+                tier2Trigger={t('tier2Governance')}
               >
                 —
               </DisabledAffordance>
             </div>
             <div className="stat-meta muted">
-              Per-stage cost · Wave C+
+              {t('perStageCostWaveC')}
             </div>
           </div>
           <div className="stat">
@@ -499,17 +506,15 @@ export default function TraceDetailPage({
               className="stat-value"
               style={{ color: 'oklch(var(--accent))' }}
             >
-              {cragIterations}×<span className="stat-unit"> loop</span>
+              {cragIterations}×<span className="stat-unit"> {t('loopUnit')}</span>
             </div>
             <div className="stat-meta">
-              {cragTriggered
-                ? 'confidence judge fired RE_RETRIEVE'
-                : 'confident · no correction'}
+              {cragTriggered ? t('cragFired') : t('cragConfident')}
             </div>
           </div>
           <div className="stat">
             <div className="stat-label">
-              <Shield size={13} /> Status
+              <Shield size={13} /> {t('statStatus')}
             </div>
             <div className="stat-value">
               <span
@@ -521,16 +526,19 @@ export default function TraceDetailPage({
               </span>
             </div>
             <div className="stat-meta">
-              {data.stages.length} obs · {stageRows?.filter((s) => !s.empty).length} traced stages
+              {t('obsTracedStages', {
+                obs: data.stages.length,
+                traced: stageRows?.filter((s) => !s.empty).length ?? 0,
+              })}
             </div>
           </div>
         </div>
 
         {/* Viz mode selector */}
         <div className="row" style={{ marginBottom: 12 }}>
-          <h3 className="card-title">10-stage pipeline</h3>
+          <h3 className="card-title">{t('pipelineTitle')}</h3>
           <div className="spacer" />
-          <span className="text-xs muted">Visualization →</span>
+          <span className="text-xs muted">{t('visualizationLabel')}</span>
           <div className="seg" role="tablist">
             <button
               type="button"
@@ -540,7 +548,7 @@ export default function TraceDetailPage({
               aria-selected={vizMode === 'vertical'}
               onClick={() => setVizMode('vertical')}
             >
-              <Layers size={12} /> Vertical
+              <Layers size={12} /> {t('vizVertical')}
             </button>
             <button
               type="button"
@@ -550,7 +558,7 @@ export default function TraceDetailPage({
               aria-selected={vizMode === 'waterfall'}
               onClick={() => setVizMode('waterfall')}
             >
-              <Activity size={12} /> Waterfall
+              <Activity size={12} /> {t('vizWaterfall')}
             </button>
             <button
               type="button"
@@ -560,7 +568,7 @@ export default function TraceDetailPage({
               aria-selected={vizMode === 'flame'}
               onClick={() => setVizMode('flame')}
             >
-              <Zap size={12} /> Flame
+              <Zap size={12} /> {t('vizFlame')}
             </button>
           </div>
           <a
@@ -569,7 +577,7 @@ export default function TraceDetailPage({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <ExternalLink size={13} /> Open in Langfuse ↗
+            <ExternalLink size={13} /> {t('openInLangfuse')}
           </a>
         </div>
 
@@ -627,6 +635,7 @@ function TraceHeader({
   kbId: string | null;
   cragTriggered: boolean;
 }) {
+  const t = useTranslations('Traces');
   return (
     <div className="page-header">
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -642,14 +651,14 @@ function TraceHeader({
             className="btn btn-ghost btn-xs btn-ghost-muted"
             href="/traces"
           >
-            <ChevronLeft size={12} /> Traces
+            <ChevronLeft size={12} /> {t('pageTitle')}
           </a>
           <span className="text-xs muted mono">·</span>
           <span className="text-xs muted mono">{traceId}</span>
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-xs"
-            aria-label="Copy trace ID"
+            aria-label={t('copyTraceIdAria')}
             onClick={() => {
               if (typeof navigator !== 'undefined') {
                 navigator.clipboard?.writeText(traceId);
@@ -669,9 +678,7 @@ function TraceHeader({
           }}
         >
           {query ? `"${query}"` : (
-            <span className="muted">
-              Query text not surfaced — open Langfuse for full input
-            </span>
+            <span className="muted">{t('queryNotSurfaced')}</span>
           )}
         </h1>
         <div
@@ -690,13 +697,13 @@ function TraceHeader({
           )}
           <span className="text-xs muted mono">·</span>
           {/* D9.f-pattern: user not surfaced */}
-          <span className="text-xs muted">by</span>
+          <span className="text-xs muted">{t('by')}</span>
           <span className="text-xs mono muted">—</span>
           {cragTriggered && (
             <>
               <span className="text-xs muted mono">·</span>
               <span className="badge badge-accent">
-                <span className="badge-dot" /> CRAG triggered
+                <span className="badge-dot" /> {t('cragTriggered')}
               </span>
             </>
           )}
@@ -704,10 +711,10 @@ function TraceHeader({
       </div>
       <div className="page-actions">
         <button className="btn btn-secondary btn-sm" disabled>
-          <Download size={13} /> Export JSON
+          <Download size={13} /> {t('exportJson')}
         </button>
         <button className="btn btn-secondary btn-sm" disabled>
-          <MessageSquare size={13} /> Replay in chat
+          <MessageSquare size={13} /> {t('replayInChat')}
         </button>
       </div>
     </div>
@@ -762,6 +769,7 @@ function StageRow({
   onToggle: () => void;
   totalLatency: number;
 }) {
+  const t = useTranslations('Traces');
   const pct = (stage.latency_ms / totalLatency) * 100;
   const isCrag = stage.id === 5 || stage.id === 6;
   const stageBg = isCrag ? 'oklch(var(--accent) / 0.05)' : 'transparent';
@@ -854,7 +862,7 @@ function StageRow({
             <span className="text-xs muted mono">· {stage.model}</span>
           )}
           {stage.empty && (
-            <span className="text-xs muted">· not traced this query</span>
+            <span className="text-xs muted">· {t('notTracedThisQuery')}</span>
           )}
           <div className="spacer" />
           {(stage.input_tokens > 0 || stage.output_tokens > 0) && (
@@ -862,7 +870,10 @@ function StageRow({
               className="mono text-xs"
               style={{ color: 'oklch(var(--muted-foreground))' }}
             >
-              {stage.input_tokens}↓ {stage.output_tokens}↑ tok
+              {t('tokensCount', {
+                in: String(stage.input_tokens),
+                out: String(stage.output_tokens),
+              })}
             </span>
           )}
           <span
@@ -955,15 +966,16 @@ function StageRow({
                   textTransform: 'uppercase',
                 }}
               >
-                Stage details
+                {t('stageDetails')}
               </span>
               <div className="spacer" />
-              <span className="text-xs muted">{stage.obsCount} observation{stage.obsCount === 1 ? '' : 's'}</span>
+              <span className="text-xs muted">
+                {t('observationCount', { count: stage.obsCount })}
+              </span>
             </div>
             {stage.empty ? (
               <p className="text-xs muted" style={{ margin: 0, lineHeight: 1.55 }}>
-                {stage.note ??
-                  'No Langfuse observations bucketed to this stage for this trace.'}
+                {stage.note ?? t('noObservationsBucketed')}
               </p>
             ) : stage.details ? (
               <table
@@ -995,7 +1007,7 @@ function StageRow({
                           lineHeight: 1.5,
                         }}
                       >
-                        {renderValue(k, v, stage)}
+                        {renderValue(k, v, stage, t)}
                       </td>
                     </tr>
                   ))}
@@ -1003,7 +1015,7 @@ function StageRow({
               </table>
             ) : (
               <p className="text-xs muted" style={{ margin: 0 }}>
-                Observation had no extra metadata.
+                {t('noExtraMetadata')}
               </p>
             )}
           </div>
@@ -1017,6 +1029,7 @@ function renderValue(
   key: string,
   v: unknown,
   stage: StageRowData,
+  t: ReturnType<typeof useTranslations>,
 ): React.ReactNode {
   // Highlight CRAG threshold check
   if (key === 'verdict' && v === 'RE_RETRIEVE') {
@@ -1043,7 +1056,8 @@ function renderValue(
           fontWeight: 600,
         }}
       >
-        {v.toFixed(2)} {failed ? `< ${threshold.toFixed(2)} threshold` : ''}
+        {v.toFixed(2)}{' '}
+        {failed ? t('belowThreshold', { threshold: threshold.toFixed(2) }) : ''}
       </span>
     );
   }
@@ -1236,6 +1250,7 @@ function TraceFlame({
   setExpanded: (id: number) => void;
   totalLatency: number;
 }) {
+  const t = useTranslations('Traces');
   const categories = [
     { name: 'Preprocessing', stageIds: [1, 2], color: 'oklch(0.65 0.10 240)' },
     { name: 'Retrieval', stageIds: [3, 4], color: 'oklch(0.62 0.13 200)' },
@@ -1259,7 +1274,7 @@ function TraceFlame({
               textTransform: 'uppercase',
             }}
           >
-            By category
+            {t('byCategory')}
           </div>
           <div
             style={{
@@ -1351,7 +1366,7 @@ function TraceFlame({
             textTransform: 'uppercase',
           }}
         >
-          By stage
+          {t('byStage')}
         </div>
         {stages.map((s, i) => {
           const cat = categories.find((c) => c.stageIds.includes(s.id));
@@ -1440,23 +1455,25 @@ function FinalResponseCard({
   answerPreview: string | null;
   modelUsed: string | null;
 }) {
+  const t = useTranslations('Traces');
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div className="card-header">
         <div>
-          <h3 className="card-title">Final response</h3>
+          <h3 className="card-title">{t('finalResponseTitle')}</h3>
           <div className="card-desc">
-            Stage 09 output{modelUsed ? ` · synthesized by ${modelUsed}` : ''}
+            {t('stage09Output')}
+            {modelUsed ? t('synthesizedBy', { model: modelUsed }) : ''}
           </div>
         </div>
         <div className="row">
           <DisabledAffordance
             variant="p3-preview"
-            reason="Wave C+ — per-trace citation validation status requires aggregator extension"
-            tier2Trigger="Tier 2 — post-W22 governance"
+            reason={t('citationWaveCReason')}
+            tier2Trigger={t('tier2Governance')}
           >
             <span className="badge badge-muted">
-              <span className="badge-dot" /> citation status — Wave C+
+              <span className="badge-dot" /> {t('citationStatusWaveC')}
             </span>
           </DisabledAffordance>
         </div>
@@ -1478,7 +1495,7 @@ function FinalResponseCard({
                 textTransform: 'uppercase',
               }}
             >
-              Query (final after CRAG)
+              {t('queryFinalAfterCrag')}
             </div>
             <div
               style={{
@@ -1491,9 +1508,7 @@ function FinalResponseCard({
               }}
             >
               {query ?? (
-                <span className="muted">
-                  Query text not surfaced — open Langfuse for full input
-                </span>
+                <span className="muted">{t('queryNotSurfaced')}</span>
               )}
             </div>
           </div>
@@ -1506,7 +1521,7 @@ function FinalResponseCard({
                 textTransform: 'uppercase',
               }}
             >
-              Answer preview
+              {t('answerPreviewTitle')}
             </div>
             <div
               style={{
@@ -1521,10 +1536,10 @@ function FinalResponseCard({
               {answerPreview ?? (
                 <DisabledAffordance
                   variant="p3-preview"
-                  reason="Wave C+ — answer preview requires synthesizer.synthesize observation details extension"
-                  tier2Trigger="Tier 2 — post-W22 governance"
+                  reason={t('answerPreviewWaveCReason')}
+                  tier2Trigger={t('tier2Governance')}
                 >
-                  <span className="muted">Answer preview — Wave C+</span>
+                  <span className="muted">{t('answerPreviewWaveC')}</span>
                 </DisabledAffordance>
               )}
             </div>

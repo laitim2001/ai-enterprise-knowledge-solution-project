@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 /**
@@ -56,29 +57,27 @@ const connActions: CSSProperties = {
 const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
 
 export default function IntegrationsPage() {
+  const t = useTranslations('Integrations');
   return (
     <div className="content">
       <div className="content-wide">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Integrations</h1>
-            <p className="page-subtitle">
-              Connect external content sources and import their documents into your
-              knowledge bases.
-            </p>
+            <h1 className="page-title">{t('title')}</h1>
+            <p className="page-subtitle">{t('landingSubtitle')}</p>
           </div>
         </div>
 
         <div className="banner banner-info" style={{ marginBottom: 20 }}>
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-            Imported documents run through the same Docling pipeline, profiles and
-            per-KB config as local uploads. Source permissions are mapped to{' '}
-            <span style={mono}>allowed_principals</span> (per ADR-0070 / ADR-0066).
+            {t.rich('landingBanner', {
+              mono: (chunks) => <span style={mono}>{chunks}</span>,
+            })}
           </div>
         </div>
 
         <div className="nav-section-label" style={{ padding: '0 2px 10px' }}>
-          Available sources
+          {t('availableSources')}
         </div>
         <div className="card" style={connCard}>
           <div style={connLogo}>
@@ -92,25 +91,26 @@ export default function IntegrationsPage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>SharePoint</div>
             <div style={connDesc}>
-              Import documents from a SharePoint site granted{' '}
-              <span style={mono}>Sites.Selected</span> access.
+              {t.rich('sharepointCardDesc', {
+                mono: (chunks) => <span style={mono}>{chunks}</span>,
+              })}
             </div>
           </div>
           <div style={connActions}>
             <span className="badge badge-muted">
-              <span className="badge-dot" /> Not connected
+              <span className="badge-dot" /> {t('notConnected')}
             </span>
             <Link
               className="btn btn-primary btn-sm"
               href="/integrations/sharepoint/import"
             >
-              Import documents &rarr;
+              {t('importDocumentsCta')} &rarr;
             </Link>
           </div>
         </div>
 
         <div className="nav-section-label" style={{ padding: '14px 2px 10px' }}>
-          More sources
+          {t('moreSources')}
         </div>
         <div className="card" style={{ ...connCard, opacity: 0.6 }}>
           <div style={{ ...connLogo, color: 'oklch(var(--muted-foreground))' }}>
@@ -119,10 +119,8 @@ export default function IntegrationsPage() {
             </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Connect another source</div>
-            <div style={connDesc}>
-              Google Drive, Box, Confluence and more — planned for a later release.
-            </div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{t('connectAnotherSource')}</div>
+            <div style={connDesc}>{t('connectAnotherSourceDesc')}</div>
           </div>
           <div style={connActions}>
             <span className="badge badge-muted">Tier 2</span>

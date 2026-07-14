@@ -2,6 +2,7 @@
 
 import { type Dispatch, Fragment, type SetStateAction, useEffect, useState } from 'react';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Check, Folder } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -27,12 +28,12 @@ import { kbApi } from '@/lib/api/kb';
  * of the mockup's tenant/app/credential input fields; "Test connection" verifies.
  */
 
-const STEPS: ReadonlyArray<{ id: number; label: string; hint: string }> = [
-  { id: 0, label: 'Connect', hint: 'SharePoint' },
-  { id: 1, label: 'Select', hint: 'Sites & files' },
-  { id: 2, label: 'Import', hint: 'Push to KB' },
-  { id: 3, label: 'Done', hint: 'Summary' },
-];
+const STEPS = [
+  { id: 0, labelKey: 'wizardStep1Label', hintKey: 'wizardStep1Hint' },
+  { id: 1, labelKey: 'wizardStep2Label', hintKey: 'wizardStep2Hint' },
+  { id: 2, labelKey: 'wizardStep3Label', hintKey: 'wizardStep3Hint' },
+  { id: 3, labelKey: 'wizardStep4Label', hintKey: 'wizardStep4Hint' },
+] as const;
 
 function ext(name: string): string {
   const dot = name.lastIndexOf('.');
@@ -51,6 +52,7 @@ function fmtSize(bytes?: number | null): string {
 }
 
 export default function SharePointImportPage() {
+  const t = useTranslations('Integrations');
   const [step, setStep] = useState(0);
   const [targetKb, setTargetKb] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
@@ -60,10 +62,10 @@ export default function SharePointImportPage() {
   const [summary, setSummary] = useState<ImportSummary | null>(null);
 
   const subtitle = [
-    'Connect a site, pick documents, and import them through the EKP ingestion pipeline.',
-    'Browse the site you connected, then pick documents to import.',
-    'Documents run through the same Docling pipeline as uploads — image recall, profiles, per-KB config unchanged.',
-    'Import finished. Review what landed and what needs attention.',
+    t('wizardSubtitle1'),
+    t('wizardSubtitle2'),
+    t('wizardSubtitle3'),
+    t('wizardSubtitle4'),
   ][step];
 
   return (
@@ -87,12 +89,12 @@ export default function SharePointImportPage() {
       <div className="content-wide sp-import">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <Link className="btn btn-ghost btn-xs btn-ghost-muted" href="/integrations">
-            &#8249; Integrations
+            &#8249; {t('title')}
           </Link>
         </div>
         <div className="page-header">
           <div>
-            <h1 className="page-title">Import from SharePoint</h1>
+            <h1 className="page-title">{t('wizardPageTitle')}</h1>
             <p className="page-subtitle">{subtitle}</p>
           </div>
         </div>
@@ -128,9 +130,9 @@ export default function SharePointImportPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: step === s.id ? 600 : 500 }}>
-                      {s.label}
+                      {t(s.labelKey)}
                     </div>
-                    <div className="text-xs muted">{s.hint}</div>
+                    <div className="text-xs muted">{t(s.hintKey)}</div>
                   </div>
                 </div>
                 {i < STEPS.length - 1 && (
@@ -207,6 +209,7 @@ function StepConnect({
   onResolved,
   onContinue,
 }: StepConnectProps) {
+  const t = useTranslations('Integrations');
   const { data: kbs } = useQuery({ queryKey: ['kb', 'list'], queryFn: kbApi.list });
   const activeKbs = (kbs ?? []).filter((k) => !k.archived);
 
@@ -219,59 +222,57 @@ function StepConnect({
     <>
       <div className="banner banner-info" style={{ marginBottom: 16 }}>
         <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-          Before importing, IT must grant this app{' '}
-          <b>Sites.Selected (read)</b> on each target site (consent &ne; access).
-          See blueprint &sect;1.3.
+          {t.rich('connectGrantBanner', {
+            b: (chunks) => <b>{chunks}</b>,
+          })}
         </div>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Connect to SharePoint</h3>
+          <h3 className="card-title">{t('connectCardTitle')}</h3>
           <div
             className="card-desc"
             style={{ fontSize: 12.5, color: 'oklch(var(--muted-foreground))' }}
           >
-            Application (Sites.Selected) — least-privilege service account.
+            {t('connectCardDesc')}
           </div>
         </div>
         <div className="card-body" style={{ display: 'grid', gap: 16 }}>
           <div className="field">
-            <label className="label">Target knowledge base</label>
+            <label className="label">{t('targetKbLabel')}</label>
             <select
               className="select"
               value={targetKb}
               onChange={(e) => setTargetKb(e.target.value)}
             >
-              <option value="">Select a knowledge base…</option>
+              <option value="">{t('selectKbPlaceholder')}</option>
               {activeKbs.map((k) => (
                 <option key={k.kb_id} value={k.kb_id}>
                   {k.name}
                 </option>
               ))}
             </select>
-            <div className="hint">
-              Imported documents are added to this KB. A KB can mix uploads + SharePoint.
-            </div>
+            <div className="hint">{t('targetKbHint')}</div>
           </div>
 
           <div className="field">
-            <label className="label">SharePoint site URL</label>
+            <label className="label">{t('siteUrlLabel')}</label>
             <input
               className="input"
               placeholder="https://contoso.sharepoint.com/sites/manuals"
               value={siteUrl}
               onChange={(e) => setSiteUrl(e.target.value)}
             />
-            <div className="hint">The site you granted Sites.Selected access to.</div>
+            <div className="hint">{t('siteUrlHint')}</div>
           </div>
 
           {/* #2 / D-4 — credential is server-side (H5), not entered here. */}
           <div className="banner banner-info">
             <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-              Connection credentials (tenant, app, certificate / secret) are configured{' '}
-              <b>server-side by your administrator</b> (H5 — never entered here, never
-              committed). Use <b>Test connection</b> to verify access.
+              {t.rich('credentialBanner', {
+                b: (chunks) => <b>{chunks}</b>,
+              })}
             </div>
           </div>
 
@@ -281,19 +282,19 @@ function StepConnect({
               disabled={!siteUrl || connect.isPending}
               onClick={() => connect.mutate()}
             >
-              {connect.isPending ? 'Testing…' : 'Test connection'}
+              {connect.isPending ? t('testing') : t('testConnection')}
             </button>
             {site ? (
               <span className="badge badge-success">
-                <span className="badge-dot" /> Connected
+                <span className="badge-dot" /> {t('connected')}
               </span>
             ) : connect.isError ? (
               <span className="badge badge-error">
-                <span className="badge-dot" /> Failed
+                <span className="badge-dot" /> {t('failed')}
               </span>
             ) : (
               <span className="badge badge-muted">
-                <span className="badge-dot" /> Not tested
+                <span className="badge-dot" /> {t('notTested')}
               </span>
             )}
           </div>
@@ -308,14 +309,14 @@ function StepConnect({
             className="text-xs muted mono"
             style={{ fontSize: 11.5, color: 'oklch(var(--muted-foreground))' }}
           >
-            Step 1 of 4
+            {t('connectStepFooter')}
           </div>
           <button
             className="btn btn-primary btn-sm"
             disabled={!site || !targetKb}
             onClick={onContinue}
           >
-            Continue &rarr;
+            {t('continue')} &rarr;
           </button>
         </div>
       </div>
@@ -342,6 +343,7 @@ function StepSelect({
   onBack,
   onImport,
 }: StepSelectProps) {
+  const t = useTranslations('Integrations');
   const [libraries, setLibraries] = useState<SourceContainer[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [docs, setDocs] = useState<SourceDocumentRef[]>([]);
@@ -378,7 +380,7 @@ function StepSelect({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Select documents</h3>
+        <h3 className="card-title">{t('selectCardTitle')}</h3>
         <div
           className="card-desc"
           style={{ fontSize: 12.5, color: 'oklch(var(--muted-foreground))' }}
@@ -390,12 +392,12 @@ function StepSelect({
         <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr' }}>
           <div style={{ padding: '14px 12px', borderRight: '1px solid oklch(var(--border))' }}>
             <div className="nav-section-label" style={{ padding: '0 4px 8px' }}>
-              Libraries
+              {t('libraries')}
             </div>
             <div className="tree">
               {libraries === null ? (
                 <div className="hint" style={{ padding: '4px 8px' }}>
-                  Loading…
+                  {t('loading')}
                 </div>
               ) : (
                 libraries.map((lib) => (
@@ -416,23 +418,23 @@ function StepSelect({
                 <thead>
                   <tr>
                     <th style={{ width: 34 }} />
-                    <th>Document</th>
-                    <th>Type</th>
-                    <th className="col-num">Modified</th>
-                    <th className="col-num">Size</th>
+                    <th>{t('colDocument')}</th>
+                    <th>{t('colType')}</th>
+                    <th className="col-num">{t('colModified')}</th>
+                    <th className="col-num">{t('colSize')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {docsLoading ? (
                     <tr>
                       <td colSpan={5} className="hint">
-                        Loading…
+                        {t('loading')}
                       </td>
                     </tr>
                   ) : docs.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="hint">
-                        Select a library or folder to list its documents.
+                        {t('selectLibraryEmpty')}
                       </td>
                     </tr>
                   ) : (
@@ -462,21 +464,21 @@ function StepSelect({
       </div>
       <div className="card-footer">
         <button className="btn btn-ghost btn-sm" onClick={onBack}>
-          &#8249; Back
+          &#8249; {t('back')}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span
             className="text-xs muted"
             style={{ fontSize: 12, color: 'oklch(var(--muted-foreground))' }}
           >
-            {selectedRefs.length} documents selected
+            {t('documentsSelected', { count: selectedRefs.length })}
           </span>
           <button
             className="btn btn-primary btn-sm"
             disabled={selectedRefs.length === 0}
             onClick={onImport}
           >
-            Import {selectedRefs.length} documents &rarr;
+            {t('importNDocuments', { count: selectedRefs.length })} &rarr;
           </button>
         </div>
       </div>
@@ -540,6 +542,7 @@ function StepImport({
   refs: SourceDocumentRef[];
   onDone: (s: ImportSummary) => void;
 }) {
+  const t = useTranslations('Integrations');
   const run = useMutation({
     mutationFn: () => integrationApi.importSelected(kbId, refs),
     onSuccess: onDone,
@@ -555,7 +558,7 @@ function StepImport({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Importing</h3>
+        <h3 className="card-title">{t('importingCardTitle')}</h3>
         {run.isError ? (
           <span className="badge badge-error">
             <span className="badge-dot" /> FAILED
@@ -569,8 +572,11 @@ function StepImport({
       <div className="card-body">
         <div className="banner banner-info" style={{ marginBottom: 14 }}>
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-            Importing <b>{refs.length} documents</b> into <b>{kbId}</b>. A failed
-            document does not stop the batch.
+            {t.rich('importingBanner', {
+              count: refs.length,
+              kbId,
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -581,14 +587,14 @@ function StepImport({
             className="text-xs muted mono"
             style={{ fontSize: 11.5, color: 'oklch(var(--muted-foreground))' }}
           >
-            {run.isPending ? 'importing…' : 'sent'}
+            {run.isPending ? t('progressImporting') : t('progressSent')}
           </span>
         </div>
         {refs.map((r) => (
           <div key={r.id} className="doc-row">
             <span className={`status-dot ${run.isPending ? 'processing' : 'ready'}`} />
             <span className="name">{r.name}</span>
-            <span className="st">{run.isPending ? 'Importing…' : 'Sent'}</span>
+            <span className="st">{run.isPending ? t('docRowImporting') : t('docRowSent')}</span>
           </div>
         ))}
         {run.isError && (
@@ -599,13 +605,13 @@ function StepImport({
       </div>
       <div className="card-footer">
         <button className="btn btn-ghost btn-sm" disabled>
-          Cancel import
+          {t('cancelImport')}
         </button>
         <div
           className="text-xs muted mono"
           style={{ fontSize: 11.5, color: 'oklch(var(--muted-foreground))' }}
         >
-          Step 3 of 4 · runs synchronously
+          {t('importStepFooter')}
         </div>
       </div>
     </div>
@@ -619,25 +625,30 @@ function StepImport({
 // ──────────────────────────────────────────────────────────────────────────
 
 function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }) {
+  const t = useTranslations('Integrations');
   const failed = summary.failed;
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Import complete</h3>
+        <h3 className="card-title">{t('importCompleteTitle')}</h3>
         {failed > 0 ? (
-          <span className="badge badge-warning">{failed} needs attention</span>
+          <span className="badge badge-warning">
+            {t('needsAttention', { count: failed })}
+          </span>
         ) : (
-          <span className="badge badge-success">All imported</span>
+          <span className="badge badge-success">{t('allImported')}</span>
         )}
       </div>
       <div className="card-body">
         <div className="banner banner-success" style={{ marginBottom: 16 }}>
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.55 }}>
-            <b>
-              {summary.succeeded} of {summary.total} documents
-            </b>{' '}
-            imported into <b>{kbId}</b>.
-            {failed > 0 ? ` ${failed} failed — see below.` : ''}
+            {t.rich('summaryBanner', {
+              succeeded: summary.succeeded,
+              total: summary.total,
+              kbId,
+              b: (chunks) => <b>{chunks}</b>,
+            })}
+            {failed > 0 ? ` ${t('summaryFailedSuffix', { count: failed })}` : ''}
           </div>
         </div>
 
@@ -646,17 +657,17 @@ function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }
             <div className="v" style={{ color: 'oklch(var(--success))' }}>
               {summary.succeeded}
             </div>
-            <div className="l">Imported</div>
+            <div className="l">{t('imported')}</div>
           </div>
           <div className="mini-stat">
             <div className="v" style={{ color: 'oklch(var(--destructive))' }}>
               {failed}
             </div>
-            <div className="l">Failed</div>
+            <div className="l">{t('failed')}</div>
           </div>
           <div className="mini-stat">
             <div className="v">{summary.total}</div>
-            <div className="l">Documents</div>
+            <div className="l">{t('miniStatDocuments')}</div>
           </div>
         </div>
 
@@ -665,9 +676,9 @@ function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }
             <table className="table">
               <thead>
                 <tr>
-                  <th>Document</th>
-                  <th>Status</th>
-                  <th>Detail</th>
+                  <th>{t('colDocument')}</th>
+                  <th>{t('colStatus')}</th>
+                  <th>{t('colDetail')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -689,7 +700,7 @@ function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }
                       className="text-xs"
                       style={{ fontSize: 12, color: 'oklch(var(--muted-foreground))' }}
                     >
-                      {r.error ?? 'Imported'}
+                      {r.error ?? t('imported')}
                     </td>
                   </tr>
                 ))}
@@ -701,13 +712,13 @@ function StepSummary({ summary, kbId }: { summary: ImportSummary; kbId: string }
       <div className="card-footer">
         {failed > 0 ? (
           <button className="btn btn-secondary btn-sm" disabled>
-            Retry {failed} failed
+            {t('retryFailed', { count: failed })}
           </button>
         ) : (
           <span />
         )}
         <Link className="btn btn-primary btn-sm" href={`/kb/${kbId}`}>
-          View knowledge base &rarr;
+          {t('viewKnowledgeBase')} &rarr;
         </Link>
       </div>
     </div>

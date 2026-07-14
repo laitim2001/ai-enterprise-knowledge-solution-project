@@ -31,6 +31,7 @@ import {
   Filter,
   Search,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -59,17 +60,23 @@ function isoSinceForWindow(window: TimeWindow): string {
   return new Date(now - offset).toISOString();
 }
 
-function formatRelativeShort(iso: string): string {
-  const t = new Date(iso).getTime();
+function formatRelativeShort(
+  iso: string,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  const ms = new Date(iso).getTime();
   const now = Date.now();
-  const diffSec = Math.max(0, Math.floor((now - t) / 1000));
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-  return `${Math.floor(diffSec / 86400)}d ago`;
+  const diffSec = Math.max(0, Math.floor((now - ms) / 1000));
+  if (diffSec < 60) return t('relativeSeconds', { secs: diffSec });
+  if (diffSec < 3600)
+    return t('relativeMinutes', { mins: Math.floor(diffSec / 60) });
+  if (diffSec < 86400)
+    return t('relativeHours', { hours: Math.floor(diffSec / 3600) });
+  return t('relativeDays', { days: Math.floor(diffSec / 86400) });
 }
 
 export default function TracesPage() {
+  const t = useTranslations('Traces');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('24h');
@@ -127,19 +134,19 @@ export default function TracesPage() {
         {/* Page header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Traces</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              Every <span className="mono">/query</span> call generates a
-              9-stage Langfuse trace. Correlated by{' '}
-              <span className="mono">trace_id</span>.
+              {t.rich('subtitle', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </p>
           </div>
           <div className="page-actions">
             <button className="btn btn-secondary btn-sm">
-              <Filter size={13} /> Filter
+              <Filter size={13} /> {t('filter')}
             </button>
             <button className="btn btn-secondary btn-sm" disabled={!items.length}>
-              <Download size={13} /> Export
+              <Download size={13} /> {t('export')}
             </button>
             <a
               className="btn btn-secondary btn-sm"
@@ -147,7 +154,7 @@ export default function TracesPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <ExternalLink size={13} /> Open Langfuse ↗
+              <ExternalLink size={13} /> {t('openLangfuse')}
             </a>
           </div>
         </div>
@@ -171,10 +178,10 @@ export default function TracesPage() {
             </span>
             <input
               className="input"
-              placeholder="Filter by user, KB, trace_id…"
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Filter traces"
+              aria-label={t('filterTracesAria')}
             />
           </div>
           {/* W22 D6 H7 fidelity correction (2026-05-18): mockup 4-button seg
@@ -194,7 +201,7 @@ export default function TracesPage() {
               aria-selected={statusFilter === 'all'}
               onClick={() => setStatusFilter('all')}
             >
-              All
+              {t('segAll')}
             </button>
             <button
               type="button"
@@ -204,7 +211,7 @@ export default function TracesPage() {
               aria-selected={statusFilter === 'success'}
               onClick={() => setStatusFilter('success')}
             >
-              <span className="status-dot ready" /> Success
+              <span className="status-dot ready" /> {t('segSuccess')}
             </button>
             <button
               type="button"
@@ -214,7 +221,7 @@ export default function TracesPage() {
               aria-selected={statusFilter === 'errors'}
               onClick={() => setStatusFilter('errors')}
             >
-              <span className="status-dot failed" /> Error
+              <span className="status-dot failed" /> {t('segError')}
             </button>
             <button
               type="button"
@@ -228,7 +235,7 @@ export default function TracesPage() {
                 className="badge-dot"
                 style={{ background: 'oklch(var(--accent))' }}
               />{' '}
-              CRAG triggered
+              {t('cragTriggered')}
             </button>
           </div>
           <div className="spacer" />
@@ -236,11 +243,11 @@ export default function TracesPage() {
             className="select"
             value={timeWindow}
             onChange={(e) => setTimeWindow(e.target.value as TimeWindow)}
-            aria-label="Time window"
+            aria-label={t('timeWindowAria')}
           >
-            <option value="24h">Last 24h</option>
-            <option value="7d">Last 7d</option>
-            <option value="30d">Last 30d</option>
+            <option value="24h">{t('window24h')}</option>
+            <option value="7d">{t('window7d')}</option>
+            <option value="30d">{t('window30d')}</option>
           </select>
         </div>
 
@@ -249,14 +256,14 @@ export default function TracesPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Trace</th>
-                <th>User</th>
-                <th>KB</th>
-                <th>Query</th>
-                <th>CRAG</th>
-                <th className="col-num">Latency</th>
-                <th className="col-num">Cost</th>
-                <th className="col-num">When</th>
+                <th>{t('colTrace')}</th>
+                <th>{t('colUser')}</th>
+                <th>{t('colKb')}</th>
+                <th>{t('colQuery')}</th>
+                <th>{t('colCrag')}</th>
+                <th className="col-num">{t('colLatency')}</th>
+                <th className="col-num">{t('colCost')}</th>
+                <th className="col-num">{t('colWhen')}</th>
                 <th className="col-shrink"></th>
               </tr>
             </thead>
@@ -264,20 +271,20 @@ export default function TracesPage() {
               {query.isLoading ? (
                 <tr>
                   <td colSpan={9} className="text-xs muted" style={{ padding: 18 }}>
-                    Loading traces…
+                    {t('loadingTraces')}
                   </td>
                 </tr>
               ) : query.isError ? (
                 <tr>
                   <td colSpan={9} className="text-xs" style={{ padding: 18, color: 'oklch(var(--destructive))' }}>
-                    Failed to load traces:{' '}
-                    {(query.error as Error)?.message ?? 'Unknown error'}
+                    {t('errorLoadTraces')}{' '}
+                    {(query.error as Error)?.message ?? t('unknownError')}
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-xs muted" style={{ padding: 18 }}>
-                    No traces match. Status: {query.data?.status ?? '—'}
+                    {t('noTracesMatch')} {query.data?.status ?? '—'}
                     {query.data?.note ? ` · ${query.data.note}` : ''}
                   </td>
                 </tr>
@@ -299,7 +306,10 @@ export default function TracesPage() {
             }}
           >
             <span>
-              Showing {filtered.length} of {query.data.total} traces
+              {t('showingTraces', {
+                shown: filtered.length,
+                total: query.data.total,
+              })}
             </span>
             {query.data.status !== 'ok' && (
               <>
@@ -318,6 +328,7 @@ export default function TracesPage() {
 }
 
 function TraceRow({ t }: { t: TraceSummary }) {
+  const tr = useTranslations('Traces');
   const isCrag = t.crag_iterations !== null;
 
   return (
@@ -360,7 +371,8 @@ function TraceRow({ t }: { t: TraceSummary }) {
       <td>
         {isCrag ? (
           <span className="badge badge-accent">
-            <span className="badge-dot" /> {t.crag_iterations}× loop
+            <span className="badge-dot" />{' '}
+            {tr('cragLoop', { count: t.crag_iterations ?? 0 })}
           </span>
         ) : (
           <span className="text-xs muted">—</span>
@@ -368,12 +380,12 @@ function TraceRow({ t }: { t: TraceSummary }) {
       </td>
       <td className="col-num">{t.duration_ms}ms</td>
       <td className="col-num">${t.cost_usd.toFixed(4)}</td>
-      <td className="col-num text-xs">{formatRelativeShort(t.timestamp)}</td>
+      <td className="col-num text-xs">{formatRelativeShort(t.timestamp, tr)}</td>
       <td className="col-shrink">
         <Link
           href={`/traces/${encodeURIComponent(t.trace_id)}`}
           className="btn btn-ghost btn-icon btn-xs"
-          aria-label="Open trace detail"
+          aria-label={tr('openTraceDetailAria')}
         >
           <ChevronRight size={13} />
         </Link>

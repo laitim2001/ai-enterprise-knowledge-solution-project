@@ -33,6 +33,7 @@ import {
   Link as LinkIcon,
   Upload,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Fragment, useState, type ChangeEvent, type DragEvent } from 'react';
@@ -47,13 +48,14 @@ import {
 type Step = 0 | 1 | 2;
 type SourceKind = 'upload' | 'sharepoint' | 'drive' | 'url';
 
-const STEPS: { id: Step; label: string; hint: string }[] = [
-  { id: 0, label: 'Data source', hint: 'Pick where docs come from' },
-  { id: 1, label: 'Document processing', hint: 'Chunker + embedder' },
-  { id: 2, label: 'Execute', hint: 'Index + monitor progress' },
+const STEPS: { id: Step; labelKey: string; hintKey: string }[] = [
+  { id: 0, labelKey: 'stepDataSourceLabel', hintKey: 'stepDataSourceHint' },
+  { id: 1, labelKey: 'stepProcessingLabel', hintKey: 'stepProcessingHint' },
+  { id: 2, labelKey: 'stepExecuteLabel', hintKey: 'stepExecuteHint' },
 ];
 
 export default function KbUploadPage() {
+  const t = useTranslations('KbUpload');
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -100,14 +102,14 @@ export default function KbUploadPage() {
                 <ChevronLeft size={12} /> {kb?.name || params.id}
               </Link>
             </div>
-            <h1 className="page-title">Upload documents</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              Add documents to <span className="mono">ekp-kb-{params.id}-v1</span>.
-              New chunks are embedded with{' '}
-              <span className="mono">{kb?.config.embedding_model ?? 'text-embedding-3-large'}</span>
-              {' '}
-              ({kb?.config.embedding_dimension ?? 1024}d) and upserted to Azure AI
-              Search.
+              {t.rich('subtitle', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+                indexId: params.id,
+                model: kb?.config.embedding_model ?? 'text-embedding-3-large',
+                dim: kb?.config.embedding_dimension ?? 1024,
+              })}
             </p>
           </div>
         </div>
@@ -169,9 +171,9 @@ export default function KbUploadPage() {
                         letterSpacing: '-0.005em',
                       }}
                     >
-                      {s.label}
+                      {t(s.labelKey)}
                     </div>
-                    <div className="text-xs muted">{s.hint}</div>
+                    <div className="text-xs muted">{t(s.hintKey)}</div>
                   </div>
                 </div>
                 {i < STEPS.length - 1 && (
@@ -245,6 +247,7 @@ function StepDataSource({
   onFileChange: (f: File | null) => void;
   onNext: () => void;
 }) {
+  const t = useTranslations('KbUpload');
   const [isDragging, setIsDragging] = useState(false);
   const sources: {
     id: SourceKind;
@@ -255,29 +258,29 @@ function StepDataSource({
   }[] = [
     {
       id: 'upload',
-      label: 'Local files',
-      hint: '.docx, .pdf, .pptx · Drag & drop',
+      label: t('sourceUploadLabel'),
+      hint: t('sourceUploadHint'),
       icon: Upload,
       ready: true,
     },
     {
       id: 'sharepoint',
       label: 'SharePoint',
-      hint: 'OAuth-connected sites & libraries',
+      hint: t('sourceSharepointHint'),
       icon: Cloud,
       ready: false,
     },
     {
       id: 'drive',
-      label: 'Drive folder',
-      hint: 'Mounted share folder · network path',
+      label: t('sourceDriveLabel'),
+      hint: t('sourceDriveHint'),
       icon: Globe,
       ready: false,
     },
     {
       id: 'url',
-      label: 'URL crawler',
-      hint: 'Tier 2 — disabled',
+      label: t('sourceUrlLabel'),
+      hint: t('sourceUrlHint'),
       icon: LinkIcon,
       ready: false,
     },
@@ -297,7 +300,7 @@ function StepDataSource({
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Data source</h3>
+        <h3 className="card-title">{t('dataSourceCardTitle')}</h3>
       </div>
       <div className="card-body">
         <div
@@ -408,16 +411,16 @@ function StepDataSource({
               <Upload size={24} />
             </div>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-              {file ? file.name : 'Drag and drop a document here'}
+              {file ? file.name : t('dropzoneTitle')}
             </div>
             <div className="text-sm muted">
-              {file ? `${(file.size / 1024).toFixed(1)} KB` : 'or click to browse'}
+              {file ? `${(file.size / 1024).toFixed(1)} KB` : t('dropzoneBrowse')}
             </div>
             <div
               className="text-xs muted mono"
               style={{ marginTop: 14 }}
             >
-              Accepted: .docx · .pdf · .pptx
+              {t('acceptedFormats')}
             </div>
             <label
               className="btn btn-secondary btn-sm"
@@ -429,7 +432,7 @@ function StepDataSource({
                 onChange={handleFileInput}
                 style={{ display: 'none' }}
               />
-              {file ? 'Choose another file' : 'Browse files…'}
+              {file ? t('chooseAnother') : t('browseFiles')}
             </label>
           </div>
         )}
@@ -444,7 +447,7 @@ function StepDataSource({
             }}
           >
             <div className="text-sm">
-              <b>SharePoint site URL</b>
+              <b>{t('sharepointSiteUrl')}</b>
               <br />
               <input
                 className="input mono"
@@ -454,20 +457,20 @@ function StepDataSource({
               />
             </div>
             <div className="text-xs muted" style={{ marginTop: 10 }}>
-              OAuth via Entra ID · scoped read-only · Wave C+
+              {t('sharepointNote')}
             </div>
           </div>
         )}
       </div>
       <div className="card-footer">
-        <div className="text-xs muted mono">Step 1 of 3</div>
+        <div className="text-xs muted mono">{t('step1of3')}</div>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           disabled={!file || source !== 'upload'}
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -488,6 +491,7 @@ function StepDocumentProcessing({
   // §3.3 + §3.5);mockup allows per-batch override but real backend uses
   // kb_config from KbConfig at ingest time. Surface as READ-ONLY display of
   // current KB config with "Edit settings" link to /kb/[id]?tab=settings.
+  const t = useTranslations('KbUpload');
   const strategy = kb?.config.chunk_strategy ?? 'auto';
   const chunkSize = 800;
   const overlap = 100;
@@ -499,35 +503,35 @@ function StepDocumentProcessing({
   }[] = [
     {
       id: 'heading_aware',
-      label: 'Heading-aware',
-      hint: 'Splits at H1/H2/H3 — for narrative docs',
+      label: t('procHeadingLabel'),
+      hint: t('procHeadingHint'),
     },
     {
       id: 'layout_aware',
-      label: 'Layout-aware',
-      hint: 'Docling — preserves tables, lists, sections',
+      label: t('procLayoutLabel'),
+      hint: t('procLayoutHint'),
     },
     {
       id: 'slide_based',
-      label: 'Slide-based',
-      hint: 'python-pptx — one chunk per slide',
+      label: t('procSlideLabel'),
+      hint: t('procSlideHint'),
     },
     {
       id: 'auto',
-      label: 'Auto',
-      hint: 'Detect doc type, pick strategy',
+      label: t('procAutoLabel'),
+      hint: t('procAutoHint'),
     },
   ];
 
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Document processing</h3>
-        <span className="text-xs muted">KB-locked · per-KB config</span>
+        <h3 className="card-title">{t('processingCardTitle')}</h3>
+        <span className="text-xs muted">{t('kbLockedBadge')}</span>
       </div>
       <div className="card-body">
         <div className="field">
-          <label className="label">Chunk strategy</label>
+          <label className="label">{t('chunkStrategyLabel')}</label>
           <div
             style={{
               display: 'grid',
@@ -576,37 +580,38 @@ function StepDocumentProcessing({
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
         >
           <div className="field">
-            <label className="label">Chunk size (tokens)</label>
+            <label className="label">{t('chunkSizeLabel')}</label>
             <input
               className="input mono"
               value={chunkSize}
               readOnly
               disabled
             />
-            <div className="hint">
-              Effective max: 800 — fits within text-embedding-3-large 8k window
-            </div>
+            <div className="hint">{t('chunkSizeHint')}</div>
           </div>
           <div className="field">
-            <label className="label">Overlap (tokens)</label>
+            <label className="label">{t('overlapLabel')}</label>
             <input
               className="input mono"
               value={overlap}
               readOnly
               disabled
             />
-            <div className="hint">Recommended: 100–150 for layout_aware</div>
+            <div className="hint">{t('overlapHint')}</div>
           </div>
         </div>
 
         <div className="field">
           <label className="label">
-            Embedding model <span className="text-xs muted">— KB-locked</span>
+            {t('embeddingModelLabel')}{' '}
+            <span className="text-xs muted">— {t('kbLocked')}</span>
           </label>
           <select className="select" disabled>
             <option>
-              {kb?.config.embedding_model ?? 'text-embedding-3-large'} ·{' '}
-              {kb?.config.embedding_dimension ?? 1024}d MRL truncate
+              {t('embeddingOption', {
+                model: kb?.config.embedding_model ?? 'text-embedding-3-large',
+                dim: kb?.config.embedding_dimension ?? 1024,
+              })}
             </option>
           </select>
         </div>
@@ -621,27 +626,28 @@ function StepDocumentProcessing({
           />
           <div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>
-              Extract embedded screenshots
+              {t('extractScreenshotsTitle')}
             </div>
             <div className="text-xs muted">
-              Maps images via{' '}
-              <span className="mono">embedded_images[]</span> + screenshot
-              pipeline
+              {t.rich('extractScreenshotsDesc', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </div>
           </div>
         </div>
 
         <div className="banner banner-info" style={{ marginTop: 16 }}>
           <div style={{ flex: 1 }} className="text-xs">
-            Per-batch override not supported — config is KB-locked. To change
-            chunking + multimodal,{' '}
-            <Link
-              href={`/kb/${kb?.kb_id ?? ''}?tab=settings`}
-              style={{ color: 'oklch(var(--accent))' }}
-            >
-              edit KB Settings
-            </Link>
-            .
+            {t.rich('processingBanner', {
+              link: (chunks) => (
+                <Link
+                  href={`/kb/${kb?.kb_id ?? ''}?tab=settings`}
+                  style={{ color: 'oklch(var(--accent))' }}
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
         </div>
       </div>
@@ -651,14 +657,14 @@ function StepDocumentProcessing({
           className="btn btn-ghost btn-sm"
           onClick={onBack}
         >
-          <ChevronLeft size={13} /> Back
+          <ChevronLeft size={13} /> {t('back')}
         </button>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           onClick={onNext}
         >
-          Continue <ChevronRight size={13} />
+          {t('continue')} <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -689,6 +695,7 @@ function StepExecute({
   onForceRun: () => void;
   onDone: () => void;
 }) {
+  const t = useTranslations('KbUpload');
   // W84 (ADR-0065) — a ScanRequiresConfirmError is NOT a failure: the backend P4
   // guard wants the user to confirm OCR (~8–9.5 min). Surface it as its own
   // "scan-confirm" state (warning banner + "仍要繼續" force button), not a red FAILED.
@@ -709,13 +716,13 @@ function StepExecute({
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Execute · indexing</h3>
+          <h3 className="card-title">{t('executeCardTitle')}</h3>
           <div className="card-desc">
-            {status === 'idle' && 'Ready to upload + ingest'}
-            {status === 'running' && 'Pipeline running…'}
-            {status === 'indexed' && 'Document indexed — KB ready'}
-            {status === 'scan-confirm' && 'Scanned document needs confirmation — OCR takes longer'}
-            {status === 'failed' && 'Upload failed — see error below'}
+            {status === 'idle' && t('descIdle')}
+            {status === 'running' && t('descRunning')}
+            {status === 'indexed' && t('descIndexed')}
+            {status === 'scan-confirm' && t('descScanConfirm')}
+            {status === 'failed' && t('descFailed')}
           </div>
         </div>
         {status === 'running' && (
@@ -745,7 +752,9 @@ function StepExecute({
             <span className="spinner" />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                Indexing {file?.name ?? 'document'} · in progress
+                {t('indexingInProgress', {
+                  name: file?.name ?? t('fallbackDocument'),
+                })}
               </div>
               <div className="text-xs muted mono">
                 Docling → {kb?.config.chunk_strategy ?? 'auto'} → embed-3-large →
@@ -766,10 +775,12 @@ function StepExecute({
             />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 500 }}>
-                {file?.name ?? 'This document'} appears to be a scanned document (no text layer)
+                {t('scanConfirmTitle', {
+                  name: file?.name ?? t('fallbackThisDocument'),
+                })}
               </div>
               <div className="text-xs muted" style={{ marginTop: 2 }}>
-                Requires OCR; synchronous processing takes ~8–9.5 minutes, and this page keeps waiting throughout. Confirm by clicking &quot;Continue anyway&quot; below.
+                {t('scanConfirmDesc')}
               </div>
             </div>
           </div>
@@ -784,11 +795,12 @@ function StepExecute({
             <Layers size={15} style={{ color: 'oklch(var(--info))', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>
-                <b>Automatic document classification (W72 profiler)</b> —
-                detects each document&apos;s profile at ingest and applies the matching recall preset.
+                {t.rich('classificationBody', {
+                  b: (chunks) => <b>{chunks}</b>,
+                })}
               </div>
               <div className="text-xs muted" style={{ marginTop: 2 }}>
-                If misdetected, override with one click on the document detail page · ADR-0056 Layer A
+                {t('classificationSub')}
               </div>
             </div>
           </div>
@@ -842,7 +854,7 @@ function StepExecute({
                 </div>
                 {status === 'running' && (
                   <div className="text-xs muted mono" style={{ marginTop: 3 }}>
-                    Embedding chunks · streaming…
+                    {t('embeddingChunks')}
                   </div>
                 )}
                 {status === 'failed' && error && (
@@ -885,8 +897,8 @@ function StepExecute({
             <div className="empty-icon">
               <AlertTriangle size={20} />
             </div>
-            <div className="empty-title">No file selected</div>
-            <div>Go back to Step 1 + pick a document.</div>
+            <div className="empty-title">{t('noFileTitle')}</div>
+            <div>{t('noFileDesc')}</div>
           </div>
         )}
       </div>
@@ -897,7 +909,7 @@ function StepExecute({
           onClick={onBack}
           disabled={isPending}
         >
-          <ChevronLeft size={13} /> Back
+          <ChevronLeft size={13} /> {t('back')}
         </button>
         {status === 'idle' && (
           <button
@@ -906,12 +918,12 @@ function StepExecute({
             onClick={onRun}
             disabled={!file}
           >
-            <Upload size={13} /> Upload + Ingest
+            <Upload size={13} /> {t('uploadIngest')}
           </button>
         )}
         {status === 'running' && (
           <button type="button" className="btn btn-secondary btn-sm" disabled>
-            Uploading…
+            {t('uploading')}
           </button>
         )}
         {status === 'indexed' && (
@@ -920,7 +932,7 @@ function StepExecute({
             className="btn btn-primary btn-sm"
             onClick={onDone}
           >
-            Continue to KB <ChevronRight size={13} />
+            {t('continueToKb')} <ChevronRight size={13} />
           </button>
         )}
         {status === 'scan-confirm' && (
@@ -929,7 +941,7 @@ function StepExecute({
             className="btn btn-primary btn-sm"
             onClick={onForceRun}
           >
-            <Upload size={13} /> Continue anyway (~8–9.5 minutes)
+            <Upload size={13} /> {t('continueAnyway')}
           </button>
         )}
         {status === 'failed' && (
@@ -938,7 +950,7 @@ function StepExecute({
             className="btn btn-secondary btn-sm"
             onClick={onRun}
           >
-            Retry
+            {t('retry')}
           </button>
         )}
       </div>

@@ -36,6 +36,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -74,15 +75,20 @@ const METRIC_ORDER: MetricKey[] = [
 ];
 
 // Local helper — mockup uses `formatRelative` from window; we inline an SSR-safe variant.
-function formatRelativeShort(iso: string | null): string {
+function formatRelativeShort(
+  iso: string | null,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
-  const t = new Date(iso).getTime();
+  const ms = new Date(iso).getTime();
   const now = Date.now();
-  const diffSec = Math.max(0, Math.floor((now - t) / 1000));
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-  return `${Math.floor(diffSec / 86400)}d ago`;
+  const diffSec = Math.max(0, Math.floor((now - ms) / 1000));
+  if (diffSec < 60) return t('relativeSeconds', { secs: diffSec });
+  if (diffSec < 3600)
+    return t('relativeMinutes', { mins: Math.floor(diffSec / 60) });
+  if (diffSec < 86400)
+    return t('relativeHours', { hours: Math.floor(diffSec / 3600) });
+  return t('relativeDays', { days: Math.floor(diffSec / 86400) });
 }
 
 // Mockup PageEval uses a hardcoded eval_set_id from MOCK_EVAL_REPORT;page-actions
@@ -96,6 +102,7 @@ const EVAL_SET_ID = 'eval-set-v0';
 const EVAL_SET_SIZE = 30; // W2 baseline 30 queries
 
 export default function EvalConsolePage() {
+  const t = useTranslations('Eval');
   const [report, setReport] = useState<EvalReport | null>(null);
   const [shootoutReport, setShootoutReport] = useState<ShootoutReport | null>(null);
   const [finishedAt, setFinishedAt] = useState<string | null>(null);
@@ -106,20 +113,20 @@ export default function EvalConsolePage() {
     onSuccess: (data) => {
       setReport(data);
       setFinishedAt(new Date().toISOString());
-      toast.success('Eval run complete');
+      toast.success(t('toastEvalComplete'));
     },
     onError: (err) =>
-      toast.error('Eval run failed', { description: err.message }),
+      toast.error(t('toastEvalFailed'), { description: err.message }),
   });
 
   const shootoutMutation = useMutation<ShootoutReport, Error, void>({
     mutationFn: () => evalApi.shootout(),
     onSuccess: (data) => {
       setShootoutReport(data);
-      toast.success('Reranker shootout complete');
+      toast.success(t('toastShootoutComplete'));
     },
     onError: (err) =>
-      toast.error('Shootout failed', { description: err.message }),
+      toast.error(t('toastShootoutFailed'), { description: err.message }),
   });
 
   return (
@@ -128,15 +135,20 @@ export default function EvalConsolePage() {
         {/* Page header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Eval Console</h1>
+            <h1 className="page-title">{t('pageTitle')}</h1>
             <p className="page-subtitle">
-              RAGAs 4-metric evaluation against curated{' '}
-              <span className="mono">{EVAL_SET_ID}</span> ({EVAL_SET_SIZE} queries).{' '}
-              {finishedAt ? (
-                <>Last run finished {formatRelativeShort(finishedAt)}.</>
-              ) : (
-                <>No eval runs yet — click <b>Run eval suite</b> to start.</>
-              )}
+              {t.rich('subtitle', {
+                setId: EVAL_SET_ID,
+                size: EVAL_SET_SIZE,
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}{' '}
+              {finishedAt
+                ? t('lastRunFinished', {
+                    time: formatRelativeShort(finishedAt, t),
+                  })
+                : t.rich('noRunsYet', {
+                    b: (chunks) => <b>{chunks}</b>,
+                  })}
             </p>
           </div>
           <div className="page-actions">
@@ -152,10 +164,10 @@ export default function EvalConsolePage() {
               disabled={runMutation.isPending}
             >
               <RefreshCw size={13} />
-              {runMutation.isPending ? 'Running…' : 'Run eval suite'}
+              {runMutation.isPending ? t('running') : t('runEvalSuite')}
             </button>
             <button className="btn btn-secondary btn-sm" disabled={!report}>
-              <Download size={13} /> Export report
+              <Download size={13} /> {t('exportReport')}
             </button>
             <button
               className="btn btn-primary btn-sm"
@@ -163,7 +175,7 @@ export default function EvalConsolePage() {
               disabled={shootoutMutation.isPending}
             >
               <Zap size={13} />
-              {shootoutMutation.isPending ? 'Running…' : 'Reranker shootout'}
+              {shootoutMutation.isPending ? t('running') : t('rerankerShootout')}
             </button>
           </div>
         </div>
@@ -217,6 +229,7 @@ function MetricCard({
   metricKey: MetricKey;
   report: EvalReport | null;
 }) {
+  const t = useTranslations('Eval');
   const labels = METRIC_LABELS[metricKey];
   const target = METRIC_THRESHOLDS[metricKey];
   const value = report ? report[metricKey] : null;
@@ -246,7 +259,7 @@ function MetricCard({
           </span>
         </div>
         <div className="stat-meta">
-          <span className="muted">No data · {labels.desc}</span>
+          <span className="muted">{t('noData')} · {labels.desc}</span>
         </div>
       </div>
     );
@@ -282,7 +295,7 @@ function MetricCard({
               : 'oklch(var(--warning))',
           }}
         >
-          {hitTarget ? 'Above target' : 'Below target'}
+          {hitTarget ? t('aboveTarget') : t('belowTarget')}
         </span>
         <span> · </span>
         <span className="muted">{labels.desc}</span>
@@ -295,26 +308,28 @@ function MetricCard({
 // Reranker shootout (left col, top)
 // ----------------------------------------------------------------------------
 function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null }) {
+  const t = useTranslations('Eval');
   if (!shootout) {
     return (
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Reranker shootout</h3>
+            <h3 className="card-title">{t('rerankerShootout')}</h3>
             <div className="card-desc">
-              W4 4-way → 2-way (per Karpathy §1.2) · W6 D1 LIVE Azure reaffirm ·{' '}
-              <span className="mono">cohere-v4.0-pro</span> locked by ADR-0012
+              {t.rich('shootoutDesc', {
+                mono: (chunks) => <span className="mono">{chunks}</span>,
+              })}
             </div>
           </div>
           <span className="badge badge-muted">
-            <span className="badge-dot" /> Not yet run
+            <span className="badge-dot" /> {t('notYetRun')}
           </span>
         </div>
         <div className="card-body">
           <div className="text-xs muted">
-            Click <b>Reranker shootout</b> in the page header to compare
-            rerankers side-by-side. The endpoint iterates non-skipped reranker
-            labels per `Settings.eval_shootout_rerankers` (W16 F5.4 CO_W15_F1).
+            {t.rich('shootoutEmptyHint', {
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </div>
         </div>
       </div>
@@ -330,10 +345,11 @@ function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null })
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Reranker shootout</h3>
+          <h3 className="card-title">{t('rerankerShootout')}</h3>
           <div className="card-desc">
-            W4 4-way → 2-way (per Karpathy §1.2) · W6 D1 LIVE Azure reaffirm ·{' '}
-            <span className="mono">cohere-v4.0-pro</span> locked by ADR-0012
+            {t.rich('shootoutDesc', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
         {shootout.winner && (
@@ -346,12 +362,12 @@ function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null })
         <table className="table">
           <thead>
             <tr>
-              <th>Reranker</th>
-              <th className="col-num">Recall@5</th>
-              <th className="col-num">Faith</th>
-              <th className="col-num">Correctness</th>
-              <th className="col-num">P95 latency</th>
-              <th className="col-num">$/query</th>
+              <th>{t('colReranker')}</th>
+              <th className="col-num">{t('colRecall5')}</th>
+              <th className="col-num">{t('colFaith')}</th>
+              <th className="col-num">{t('colCorrectness')}</th>
+              <th className="col-num">{t('colP95Latency')}</th>
+              <th className="col-num">{t('colCostPerQuery')}</th>
               <th></th>
             </tr>
           </thead>
@@ -430,7 +446,7 @@ function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null })
                         className="text-xs muted"
                         style={{ marginTop: 2 }}
                       >
-                        ADR-0012 production lock · Q21 Resolved
+                        {t('lockedSubtext')}
                       </div>
                     )}
                   </td>
@@ -475,11 +491,14 @@ function RerankerShootoutCard({ shootout }: { shootout: ShootoutReport | null })
       </div>
       <div className="card-footer">
         <div className="text-xs muted">
-          Started {new Date(shootout.started_at).toLocaleTimeString()} ·
-          Finished {new Date(shootout.finished_at).toLocaleTimeString()} ·
-          Eval set <span className="mono">{shootout.eval_set_id}</span>
+          {t.rich('shootoutFooter', {
+            started: new Date(shootout.started_at).toLocaleTimeString(),
+            finished: new Date(shootout.finished_at).toLocaleTimeString(),
+            setId: shootout.eval_set_id,
+            mono: (chunks) => <span className="mono">{chunks}</span>,
+          })}
         </div>
-        <button className="btn btn-ghost btn-xs">Full report →</button>
+        <button className="btn btn-ghost btn-xs">{t('fullReport')}</button>
       </div>
     </div>
   );
@@ -530,6 +549,7 @@ function DeltaCell({
 // Recommendation card (right col, top) — static text per ADR-0012
 // ----------------------------------------------------------------------------
 function RecommendationCard() {
+  const t = useTranslations('Eval');
   return (
     <div
       className="card"
@@ -544,9 +564,9 @@ function RecommendationCard() {
             className="card-title"
             style={{ color: 'oklch(var(--accent))' }}
           >
-            Recommendation
+            {t('recommendationTitle')}
           </h3>
-          <div className="card-desc">Per ADR-0012 production lock</div>
+          <div className="card-desc">{t('perAdrProductionLock')}</div>
         </div>
         <Sparkles size={16} style={{ color: 'oklch(var(--accent))' }} />
       </div>
@@ -559,18 +579,14 @@ function RecommendationCard() {
             marginBottom: 12,
           }}
         >
-          <b>
-            Keep{' '}
-            <span
-              className="mono"
-              style={{ color: 'oklch(var(--accent))' }}
-            >
-              cohere-v4.0-pro
-            </span>
-            .
-          </b>{' '}
-          Swapping to v3.5 produces faithfulness Δ −11.76pp (W6 D1 LIVE Azure
-          reaffirm); swapping to off drops recall 19.6pp from baseline.
+          {t.rich('recommendationBody', {
+            b: (chunks) => <b>{chunks}</b>,
+            mono: (chunks) => (
+              <span className="mono" style={{ color: 'oklch(var(--accent))' }}>
+                {chunks}
+              </span>
+            ),
+          })}
         </p>
         <div
           style={{
@@ -623,6 +639,7 @@ function FailedQueriesCard({
   metricFilter: string;
   setMetricFilter: (v: string) => void;
 }) {
+  const t = useTranslations('Eval');
   const failed = report?.failed_queries ?? [];
   const filtered =
     metricFilter === 'all'
@@ -635,9 +652,9 @@ function FailedQueriesCard({
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Failed queries</h3>
+            <h3 className="card-title">{t('failedQueriesTitle')}</h3>
             <div className="card-desc">
-              Per-query failure inspector populated after eval run
+              {t('failedQueriesDesc')}
             </div>
           </div>
         </div>
@@ -655,7 +672,9 @@ function FailedQueriesCard({
               style={{ color: 'oklch(var(--muted-foreground))' }}
             />
             <span className="text-xs muted">
-              Click <b>Run eval suite</b> above to populate failed queries.
+              {t.rich('failedQueriesEmpty', {
+                b: (chunks) => <b>{chunks}</b>,
+              })}
             </span>
           </div>
         </div>
@@ -667,10 +686,13 @@ function FailedQueriesCard({
     <div className="card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Failed queries</h3>
+          <h3 className="card-title">{t('failedQueriesTitle')}</h3>
           <div className="card-desc">
-            {failed.length} of {evalSetSize} queries · {failRate.toFixed(1)}%
-            failure rate
+            {t('failedQueriesSummary', {
+              failed: failed.length,
+              total: evalSetSize,
+              rate: failRate.toFixed(1),
+            })}
           </div>
         </div>
         <div className="row">
@@ -678,9 +700,9 @@ function FailedQueriesCard({
             className="select"
             value={metricFilter}
             onChange={(e) => setMetricFilter(e.target.value)}
-            aria-label="Metric filter"
+            aria-label={t('metricFilterAria')}
           >
-            <option value="all">All metrics</option>
+            <option value="all">{t('filterAllMetrics')}</option>
             <option value="faithfulness">faithfulness</option>
             <option value="recall_at_5">recall_at_5</option>
             <option value="correctness">correctness</option>
@@ -688,7 +710,7 @@ function FailedQueriesCard({
           </select>
           <button
             className="btn btn-ghost btn-icon btn-sm"
-            aria-label="More options"
+            aria-label={t('moreOptionsAria')}
           >
             <MoreHorizontal size={14} />
           </button>
@@ -704,8 +726,8 @@ function FailedQueriesCard({
             className="text-xs muted"
           >
             {failed.length === 0
-              ? 'No failed queries — all metrics above strict-acceptance threshold.'
-              : 'No failures match the selected metric filter.'}
+              ? t('noFailedQueries')
+              : t('noFailuresMatch')}
           </div>
         ) : (
           filtered.map((q) => (
@@ -734,7 +756,7 @@ function FailedQueriesCard({
                 <Link
                   href={`/traces/${encodeURIComponent(q.query_id)}`}
                   className="btn btn-ghost btn-icon btn-xs"
-                  aria-label="Open trace"
+                  aria-label={t('openTraceAria')}
                 >
                   <ExternalLink size={11} />
                 </Link>
@@ -757,7 +779,7 @@ function FailedQueriesCard({
                     className="text-xs muted mono"
                     style={{ marginBottom: 3 }}
                   >
-                    Expected
+                    {t('expected')}
                   </div>
                   <div
                     style={{
@@ -776,7 +798,7 @@ function FailedQueriesCard({
                     className="text-xs muted mono"
                     style={{ marginBottom: 3 }}
                   >
-                    Got
+                    {t('got')}
                   </div>
                   <div
                     style={{
@@ -803,26 +825,27 @@ function FailedQueriesCard({
 // Ops metrics card (right col, middle) — p95 latency + cost + Context recall fallback
 // ----------------------------------------------------------------------------
 function OpsMetricsCard({ report }: { report: EvalReport | null }) {
+  const t = useTranslations('Eval');
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">Ops metrics</h3>
+        <h3 className="card-title">{t('opsMetricsTitle')}</h3>
       </div>
       <div className="card-body card-body-tight">
         <OpsRow
-          label="P95 latency"
+          label={t('p95Latency')}
           value={report ? `${report.p95_latency_ms}ms` : '—'}
-          tag="Within SLO 5s"
+          tag={t('withinSlo5s')}
           ok={report ? report.p95_latency_ms < 5000 : true}
           icon="latency"
           isLast={false}
         />
         <OpsRow
-          label="Avg cost / query"
+          label={t('avgCostPerQuery')}
           value={
             report ? `$${report.avg_cost_per_query_usd.toFixed(4)}` : '—'
           }
-          tag="Under cap"
+          tag={t('underCap')}
           ok={report ? report.avg_cost_per_query_usd < 0.05 : true}
           icon="cost"
           isLast={false}
@@ -851,8 +874,8 @@ function OpsMetricsCard({ report }: { report: EvalReport | null }) {
           </div>
           <DisabledAffordance
             variant="p3-preview"
-            reason="Wave C+ — RAGAs context_recall metric extension"
-            tier2Trigger="Tier 2 — post-W22 governance"
+            reason={t('contextRecallWaveCReason')}
+            tier2Trigger={t('tier2Governance')}
             showBadge
           >
             <span className="badge badge-muted">
@@ -913,6 +936,7 @@ function OpsRow({
 // CRAG insight card (right col, bottom)
 // ----------------------------------------------------------------------------
 function CragInsightCard({ report }: { report: EvalReport | null }) {
+  const t = useTranslations('Eval');
   const rate = report?.crag_trigger_rate ?? null;
   const totalQ = 184; // window estimate; mockup-faithful
   const triggered = rate !== null ? Math.round(rate * totalQ) : null;
@@ -921,11 +945,11 @@ function CragInsightCard({ report }: { report: EvalReport | null }) {
   return (
     <div className="card">
       <div className="card-header">
-        <h3 className="card-title">CRAG insights</h3>
+        <h3 className="card-title">{t('cragInsightsTitle')}</h3>
       </div>
       <div className="card-body">
         <div className="text-xs muted" style={{ marginBottom: 4 }}>
-          Trigger rate · last {totalQ} queries
+          {t('triggerRateLast', { count: totalQ })}
         </div>
         <div
           style={{
@@ -972,16 +996,16 @@ function CragInsightCard({ report }: { report: EvalReport | null }) {
               }}
             >
               <span>{triggered} RE_RETRIEVE</span>
-              <span>{confident} confident</span>
+              <span>{t('confidentCount', { count: confident ?? 0 })}</span>
             </div>
           </div>
         )}
         <div className="text-xs muted">
-          Confidence Judge threshold{' '}
-          <b style={{ color: 'oklch(var(--foreground))' }}>
-            0.70 NON-STICKY
-          </b>{' '}
-          per W5 D4. Trigger rate above 30% suggests retrieval tuning needed.
+          {t.rich('cragThresholdNote', {
+            b: (chunks) => (
+              <b style={{ color: 'oklch(var(--foreground))' }}>{chunks}</b>
+            ),
+          })}
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@
  */
 
 import { Activity, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 
 import { adminApi, type AuditAction, type AuditLogEntry } from '@/lib/api/admin';
@@ -37,6 +38,7 @@ function errMessage(err: unknown, fallback: string): string {
 }
 
 export function SettingsAuditLog() {
+  const t = useTranslations('SettingsAudit');
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function SettingsAuditLog() {
         setNextCursor(page.next_cursor);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(errMessage(err, 'Failed to load audit log'));
+        if (!cancelled) setError(errMessage(err, t('errFallbackLoad')));
       });
     return () => {
       cancelled = true;
@@ -86,7 +88,7 @@ export function SettingsAuditLog() {
         setNextCursor(page.next_cursor);
       })
       .catch((err: unknown) => {
-        setError(errMessage(err, 'Failed to load more'));
+        setError(errMessage(err, t('errFallbackLoadMore')));
       })
       .finally(() => setLoadingMore(false));
   }, [nextCursor, loadingMore, actionFilter, since]);
@@ -101,12 +103,9 @@ export function SettingsAuditLog() {
               aria-hidden="true"
               style={{ verticalAlign: '-2px', marginRight: 4 }}
             />
-            Audit log
+            {t('title')}
           </h3>
-          <div className="card-desc">
-            Configuration changes from Connections / Identity / API Keys PATCH
-            endpoints. Filter by action or date; older pages load on demand.
-          </div>
+          <div className="card-desc">{t('desc')}</div>
         </div>
       </div>
       <div className="card-body card-body-tight">
@@ -122,7 +121,7 @@ export function SettingsAuditLog() {
         >
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" htmlFor="audit-action">
-              Action
+              {t('filterAction')}
             </label>
             <select
               id="audit-action"
@@ -134,14 +133,14 @@ export function SettingsAuditLog() {
             >
               {ACTION_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {o.value === 'all' ? t('actionAll') : o.label}
                 </option>
               ))}
             </select>
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label" htmlFor="audit-since">
-              Since
+              {t('filterSince')}
             </label>
             <input
               id="audit-since"
@@ -158,7 +157,7 @@ export function SettingsAuditLog() {
             className="text-xs"
             style={{ padding: '12px 16px', color: 'oklch(var(--destructive))' }}
           >
-            Failed to load: <span className="mono">{error}</span>
+            {t('loadFailed')} <span className="mono">{error}</span>
           </div>
         ) : !entries ? (
           <div
@@ -171,26 +170,24 @@ export function SettingsAuditLog() {
             }}
           >
             <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-            Loading audit log…
+            {t('loading')}
           </div>
         ) : entries.length === 0 ? (
           <div
             className="text-xs muted"
             style={{ padding: '12px 16px', lineHeight: 1.5 }}
           >
-            {isFiltered
-              ? 'No audit entries match the current filter.'
-              : 'No audit entries yet. Mutating Settings (Connections / Identity / API Keys) PATCH endpoints will populate this log.'}
+            {isFiltered ? t('emptyFiltered') : t('empty')}
           </div>
         ) : (
           <>
             <table className="table">
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>Actor</th>
-                  <th>Action</th>
-                  <th>Resource</th>
+                  <th>{t('colWhen')}</th>
+                  <th>{t('colActor')}</th>
+                  <th>{t('colAction')}</th>
+                  <th>{t('colResource')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,10 +226,10 @@ export function SettingsAuditLog() {
                         className="animate-spin"
                         aria-hidden="true"
                       />
-                      Loading…
+                      {t('loadingMore')}
                     </>
                   ) : (
-                    'Load more'
+                    t('loadMore')
                   )}
                 </button>
               </div>
