@@ -24,7 +24,7 @@
 
 ## F4 — en dictionary externalize(🚧 增量進行中)
 - [x] F4.1 en messages 骨架 + t() wiring pattern 定(批 1a:Nav/Breadcrumb/Shell/TopBar/LanguageToggle namespace + `useTranslations` client pattern + `t.has()` breadcrumb guard)
-- [ ] F4.2 core flow view externalize(分批:**app-shell ✅ 批 1a** / dashboard 批 1b / chat / kb / docs / settings / integrations / users / login;**Labs Tier 2 items 待後續** — labels 多技術名 + "Multi-Language" reason F1 promote 後 stale,連 F6 一併釐清)
+- [ ] F4.2 core flow view externalize(分批:**app-shell ✅ 批 1a** / **dashboard ✅ 批 1b** / chat / kb / docs / settings / integrations / users / login;**Labs Tier 2 items 待後續** — labels 多技術名 + "Multi-Language" reason F1 promote 後 stale,連 F6 一併釐清)
 - [ ] F4.3 CH-023 那 7 檔 externalize(已英文 hardcode → 抽 dict)
 - [ ] F4.4 grep 無 en chrome hardcode 殘留(動態拼接走查)
 
