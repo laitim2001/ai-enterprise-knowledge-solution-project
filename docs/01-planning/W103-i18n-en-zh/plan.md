@@ -100,6 +100,8 @@
 
 - 2026-07-14:plan 建立(`proposed`)—— ADR-0075 Accepted 後 kickoff;翻譯來源 = Claude draft 初稿 + 用戶校對(拍板 (a));**等 approve 先 implement**。
 - 2026-07-14:用戶 approve → phase `active`;建 checklist + progress kickoff。**D-2 locale 機制(甲 cookie / 乙 `/[locale]/` routing)留 F3 前 Chris 拍板**(F1 amendment 不受影響,先行)。
+- 2026-07-14:F1 Tier 邊界 amendment 落地(採 inline-tagged + doc-version-held,非「version bump」— R3 deviation)。F2 next-intl 4.13.2 裝機(R8 通過)。
+- 2026-07-14:**D-2 拍板 = 甲 cookie-based**(用戶 AskUserQuestion;next-intl without i18n routing,URL 不變)。F3 機制搭建完成。**F3.4 CJK font fallback deviation(R3):defer → F7**(觸 design token 4-layer sync + H7 fidelity)。**Build 環境**:frontend `next build` 需 `NODE_TLS_REJECT_UNAUTHORIZED=0` 繞 Ricoh MITM(Google Fonts fetch)— pre-existing infra 議題,非 i18n。
 
 ---
 

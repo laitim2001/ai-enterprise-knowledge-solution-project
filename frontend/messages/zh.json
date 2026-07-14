@@ -1,0 +1,11 @@
+{
+  "Common": {
+    "appName": "EKP",
+    "appFullName": "企業知識平台"
+  },
+  "LanguageToggle": {
+    "label": "語言",
+    "english": "English",
+    "chinese": "繁體中文"
+  }
+}

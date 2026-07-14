@@ -11,17 +11,19 @@
 - 建 checklist.md(8 F 展開)+ progress.md kickoff。
 - **F1 Tier 邊界 amendment 完成**(F1.1-F1.5 tick):architecture.md §2.2 + §5.0 + §11.1 + line 8 + CLAUDE.md §5.4 H4 —— en/zh UI chrome i18n 由 Tier 2 移出 → Tier 1;JP UI + content/RAG 翻譯留 Tier 2。ADR-0075 加 §Implementation Notes。用戶 2026-07-14 確認 diff OK。
 - **F2 next-intl 裝機完成**(F2.1-F2.4 tick):R8 corp-proxy 探測通過(registry 可達,Ricoh MITM 未阻 npmjs — `pnpm view` / `add` 皆成功);next-intl **4.13.2** 裝入 frontend(peerDeps `next ^14` + `react ^18` 完全相容,無需降 v3);package.json `^4.13.2` + pnpm-lock 更新;**tsc baseline clean**(裝包無破壞 build)。
+- **F3 i18n 機制搭建完成**(F3.1-F3.3 + F3.5;F3.4 🚧→F7):D-2 拍板 **甲 cookie-based**(next-intl without i18n routing,URL 不變);建 `i18n/request.ts`(cookie `NEXT_LOCALE`)+ next.config plugin + layout async `<html lang={locale}>` + `<NextIntlClientProvider>` + messages/en.json+zh.json 骨架;**tsc clean + build 成功 17 routes SSR**(繞 font MITM cert 後)。
 
 **Decision / deviation(R3)**:
 - **F1.2 採 inline-tagged + doc-version-held convention,非 plan 原寫「version bump」** —— 對齊 architecture.md 既有 amendment 慣例(§3.4 ADR-0023 / §3.7 ADR-0022 / §5 ADR-0024),更接近既有 pattern(§13);doc version held v6,唔 bump v7。architecture.md line 17 歷史 note 保留(審計軌跡)。
 - Language toggle 實際 disabled→enabled = F6,非 F1(F1 只確立文件層 Tier 邊界,頁面暫未有雙語切換功能)。
+- **D-2 locale 機制拍板 = 甲 cookie-based**(2026-07-14 用戶 AskUserQuestion)—— next-intl「without i18n routing」,locale 存 `NEXT_LOCALE` cookie,URL 不變(對齊 W18 flat URL);route 零搬遷。副作用:所有 route 因 `cookies()` 讀取變 dynamic(SSR on demand)—— 對 EKP authenticated app 無實質影響(本來多數 dynamic)。
+- **F3.4 CJK font fallback → 🚧 defer F7**(plan deviation R3):font stack 改動觸 design token 4-layer sync(DESIGN_SYSTEM.md §7)+ H7 fidelity;瀏覽器預設已 fallback 顯示 CJK,明確 CJK font stack 歸 F7 逐 view 走查一齊處理。
+- **Build 環境發現(pre-existing,非 W103 引入)**:`next build` 因 `next/font/google` 抓 Google Fonts 撞 Ricoh MITM(`SELF_SIGNED_CERT_IN_CHAIN`)fail;設 `NODE_TLS_REJECT_UNAUTHORIZED=0`(dev-only,同 next.config backend proxy `rejectUnauthorized=false` pattern)繞過後 build 成功。frontend 喺 Ricoh 網絡 build 需此 workaround —— 屬 infra 議題(font import pre-existing,非 i18n),候選記 BACKLOG。
 
-**Open decision(待拍板)**:
-- **D-2 locale 機制** — 甲 cookie / header negotiation(URL 不變,傾向)vs 乙 `/[locale]/` routing(全 route 重構)。**留 F3 前 Chris 拍板**;F1 amendment 不受影響,已先行。
-
-**下一步**:F3 i18n 機制搭建 —— **先拍板 D-2 locale 機制**(甲 cookie / 乙 `/[locale]/` routing)+ next-intl config/provider + `layout.tsx` lang 動態化 + CJK font fallback。
+**下一步**:F4 en dictionary externalize —— 全站 chrome string 抽 `t()` + `en` messages(分批逐 view;含 CH-023 那 7 檔)。
 
 **Commits**:
 - `29a0bdd` — W103 kickoff(plan approved + checklist + progress + BACKLOG B-25 進行中)。
 - `2096811` — W103 F1 Tier 邊界 amendment(architecture.md §2.2/§5.0/§11.1/line 8 + CLAUDE.md §5.4 H4 + ADR-0075 impl note)。
-- (見下一 commit)W103 F2 — next-intl 4.13.2 裝機(package.json + pnpm-lock)。
+- `2cc7cdc` — W103 F2 next-intl 4.13.2 裝機(package.json + pnpm-lock)。
+- (見下一 commit)W103 F3 — i18n 機制搭建(next-intl cookie-based,D-2 甲)。

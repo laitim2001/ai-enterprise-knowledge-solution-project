@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale } from 'next-intl/server';
 
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/lib/providers/theme-provider';
@@ -39,12 +41,16 @@ export const metadata: Metadata = {
   description: 'Self-built knowledge platform — Drive Project user manuals',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Cookie-based locale (W103 F3, D-2 甲) — read the locale resolved by
+  // i18n/request.ts so <html lang> + the client provider stay in sync (SSR-safe).
+  const locale = await getLocale();
+
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       // Apply `next/font` CSS variable class names at <html> so `styles-mockup.css`
       // `:root` `--font-sans: var(--font-inter), ...` resolution works for the
@@ -52,15 +58,17 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <NextIntlClientProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

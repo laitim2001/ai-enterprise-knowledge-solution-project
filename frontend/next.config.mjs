@@ -1,3 +1,5 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -10,4 +12,8 @@ const nextConfig = {
   // rejectUnauthorized=false in dev only (prod cloud-to-cloud no MITM).
 };
 
-export default nextConfig;
+// next-intl plugin — wires i18n/request.ts (cookie-based locale, W103 F3,
+// D-2 甲: without i18n routing, so URLs stay flat). ADR-0075 / H2.
+const withNextIntl = createNextIntlPlugin();
+
+export default withNextIntl(nextConfig);

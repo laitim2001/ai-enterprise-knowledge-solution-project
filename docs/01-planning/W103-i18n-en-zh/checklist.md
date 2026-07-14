@@ -15,12 +15,12 @@
 - [x] F2.3 裝唔到 fallback — N/A(裝成功,無需 fallback)
 - [x] F2.4 版本鎖定 package.json(`next-intl: ^4.13.2`)+ pnpm-lock.yaml + tsc baseline clean
 
-## F3 — i18n 機制搭建
-- [ ] F3.1 D-2 locale 機制拍板(甲 cookie / 乙 `/[locale]/` routing)— Chris 拍板
-- [ ] F3.2 next-intl config + provider
-- [ ] F3.3 layout.tsx lang 動態化
-- [ ] F3.4 CJK font fallback(latin subset 補 CJK)
-- [ ] F3.5 SSR-safe 驗(無 hydration mismatch)
+## F3 — i18n 機制搭建 ✅(F3.4 🚧→F7)
+- [x] F3.1 D-2 locale 機制拍板 — **甲 cookie-based**(next-intl without i18n routing;URL 不變,對齊 W18 flat URL;2026-07-14 用戶 AskUserQuestion)
+- [x] F3.2 next-intl config + provider — next.config.mjs `createNextIntlPlugin` + i18n/request.ts(cookie `NEXT_LOCALE`)+ layout `<NextIntlClientProvider>` + messages/en.json + zh.json 骨架
+- [x] F3.3 layout.tsx lang 動態化 — RootLayout async + `<html lang={locale}>`(getLocale)
+- [ ] F3.4 CJK font fallback — 🚧 **defer → F7**(觸 design token 4-layer sync DESIGN_SYSTEM.md §7 + H7 fidelity;瀏覽器預設已 fallback 顯示 CJK,明確 CJK font stack 歸 F7 逐 view 走查處理)
+- [x] F3.5 SSR-safe 驗 — tsc clean + build 成功(17 routes SSR;繞 font MITM cert 後證實 i18n build OK,無 hydration error)
 
 ## F4 — en dictionary externalize
 - [ ] F4.1 en messages 骨架 + t() wiring pattern 定
