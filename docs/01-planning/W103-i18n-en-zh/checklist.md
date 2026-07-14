@@ -22,9 +22,9 @@
 - [ ] F3.4 CJK font fallback — 🚧 **defer → F7**(觸 design token 4-layer sync DESIGN_SYSTEM.md §7 + H7 fidelity;瀏覽器預設已 fallback 顯示 CJK,明確 CJK font stack 歸 F7 逐 view 走查處理)
 - [x] F3.5 SSR-safe 驗 — tsc clean + build 成功(17 routes SSR;繞 font MITM cert 後證實 i18n build OK,無 hydration error)
 
-## F4 — en dictionary externalize
-- [ ] F4.1 en messages 骨架 + t() wiring pattern 定
-- [ ] F4.2 core flow view externalize(分批:nav / dashboard / chat / kb / docs / settings / integrations / users / login)
+## F4 — en dictionary externalize(🚧 增量進行中)
+- [x] F4.1 en messages 骨架 + t() wiring pattern 定(批 1a:Nav/Breadcrumb/Shell/TopBar/LanguageToggle namespace + `useTranslations` client pattern + `t.has()` breadcrumb guard)
+- [ ] F4.2 core flow view externalize(分批:**app-shell ✅ 批 1a** / dashboard 批 1b / chat / kb / docs / settings / integrations / users / login;**Labs Tier 2 items 待後續** — labels 多技術名 + "Multi-Language" reason F1 promote 後 stale,連 F6 一併釐清)
 - [ ] F4.3 CH-023 那 7 檔 externalize(已英文 hardcode → 抽 dict)
 - [ ] F4.4 grep 無 en chrome hardcode 殘留(動態拼接走查)
 
@@ -34,9 +34,9 @@
 - [ ] F5.3 用戶校對 → 定稿
 
 ## F6 — Language toggle 啟用
-- [ ] F6.1 定位 mockup disabled Language toggle 現實作位置
-- [ ] F6.2 disabled → enabled + 綁 locale 切換
-- [ ] F6.3 切換持久化(cookie / localStorage)+ reload 保持
+- [x] F6.1 定位 mockup disabled Language toggle 現實作位置(app-shell TopBar,原 DisabledAffordance 包 disabled Globe)
+- [ ] F6.2 disabled → enabled + 綁 locale 切換 — 批 1a **臨時通線版**(`language-toggle.tsx`:Globe 點擊 en↔zh cycle + `NEXT_LOCALE` cookie + router.refresh);**正式 UI 形態(Globe cycle vs dropdown)+ H7 mockup 對齊待 F6 正式化**(mockup 只有 disabled 版)
+- [x] F6.3 切換持久化(`NEXT_LOCALE` cookie 1yr)— reload / 重進保持
 
 ## F7 — H7 design sub-gate + test
 - [ ] F7.1 en 態逐 view 對齊 mockup(零回歸)

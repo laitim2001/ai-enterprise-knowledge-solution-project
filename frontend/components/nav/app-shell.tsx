@@ -57,12 +57,13 @@ import {
   Zap,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 
 import { UserMenu } from '@/components/auth/user-menu';
 import { GlobalSearch } from '@/components/nav/global-search';
+import { LanguageToggle } from '@/components/nav/language-toggle';
 import { NotificationsMenu } from '@/components/nav/notifications-menu';
 import { ThemeToggle } from '@/components/nav/theme-toggle';
-import { DisabledAffordance } from '@/components/ui/disabled-affordance';
 import {
   Sheet,
   SheetContent,
@@ -80,6 +81,8 @@ const WORKSPACE_HOST = 'ekp-beta.ricoh.com';
 
 interface NavLink {
   href: string;
+  /** i18n key under the `Nav` message namespace (W103 F4 externalize) —
+   *  resolved via `t(label)` in `SidebarLink` / breadcrumb render. */
   label: string;
   Icon: LucideIcon;
   /** Right-aligned tail label (e.g. KB count, "Cmd↵" shortcut). The Knowledge
@@ -97,23 +100,23 @@ interface NavLink {
  *   IcLayers (stacked diamonds) → lucide `Layers` (same shape)
  */
 const WORKSPACE_NAV: NavLink[] = [
-  { href: '/dashboard', label: 'Dashboard', Icon: Home },
-  { href: '/chat', label: 'Chat', Icon: MessageCircle, tail: 'Cmd↵' },
+  { href: '/dashboard', label: 'dashboard', Icon: Home },
+  { href: '/chat', label: 'chat', Icon: MessageCircle, tail: 'Cmd↵' },
   // tail = live active-KB count, injected in SidebarNav (CH-016). mockup
   // `ekp-data.jsx:233` ships a hard-coded `tail: "5"` placeholder (= its
   // MOCK_KBS length); we wire it to the real `kbApi.list()` count instead.
-  { href: '/kb', label: 'Knowledge', Icon: Database },
+  { href: '/kb', label: 'knowledge', Icon: Database },
   // Integrations — top-level source-integration module (ADR-0071). Sits after
   // Knowledge in Workspace (mockup integration-import/10-integrations-landing.html
   // sidebar). Icon: chain-link SVG → lucide `Link2` (mechanical match).
-  { href: '/integrations', label: 'Integrations', Icon: Link2 },
-  { href: '/eval', label: 'Eval', Icon: Activity },
-  { href: '/traces', label: 'Traces', Icon: Layers },
+  { href: '/integrations', label: 'integrations', Icon: Link2 },
+  { href: '/eval', label: 'eval', Icon: Activity },
+  { href: '/traces', label: 'traces', Icon: Layers },
 ];
 
 const TOOLS_NAV: NavLink[] = [
-  { href: '/settings', label: 'Settings', Icon: Settings },
-  { href: '/users', label: 'Users & access', Icon: UsersIcon },
+  { href: '/settings', label: 'settings', Icon: Settings },
+  { href: '/users', label: 'users', Icon: UsersIcon },
 ];
 
 interface LabsItem {
@@ -147,36 +150,42 @@ function isActiveRoute(pathname: string, href: string): boolean {
  * `/traces/[traceId]`) surface a generic last-crumb until the per-page rebuild
  * wires the real name via context (F6 / F7 cluster scope).
  */
+/**
+ * Returns i18n keys under the `Breadcrumb` message namespace (W103 F4
+ * externalize) — resolved via `t(key)` in `TopBar`. The unknown-route fallback
+ * returns the capitalised raw segment (not a key); `TopBar` guards with
+ * `t.has()` so it renders verbatim.
+ */
 function computeBreadcrumbs(pathname: string): string[] {
   const segments = pathname.split('/').filter(Boolean);
-  if (segments.length === 0) return ['Dashboard'];
+  if (segments.length === 0) return ['dashboard'];
 
   const [root, ...rest] = segments;
 
-  if (root === 'dashboard') return ['Dashboard'];
-  if (root === 'chat') return ['Chat'];
-  if (root === 'eval') return ['Eval'];
-  if (root === 'settings') return ['Settings'];
-  if (root === 'users') return ['Users & access'];
+  if (root === 'dashboard') return ['dashboard'];
+  if (root === 'chat') return ['chat'];
+  if (root === 'eval') return ['eval'];
+  if (root === 'settings') return ['settings'];
+  if (root === 'users') return ['users'];
 
   if (root === 'kb') {
-    if (rest.length === 0) return ['Knowledge'];
-    if (rest[0] === 'new') return ['Knowledge', 'New KB'];
-    const trail = ['Knowledge', 'Knowledge Base'];
-    if (rest[1] === 'upload') trail.push('Upload');
-    else if (rest[1] === 'docs') trail.push('Document');
+    if (rest.length === 0) return ['knowledge'];
+    if (rest[0] === 'new') return ['knowledge', 'newKb'];
+    const trail = ['knowledge', 'knowledgeBase'];
+    if (rest[1] === 'upload') trail.push('upload');
+    else if (rest[1] === 'docs') trail.push('document');
     return trail;
   }
 
   if (root === 'traces') {
-    if (rest.length === 0) return ['Traces'];
-    return ['Traces', 'Trace detail'];
+    if (rest.length === 0) return ['traces'];
+    return ['traces', 'traceDetail'];
   }
 
   if (root === 'integrations') {
     // /integrations → landing; /integrations/sharepoint/import → import wizard.
-    if (rest[0] === 'sharepoint') return ['Integrations', 'Import from SharePoint'];
-    return ['Integrations'];
+    if (rest[0] === 'sharepoint') return ['integrations', 'importFromSharePoint'];
+    return ['integrations'];
   }
 
   return [root.charAt(0).toUpperCase() + root.slice(1)];
@@ -187,6 +196,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const t = useTranslations('Shell');
   const pathname = usePathname() ?? '/';
 
   // Sidebar collapsed state — persisted to localStorage; SSR-stable.
@@ -249,7 +259,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[248px] p-0">
           <SheetHeader className="sr-only">
-            <SheetTitle>Navigation</SheetTitle>
+            <SheetTitle>{t('navigation')}</SheetTitle>
           </SheetHeader>
           <MobileSidebar pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
         </SheetContent>
@@ -270,6 +280,8 @@ interface TopBarProps {
 }
 
 function TopBar({ breadcrumbs, onToggleSidebar, onOpenMobileNav, onOpenSearch }: TopBarProps) {
+  const t = useTranslations('TopBar');
+  const tb = useTranslations('Breadcrumb');
   return (
     <header className="topbar">
       {/* Mobile hamburger (< md) — opens shadcn Sheet drawer. `!md:hidden` uses
@@ -282,7 +294,7 @@ function TopBar({ breadcrumbs, onToggleSidebar, onOpenMobileNav, onOpenSearch }:
       <button
         className="btn btn-ghost btn-icon btn-sm md:!hidden"
         type="button"
-        aria-label="Open navigation"
+        aria-label={t('openNav')}
         onClick={onOpenMobileNav}
       >
         <Menu size={15} />
@@ -292,54 +304,45 @@ function TopBar({ breadcrumbs, onToggleSidebar, onOpenMobileNav, onOpenSearch }:
       <button
         className="btn btn-ghost btn-icon btn-sm !hidden md:!inline-flex"
         type="button"
-        aria-label="Toggle sidebar (hides left navigation)"
-        title="Toggle sidebar (hides left navigation)"
+        aria-label={t('toggleSidebar')}
+        title={t('toggleSidebar')}
         onClick={onToggleSidebar}
       >
         <PanelLeft size={15} />
       </button>
 
-      <nav aria-label="Breadcrumb" className="breadcrumbs">
-        {breadcrumbs.map((b, i) => (
-          <span key={`${i}-${b}`} className="contents">
-            {i > 0 && (
-              <span className="sep" aria-hidden="true">
-                <ChevronRight size={12} />
-              </span>
-            )}
-            {i === breadcrumbs.length - 1 ? <b>{b}</b> : <span>{b}</span>}
-          </span>
-        ))}
+      <nav aria-label={tb('ariaLabel')} className="breadcrumbs">
+        {breadcrumbs.map((b, i) => {
+          const label = tb.has(b) ? tb(b) : b;
+          return (
+            <span key={`${i}-${b}`} className="contents">
+              {i > 0 && (
+                <span className="sep" aria-hidden="true">
+                  <ChevronRight size={12} />
+                </span>
+              )}
+              {i === breadcrumbs.length - 1 ? <b>{label}</b> : <span>{label}</span>}
+            </span>
+          );
+        })}
       </nav>
 
       <button
         className="topbar-search"
         type="button"
         onClick={onOpenSearch}
-        aria-label="Search KBs, traces, settings (Ctrl+K)"
-        title="Search KBs, traces, settings (⌘K)"
+        aria-label={t('searchAria')}
+        title={t('searchTitle')}
       >
         <Search size={14} />
-        <span style={{ flex: 1, textAlign: 'left' }}>Search KBs, traces, settings…</span>
+        <span style={{ flex: 1, textAlign: 'left' }}>{t('searchPlaceholder')}</span>
         <span className="kbd">⌘ K</span>
       </button>
 
       <div className="topbar-actions">
-        {/* Language toggle — Tier 2 disabled per W19 F5 catalog */}
-        <DisabledAffordance
-          reason="Multi-language (JP / ZH) — Tier 2"
-          tier2Trigger="i18n machinery"
-          className="hidden sm:inline-flex"
-        >
-          <button
-            type="button"
-            disabled
-            aria-label="Language (Tier 2 — coming soon)"
-            className="btn btn-ghost btn-icon btn-sm"
-          >
-            <Globe size={15} />
-          </button>
-        </DisabledAffordance>
+        {/* Language toggle — W103 F4 臨時通線 (was Tier 2 disabled affordance).
+            正式 UI 形態 (Globe cycle vs dropdown) + H7 mockup 對齊 = F6. */}
+        <LanguageToggle />
 
         <ThemeToggle />
         <NotificationsMenu />
@@ -377,16 +380,17 @@ function MobileSidebar({ pathname, onNavigate }: { pathname: string; onNavigate:
 }
 
 function SidebarBrand({ collapsed }: { collapsed: boolean }) {
+  const t = useTranslations('Shell');
   return (
     <div className="sidebar-brand">
       <Link
         href="/dashboard"
         className="brand-mark"
-        aria-label="EKP — go to dashboard"
+        aria-label={t('brandAria')}
       >
         EKP
       </Link>
-      {!collapsed && <span className="brand-name">Knowledge Platform</span>}
+      {!collapsed && <span className="brand-name">{t('brandName')}</span>}
     </div>
   );
 }
@@ -396,14 +400,15 @@ function WorkspaceSwitcher() {
   // layout (margin 10px 12px 4px + flex full-width inside sidebar) is preserved.
   // Earlier wrap in <DisabledAffordance> broke the layout because its `<span
   // className="inline-flex">` wrapper collapsed the switcher to content-width.
-  const TIER2_TITLE = 'Workspace switcher — Tier 2 (multi-tenancy per architecture.md §11)';
+  const t = useTranslations('Shell');
+  const tier2Title = t('workspaceSwitcherTitle');
   return (
     <button
       type="button"
       disabled
       aria-disabled="true"
-      aria-label={`Workspace: ${WORKSPACE_LABEL} (${TIER2_TITLE})`}
-      title={TIER2_TITLE}
+      aria-label={`${WORKSPACE_LABEL} — ${tier2Title}`}
+      title={tier2Title}
       className="workspace-switcher"
       style={{ opacity: 0.7, cursor: 'default' }}
     >
@@ -431,12 +436,13 @@ function SidebarNav({
   // (no extra request) and reflects the RBAC-trimmed set the current user sees.
   // `archived` KBs are soft-deleted → excluded. tail stays absent until data is
   // ready (don't show a stale/placeholder number).
+  const t = useTranslations('Nav');
   const { data: kbs } = useQuery({ queryKey: ['kb', 'list'], queryFn: kbApi.list });
   const activeKbCount = kbs?.filter((kb) => !kb.archived).length;
 
   return (
-    <nav className="nav" aria-label="Primary">
-      {!collapsed && <div className="nav-section-label">Workspace</div>}
+    <nav className="nav" aria-label={t('primaryAria')}>
+      {!collapsed && <div className="nav-section-label">{t('sectionWorkspace')}</div>}
       {WORKSPACE_NAV.map((item) => (
         <SidebarLink
           key={item.href}
@@ -453,7 +459,7 @@ function SidebarNav({
 
       {!collapsed && (
         <>
-          <div className="nav-section-label">Tools</div>
+          <div className="nav-section-label">{t('sectionTools')}</div>
           {TOOLS_NAV.map((item) => (
             <SidebarLink
               key={item.href}
@@ -471,13 +477,13 @@ function SidebarNav({
             disabled
             aria-disabled="true"
             className="nav-item muted"
-            title="Tier 2 — multi-tenancy (audit log requires multi-workspace boundary)"
-            aria-label="Audit Log (Tier 2 — multi-tenancy)"
+            title={t('auditLogTitle')}
+            aria-label={t('auditLogAria')}
             style={{ opacity: 0.5, cursor: 'default' }}
           >
             <Shield className="icon" size={16} />
-            <span>Audit Log</span>
-            <span className="nav-tail">Soon</span>
+            <span>{t('auditLog')}</span>
+            <span className="nav-tail">{t('soon')}</span>
           </button>
 
           <div className="nav-section-label" style={{ color: 'oklch(var(--accent))' }}>
@@ -518,7 +524,9 @@ function SidebarLink({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const t = useTranslations('Nav');
   const { href, label, Icon, tail } = item;
+  const labelText = t(label);
   return (
     <Link
       href={href}
@@ -526,12 +534,12 @@ function SidebarLink({
       onClick={onNavigate}
       className="nav-item"
       data-active={active ? 'true' : 'false'}
-      title={collapsed ? label : undefined}
+      title={collapsed ? labelText : undefined}
     >
       <Icon className="icon" size={16} />
       {!collapsed && (
         <>
-          <span>{label}</span>
+          <span>{labelText}</span>
           {tail && <span className="nav-tail">{tail}</span>}
         </>
       )}
@@ -540,9 +548,10 @@ function SidebarLink({
 }
 
 function SidebarFooter({ collapsed }: { collapsed: boolean }) {
+  const t = useTranslations('Shell');
   const user = useCurrentUser();
   const role = useRole();
-  const displayName = user?.preferredUsername ?? 'Signing in…';
+  const displayName = user?.preferredUsername ?? t('signingIn');
   const localPart = displayName.split('@')[0] ?? displayName;
   const initials = (
     localPart
@@ -579,8 +588,8 @@ function SidebarFooter({ collapsed }: { collapsed: boolean }) {
       <button
         type="button"
         className="btn btn-ghost btn-icon btn-sm"
-        title="Account actions"
-        aria-label="More account actions"
+        title={t('accountActions')}
+        aria-label={t('moreAccountActions')}
       >
         <MoreHorizontal size={14} />
       </button>

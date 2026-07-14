@@ -5,7 +5,58 @@
   },
   "LanguageToggle": {
     "label": "語言",
+    "ariaLabel": "切換語言",
     "english": "English",
     "chinese": "繁體中文"
+  },
+  "Nav": {
+    "sectionWorkspace": "工作區",
+    "sectionTools": "工具",
+    "primaryAria": "主要導覽",
+    "dashboard": "儀表板",
+    "chat": "對話",
+    "knowledge": "知識庫",
+    "integrations": "整合",
+    "eval": "評估",
+    "traces": "追蹤",
+    "settings": "設定",
+    "users": "使用者與存取權限",
+    "auditLog": "稽核日誌",
+    "auditLogTitle": "Tier 2 — 多租戶(稽核日誌需要多工作區邊界)",
+    "auditLogAria": "稽核日誌(Tier 2 — 多租戶)",
+    "soon": "即將推出"
+  },
+  "Breadcrumb": {
+    "ariaLabel": "麵包屑導覽",
+    "dashboard": "儀表板",
+    "chat": "對話",
+    "eval": "評估",
+    "settings": "設定",
+    "users": "使用者與存取權限",
+    "knowledge": "知識庫",
+    "newKb": "新增知識庫",
+    "knowledgeBase": "知識庫",
+    "upload": "上傳",
+    "document": "文件",
+    "traces": "追蹤",
+    "traceDetail": "追蹤詳情",
+    "integrations": "整合",
+    "importFromSharePoint": "從 SharePoint 匯入"
+  },
+  "Shell": {
+    "brandName": "知識平台",
+    "brandAria": "EKP — 前往儀表板",
+    "workspaceSwitcherTitle": "工作區切換 — Tier 2(多租戶,per architecture.md §11)",
+    "signingIn": "登入中…",
+    "moreAccountActions": "更多帳戶操作",
+    "accountActions": "帳戶操作",
+    "navigation": "導覽"
+  },
+  "TopBar": {
+    "openNav": "開啟導覽",
+    "toggleSidebar": "切換側邊欄(隱藏左側導覽)",
+    "searchPlaceholder": "搜尋知識庫、追蹤、設定…",
+    "searchAria": "搜尋知識庫、追蹤、設定(Ctrl+K)",
+    "searchTitle": "搜尋知識庫、追蹤、設定(⌘K)"
   }
 }

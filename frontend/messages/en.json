@@ -5,7 +5,58 @@
   },
   "LanguageToggle": {
     "label": "Language",
+    "ariaLabel": "Switch language",
     "english": "English",
     "chinese": "繁體中文"
+  },
+  "Nav": {
+    "sectionWorkspace": "Workspace",
+    "sectionTools": "Tools",
+    "primaryAria": "Primary",
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "knowledge": "Knowledge",
+    "integrations": "Integrations",
+    "eval": "Eval",
+    "traces": "Traces",
+    "settings": "Settings",
+    "users": "Users & access",
+    "auditLog": "Audit Log",
+    "auditLogTitle": "Tier 2 — multi-tenancy (audit log requires multi-workspace boundary)",
+    "auditLogAria": "Audit Log (Tier 2 — multi-tenancy)",
+    "soon": "Soon"
+  },
+  "Breadcrumb": {
+    "ariaLabel": "Breadcrumb",
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "eval": "Eval",
+    "settings": "Settings",
+    "users": "Users & access",
+    "knowledge": "Knowledge",
+    "newKb": "New KB",
+    "knowledgeBase": "Knowledge Base",
+    "upload": "Upload",
+    "document": "Document",
+    "traces": "Traces",
+    "traceDetail": "Trace detail",
+    "integrations": "Integrations",
+    "importFromSharePoint": "Import from SharePoint"
+  },
+  "Shell": {
+    "brandName": "Knowledge Platform",
+    "brandAria": "EKP — go to dashboard",
+    "workspaceSwitcherTitle": "Workspace switcher — Tier 2 (multi-tenancy per architecture.md §11)",
+    "signingIn": "Signing in…",
+    "moreAccountActions": "More account actions",
+    "accountActions": "Account actions",
+    "navigation": "Navigation"
+  },
+  "TopBar": {
+    "openNav": "Open navigation",
+    "toggleSidebar": "Toggle sidebar (hides left navigation)",
+    "searchPlaceholder": "Search KBs, traces, settings…",
+    "searchAria": "Search KBs, traces, settings (Ctrl+K)",
+    "searchTitle": "Search KBs, traces, settings (⌘K)"
   }
 }
