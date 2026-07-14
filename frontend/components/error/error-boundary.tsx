@@ -18,6 +18,7 @@
  * admin UI + automatic dark mode + focus-visible ring (a11y).
  */
 
+import { useTranslations } from 'next-intl';
 import { Component, type ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -37,9 +38,10 @@ export function ErrorBoundaryView({
   reset,
   scope,
 }: ErrorBoundaryViewProps) {
+  const t = useTranslations('ErrorBoundary');
   const isApiError = error instanceof ApiError;
   const code = isApiError ? error.code : 'frontend.unhandled';
-  const message = error.message || 'An unexpected error occurred.';
+  const message = error.message || t('unexpectedError');
   const hint = isApiError ? error.actionableHint : null;
   const status = isApiError ? error.status : null;
 
@@ -50,7 +52,7 @@ export function ErrorBoundaryView({
     >
       <div className="mb-2 flex items-baseline justify-between gap-3">
         <h2 className="text-base font-semibold text-destructive">
-          {scope ? `${scope} — ` : ''}Something went wrong
+          {scope ? `${scope} — ` : ''}{t('somethingWentWrong')}
         </h2>
         <code className="font-mono text-xs text-muted-foreground">
           {code}
@@ -60,7 +62,7 @@ export function ErrorBoundaryView({
       <p className="mb-3 text-foreground">{message}</p>
       {hint ? (
         <p className="mb-4 text-muted-foreground">
-          <strong className="font-medium text-foreground">Next step:</strong>{' '}
+          <strong className="font-medium text-foreground">{t('nextStep')}</strong>{' '}
           {hint}
         </p>
       ) : null}
@@ -73,12 +75,12 @@ export function ErrorBoundaryView({
             onClick={() => reset()}
             className="border-destructive text-destructive hover:bg-destructive/10"
           >
-            Retry
+            {t('retry')}
           </Button>
         ) : null}
         <Button asChild variant="outline" size="sm">
           <a href={REPORT_URL} target="_blank" rel="noopener noreferrer">
-            Report
+            {t('report')}
           </a>
         </Button>
       </div>

@@ -20,6 +20,7 @@
  */
 
 import { Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 interface ApiKeyInputProps {
@@ -40,8 +41,9 @@ export function ApiKeyInput({
   onRotate,
   rotateDisabled = false,
   rotateDisabledReason,
-  ariaLabel = 'API secret value',
+  ariaLabel,
 }: ApiKeyInputProps) {
+  const t = useTranslations('ApiKeyInput');
   const [reveal, setReveal] = useState(false);
   const [rotating, setRotating] = useState(false);
   const displayValue = value ?? '<not provisioned>';
@@ -69,7 +71,7 @@ export function ApiKeyInput({
         value={displayValue}
         readOnly
         type={reveal ? 'text' : 'password'}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? t('ariaLabelDefault')}
         style={{ fontSize: 12, paddingRight: 80 }}
       />
       <div
@@ -85,8 +87,8 @@ export function ApiKeyInput({
           type="button"
           className="btn btn-ghost btn-icon btn-xs"
           onClick={() => setReveal(!reveal)}
-          title={reveal ? 'Hide' : 'Reveal'}
-          aria-label={reveal ? 'Hide secret' : 'Reveal secret'}
+          title={reveal ? t('hide') : t('reveal')}
+          aria-label={reveal ? t('hideSecret') : t('revealSecret')}
         >
           {reveal ? (
             <EyeOff size={11} aria-hidden="true" />
@@ -98,8 +100,8 @@ export function ApiKeyInput({
           type="button"
           className="btn btn-ghost btn-icon btn-xs"
           onClick={handleCopy}
-          title="Copy"
-          aria-label="Copy secret preview to clipboard"
+          title={t('copy')}
+          aria-label={t('copyAria')}
         >
           <Copy size={11} aria-hidden="true" />
         </button>
@@ -108,8 +110,8 @@ export function ApiKeyInput({
           className="btn btn-ghost btn-icon btn-xs"
           onClick={() => void handleRotate()}
           disabled={rotateDisabled || rotating || !onRotate}
-          title={rotateDisabled ? rotateDisabledReason ?? 'Rotate disabled' : 'Rotate secret'}
-          aria-label="Rotate secret"
+          title={rotateDisabled ? rotateDisabledReason ?? t('rotateDisabled') : t('rotateSecret')}
+          aria-label={t('rotateSecret')}
         >
           <RefreshCw size={11} aria-hidden="true" />
         </button>

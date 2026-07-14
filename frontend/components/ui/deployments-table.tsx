@@ -14,6 +14,8 @@
  * authoritative per F4 plan).
  */
 
+import { useTranslations } from 'next-intl';
+
 import type { ProviderDeployment } from '@/lib/api/admin';
 
 interface DeploymentsTableProps {
@@ -31,12 +33,13 @@ function formatTpm(n: number | null): string {
 
 export function DeploymentsTable({
   deployments,
-  emptyMessage = 'No deployments configured for this provider.',
+  emptyMessage,
 }: DeploymentsTableProps) {
+  const t = useTranslations('DeploymentsTable');
   if (deployments.length === 0) {
     return (
       <div className="text-xs muted" style={{ padding: '8px 0' }}>
-        {emptyMessage}
+        {emptyMessage ?? t('emptyDefault')}
       </div>
     );
   }
@@ -45,11 +48,11 @@ export function DeploymentsTable({
     <table className="table">
       <thead>
         <tr>
-          <th>Deployment</th>
-          <th>Family</th>
-          <th className="col-num">TPM cap</th>
-          <th className="col-num">RPM cap</th>
-          <th className="col-num">Alert %</th>
+          <th>{t('colDeployment')}</th>
+          <th>{t('colFamily')}</th>
+          <th className="col-num">{t('colTpmCap')}</th>
+          <th className="col-num">{t('colRpmCap')}</th>
+          <th className="col-num">{t('colAlertPct')}</th>
         </tr>
       </thead>
       <tbody>

@@ -20,6 +20,7 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -66,14 +67,21 @@ interface AskResult {
 }
 type SearchResult = PageResult | KbResult | AskResult;
 
-/** The static destinations — the 5 sidebar modules + Settings. */
-const PAGE_RESULTS: PageResult[] = [
-  { kind: 'page', id: 'page-dashboard', label: 'Dashboard', href: '/dashboard', Icon: LayoutDashboard, keywords: 'home overview' },
-  { kind: 'page', id: 'page-chat', label: 'Chat', href: '/chat', Icon: MessageSquare, keywords: 'ask question' },
-  { kind: 'page', id: 'page-kb', label: 'Knowledge Bases', href: '/kb', Icon: Database, keywords: 'kb documents upload' },
-  { kind: 'page', id: 'page-eval', label: 'Eval Console', href: '/eval', Icon: FlaskConical, keywords: 'evaluation ragas metrics' },
-  { kind: 'page', id: 'page-traces', label: 'Traces', href: '/traces', Icon: Activity, keywords: 'debug langfuse pipeline' },
-  { kind: 'page', id: 'page-settings', label: 'Settings', href: '/settings', Icon: SettingsIcon, keywords: 'profile theme account' },
+/** The static destinations — the 5 sidebar modules + Settings. `labelKey`
+ *  resolves against the `GlobalSearch` messages namespace at render time. */
+const PAGE_RESULTS: {
+  id: string;
+  labelKey: string;
+  href: string;
+  Icon: ResultIcon;
+  keywords?: string;
+}[] = [
+  { id: 'page-dashboard', labelKey: 'pageDashboard', href: '/dashboard', Icon: LayoutDashboard, keywords: 'home overview' },
+  { id: 'page-chat', labelKey: 'pageChat', href: '/chat', Icon: MessageSquare, keywords: 'ask question' },
+  { id: 'page-kb', labelKey: 'pageKnowledgeBases', href: '/kb', Icon: Database, keywords: 'kb documents upload' },
+  { id: 'page-eval', labelKey: 'pageEvalConsole', href: '/eval', Icon: FlaskConical, keywords: 'evaluation ragas metrics' },
+  { id: 'page-traces', labelKey: 'pageTraces', href: '/traces', Icon: Activity, keywords: 'debug langfuse pipeline' },
+  { id: 'page-settings', labelKey: 'pageSettings', href: '/settings', Icon: SettingsIcon, keywords: 'profile theme account' },
 ];
 
 interface GlobalSearchProps {
@@ -83,6 +91,7 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const router = useRouter();
+  const t = useTranslations('GlobalSearch');
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -105,7 +114,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const results = useMemo<SearchResult[]>(() => {
     const q = query.trim().toLowerCase();
 
-    const pages = PAGE_RESULTS.filter(
+    const pages: PageResult[] = PAGE_RESULTS.map((p) => ({
+      kind: 'page' as const,
+      id: p.id,
+      label: t(p.labelKey),
+      href: p.href,
+      Icon: p.Icon,
+      keywords: p.keywords,
+    })).filter(
       (p) => !q || p.label.toLowerCase().includes(q) || (p.keywords ?? '').includes(q),
     );
 
@@ -121,11 +137,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
     const q0 = query.trim();
     const ask: AskResult[] = q0
-      ? [{ kind: 'ask', id: 'ask', label: `Ask in chat: “${q0}”`, href: `/chat?q=${encodeURIComponent(q0)}` }]
+      ? [{ kind: 'ask', id: 'ask', label: t('askInChat', { query: q0 }), href: `/chat?q=${encodeURIComponent(q0)}` }]
       : [];
 
     return [...pages, ...kbResults, ...ask];
-  }, [query, kbs]);
+  }, [query, kbs, t]);
 
   const safeActive = Math.min(activeIndex, Math.max(0, results.length - 1));
 
@@ -155,7 +171,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         aria-describedby={undefined}
         className="top-[14%] max-w-xl translate-y-0 gap-0 overflow-hidden p-0"
       >
-        <DialogTitle className="sr-only">Search</DialogTitle>
+        <DialogTitle className="sr-only">{t('dialogTitle')}</DialogTitle>
 
         {/* Search input row (the Dialog's own close-X sits top-right; pr-10 keeps text clear of it) */}
         <div className="flex items-center gap-2 border-b border-border px-3">
@@ -169,8 +185,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               setActiveIndex(0);
             }}
             onKeyDown={onInputKeyDown}
-            placeholder="Search knowledge bases, pages…"
-            aria-label="Search"
+            placeholder={t('inputPlaceholder')}
+            aria-label={t('inputAria')}
             role="combobox"
             aria-expanded
             aria-controls="global-search-results"
@@ -183,11 +199,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         <ul
           id="global-search-results"
           role="listbox"
-          aria-label="Search results"
+          aria-label={t('resultsAria')}
           className="max-h-80 overflow-y-auto p-1"
         >
           {results.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm text-muted-foreground">No matches.</li>
+            <li className="px-3 py-6 text-center text-sm text-muted-foreground">{t('noMatches')}</li>
           ) : (
             results.map((result, i) => (
               <li
@@ -217,7 +233,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                 )}
                 {result.kind === 'page' && (
                   <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Page
+                    {t('pageBadge')}
                   </span>
                 )}
                 {result.kind === 'ask' && (
@@ -229,8 +245,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         </ul>
 
         <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
-          <kbd className="font-medium">↑↓</kbd> navigate · <kbd className="font-medium">↵</kbd> select ·{' '}
-          <kbd className="font-medium">esc</kbd> close
+          <kbd className="font-medium">↑↓</kbd> {t('hintNavigate')} · <kbd className="font-medium">↵</kbd> {t('hintSelect')} ·{' '}
+          <kbd className="font-medium">esc</kbd> {t('hintClose')}
         </div>
       </DialogContent>
     </Dialog>

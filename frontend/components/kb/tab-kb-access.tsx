@@ -30,6 +30,7 @@ import {
   Shield,
   Users,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -51,22 +52,22 @@ const VISIBILITY_ROWS = [
   {
     id: 'private',
     icon: Shield,
-    label: 'Private',
-    desc: "Only explicit members + Workspace Admins · others can't see this KB",
+    labelKey: 'visPrivateLabel',
+    descKey: 'visPrivateDesc',
     tier2: false,
   },
   {
     id: 'workspace',
     icon: Users,
-    label: 'Workspace',
-    desc: 'Any member of Ricoh · RAPO can find + query this KB',
+    labelKey: 'visWorkspaceLabel',
+    descKey: 'visWorkspaceDesc',
     tier2: false,
   },
   {
     id: 'public',
     icon: Globe,
-    label: 'Public (Tier 2)',
-    desc: 'Listed in public KB catalog · queryable via anonymous API key',
+    labelKey: 'visPublicLabel',
+    descKey: 'visPublicDesc',
     tier2: true,
   },
 ] as const;
@@ -80,15 +81,18 @@ function initials(name: string): string {
   return name.trim().slice(0, 2).toUpperCase() || '??';
 }
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(
+  iso: string | null | undefined,
+  t: ReturnType<typeof useTranslations>,
+): string {
   if (!iso) return '—';
   const ts = new Date(iso).getTime();
   if (Number.isNaN(ts)) return '—';
   const mins = Math.floor((Date.now() - ts) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 60 * 24) return `${Math.floor(mins / 60)}h ago`;
-  return `${Math.floor(mins / 60 / 24)}d ago`;
+  if (mins < 1) return t('relativeJustNow');
+  if (mins < 60) return t('relativeMinutes', { mins });
+  if (mins < 60 * 24) return t('relativeHours', { hours: Math.floor(mins / 60) });
+  return t('relativeDays', { days: Math.floor(mins / 60 / 24) });
 }
 
 /** One rendered Members-table row — a synthetic system row or a `kb_acl` grant. */
@@ -124,6 +128,7 @@ function StatCard({
 }
 
 export function TabKbAccess({ kbId }: { kbId: string }) {
+  const t = useTranslations('KbAccess');
   const router = useRouter();
 
   const aclQ = useQuery<KbAclListResponse>({
@@ -156,8 +161,8 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
       {
         key: 'system-admins',
         kind: 'group',
-        name: 'Workspace Admins',
-        sub: 'Workspace Admins · auto',
+        name: t('systemRowName'),
+        sub: t('systemRowSub'),
         workspaceRole: 'admin',
         kbRole: 'manage',
         grantedBy: 'system',
@@ -178,7 +183,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
           workspaceRole: u?.role ?? null,
           kbRole: e.access_role,
           grantedBy: e.granted_by ?? 'system',
-          granted: formatRelative(e.created_at),
+          granted: formatRelative(e.created_at, t),
           locked: false,
         });
       } else {
@@ -193,13 +198,13 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
           workspaceRole: null,
           kbRole: e.access_role,
           grantedBy: e.granted_by ?? 'system',
-          granted: formatRelative(e.created_at),
+          granted: formatRelative(e.created_at, t),
           locked: false,
         });
       }
     }
     return out;
-  }, [entries, usersQ.data, groupsQ.data]);
+  }, [entries, usersQ.data, groupsQ.data, t]);
 
   if (aclQ.isLoading) {
     return (
@@ -207,7 +212,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
         className="text-xs muted"
         style={{ padding: '48px 18px', textAlign: 'center' }}
       >
-        Loading access list…
+        {t('loadingAccess')}
       </div>
     );
   }
@@ -221,11 +226,12 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
         <Shield size={14} aria-hidden="true" />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Couldn&apos;t load the access list
+            {t('errorTitle')}
           </div>
           <div className="text-xs">
-            Managing a KB&apos;s access list requires the <span className="mono">manage</span>{' '}
-            role on this KB.
+            {t.rich('errorDesc', {
+              mono: (chunks) => <span className="mono">{chunks}</span>,
+            })}
           </div>
         </div>
       </div>
@@ -246,12 +252,12 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
         />
         <div style={{ flex: 1, lineHeight: 1.55 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>
-            Per-KB access control
+            {t('bannerTitle')}
           </div>
           <div className="text-xs muted">
-            Members listed here can query / edit / manage <b>this</b> KB
-            regardless of their workspace role. Workspace Admins always have
-            full access.
+            {t.rich('bannerDesc', {
+              b: (chunks) => <b>{chunks}</b>,
+            })}
           </div>
         </div>
       </div>
@@ -262,14 +268,18 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
         style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}
       >
         {/* KB Visibility is not a Tier 1 backend field (F8 D8.4) — W22 B-i. */}
-        <StatCard label="Visibility" value="—" sub="—" />
+        <StatCard label={t('statVisibility')} value="—" sub="—" />
         <StatCard
-          label="Members with access"
+          label={t('statMembersWithAccess')}
           value={String(entries.length)}
-          sub={`${byRole.manage} manage · ${byRole.edit} edit · ${byRole.query} query`}
+          sub={t('statMembersSub', {
+            manage: byRole.manage,
+            edit: byRole.edit,
+            query: byRole.query,
+          })}
         />
-        <StatCard label="Pending invites" value="—" sub="—" />
-        <StatCard label="Default new member access" value="—" sub="—" />
+        <StatCard label={t('statPendingInvites')} value="—" sub="—" />
+        <StatCard label={t('statDefaultAccess')} value="—" sub="—" />
       </div>
 
       {/* Visibility card — mockup lines 410-439. No Tier 1 backend (F8 D8.4) —
@@ -277,8 +287,8 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-header">
           <div>
-            <h3 className="card-title">Visibility</h3>
-            <div className="card-desc">Who can see this KB exists at all</div>
+            <h3 className="card-title">{t('visibilityCardTitle')}</h3>
+            <div className="card-desc">{t('visibilityCardDesc')}</div>
           </div>
         </div>
         <div className="card-body card-body-tight">
@@ -301,7 +311,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
                 <input
                   type="radio"
                   name="kb-visibility"
-                  aria-label={v.label}
+                  aria-label={t(v.labelKey)}
                   defaultChecked={v.id === 'workspace'}
                   disabled
                   style={{ marginTop: 3, flexShrink: 0 }}
@@ -317,7 +327,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                   >
                     <span style={{ fontWeight: 500, fontSize: 13.5 }}>
-                      {v.label}
+                      {t(v.labelKey)}
                     </span>
                     {v.tier2 && (
                       <span className="badge badge-muted">Tier 2</span>
@@ -327,7 +337,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
                     className="text-xs muted"
                     style={{ marginTop: 2, lineHeight: 1.5 }}
                   >
-                    {v.desc}
+                    {t(v.descKey)}
                   </div>
                 </div>
               </div>
@@ -340,18 +350,15 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
       <div className="card">
         <div className="card-header">
           <div>
-            <h3 className="card-title">Members &amp; permissions</h3>
-            <div className="card-desc">
-              Per-KB role overrides workspace role · &ldquo;Manager&rdquo; can
-              edit access list itself
-            </div>
+            <h3 className="card-title">{t('membersCardTitle')}</h3>
+            <div className="card-desc">{t('membersCardDesc')}</div>
           </div>
           <div className="row">
             <button type="button" className="btn btn-secondary btn-sm">
-              <Link size={13} aria-hidden="true" /> Add Entra group
+              <Link size={13} aria-hidden="true" /> {t('addEntraGroup')}
             </button>
             <button type="button" className="btn btn-primary btn-sm">
-              <Plus size={13} aria-hidden="true" /> Add member
+              <Plus size={13} aria-hidden="true" /> {t('addMember')}
             </button>
           </div>
         </div>
@@ -359,12 +366,12 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
           <table className="table">
             <thead>
               <tr>
-                <th>Member / Group</th>
-                <th>Workspace role</th>
-                <th>KB role</th>
-                <th>Granted by</th>
-                <th className="col-num">Granted</th>
-                <th className="col-shrink" aria-label="Row actions" />
+                <th>{t('colMemberGroup')}</th>
+                <th>{t('colWorkspaceRole')}</th>
+                <th>{t('colKbRole')}</th>
+                <th>{t('colGrantedBy')}</th>
+                <th className="col-num">{t('colGranted')}</th>
+                <th className="col-shrink" aria-label={t('rowActions')} />
               </tr>
             </thead>
             <tbody>
@@ -419,14 +426,14 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
                   <td>
                     <select
                       className="select"
-                      aria-label="KB role"
+                      aria-label={t('selectKbRoleAria')}
                       defaultValue={m.kbRole}
                       disabled={m.locked}
                       style={{ height: 26, fontSize: 12 }}
                     >
-                      <option value="manage">Manager (full)</option>
-                      <option value="edit">Editor (upload + tune)</option>
-                      <option value="query">Query only</option>
+                      <option value="manage">{t('kbRoleManage')}</option>
+                      <option value="edit">{t('kbRoleEdit')}</option>
+                      <option value="query">{t('kbRoleQuery')}</option>
                     </select>
                   </td>
                   <td className="col-mono text-xs">{m.grantedBy}</td>
@@ -440,7 +447,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
                       <button
                         type="button"
                         className="btn btn-ghost btn-icon btn-xs"
-                        aria-label="Row actions"
+                        aria-label={t('rowActions')}
                       >
                         <MoreHorizontal size={13} aria-hidden="true" />
                       </button>
@@ -459,7 +466,7 @@ export function TabKbAccess({ kbId }: { kbId: string }) {
         style={{ marginTop: 12 }}
         onClick={() => router.push('/users')}
       >
-        Manage all workspace members → /users
+        {t('manageAll')}
       </button>
     </div>
   );

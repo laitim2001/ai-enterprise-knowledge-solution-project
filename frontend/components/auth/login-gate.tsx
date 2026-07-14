@@ -22,6 +22,7 @@
  *    // router.replace('/login') on the definitively-unauthenticated state.
  */
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 
@@ -30,6 +31,7 @@ import { authMode, useAuthHydrated, useAuthStatus } from '@/lib/providers/auth-p
 export function LoginGate({ children }: { children: React.ReactNode }) {
   const status = useAuthStatus();
   const hydrated = useAuthHydrated();
+  const t = useTranslations('LoginGate');
 
   // Mock dev mode auto-signs-in → never gate. Authenticated → pass through.
   if (authMode === 'mock' || status === 'authenticated') {
@@ -55,7 +57,7 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
       {status === 'error' ? (
-        <p className="text-sm text-destructive">Sign-in failed. Please try again.</p>
+        <p className="text-sm text-destructive">{t('signInFailed')}</p>
       ) : (
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
       )}
@@ -63,7 +65,7 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
         href="/login"
         className="text-sm font-medium underline-offset-4 hover:underline"
       >
-        Sign in to continue
+        {t('signInToContinue')}
       </Link>
     </div>
   );
