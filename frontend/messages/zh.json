@@ -277,5 +277,39 @@
     "relativeMinutes": "{mins} 分鐘前",
     "relativeHours": "{hours} 小時前",
     "relativeDays": "{days} 天前"
+  },
+  "Login": {
+    "welcomeBack": "歡迎回來",
+    "subtitle": "使用您的 Ricoh 公司帳戶或電子郵件登入。",
+    "redirecting": "重新導向中…",
+    "ssoMicrosoft": "使用 Microsoft 登入",
+    "dividerEmail": "或使用電子郵件繼續",
+    "workEmail": "公司電子郵件",
+    "password": "密碼",
+    "forgotPassword": "忘記密碼?",
+    "forgotPasswordTitle": "Tier 2 — Beta 後",
+    "signingIn": "登入中…",
+    "signIn": "登入 →",
+    "noAccount": "還沒有帳戶?",
+    "createOne": "建立帳戶",
+    "toastCredsRequired": "需要電子郵件和密碼",
+    "toastWelcome": "歡迎回來,{name}!",
+    "toastSsoSuccess": "已使用 Microsoft 登入。",
+    "toastSsoFailed": "Microsoft 登入失敗。",
+    "toastSignInFailed": "登入失敗。",
+    "toastInvalidCreds": "電子郵件或密碼不正確。",
+    "toastInvalidCredsDesc": "請檢查您的憑證後重試。",
+    "toastEmailNotVerified": "請先驗證您的電子郵件。",
+    "toastEmailNotVerifiedDesc": "請檢查收件匣或重新傳送驗證碼。"
+  },
+  "AuthFrame": {
+    "brandFullName": "企業知識平台",
+    "headline": "植根於您真實文件的知識檢索。",
+    "subtitle": "混合檢索 · Cohere v4.0-pro 重排 · CRAG 自我修正 · 9 階段追蹤 · 圖文錨定引用。",
+    "metricSubCorpus": "Drive Manuals · D365 F&O ERP 語料庫",
+    "metricSubTrace": "每查詢 9 階段 Langfuse 追蹤",
+    "metricSubTokens": "淺色 + 深色,無 Dify 依賴",
+    "langToggleTitle": "語言(Tier 2 — 即將推出)",
+    "langToggleAria": "語言(Tier 2)"
   }
 }

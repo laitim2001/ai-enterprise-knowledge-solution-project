@@ -29,6 +29,7 @@
  */
 
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
@@ -40,6 +41,7 @@ import { AuthErrorCodes, authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/providers/auth-provider';
 
 export default function LoginPage() {
+  const t = useTranslations('Login');
   const router = useRouter();
   const signIn = useAuthStore((s) => s.signIn);
 
@@ -51,7 +53,7 @@ export default function LoginPage() {
   async function handleSelfSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email || !password) {
-      toast.error('Email and password required');
+      toast.error(t('toastCredsRequired'));
       return;
     }
     setIsFormPending(true);
@@ -61,10 +63,10 @@ export default function LoginPage() {
       // store with the real identity (signIn → GET /auth/me in cookie mode) so
       // the AppShell renders the signed-in user instead of the pre-login state.
       await signIn();
-      toast.success(`Welcome back, ${response.user.display_name}!`);
+      toast.success(t('toastWelcome', { name: response.user.display_name }));
       router.push('/dashboard');
     } catch (err) {
-      handleAuthError(err, 'Sign in failed.');
+      handleAuthError(err, t('toastSignInFailed'), t);
     } finally {
       setIsFormPending(false);
     }
@@ -74,11 +76,11 @@ export default function LoginPage() {
     setIsSsoPending(true);
     try {
       await signIn();
-      toast.success('Signed in with Microsoft.');
+      toast.success(t('toastSsoSuccess'));
       router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      toast.error('Microsoft sign-in failed.', { description: message });
+      toast.error(t('toastSsoFailed'), { description: message });
     } finally {
       setIsSsoPending(false);
     }
@@ -100,7 +102,7 @@ export default function LoginPage() {
               marginBottom: 6,
             }}
           >
-            Welcome back
+            {t('welcomeBack')}
           </h1>
           <p
             style={{
@@ -109,7 +111,7 @@ export default function LoginPage() {
               margin: 0,
             }}
           >
-            Sign in with your Ricoh corporate account or with email.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -129,22 +131,22 @@ export default function LoginPage() {
           {isSsoPending ? (
             <>
               <Loader2 className="animate-spin" size={14} />
-              Redirecting…
+              {t('redirecting')}
             </>
           ) : (
             <>
               <MicrosoftIcon />
-              Sign in with Microsoft
+              {t('ssoMicrosoft')}
             </>
           )}
         </button>
 
-        <AuthDivider label="OR continue with email" />
+        <AuthDivider label={t('dividerEmail')} />
 
         {/* Email — mockup lines 23-26 */}
         <div className="field">
           <label className="label" htmlFor="login-email">
-            Work email
+            {t('workEmail')}
           </label>
           <input
             id="login-email"
@@ -167,16 +169,16 @@ export default function LoginPage() {
               htmlFor="login-password"
               style={{ flex: 1, marginBottom: 0 }}
             >
-              Password
+              {t('password')}
             </label>
             <button
               type="button"
               disabled
               aria-disabled="true"
               className="btn btn-ghost btn-xs btn-ghost-muted"
-              title="Tier 2 — post-Beta"
+              title={t('forgotPasswordTitle')}
             >
-              Forgot password?{' '}
+              {t('forgotPassword')}{' '}
               <span
                 className="badge badge-muted"
                 style={{ marginLeft: 4, fontSize: 9.5 }}
@@ -209,10 +211,10 @@ export default function LoginPage() {
           {isFormPending ? (
             <>
               <Loader2 className="animate-spin" size={14} />
-              Signing in…
+              {t('signingIn')}
             </>
           ) : (
-            'Sign in →'
+            t('signIn')
           )}
         </button>
 
@@ -225,7 +227,7 @@ export default function LoginPage() {
             color: 'oklch(var(--muted-foreground))',
           }}
         >
-          Don&apos;t have an account?{' '}
+          {t('noAccount')}{' '}
           <Link
             href="/register"
             style={{
@@ -234,7 +236,7 @@ export default function LoginPage() {
               textDecoration: 'none',
             }}
           >
-            Create one
+            {t('createOne')}
           </Link>
         </div>
 
@@ -262,16 +264,20 @@ export default function LoginPage() {
   );
 }
 
-function handleAuthError(err: unknown, fallbackMessage: string): void {
+function handleAuthError(
+  err: unknown,
+  fallbackMessage: string,
+  t: ReturnType<typeof useTranslations>,
+): void {
   if (err instanceof ApiError) {
     const code = err.code;
     if (code === AuthErrorCodes.INVALID_CREDENTIALS) {
-      toast.error('Email or password is incorrect.', {
-        description: 'Check your credentials and try again.',
+      toast.error(t('toastInvalidCreds'), {
+        description: t('toastInvalidCredsDesc'),
       });
     } else if (code === AuthErrorCodes.EMAIL_NOT_VERIFIED) {
-      toast.error('Verify your email first.', {
-        description: err.actionableHint ?? 'Check your inbox or resend the code.',
+      toast.error(t('toastEmailNotVerified'), {
+        description: err.actionableHint ?? t('toastEmailNotVerifiedDesc'),
       });
     } else {
       toast.error(err.message, {

@@ -24,6 +24,7 @@
  */
 
 import { Globe, Layers, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
@@ -32,6 +33,8 @@ interface AuthFrameProps {
 }
 
 export function AuthFrame({ children }: AuthFrameProps) {
+  const t = useTranslations('AuthFrame');
+  const tTheme = useTranslations('ThemeToggle');
   const { resolvedTheme, setTheme } = useTheme();
   // `next-themes` resolves the theme only on the client (it reads localStorage
   // / the system preference), so `resolvedTheme` is undefined during SSR. We
@@ -106,7 +109,7 @@ export function AuthFrame({ children }: AuthFrameProps) {
           </div>
           <div>
             <div style={{ fontWeight: 600, fontSize: 15 }}>
-              Enterprise Knowledge Platform
+              {t('brandFullName')}
             </div>
             <div
               style={{
@@ -139,7 +142,7 @@ export function AuthFrame({ children }: AuthFrameProps) {
               textWrap: 'balance',
             }}
           >
-            Knowledge retrieval, grounded in your real documents.
+            {t('headline')}
           </div>
           <div
             style={{
@@ -149,7 +152,7 @@ export function AuthFrame({ children }: AuthFrameProps) {
               maxWidth: 380,
             }}
           >
-            Hybrid retrieval · Cohere v4.0-pro rerank · CRAG self-correction · 9-stage trace · Image-grounded citations.
+            {t('subtitle')}
           </div>
 
           <div
@@ -161,13 +164,11 @@ export function AuthFrame({ children }: AuthFrameProps) {
               fontSize: 12.5,
             }}
           >
-            {(
-              [
-                ['R@5 = 97.2%', 'Drive Manuals · D365 F&O ERP corpus'],
-                ['P95 latency 4.2s', '9-stage Langfuse trace per query'],
-                ['100% oklch tokens', 'Light + dark, no Dify dependency'],
-              ] as const
-            ).map(([metric, sub]) => (
+            {[
+              ['R@5 = 97.2%', t('metricSubCorpus')],
+              ['P95 latency 4.2s', t('metricSubTrace')],
+              ['100% oklch tokens', t('metricSubTokens')],
+            ].map(([metric, sub]) => (
               <div
                 key={metric}
                 style={{ display: 'flex', gap: 12, alignItems: 'center' }}
@@ -223,20 +224,21 @@ export function AuthFrame({ children }: AuthFrameProps) {
           <button
             type="button"
             className="btn btn-ghost btn-icon btn-sm"
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? tTheme('switchToLight') : tTheme('switchToDark')}
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            aria-label="Toggle theme"
+            aria-label={tTheme('toggleTheme')}
           >
             {isDark ? <Sparkles size={14} /> : <Layers size={14} />}
           </button>
-          {/* Language toggle — Tier 2 disabled per W19 F5 catalog */}
+          {/* Language toggle — Tier 2 disabled per W19 F5 catalog (F6 login-page
+              language toggle 正式化待處理 — content 已 Tier 1 但此處保持 disabled) */}
           <button
             type="button"
             disabled
             aria-disabled="true"
             className="btn btn-ghost btn-icon btn-sm"
-            title="Language (Tier 2 — coming soon)"
-            aria-label="Language (Tier 2)"
+            title={t('langToggleTitle')}
+            aria-label={t('langToggleAria')}
             style={{ opacity: 0.5, cursor: 'default' }}
           >
             <Globe size={14} />

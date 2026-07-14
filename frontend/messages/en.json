@@ -277,5 +277,39 @@
     "relativeMinutes": "{mins}m ago",
     "relativeHours": "{hours}h ago",
     "relativeDays": "{days}d ago"
+  },
+  "Login": {
+    "welcomeBack": "Welcome back",
+    "subtitle": "Sign in with your Ricoh corporate account or with email.",
+    "redirecting": "Redirecting…",
+    "ssoMicrosoft": "Sign in with Microsoft",
+    "dividerEmail": "OR continue with email",
+    "workEmail": "Work email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Tier 2 — post-Beta",
+    "signingIn": "Signing in…",
+    "signIn": "Sign in →",
+    "noAccount": "Don't have an account?",
+    "createOne": "Create one",
+    "toastCredsRequired": "Email and password required",
+    "toastWelcome": "Welcome back, {name}!",
+    "toastSsoSuccess": "Signed in with Microsoft.",
+    "toastSsoFailed": "Microsoft sign-in failed.",
+    "toastSignInFailed": "Sign in failed.",
+    "toastInvalidCreds": "Email or password is incorrect.",
+    "toastInvalidCredsDesc": "Check your credentials and try again.",
+    "toastEmailNotVerified": "Verify your email first.",
+    "toastEmailNotVerifiedDesc": "Check your inbox or resend the code."
+  },
+  "AuthFrame": {
+    "brandFullName": "Enterprise Knowledge Platform",
+    "headline": "Knowledge retrieval, grounded in your real documents.",
+    "subtitle": "Hybrid retrieval · Cohere v4.0-pro rerank · CRAG self-correction · 9-stage trace · Image-grounded citations.",
+    "metricSubCorpus": "Drive Manuals · D365 F&O ERP corpus",
+    "metricSubTrace": "9-stage Langfuse trace per query",
+    "metricSubTokens": "Light + dark, no Dify dependency",
+    "langToggleTitle": "Language (Tier 2 — coming soon)",
+    "langToggleAria": "Language (Tier 2)"
   }
 }

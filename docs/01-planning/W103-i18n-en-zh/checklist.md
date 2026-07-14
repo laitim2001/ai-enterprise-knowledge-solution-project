@@ -24,7 +24,7 @@
 
 ## F4 — en dictionary externalize(🚧 增量進行中)
 - [x] F4.1 en messages 骨架 + t() wiring pattern 定(批 1a:Nav/Breadcrumb/Shell/TopBar/LanguageToggle namespace + `useTranslations` client pattern + `t.has()` breadcrumb guard)
-- [ ] F4.2 core flow view externalize(分批:**app-shell ✅ 批 1a** / **dashboard ✅ 批 1b** / **kb-list ✅ 批 2** / **topbar 3 組件 ✅ 批 3**(theme-toggle/notifications-menu/user-menu)/ **users ✅ 批 4**(4 tab + 3 dialog + StatCard;role 專有名 / status badge / TIER 2 / T2 / vendor / ADR / API 路徑保留英文;role-gated 深層視覺待 backend 起驗)/ chat / kb-detail / docs / settings / integrations / login;**Labs Tier 2 items 待後續** — labels 多技術名 + "Multi-Language" reason F1 promote 後 stale,連 F6 一併釐清)
+- [ ] F4.2 core flow view externalize(分批:**app-shell ✅ 批 1a** / **dashboard ✅ 批 1b** / **kb-list ✅ 批 2** / **topbar 3 組件 ✅ 批 3**(theme-toggle/notifications-menu/user-menu)/ **users ✅ 批 4**(4 tab + 3 dialog + StatCard;role 專有名 / status badge / TIER 2 / T2 / vendor / ADR / API 路徑保留英文;role-gated 深層視覺待 backend 起驗)/ chat / kb-detail / docs / settings / integrations / **login ✅ 批 5**(login/page.tsx + AuthFrame login/register 共用 frame;auth-modes / MSAL / build footer / metric 值 / vendor 保留英文);**Labs Tier 2 items 待後續** — labels 多技術名 + "Multi-Language" reason F1 promote 後 stale,連 F6 一併釐清)
 - [ ] F4.3 CH-023 那 7 檔 externalize(已英文 hardcode → 抽 dict)
 - [ ] F4.4 grep 無 en chrome hardcode 殘留(動態拼接走查)
 
