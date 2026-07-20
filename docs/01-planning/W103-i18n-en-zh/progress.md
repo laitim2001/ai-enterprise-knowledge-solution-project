@@ -76,4 +76,32 @@
 **下一步**:F7 餘 **F7.3**(Vitest 切換態)+ **F7.4**(`next build` clean,含 B-26 font MITM workaround)+ **F3.4**(CJK font stack,🚧 defer 到此)。之後 **F5.2 glossary**(乙類術語不一致:chunk 譯「區塊」vs 保留「Chunks」/ `Settings.tabIdentity` 疑似漏譯 / 86 條純英文值逐條定去留)→ **F5.3 用戶校對** → **F6**(toggle 正式化 + Labs & Settings 語言組 stale)→ **F8** closeout。
 
 **Commits**:
-- (本批 commit)W103 F7.1/F7.2 走查 + 甲類 stale 修正(Labs reason / AuthFrame 語言鈕)+ 丙類標點全量正規化 62 條 + audit-log lint 清理。
+- `7dba27e`(PR #18 rebase-merge → main `babd8c9`)W103 F7.1/F7.2 走查 + 甲類 stale 修正(Labs reason / AuthFrame 語言鈕)+ 丙類標點全量正規化 62 條 + audit-log lint 清理。
+- (本批 commit)W103 F7.3 Vitest i18n 修復 + 16 條新測試 + F7.4 build clean。
+
+---
+
+### Day 2 續 — F7.3 / F7.4(收齊 F7)
+
+**F7.3 揭出並修好 W103 引入的重大回歸**:
+- **症狀**:`vitest run` → **24 檔 / 95 test 失敗**,全部同一句 `Failed to call useTranslations because the context from NextIntlClientProvider was not found`。externalize 令幾乎每個組件依賴 i18n context,但 unit test 直接 render、冇 provider。
+- **點解拖到而家先爆**:前面每批只跑 `tsc` + `eslint`;而 `frontend-deploy.yml` 的 `lint-and-build` **從來冇跑 vitest** → 零 CI 覆蓋。
+- **修法**:`tests/unit/setup.ts` 全域 `vi.mock('next-intl')`,用 **next-intl 官方 `createTranslator`** 接管 `useTranslations` / `useLocale`。特意**唔手寫假 translator** —— 官方實作保證 `t()` / `t.rich()` / `t.has()` 同 ICU 格式化行為一致,避免「測試綠但真實 render 爆」的假綠。字典預設 en → **既有 24 個測試檔零改動**。
+- **效能**:初版每次 `useTranslations()` 都重建 translator,ICU 初始化疊加令全套慢 15 倍(chat-meta-row 908ms → 13.5s)。加 (locale, namespace) 快取後 **112s → 62s,比 i18n 之前仲快**。
+- **新增 16 條測試(2 檔,全綠)**:`i18n-dictionaries.test.ts`(零組件依賴的字典守門:key / ICU 參數 / rich tag 對稱 + 無空值 + **中文排版回歸**〔守住丙類正規化,按拍板豁免括號〕+ 保留清單抽樣)/ `i18n-locale-switch.test.tsx`(切換態:組件跟 locale 走、zh 態唔再 match 英文、ICU 參數兩態都代入)。新建 `i18n-locale.ts` 提供 `setTestLocale()`,setup 每個 test 後自動 reset。
+
+**餘 18 條失敗 —— 逐條查證全屬 pre-existing,非 W103**:
+
+| 失敗檔 | 條數 | 根因 | 時序證據 |
+|---|---|---|---|
+| kb-settings-tuning / doc-config-tab / kb-settings-reindex | 16 | 測試斷言中文文案,但 **CH-023 已把 UI 改英文** | CH-023 `3221d38` = 2026-07-09;三個測試檔最後改動 = 06-05 / 06-09 / 06-12。W103 kickoff = 07-14 |
+| kb-detail | 1 | `IMAGE_DENSE_PRESET` mock 缺 export → 組件 throw、body 空 | 引入 commit `7075526` 距今 **177 個 commit** |
+| chat-meta-row | 1 | W83 section badge 令 `querySelector('.badge.badge-muted')` 攞到第一個(capped 8)而非 gallery 總數(10) | 引入 commit `25ef5ad`(W83 ADR-0064)距今 **191 個 commit** |
+
+**F7.4 build clean**:`tsc --noEmit` EXIT=0 · `next lint` EXIT=0 · **`next build` EXIT=0(17 route 全生成)**。過程要先停 frontend dev server(避免同 `.next` 相爭,memory 有記錄呢種損壞),build 前後各 wipe 一次 `.next`,完成後以 WMI detached 重啟(parent = WmiPrvSE)。**build 的 type-check 捉到兩個我新寫 `setup.ts` 的型別問題**(`createTranslator` 由 messages 推導的型別 vs `useTranslations` 的全域 `IntlMessages`;namespace 要 literal union)—— 用單一 loose 簽名把 cast 收斂喺一點。
+
+**Decision / deviation(R3)**:
+- **pre-existing 測試失敗唔喺 W103 修**:18 條全部有時序證據證明早於本 phase(最遠 191 個 commit)。按 Karpathy §1.3「只清自己製造的 mess」,W103 只負責修 provider 回歸;呢 18 條應另開 Bug-fix / Change instance,並記入 BACKLOG。
+- **`frontend-deploy.yml` 冇跑 vitest = 制度性缺口**:呢個先係「積咗一個月冇人發現」的根因(W103 自己嗰 95 條、pre-existing 嗰 18 條,都係同一個窿漏出去)。補 CI 步驟屬 workflow 改動(非 W103 scope)→ 已記 **BACKLOG B-27**。
+- **BACKLOG 舊條目升級**:W101 早已記錄「14 個既有 frontend test fail…疑 kb config schema 演進後 test stale」。今次以 commit 時序逐條查實根因(CH-023 中文→英文 / `IMAGE_DENSE_PRESET` mock / W83 badge),數字校正為 **18 條 5 檔**,由「疑」升級為「確認 + 修法明確」。W101 用 `git diff` 證、W103 用 commit 時序證 —— 兩條獨立證據鏈結論一致。
+- **測試 flakiness(新觀察)**:機器負載高時 `chat-bug034` / `chat-inline-image-interleave` 各有 1 條會因 async 等待逾時假紅 —— 全套 133 秒嗰次紅,單獨跑 33 秒嗰次 **6/6 全綠**。故**穩定基線 = 5 檔 / 18 條**,唔係 7 檔 / 20 條。入 CI 之前宜先調 `testTimeout`(已記入 B-27)。
