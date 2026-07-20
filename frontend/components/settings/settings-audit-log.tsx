@@ -71,6 +71,9 @@ export function SettingsAuditLog() {
     return () => {
       cancelled = true;
     };
+    // `t` 只用於 error fallback 文案,不入 deps —— 否則 translator identity 變動
+    // 會觸發整份 audit log 重新抓取。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFilter, since]);
 
   const loadMore = useCallback(() => {
@@ -91,6 +94,8 @@ export function SettingsAuditLog() {
         setError(errMessage(err, t('errFallbackLoadMore')));
       })
       .finally(() => setLoadingMore(false));
+    // `t` 同上 —— 只用於 error fallback,不入 deps。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextCursor, loadingMore, actionFilter, since]);
 
   return (

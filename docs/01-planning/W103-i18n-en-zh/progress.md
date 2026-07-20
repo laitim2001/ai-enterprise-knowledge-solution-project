@@ -52,3 +52,28 @@
 - `900bb39` — W103 F4 批 8 剩餘 view 並行 subagent × 5 externalize + 15 namespace merge(settings 7 / kb-detail 3 / kb-new+upload 2 / integrations 1 / observability 2;F4.2 剩餘 + F4.3 CH-023 全 ✅)。
 - (本批 commit)W103 F4.4 補漏 — 6 個漏網 shared component externalize + 6 namespace merge(GlobalSearch / KbAccess / ApiKeyInput / DeploymentsTable / ErrorBoundary / LoginGate);notProvisioned ICU 修正。F4 全部完成。
 - _註:批 5–8(pre-rebase `813b84a`…`8c15e1c`)經 PR #16 rebase-merge,main 實際 hash 已重寫(`a49ec75` / `0b48b8a` / `900bb39` 等);上列 pre-rebase hash 保留作 audit,不逐一回填。_
+
+## Day 2(2026-07-20)— F7.1 / F7.2 走查 + stale 修正 + 標點正規化
+
+**Context**:F4 全部完成後,用戶揀先做 **(甲)F7.1/F7.2 browser 逐 view 走查**(捉爆版 / 漏譯 / render 問題),再按走查結果修甲類 stale + 丙類標點。
+
+**已做**:
+- **F7.1 + F7.2 走查完成**(Playwright,1440px + 390px 雙寬度,9 view):
+  - **en 零回歸**:零 raw key 洩漏、文案與 i18n 前一致、breadcrumb + kb-detail 8 tab 結構未變。
+  - **zh 零爆版回歸**:1440px 九 view 程式化溢出檢查**全部零溢出**;390px 有 5 處溢出,但 **en 態同樣 5 處且溢出量更大**(topbar 356 vs 267 / stat-grid 404 vs 265 / content-wide 950 vs 789)→ 屬 pre-existing responsive 行為,中文較短反而更緊湊。
+  - 語言切換機制實測正常:cookie 寫入 → `<html lang>` 翻轉 → SSR 重讀。
+  - **方法論**:browser 走查捉爆版有效但捉漏譯不全 → 補 **靜態全量掃描**(1588 條逐條驗)。兩者互補,單靠 browser 會漏。
+- **甲類 stale 修正**(2 處):`app-shell.tsx` Labs reason 改「Japanese UI + content translation — Tier 2 (en / zh UI shipped per ADR-0075)」;`AuthFrame` 語言鈕去掉 Tier 2 錯誤歸類(保持 disabled 等 F6 接線)+ comment 同步。**Labs 8 項未 externalize**(技術名譯法屬 F6 決定,不單方面做)。
+- **丙類標點全量正規化**(62 條):寫試跑腳本 → 逐條審差異 → 寫入。規則**保守**:只轉緊鄰中文的標點,ICU 佔位符 / rich tag / URL 全程哨兵保護。審差異時補兩條規則:全形括號自帶留白(清左括號前殘留空格)、佔位符後的結尾 `!` / `?`。另補修 3 處規則漏網:`KbList` 拼接句(左右括號分散兩條 key,配對規則捉不到)、`rbacBannerDesc` 的 `Tier 1:` / `Tier 2:`(冒號前是數字)。
+- **順手清理 W103 自身製造的 lint 警告**:`settings-audit-log.tsx` 兩個 `t` 缺 dependency —— 用註解 + 停用該規則(零行為改變;若加入 deps,translator identity 一變會整份稽核日誌重抓)。
+- **驗證**:1588/1588 鍵 · 零缺漏零多餘 · ICU 解析 0 失敗 · **佔位符對稱 ✅ · rich tag 對稱 ✅**(新增兩項檢查,防批次改寫破壞 ICU)· `tsc` EXIT=0 · `next lint` EXIT=0(剩一個 `<img>` 警告屬 pre-existing)· browser 抽驗拼接句正確 render。
+
+**Decision / deviation(R3)**:
+- **括號風格拍板 = 保持半形 + 空格**(2026-07-20 用戶 AskUserQuestion)—— 殘留掃描發現 27 條「中文標籤 + 空格 + 半形括號包純西文」(`應用程式 (client) ID` / `圖片密度 (img_density)`),**本身已一致**,不屬「同句混用」;純西文用半形括號是通行中英混排慣例,可讀性較好且與 mono 技術詞視覺一致。故正規化**不涵蓋**此 pattern。
+- **Settings 語言鍵組(第 3 處 stale)→ 留 F6**(2026-07-20 用戶拍板):`languageDesc` / `languageReason` / `languageTier2` 仍寫 Tier 2,且控制項是 disabled Tier 2 樣式。單改文案會與「頂欄已有可用切換」矛盾 —— 接線與否同屬 F6 正式化決定,分開做會改兩次。
+- **F7.1 驗證方式說明**:非逐 view 肉眼對 mockup。i18n 只換文字來源、不動 DOM / CSS,故以「程式化溢出檢查 + 文案一致性 + 結構未變」覆蓋零回歸;真正的 mockup fidelity 基線由 W22 UI sprint 建立,本 phase 無 layout 改動。
+
+**下一步**:F7 餘 **F7.3**(Vitest 切換態)+ **F7.4**(`next build` clean,含 B-26 font MITM workaround)+ **F3.4**(CJK font stack,🚧 defer 到此)。之後 **F5.2 glossary**(乙類術語不一致:chunk 譯「區塊」vs 保留「Chunks」/ `Settings.tabIdentity` 疑似漏譯 / 86 條純英文值逐條定去留)→ **F5.3 用戶校對** → **F6**(toggle 正式化 + Labs & Settings 語言組 stale)→ **F8** closeout。
+
+**Commits**:
+- (本批 commit)W103 F7.1/F7.2 走查 + 甲類 stale 修正(Labs reason / AuthFrame 語言鈕)+ 丙類標點全量正規化 62 條 + audit-log lint 清理。

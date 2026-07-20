@@ -133,7 +133,7 @@ interface LabsItem {
 const LABS_NAV: LabsItem[] = [
   { label: 'GraphRAG', Icon: Layers, reason: 'Knowledge-graph retrieval — Tier 2', trigger: 'graph-rag retrieval' },
   { label: 'Multi-Agent', Icon: Cpu, reason: 'Multi-agent orchestration — Tier 2', trigger: 'agent-orchestration' },
-  { label: 'Multi-Language', Icon: Globe, reason: 'Multi-language (JP / ZH) — Tier 2', trigger: 'i18n machinery' },
+  { label: 'Multi-Language', Icon: Globe, reason: 'Japanese UI + content translation — Tier 2 (en / zh UI shipped per ADR-0075)', trigger: 'i18n machinery' },
   { label: 'Voice I/O', Icon: Send, reason: 'Voice input / output — Tier 2', trigger: 'voice-io machinery' },
   { label: 'Fine-Tune', Icon: Sparkles, reason: 'Custom LLM fine-tuning — Tier 2', trigger: 'fine-tuning pipeline' },
   { label: 'Workflow Builder', Icon: Zap, reason: 'No-code workflow builder — Tier 2', trigger: 'workflow plugin builder' },

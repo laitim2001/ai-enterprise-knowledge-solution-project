@@ -230,8 +230,8 @@ export function AuthFrame({ children }: AuthFrameProps) {
           >
             {isDark ? <Sparkles size={14} /> : <Layers size={14} />}
           </button>
-          {/* Language toggle — Tier 2 disabled per W19 F5 catalog (F6 login-page
-              language toggle 正式化待處理 — content 已 Tier 1 但此處保持 disabled) */}
+          {/* Language toggle — 保持 disabled 等 F6 正式化 (en / zh 已 Tier 1 per
+              ADR-0075,所以唔再標 Tier 2;登入頁 toggle 未接線,故仍 coming-soon) */}
           <button
             type="button"
             disabled

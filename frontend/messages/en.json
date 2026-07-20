@@ -309,8 +309,8 @@
     "metricSubCorpus": "Drive Manuals · D365 F&O ERP corpus",
     "metricSubTrace": "9-stage Langfuse trace per query",
     "metricSubTokens": "Light + dark, no Dify dependency",
-    "langToggleTitle": "Language (Tier 2 — coming soon)",
-    "langToggleAria": "Language (Tier 2)"
+    "langToggleTitle": "Language — coming soon",
+    "langToggleAria": "Language"
   },
   "Register": {
     "createAccount": "Create your account",

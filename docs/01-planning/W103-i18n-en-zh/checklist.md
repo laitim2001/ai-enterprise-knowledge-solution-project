@@ -39,8 +39,8 @@
 - [x] F6.3 切換持久化(`NEXT_LOCALE` cookie 1yr)— reload / 重進保持
 
 ## F7 — H7 design sub-gate + test
-- [ ] F7.1 en 態逐 view 對齊 mockup(零回歸)
-- [ ] F7.2 zh 態逐 view 走查(文字長度唔撐爆 layout)
+- [x] F7.1 en 態逐 view 對齊 mockup(零回歸)—— 走查 9 view(dashboard / chat / kb / kb-detail / settings / users / traces / integrations / eval):**零 raw key 洩漏**、文案與 i18n 前一致、breadcrumb(en 仍「Knowledge › Knowledge Base」)+ kb-detail 8 tab 結構未變;layout 用程式化溢出檢查(1440px 九頁零溢出)。**note**:非逐 view 肉眼對 mockup —— i18n 只換文字來源不動 DOM/CSS,visual 由溢出檢查 + 文案一致性覆蓋
+- [x] F7.2 zh 態逐 view 走查(文字長度唔撐爆 layout)—— 1440px 九 view **全部零溢出**;390px 有 5 處溢出但 **en 態同樣 5 處且量更大**(topbar 356 vs 267 / stat-grid 404 vs 265 / content-wide 950 vs 789)→ pre-existing responsive 行為,中文較短反而更緊湊 = **zh 零爆版回歸**。捉到 4 類文案問題:甲 stale(已修 2 處 + 第 3 處 Settings 組留 F6)/ 乙 術語不一致(留 F5.2 glossary)/ 丙 標點(已全量正規化)/ 丁 譯文撞名致 breadcrumb 資訊丟失(留 F5.3)
 - [ ] F7.3 Vitest 切換態 + 關鍵 view
 - [ ] F7.4 tsc / eslint / build clean(碰 backend 則 ruff / mypy strict)
 
