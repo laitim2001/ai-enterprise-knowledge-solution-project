@@ -35,7 +35,7 @@
 
 ## F6 — Language toggle 啟用
 - [x] F6.1 定位 mockup disabled Language toggle 現實作位置(app-shell TopBar,原 DisabledAffordance 包 disabled Globe)
-- [ ] F6.2 disabled → enabled + 綁 locale 切換 — 批 1a **臨時通線版**(`language-toggle.tsx`:Globe 點擊 en↔zh cycle + `NEXT_LOCALE` cookie + router.refresh);**正式 UI 形態(Globe cycle vs dropdown)+ H7 mockup 對齊待 F6 正式化**(mockup 只有 disabled 版)
+- [x] F6.2 disabled → enabled + 綁 locale 切換 —— **正式版落地(2026-07-21)**。**H7 前提修正**:mockup 原來有完整 enabled 設計(`ekp-shell.jsx:104-134` LanguageMenu PopMenu 260px:code 欄 + native 語言名 + active 剔號 + Tier 2 badge + footer),批 1a 嘅「mockup 只有 disabled 版」判斷係錯 → 形態唔使二選一,正解 = 跟 mockup PopMenu。用戶拍板 3 項(AskUserQuestion):①形態跟 mockup PopMenu ②footer(原導向 prototype-only labs route)保留結構改 disabled 提示 ③Settings select enable 接 locale。**Design-stage 內容修正(per ADR-0075)**:mockup zh label「简体中文」→「繁體中文」/ en+zh enabled 剔號隨 locale、ja 保持 Tier 2 disabled / header 副題 ADR-0024 stale → ADR-0075。實作:`language-toggle.tsx` 重寫(portal pattern 同 notifications-menu 一致,menuTop / menuRight props 供登入頁錨點)+ `auth-frame.tsx` 登入頁 disabled Globe → 正式接線 + `settings/page.tsx` 語言 select enable(en / zh / ja-disabled,同 topbar cookie 同源)+ **Settings 語言組 3 條 stale 鍵清刪**(languageReason / languageTier2 + languageDesc 改寫)+ orphan 鍵清理(LanguageToggle.english / chinese、AuthFrame.langToggle×2)。驗證:parity 1588/1588 · ICU 0 fail · tsc / lint EXIT=0 · vitest 相關 5 檔 30/30。**🚧 browser 視覺走查 deferred**(playwright MCP 斷線 + Chrome extension localhost 導航失敗 ×2 即停)—— 用戶手動或工具恢復後補
 - [x] F6.3 切換持久化(`NEXT_LOCALE` cookie 1yr)— reload / 重進保持
 
 ## F7 — H7 design sub-gate + test

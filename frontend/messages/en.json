@@ -6,8 +6,10 @@
   "LanguageToggle": {
     "label": "Language",
     "ariaLabel": "Switch language",
-    "english": "English",
-    "chinese": "繁體中文"
+    "menuTitle": "Display language",
+    "menuSubtitle": "Per ADR-0075 · en / zh Tier 1 · JP is Tier 2",
+    "tier2Badge": "Tier 2",
+    "footerJapanese": "Japanese UI — Tier 2 (coming later)"
   },
   "Nav": {
     "sectionWorkspace": "Workspace",
@@ -308,9 +310,7 @@
     "subtitle": "Hybrid retrieval · Cohere v4.0-pro rerank · CRAG self-correction · 9-stage trace · Image-grounded citations.",
     "metricSubCorpus": "Drive Manuals · D365 F&O ERP corpus",
     "metricSubTrace": "9-stage Langfuse trace per query",
-    "metricSubTokens": "Light + dark, no Dify dependency",
-    "langToggleTitle": "Language — coming soon",
-    "langToggleAria": "Language"
+    "metricSubTokens": "Light + dark, no Dify dependency"
   },
   "Register": {
     "createAccount": "Create your account",
@@ -473,11 +473,11 @@
     "densityComfortable": "Comfortable",
     "densityCompact": "Compact",
     "languageLabel": "Language",
-    "languageDesc": "JP / ZH support is Tier 2 — disabled per ADR-0024",
-    "languageReason": "Wave D+ — multi-language support (JP / ZH) is Tier 2 scope",
-    "languageTier2": "Tier 2 — post-Beta scope",
+    "languageDesc": "Display language (English / 繁體中文) · Japanese UI is Tier 2 per ADR-0075",
     "languageSelectAria": "Language",
     "languageOptionEnglish": "English",
+    "languageOptionChinese": "繁體中文",
+    "languageOptionJapanese": "日本語 (Tier 2)",
     "sessionTitle": "Session",
     "rotateSession": "Rotate session",
     "rotateReason": "Wave C+ — session rotation requires re-MSAL flow + token refresh",

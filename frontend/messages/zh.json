@@ -6,8 +6,10 @@
   "LanguageToggle": {
     "label": "語言",
     "ariaLabel": "切換語言",
-    "english": "English",
-    "chinese": "繁體中文"
+    "menuTitle": "顯示語言",
+    "menuSubtitle": "依 ADR-0075 · en / zh Tier 1 · 日文屬 Tier 2",
+    "tier2Badge": "Tier 2",
+    "footerJapanese": "日文 UI — Tier 2（稍後推出）"
   },
   "Nav": {
     "sectionWorkspace": "工作區",
@@ -308,9 +310,7 @@
     "subtitle": "混合檢索 · Cohere v4.0-pro 重排 · CRAG 自我修正 · 9 階段追蹤 · 圖文錨定引用。",
     "metricSubCorpus": "Drive Manuals · D365 F&O ERP 語料庫",
     "metricSubTrace": "每查詢 9 階段 Langfuse 追蹤",
-    "metricSubTokens": "淺色 + 深色，無 Dify 依賴",
-    "langToggleTitle": "語言 — 即將推出",
-    "langToggleAria": "語言"
+    "metricSubTokens": "淺色 + 深色，無 Dify 依賴"
   },
   "Register": {
     "createAccount": "建立您的帳戶",
@@ -473,11 +473,11 @@
     "densityComfortable": "Comfortable",
     "densityCompact": "Compact",
     "languageLabel": "語言",
-    "languageDesc": "JP / ZH 支援屬 Tier 2 — 依 ADR-0024 停用",
-    "languageReason": "Wave D+ — 多語言支援 (JP / ZH) 屬 Tier 2 範圍",
-    "languageTier2": "Tier 2 — post-Beta 範圍",
+    "languageDesc": "顯示語言（English / 繁體中文）· 日文 UI 屬 Tier 2（依 ADR-0075）",
     "languageSelectAria": "語言",
     "languageOptionEnglish": "English",
+    "languageOptionChinese": "繁體中文",
+    "languageOptionJapanese": "日本語 (Tier 2)",
     "sessionTitle": "工作階段",
     "rotateSession": "輪替工作階段",
     "rotateReason": "Wave C+ — 工作階段輪替需要重新走 MSAL 流程 + token refresh",

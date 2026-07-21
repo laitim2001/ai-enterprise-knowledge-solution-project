@@ -23,10 +23,12 @@
  * Mockup decorative SVG dot pattern preserved 1:1.
  */
 
-import { Globe, Layers, Sparkles } from 'lucide-react';
+import { Layers, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+
+import { LanguageToggle } from '@/components/nav/language-toggle';
 
 interface AuthFrameProps {
   children: React.ReactNode;
@@ -230,19 +232,9 @@ export function AuthFrame({ children }: AuthFrameProps) {
           >
             {isDark ? <Sparkles size={14} /> : <Layers size={14} />}
           </button>
-          {/* Language toggle — 保持 disabled 等 F6 正式化 (en / zh 已 Tier 1 per
-              ADR-0075,所以唔再標 Tier 2;登入頁 toggle 未接線,故仍 coming-soon) */}
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="btn btn-ghost btn-icon btn-sm"
-            title={t('langToggleTitle')}
-            aria-label={t('langToggleAria')}
-            style={{ opacity: 0.5, cursor: 'default' }}
-          >
-            <Globe size={14} />
-          </button>
+          {/* Language toggle — W103 F6.2 正式接線(同 topbar 同一 PopMenu 組件;
+              登入頁冇 .topbar,menuTop / menuRight 按 form-pane toggle row 錨)。 */}
+          <LanguageToggle menuTop="74px" menuRight={48} />
         </div>
 
         {/* Centred form area */}

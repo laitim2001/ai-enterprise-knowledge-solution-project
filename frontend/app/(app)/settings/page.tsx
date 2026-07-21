@@ -47,7 +47,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -55,6 +55,7 @@ import {
   useCallback,
   useEffect,
   useState,
+  useTransition,
   type ReactNode,
 } from 'react';
 
@@ -310,8 +311,18 @@ function AppearanceTab({
   setTheme: (theme: string) => void;
 }) {
   const t = useTranslations('Settings');
+  const locale = useLocale();
+  const router = useRouter();
+  const [, startLocaleTransition] = useTransition();
   const isLight = mounted && resolvedTheme === 'light';
   const isDark = mounted && resolvedTheme === 'dark';
+
+  // W103 F6.2 — 同 topbar LanguageToggle 同源(NEXT_LOCALE cookie,D-2 甲)。
+  function selectLocale(code: string) {
+    if (code === locale) return;
+    document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; samesite=lax`;
+    startLocaleTransition(() => router.refresh());
+  }
 
   return (
     <div className="card">
@@ -385,15 +396,20 @@ function AppearanceTab({
             </div>
             <div className="text-xs muted">{t('languageDesc')}</div>
           </div>
-          <DisabledAffordance
-            variant="p1-strict"
-            reason={t('languageReason')}
-            tier2Trigger={t('languageTier2')}
+          {/* W103 F6.2 — DisabledAffordance 移除,select 接 locale(en / zh 已
+              Tier 1 per ADR-0075;ja 保持 disabled option)。 */}
+          <select
+            className="select"
+            aria-label={t('languageSelectAria')}
+            value={locale}
+            onChange={(e) => selectLocale(e.target.value)}
           >
-            <select className="select" disabled aria-label={t('languageSelectAria')}>
-              <option>{t('languageOptionEnglish')}</option>
-            </select>
-          </DisabledAffordance>
+            <option value="en">{t('languageOptionEnglish')}</option>
+            <option value="zh">{t('languageOptionChinese')}</option>
+            <option value="ja" disabled>
+              {t('languageOptionJapanese')}
+            </option>
+          </select>
         </div>
       </div>
     </div>
