@@ -145,3 +145,24 @@
 **驗證**:parity 1588/1588 · ICU 0 fail · placeholder / tag 對稱 · 殘留掃描零真殘留(11 條全豁免項)· i18n 守門測試 16/16。
 
 **F5.3 前置就緒**:glossary 已定 + 術語已統一 → 用戶校對時有一致基準,唔使逐條糾結譯法。
+
+---
+
+### Day 3 續 2 — F6.2 language toggle 正式化 + Settings 語言組清 stale
+
+**H7 前提修正(重要)**:F4 批 1a 記錄嘅「mockup 只有 disabled Globe,冇 enabled 互動設計」係**錯**—— `ekp-shell.jsx:104-134` 一直有完整 `LanguageMenu`:Globe = PopMenu trigger,菜單 260px(mono code 欄 + native 語言名 + active 剔號 accent + disabled 行 opacity .5 + Tier 2 badge + footer)。教訓:**當初斷言「mockup 冇」之前應該 grep 埋 `ekp-shell.jsx`,唔止睇 page-level jsx**(同 R6 pre-active-flip grep 精神一致)。所以 F6.2 形態唔使二選一 —— H7 正解就係跟 mockup。
+
+**用戶拍板(2026-07-21 AskUserQuestion,3 項)**:①topbar 形態跟 mockup PopMenu ②mockup footer「Preview JP / ZH support (Labs) →」導向 prototype-only route → 保留結構、內容改 disabled 提示(日文 UI — Tier 2)③Settings 外觀分頁語言 select enable 接 locale(唔係指向 topbar)。
+
+**Design-stage 內容修正(唔使問,per ADR-0075 明顯正解)**:mockup zh label「简体中文」→「繁體中文」(promote 嘅係繁體 UI chrome);en / zh enabled(剔號隨 locale)、ja 保持 Tier 2 disabled;header 副題「Per ADR-0024 · JP/ZH disabled in Tier 1」stale → 「Per ADR-0075 · en / zh Tier 1 · JP is Tier 2」。
+
+**實作**:
+- `language-toggle.tsx` 重寫:portal PopMenu(pattern 同 `notifications-menu.tsx` 完全一致 —— createPortal + click-outside `[data-popmenu-trigger]` `.closest()` 檢查 + `position: fixed` viewport 錨定;Radix DropdownMenu 係 anti-pattern per DESIGN_SYSTEM.md §4);mockup 參數 width=260 / right=138;`menuTop` / `menuRight` props 供登入頁錨點覆寫。
+- `auth-frame.tsx`:登入頁 disabled Globe → `<LanguageToggle menuTop="74px" menuRight={48} />` 正式接線(F4 批 5 嘅「等 F6」carry-over 清咗)。
+- `settings/page.tsx` AppearanceTab:語言 select 拿走 `DisabledAffordance`,enable + `value={locale}` + onChange 寫 cookie + `router.refresh()`(同 topbar 同源);option en / zh / ja(disabled)。
+- **字典清理(+6 −6,總數 1588 不變)**:LanguageToggle 加 menuTitle / menuSubtitle / tier2Badge / footerJapanese、刪 english / chinese(cycle 版 orphan);Settings 刪 languageReason / languageTier2(DisabledAffordance orphan)+ languageDesc 改寫 + 加 languageOptionChinese / languageOptionJapanese;AuthFrame 刪 langToggleTitle / langToggleAria(orphan)。語言 native name(English / 繁體中文 / 日本語)按慣例兩 locale 同值。
+- **踩坑**:Edit 刪 JSON 尾 key 留低懸掛逗號 → 兩檔 parse error;修好後統一 `JSON.stringify(,null,2)` re-format。教訓:批次刪 JSON key 後**即刻** parse 驗,唔好等到 verify 套件先發現。
+
+**驗證**:parity 1588 / 1588 · ICU 0 fail · placeholder / tag 對稱 · `tsc` EXIT=0 · `next lint` EXIT=0 · vitest 相關 5 檔(i18n×2 + app-shell + login + settings-6tab)**30/30**。
+
+**🚧 deferred**:browser 視覺走查(PopMenu 開合 / 剔號 / 切換 / 登入頁錨點 74px·48px 係估算值)—— playwright MCP session 中途斷線 + claude-in-chrome 對 localhost 導航失敗 ×2(按 rabbit-hole 規則即停)。服務跑緊(3002),用戶手動可即驗;或工具恢復後補。登入頁 PopMenu 錨點若有偏移屬 polish 級(唔阻 merge)。
