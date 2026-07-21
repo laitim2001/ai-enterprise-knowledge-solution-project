@@ -80,3 +80,12 @@ query → (query expansion*) → hybrid 檢索(vector + BM25,top 50)→ Cohere r
 3. **Inline 卡數** = min(UI figure 數, 圖片上限)— 超出部分喺 gallery badge +「View all in Image Library」
 
 例:backend 65 → UI 63 個 figure(過濾咗 1 個 Excel 附件 icon + 1 個燈泡 tip 圖案)→ 全部 inline(上限 80)。
+
+## 6. 介面語言(en / 繁體中文,2026-07 W103 起)
+
+介面文字支援 **English / 繁體中文** 切換(per ADR-0075;日文屬 Tier 2 未推出):
+
+- **切換位置(兩個入口,同步生效)**:①頂欄地球儀圖示 → 揀語言(en / 繁體中文;ja 灰顯)②設定 → 外觀 → 語言下拉。揀完即時生效,記住一年(存 browser cookie,唔使登入)。
+- **範圍 = 介面文字**(選單 / 按鈕 / 表頭 / 提示):**答案同文件內容維持原文檔語言,唔會翻譯** —— 呢個係刻意設計(RAG content 翻譯屬另一 Tier 2 項目)。
+- **刻意保留英文嘅嘢**(唔係漏譯):技術術語(chunk / preset / rerank / pipeline)、vendor 名(Azure / Cohere)、指標名(Recall@5 / Faithfulness)、狀態 badge(READY / ARCHIVED)、角色名(Workspace Admin)。完整清單 + 點解:`frontend/messages/GLOSSARY.md`。
+- **見到譯文有問題**:引述嗰句文字 + 邊一頁,交平台管理員(對照 GLOSSARY 修正)。

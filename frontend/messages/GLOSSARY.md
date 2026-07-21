@@ -1,8 +1,8 @@
-# EKP en / zh 術語表(GLOSSARY)
+# EKP en / zh 術語表(GLOSSARY)+ 字典維護規則
 
 > **地位**:`en.json` / `zh.json` 嘅術語權威(W103 F5.2,2026-07-21 用戶拍板定案)。
 > 加新 key、改譯文、校對(F5.3)都以此表為準;同此表衝突 = 要改字典,唔係改表(改表要用戶 approve)。
-> 維護規則詳見 F8.2(W103 closeout 補);drift 檢查:`node scripts` 見 `docs/01-planning/W103-i18n-en-zh/progress.md` Day 2 靜態掃描方法。
+> 維護規則見 §F(W103 F8.2,類比 DESIGN_SYSTEM.md §7 sync 紀律)。
 
 ---
 
@@ -84,3 +84,38 @@
 | 2026-07-21 | 文件 profile 域統一「畫像」 | AskUserQuestion |
 | 2026-07-21 | preset 統一保留 | AskUserQuestion |
 | 2026-07-21 | rerank / pipeline / overlap / deployment 保留英文;品牌句「重排」例外;Chat 面 citation 譯「引用」 | AskUserQuestion |
+
+## F. 字典維護規則(W103 F8.2 — binding,類比 DESIGN_SYSTEM.md §7)
+
+> **Why**:每次新 UI string 都要雙語同步,drift 風險同 design token 4-layer drift 同源(ADR-0075 §Consequences 預警)。呢度嘅 machine gate + 程序令 drift 喺 commit 前就紅燈,唔靠人肉記憶。
+
+### F.1 加新 UI string(最常見)
+
+1. **唔 hardcode 文案落 `.tsx`**(en / zh 都唔可以 — CH-023 教訓);一律 `useTranslations('<Namespace>')` + `t('key')`
+2. **en.json + zh.json 同步加**(絕不只加一邊;namespace 對應組件,key 用 camelCase 語意名)
+3. **術語過一次本表**:A 類保留英文 / B 類用定譯 / 唔確定 → 見 F.4
+4. **排版過 D 類**:中文緊鄰標點全形;純西文括號半形;ICU `{param}` / `<tag>` 兩邊對稱
+5. **跑 machine gate**:`npx vitest run tests/unit/i18n-dictionaries.test.ts` —— key parity / ICU 語法 / placeholder + rich tag 對稱 / 中文排版 / 保留清單抽樣,全部自動守(缺一邊 key 係 **runtime throw**,唔係靜靜 fallback)
+
+### F.2 改既有譯文
+
+- 只改 value 唔改 key;若涉術語譯法改變 → 先改本表(用戶 approve)再批次改字典(per-key 精準替換 + dry-run 審,見 `docs/01-planning/W103-i18n-en-zh/progress.md` Day 3 續方法)
+
+### F.3 刪 key
+
+- en / zh 同步刪 + **即刻 `JSON.parse` 驗**(懸掛逗號會壞檔 — W103 F6.2 踩過)+ grep 組件層無殘留 `t('該key')`
+
+### F.4 新術語 / 譯法爭議
+
+- 本表冇 cover 嘅新術語:傾向跟 A 類邏輯(schema / 調校 / vendor 域保留英文;end-user 敘述域譯中文);拿唔準 → 問用戶,拍板後補 E 類記錄 + 對應 A / B / C 類條目
+- **唔可以**靜靜引入第三種譯法(profile 四譯 / pipeline 三譯就係咁積出嚟)
+
+### F.5 Drift 偵測(季度 / phase closeout)
+
+- 全量靜態掃描方法(1588 條逐條,browser 走查捉唔齊漏譯):見 `docs/01-planning/W103-i18n-en-zh/progress.md` Day 2 —— ①純英文 value 掃描(疑漏譯)②半形標點掃描 ③術語 pattern 掃描(B 類詞喺 zh 出現英文原詞 = 疑 drift)
+- 測試層守門常駐 CI 前提 = B-27(frontend CI 加 vitest)落地;未落地前 phase closeout 手動跑一次 F.1 第 5 步
+
+### F.6 組件 / 測試層慣例
+
+- 新組件測試**唔使**包 `NextIntlClientProvider` —— `tests/unit/setup.ts` 已用官方 `createTranslator` 全域接管(en 預設;切換態用 `setTestLocale('zh')`,每 test 自動 reset)
+- 語言 native name(English / 繁體中文 / 日本語)兩 locale 同值(慣例:語言名以其自身語言顯示)

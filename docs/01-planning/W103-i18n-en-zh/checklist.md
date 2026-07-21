@@ -45,8 +45,8 @@
 - [x] F7.4 tsc / eslint / build clean(碰 backend 則 ruff / mypy strict)—— `tsc --noEmit` EXIT=0 · `next lint` EXIT=0(剩一個 `<img>` 警告屬 pre-existing)· **`next build` EXIT=0,17 route 全生成**(需 `NODE_TLS_REJECT_UNAUTHORIZED=0` 繞 B-26 font MITM;build 前後 wipe `.next` 避免 dev / production 產物混雜)。build 的 type-check 捉到 `setup.ts` 兩個 mock 型別問題(`createTranslator` 推導型別 vs 全域 `IntlMessages`、namespace literal union),已用單一 loose 簽名收斂 cast
 
 ## F8 — 文件同步 + closeout
-- [ ] F8.1 ADR-0075 impl note
-- [ ] F8.2 en/zh dict 維護規則(sync 紀律,類比 DESIGN_SYSTEM.md §7)
-- [ ] F8.3 user-guide language 章節(optional)
-- [ ] F8.4 BACKLOG B-25 → 完成
-- [ ] F8.5 closeout retro(progress.md 結尾)
+- [x] F8.1 ADR-0075 impl note —— §Implementation Notes 補 2026-07-21 主體實作條目(F2 next-intl 4.13.2 / F3 cookie-based D-2 甲 / F4 37 ns 1588 keys / F5.2 glossary / F6 mockup PopMenu / F7 sub-gate 結果 + 「zh 撐爆 layout」預警實測未發生 + drift 機制回應),逐項對照 ADR spec 裁決
+- [x] F8.2 en/zh dict 維護規則 —— **GLOSSARY.md §F**(F.1 加 string 五步含 machine gate / F.2 改譯文 / F.3 刪 key 含 JSON parse 教訓 / F.4 新術語爭議唔可以靜靜引入第三譯法 / F.5 drift 偵測三掃描 / F.6 測試層慣例)+ **CLAUDE.md §2 routing 加 row**「加 / 改 UI 文案」→ GLOSSARY.md(§14 微調自行做)
+- [x] F8.3 user-guide language 章節 —— `docs/08-user-guide/01-platform-overview.md` 新增 §6 介面語言(兩個切換入口 / 範圍 = 介面唔係 content / 刻意保留英文清單指向 GLOSSARY / 譯文問題回報路徑)
+- [x] F8.4 BACKLOG B-25 同步 —— 狀態改「進行中(W103 主體完成,剩用戶校對 + retro)」+ 內容更新 F1-F8.4 落地清單;**「完成」留 F5.3 + F8.5 齊先改**(誠實反映,唔提早閂)
+- [ ] F8.5 closeout retro(progress.md 結尾)—— 等 F5.3 用戶校對完成一齊(phase 閂門)

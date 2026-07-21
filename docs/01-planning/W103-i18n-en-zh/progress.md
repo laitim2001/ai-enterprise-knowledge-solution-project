@@ -166,3 +166,13 @@
 **驗證**:parity 1588 / 1588 · ICU 0 fail · placeholder / tag 對稱 · `tsc` EXIT=0 · `next lint` EXIT=0 · vitest 相關 5 檔(i18n×2 + app-shell + login + settings-6tab)**30/30**。
 
 **🚧 deferred**:browser 視覺走查(PopMenu 開合 / 剔號 / 切換 / 登入頁錨點 74px·48px 係估算值)—— playwright MCP session 中途斷線 + claude-in-chrome 對 localhost 導航失敗 ×2(按 rabbit-hole 規則即停)。服務跑緊(3002),用戶手動可即驗;或工具恢復後補。登入頁 PopMenu 錨點若有偏移屬 polish 級(唔阻 merge)。
+
+---
+
+### Day 3 續 3 — F8.1–F8.4 doc-sync(F8.5 retro 留 phase 閂門)
+
+- **F8.1 ADR-0075 impl note**:§Implementation Notes 補「2026-07-21 主體實作落地」條目 —— 逐項對照 ADR spec 嘅裁決結果(F2 `next-intl` 4.13.2 落地、H2 傾向成立 / F3 locale 機制兩選項拍板 cookie-based / F4 規模 37 ns 1588 keys / F5.2 對 §Consequences「翻譯來源 + 維護」隱憂嘅回應 = GLOSSARY / F6 mockup 原有 PopMenu 設計 / F7 「zh 撐爆 layout」預警**實測未發生** + drift 機制回應 = 守門測試)。
+- **F8.2 dict 維護規則**:**GLOSSARY.md §F(binding,類比 DESIGN_SYSTEM.md §7)** —— F.1 加 string 五步(核心 = machine gate `i18n-dictionaries.test.ts`,缺一邊 key 係 runtime throw 唔係 fallback)/ F.2 改譯文(術語變更先改表)/ F.3 刪 key(JSON parse 即驗,F6.2 踩坑)/ F.4 新術語爭議(唔可以靜靜引入第三種譯法 —— profile 四譯就係咁積出嚟)/ F.5 drift 三掃描(browser 走查捉唔齊漏譯嘅教訓)/ F.6 測試層慣例。**CLAUDE.md §2 routing 加 row**(§14 微調)。
+- **F8.3 user-guide**:`01-platform-overview.md` 新增 §6 介面語言 —— 面向平台操作者:兩個切換入口 / 「介面譯、內容唔譯」嘅刻意設計 / 保留英文清單唔係漏譯 / 譯文問題回報路徑。
+- **F8.4 BACKLOG B-25**:狀態「進行中(W103 主體完成,剩用戶校對 + retro)」+ 落地清單同步;**「完成」唔提早改** —— F5.3 + F8.5 齊先閂。
+- **F8.5 留待**:closeout retro 同 phase 閂門等 F5.3 用戶校對完成一齊做(R2 phase gate 慣例)。
