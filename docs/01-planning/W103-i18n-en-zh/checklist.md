@@ -29,9 +29,9 @@
 - [x] F4.4 grep 無 en chrome hardcode 殘留(動態拼接走查)—— 揭示 6 個漏網 shared component(global-search / tab-kb-access / api-key-input / deployments-table / error-boundary / login-gate)已 externalize;其餘硬 attribute 全屬保留項(範例值 email/URL/KB id、ARIA landmark `breadcrumb`)
 
 ## F5 — zh dictionary
-- [ ] F5.1 Claude draft zh 初稿(全 en key 對應)
-- [ ] F5.2 technical term glossary(保留英文定譯)
-- [ ] F5.3 用戶校對 → 定稿
+- [x] F5.1 Claude draft zh 初稿(全 en key 對應)—— 實質隨 F4 各批逐批產出(1588 keys / 37 namespace 全對應);正式 tick 於 F5.2 glossary 落地時(2026-07-21)
+- [x] F5.2 technical term glossary(保留英文定譯)—— **`frontend/messages/GLOSSARY.md` 落地**(A 保留英文 / B 統一中文 / C 分域例外 / D 排版規則 / E 拍板記錄)。基於 26 術語全量掃描實據;4 項分裂由用戶 2026-07-21 AskUserQuestion 拍板(chunk 保留 / 文件 profile→畫像 / preset 保留 / 調校術語保留英文+品牌句例外);**連帶批次修正 54 條**(區塊 / 切塊→chunk 15、管線 / 流程→pipeline 6、配方→preset 5、抽取→擷取 7、連接狀態→連線 6、identity→身分 4、profile→畫像 8、overlap / deployment 3、pipeline stage 短標統一英文 3);豁免 11 條(動詞 connect / procedure 流程手冊 / profiler 組件名)。驗證:parity 1588/1588 · ICU 0 fail · 殘留掃描零真殘留 · i18n 守門測試 16/16
+- [ ] F5.3 用戶校對 → 定稿(**卡用戶**;而家有 glossary 做基準)
 
 ## F6 — Language toggle 啟用
 - [x] F6.1 定位 mockup disabled Language toggle 現實作位置(app-shell TopBar,原 DisabledAffordance 包 disabled Globe)

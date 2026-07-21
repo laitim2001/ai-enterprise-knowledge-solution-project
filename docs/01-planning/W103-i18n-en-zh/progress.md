@@ -123,4 +123,25 @@
 **下一步**:F7 弧全收(F7.1–F7.4 + F3.4)。餘 **F5.2** glossary(乙類術語)→ **F5.3 用戶校對 zh(卡用戶)** → **F6** toggle 正式化 + Labs / Settings 語言組 stale → **F8** closeout 五項。
 
 **Commits**:
-- (本批 commit)W103 F3.4 CJK font fallback — §7.1 四層同步。
+- `8aa4cfa`(PR #20 rebase-merge)W103 F3.4 CJK font fallback — §7.1 四層同步。
+
+---
+
+### Day 3 續 — F5.2 glossary 定案 + 批次術語統一
+
+**方法**:唔憑感覺寫 glossary —— 先寫 26 術語全量掃描 script(en 含該詞 → en / zh 並排 + 保留 / 譯 / 混三分類),基於實據歸納。掃出**分裂比預期多**:除已知 chunk 外,仲有 profile 文件域**四譯**(profile / 畫像 / 設定檔 / 個人檔案)、pipeline **三譯**(pipeline / 管線 / 流程)、chunk strategy 三譯、preset / 配方、rerank / 重排、extract 抽取 / 擷取、connection 連線 / 連接、deployment / overlap 各半、`Settings.tabIdentity` 漏譯。
+
+**拍板(2026-07-21 AskUserQuestion,4 項全跟建議)**:
+1. **chunk 系統一保留 chunk**(71/78 已保留;區塊→chunk 改 ~15 條;chunk strategy →「Chunk 策略」)
+2. **文件 profile 域統一「畫像」**(W78 UI 已立「畫像」係最大存量;user profile「個人檔案」不動)
+3. **preset 統一保留**(profile→preset 對應係核心域,同 ADR-0056 對齊)
+4. **rerank / pipeline / overlap / deployment 保留英文**;品牌句「Cohere v4.0-pro 重排」例外保持;Chat 用戶面 citation 譯「引用」、調校面保留
+
+**產出**:
+- **`frontend/messages/GLOSSARY.md`**(術語權威):A 保留英文(vendor / metric / badge / role 專名 / schema mono / RAG 核心術語 / Azure Portal 對照欄位 / pipeline stage 短標)/ B 統一中文定譯(~30 詞)/ C 分域例外(citation 分域 / profile 分域 / embedding vs embedded / 品牌句例外 / 表頭一致)/ D 排版規則(2026-07-20 拍板收錄)/ E 拍板記錄。
+- **批次修正 54 條**(43 全值 + 11 substring):精準 per-key map(dry-run 報告逐條審後先寫入,任何 key 缺失 / substring 對唔上即 ABORT);豁免 11 條(動詞 connect 容許「連接」/ procedure「流程手冊」/ `profiler` 組件名)。
+- 順帶解決乙類清單第 4 項:`Settings.tabIdentity`「Identity & Auth」→「身分與驗證」(對齊 UserMenu 既有譯法)。
+
+**驗證**:parity 1588/1588 · ICU 0 fail · placeholder / tag 對稱 · 殘留掃描零真殘留(11 條全豁免項)· i18n 守門測試 16/16。
+
+**F5.3 前置就緒**:glossary 已定 + 術語已統一 → 用戶校對時有一致基準,唔使逐條糾結譯法。
